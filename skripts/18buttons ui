@@ -1,0 +1,341 @@
+local ScreenGui = Instance.new("ScreenGui")
+local Frame = Instance.new("Frame")
+local AUI = Instance.new("UICorner")
+local AUI2 = Instance.new("UICorner")
+local UIN = Instance.new("TextLabel")
+local AL = Instance.new("UICorner")
+local CloseButton = Instance.new("TextButton")
+local HideButton = Instance.new("TextButton")
+local ButtonAdd = Instance.new("TextButton")
+local BuAdd = Instance.new("UICorner")
+local BubbleP = Instance.new("TextButton")
+local Bup = Instance.new("UICorner")
+local HideB = Instance.new("UICorner")
+
+local Button1 = Instance.new("TextButton")
+local Button2 = Instance.new("TextButton")
+local Button3 = Instance.new("TextButton")
+local Button4 = Instance.new("TextButton")
+local Button5 = Instance.new("TextButton")
+local Button6 = Instance.new("TextButton")
+local Button7 = Instance.new("TextButton")
+local Button8 = Instance.new("TextButton")
+local Button9 = Instance.new("TextButton")
+local Button10 = Instance.new("TextButton")
+local Button11 = Instance.new("TextButton")
+local Button12 = Instance.new("TextButton")
+local Button13 = Instance.new("TextButton")
+local Button14 = Instance.new("TextButton")
+local Button15 = Instance.new("TextButton")
+local Button16 = Instance.new("TextButton")
+local Button17 = Instance.new("TextButton")
+local Button18 = Instance.new("TextButton")
+
+--ScreenGui
+ScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+ScreenGui.ResetOnSpawn = false
+--Frame
+Frame.Parent = ScreenGui
+Frame.BackgroundColor3 = Color3.fromRGB(0, 255, 255)
+Frame.Position = UDim2.new(0.1, 0.5, 0.5, -25)
+Frame.Size = UDim2.new(0, 560, 0, 110)
+Frame.Active = true
+Frame.Draggable = true
+
+UIN.Parent = Frame
+UIN.BackgroundColor3 = Color3.fromRGB(0, 255, 255)
+UIN.Position = UDim2.new(0, 0, 1.1, 0)
+UIN.Size = UDim2.new(1, 0, 0.4, 0)
+UIN.Text = "UI Name"
+UIN.TextColor3 = Color3.new(1, 1, 1)
+UIN.TextSize = 20
+
+CloseButton.Parent = Frame
+CloseButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+CloseButton.Position = UDim2.new(-0.09, 0, 0.8, 0)
+CloseButton.Size = UDim2.new(0, 40, 0 , 80.25)
+CloseButton.Text = "X"
+CloseButton.TextSize = 15
+CloseButton.MouseButton1Click:Connect(function()
+    ScreenGui:Destroy()
+end)
+
+HideButton.Parent = Frame
+HideButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+HideButton.Position = UDim2.new(-0.09, 0, 0, 0)
+HideButton.Size = UDim2.new(0, 40, 0, 80.25)
+HideButton.Text = "-"
+HideButton.TextSize = 15
+HideButton.MouseButton1Click:Connect(function()
+    Frame.Visible = false
+    BubbleP.Visible = true
+end)
+
+BubbleP.Parent = ScreenGui
+BubbleP.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+BubbleP.Position = UDim2.new(0, 0, 0, 3)
+BubbleP.Size = UDim2.new(0, 60, 0, 60)
+BubbleP.Text = "Toggle UI"
+BubbleP.TextSize = 30
+BubbleP.BorderSizePixel = 2
+BubbleP.BorderColor3 = Color3.fromRGB(255, 255, 255)
+BubbleP.Draggable = true
+BubbleP.Visible = false
+BubbleP.MouseButton1Click:Connect(function()
+    Frame.Visible = true
+    BubbleP.Visible = false
+end)
+
+-- Button
+Button1.Parent = Frame
+Button1.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+Button1.Position = UDim2.new(0, 10, 0, 5)
+Button1.Size = UDim2.new(0, 45, 0, 40)
+Button1.Text = "Button1"
+Button1.TextSize = 10
+Button1.BorderSizePixel = 2
+Button1.BorderColor3 = Color3.new(1, 1, 1)
+
+Button1.MouseButton1Click:Connect(function()
+    print("Button1 clicked")
+end)
+
+Button2.Parent = Frame
+Button2.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+Button2.Position = UDim2.new(0, 65, 0, 5)
+Button2.Size = UDim2.new(0, 45, 0, 40)
+Button2.Text = "Button2"
+Button2.TextSize = 10
+Button2.BorderSizePixel = 2
+Button2.BorderColor3 = Color3.new(1, 1, 1)
+
+Button2.MouseButton1Click:Connect(function()
+    print("Button2 clicked")
+end)
+
+Button3.Parent = Frame
+Button3.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+Button3.Position = UDim2.new(0, 120, 0, 5)
+Button3.Size = UDim2.new(0, 45, 0, 40)
+Button3.Text = "Button3"
+Button3.TextSize = 10
+Button3.BorderSizePixel = 2
+Button3.BorderColor3 = Color3.new(1, 1, 1)
+
+Button3.MouseButton1Click:Connect(function()
+    print("Button3 clicked")
+end)
+
+Button4.Parent = Frame
+Button4.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+Button4.Position = UDim2.new(0, 175, 0, 5)
+Button4.Size = UDim2.new(0, 45, 0, 40)
+Button4.Text = "Button4"
+Button4.TextSize = 8
+Button4.BorderSizePixel = 2
+Button4.BorderColor3 = Color3.new(1, 1, 1)
+
+Button4.MouseButton1Click:Connect(function()
+    print("Button4 clicked")
+end)
+
+Button5.Parent = Frame
+Button5.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+Button5.Position = UDim2.new(0, 230, 0, 5)
+Button5.Size = UDim2.new(0, 45, 0, 40)
+Button5.Text = "Button5"
+Button5.TextSize = 8
+Button5.BorderSizePixel = 2
+Button5.BorderColor3 = Color3.new(1, 1, 1)
+
+Button5.MouseButton1Click:Connect(function()
+    print("Button5 clicked")
+end)
+
+Button6.Parent = Frame
+Button6.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+Button6.Position = UDim2.new(0, 285, 0, 5)
+Button6.Size = UDim2.new(0, 45, 0, 40)
+Button6.Text = "Button6"
+Button6.TextSize = 8
+Button6.BorderSizePixel = 2
+Button6.BorderColor3 = Color3.new(1, 1, 1)
+
+Button6.MouseButton1Click:Connect(function()
+    print("Button6 clicked")
+end)
+
+Button7.Parent = Frame
+Button7.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+Button7.Position = UDim2.new(0, 340, 0, 5)
+Button7.Size = UDim2.new(0, 45, 0, 40)
+Button7.Text = "Button7"
+Button7.TextSize = 8
+Button7.BorderSizePixel = 2
+Button7.BorderColor3 = Color3.new(1, 1, 1)
+
+Button7.MouseButton1Click:Connect(function()
+    print("Button7 clicked")
+end)
+
+Button8.Parent = Frame
+Button8.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+Button8.Position = UDim2.new(0, 395, 0, 5)
+Button8.Size = UDim2.new(0, 45, 0, 40)
+Button8.Text = "Button8"
+Button8.TextSize = 8
+Button8.BorderSizePixel = 2
+Button8.BorderColor3 = Color3.new(1, 1, 1)
+
+Button8.MouseButton1Click:Connect(function()
+    print("Button8 clicked")
+end)
+
+Button9.Parent = Frame
+Button9.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+Button9.Position = UDim2.new(0, 450, 0, 5)
+Button9.Size = UDim2.new(0, 45, 0, 40)
+Button9.Text = "Button9"
+Button9.TextSize = 8
+Button9.BorderSizePixel = 2
+Button9.BorderColor3 = Color3.new(1, 1, 1)
+
+Button9.MouseButton1Click:Connect(function()
+    print("Button9 clicked")
+end)
+
+Button10.Parent = Frame
+Button10.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+Button10.Position = UDim2.new(0, 10, 0, 60)
+Button10.Size = UDim2.new(0, 45, 0, 40)
+Button10.Text = "Button10"
+Button10.TextSize = 10
+Button10.BorderSizePixel = 2
+Button10.BorderColor3 = Color3.new(1, 1, 1)
+
+Button10.MouseButton1Click:Connect(function()
+    print("Button10 clicked")
+end)
+
+Button11.Parent = Frame
+Button11.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+Button11.Position = UDim2.new(0, 65, 0, 60)
+Button11.Size = UDim2.new(0, 45, 0, 40)
+Button11.Text = "Button11"
+Button11.TextSize = 10
+Button11.BorderSizePixel = 2
+Button11.BorderColor3 = Color3.new(1, 1, 1)
+
+Button11.MouseButton1Click:Connect(function()
+    print("Button11 clicked")
+end)
+
+Button12.Parent = Frame
+Button12.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+Button12.Position = UDim2.new(0, 120, 0, 60)
+Button12.Size = UDim2.new(0, 45, 0, 40)
+Button12.Text = "Button12"
+Button12.TextSize = 8
+Button12.BorderSizePixel = 2
+Button12.BorderColor3 = Color3.new(1, 1, 1)
+
+Button12.MouseButton1Click:Connect(function()
+    print("Button12 clicked")
+end)
+
+Button13.Parent = Frame
+Button13.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+Button13.Position = UDim2.new(0, 175, 0, 60)
+Button13.Size = UDim2.new(0, 45, 0, 40)
+Button13.Text = "Button13"
+Button13.TextSize = 10
+Button13.BorderSizePixel = 2
+Button13.BorderColor3 = Color3.new(1, 1, 1)
+
+Button13.MouseButton1Click:Connect(function()
+    print("Button13 clicked")
+end)
+
+Button14.Parent = Frame
+Button14.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+Button14.Position = UDim2.new(0, 230, 0, 60)
+Button14.Size = UDim2.new(0, 45, 0, 40)
+Button14.Text = "Button14"
+Button14.TextSize = 8
+Button14.BorderSizePixel = 2
+Button14.BorderColor3 = Color3.new(1, 1, 1)
+
+Button14.MouseButton1Click:Connect(function()
+    print("Button14 clicked")
+end)
+
+Button15.Parent = Frame
+Button15.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+Button15.Position = UDim2.new(0, 285, 0, 60)
+Button15.Size = UDim2.new(0, 45, 0, 40)
+Button15.Text = "Button15"
+Button15.TextSize = 8
+Button15.BorderSizePixel = 2
+Button15.BorderColor3 = Color3.new(1, 1, 1)
+
+Button15.MouseButton1Click:Connect(function()
+    print("Button15 clicked")
+end)
+
+Button16.Parent = Frame
+Button16.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+Button16.Position = UDim2.new(0, 340, 0, 60)
+Button16.Size = UDim2.new(0, 45, 0, 40)
+Button16.Text = "Button16"
+Button16.TextSize = 8
+Button16.BorderSizePixel = 2
+Button16.BorderColor3 = Color3.new(1, 1, 1)
+
+Button16.MouseButton1Click:Connect(function()
+    print("Button16 clicked")
+end)
+
+Button17.Parent = Frame
+Button17.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+Button17.Position = UDim2.new(0, 395, 0, 60)
+Button17.Size = UDim2.new(0, 45, 0, 40)
+Button17.Text = "Button17"
+Button17.TextSize = 8
+Button17.BorderSizePixel = 2
+Button17.BorderColor3 = Color3.new(1, 1, 1)
+
+Button17.MouseButton1Click:Connect(function()
+    print("Button17 clicked")
+end)
+
+Button18.Parent = Frame
+Button18.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+Button18.Position = UDim2.new(0, 450, 0, 60)
+Button18.Size = UDim2.new(0, 45, 0, 40)
+Button18.Text = "Button18"
+Button18.TextSize = 10
+Button18.BorderSizePixel = 2
+Button18.BorderColor3 = Color3.new(1, 1, 1)
+
+Button18.MouseButton1Click:Connect(function()
+    print("Button18 clicked")
+end)
+
+--Corner
+AUI.CornerRadius = UDim.new(0, 10)
+AUI.Parent = Frame
+
+AUI2.CornerRadius = UDim.new(0, 5)
+AUI2.Parent = CloseButton
+
+AL.CornerRadius = UDim.new(0, 5)
+AL.Parent = UIN
+
+BuAdd.CornerRadius = UDim.new(0, 5)
+BuAdd.Parent = ButtonAdd
+
+Bup.CornerRadius = UDim.new(0,100)
+Bup.Parent = BubbleP
+
+HideB.CornerRadius = UDim.new(0,5)
+HideB.Parent = HideButton
