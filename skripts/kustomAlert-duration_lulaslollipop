@@ -1,0 +1,12 @@
+local function alert(say_lulaslollipop, duration)
+    local Lollypops=game;
+    local holup=wait;
+    local notifikation = Instance.new("Message");
+notifikation.Text = say_lulaslollipop;
+local lollypops = Lollypops.Workspace;
+notifikation.Parent=lollypops;
+    holup(duration)
+    notifikation:Destroy();
+end
+rrixh=alert;msg=alert;
+notify=alert;send=alert;
