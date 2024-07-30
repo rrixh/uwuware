@@ -1,0 +1,416 @@
+for i,v in ipairs(game.CoreGui:GetDescendants()) do if v.Name=="TextLabel" and v.Parent:IsA("ImageButton") and v:FindFirstChild("ImageLabel",true) then v.Parent.Parent:Remove();break end; end;
+
+local uwuRRIXH = loadstring(game:HttpGet("https://pastecode.dev/raw/o579xt86/mobileWally.jpg",true))();local lulaslollipop="lulaslollipop 🍭";local uwu=uwuRRIXH:CreateWindow("Zombie Attaxk");
+ZombieATK = game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name;
+
+local function bNotify(dur,txt)
+game:GetService("StarterGui"):SetCore("SendNotification", {Title = ZombieATK, Duration = dur, Button1 = "bet", Callback = function() end, Text = txt});
+end;ok=bNotify
+local function inform(dur,txt)
+game:GetService("StarterGui"):SetCore("SendNotification", {Title = ZombieATK, Duration = dur, Button1 = "prexiate it 👺", Callback = function() end, Text = txt});
+end
+local function redsm(txt)
+game.StarterGui:SetCore( "ChatMakeSystemMessage",  { Text = txt, Color = Color3.fromRGB(255,0,0), Font = Enum.Font.Arial, FontSize = Enum.FontSize.Size24 } )
+end;local function bluesm(txt)
+game.StarterGui:SetCore( "ChatMakeSystemMessage",  { Text = txt, Color = Color3.fromRGB(0,0,255), Font = Enum.Font.Arial, FontSize = Enum.FontSize.Size24 } )
+end;local function greensm(txt)
+game.StarterGui:SetCore( "ChatMakeSystemMessage",  { Text = txt, Color = Color3.fromRGB(0,255,0), Font = Enum.Font.Arial, FontSize = Enum.FontSize.Size24 } )
+end;
+local function err(txt)
+ local RRixh1 = loadstring(game:HttpGet("https://pastecode.dev/raw/xhglimlq/lakayli_lulaslollipopnotif.xl9.x7s.xls.xlsx",true))() local Notify = RRixh1.Notify; wait(); Notify({ Description = txt;Duration = 3; });
+end;
+local displayname = game.Players.LocalPlayer.DisplayName;
+local user = game.Players.LocalPlayer.Name;
+--------------////-------------------
+
+--------------////-------------------
+-- __ AIM ASSIST __ --
+local RunService = game:GetService("RunService")
+local player = game.Players.LocalPlayer
+local camera = workspace.CurrentCamera;
+Zombies = workspace.enemies or game.Workspace.enemies;
+Bosses = workspace.BossFolder or game.Workspace.BossFolder;
+aimAssist = false
+maxStuds = 50 --studs
+aimSpeed = 0.05 --default aim speed
+
+local function getClosestEnemyLeg()
+local closestLeg = nil
+local shortestDistance = math.huge
+
+local function xhexkFolder(folder)
+    for _, enemy in pairs(folder:GetChildren()) do
+        local leftLeg = enemy:FindFirstChild("Left Leg")
+        if leftLeg then
+            local distance = (leftLeg.Position - player.Character.HumanoidRootPart.Position).magnitude
+            if distance < shortestDistance and distance <= maxStuds then
+                shortestDistance = distance
+                closestLeg = leftLeg
+       end;end;end;end
+
+xhexkFolder(Zombies);
+xhexkFolder(Bosses);
+return closestLeg end;
+
+local function smoothAim(target)
+local targetPosition = target.Position
+local direction = (targetPosition - camera.CFrame.Position).unit
+local newCFrame = CFrame.new(camera.CFrame.Position, camera.CFrame.Position + direction)
+camera.CFrame = camera.CFrame:Lerp(newCFrame, aimSpeed)
+end;
+--------------////-------------------
+uwu:AddToggle({text = "Aim Assist",
+callback = function(toggleOn)
+    aimAssist = toggleOn
+end})
+
+uwu:AddBox({text = "Aim Sens. (def. 0.05, aimbot 1)", callback = function(aimAssistSpeed)
+        defaultSpeed = 0.05
+speed = tonumber(aimAssistSpeed)
+        if speed then
+            aimSpeed = speed
+            else
+err("enter number only nigger")
+            end;
+local aimbotMode = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2}
+ isAimbotMode = false
+        for _, aimbot in ipairs(aimbotMode) do
+            if speed == aimbot then
+                isAimbotMode = true
+                break
+            end;
+        end;
+if speed == defaultSpeed then
+ok(1.5, "Aim Assist Mode✅ | Aim Sensitivity set to default (0.05)")
+elseif isAimbotMode then
+  ok(1.5, "Aimbot Mode✅ | Sens: " .. speed)
+        else
+ok(1.4, "Aiming Sensitivity set to " .. speed)
+        end;
+if speed == "" or speed == nil or speed == " " or speed == "  " or speed == "   " then return end
+end})
+--------------////-------------------
+RunService.RenderStepped:Connect(function()
+if aimAssist then
+local nearestZombie = getClosestEnemyLeg()
+    if nearestZombie then
+    smoothAim(nearestZombie)
+end;end;end)
+--------------////-------------------
+uwu:AddToggle({text = "Gun Aura (Kloser)", callback = function(op)
+if op then
+loadstring(game:HttpGet("https://pastecode.dev/raw/pev91xdz/ZATK-silentAim_rrixh.xlsx",true))();
+else
+silentAim = false
+end;
+end});
+--------------////-------------------
+autoThrow = false
+local Player = game:GetService("Players").LocalPlayer;
+local function getNearest()
+    local nearest, dist = nil, 99999
+    for _, v in pairs(Bosses:GetChildren()) do
+        if v:FindFirstChild("Head") ~= nil then
+            local m = (Player.Character.Head.Position - v.Head.Position).magnitude
+            if m < dist then
+                dist = m
+                nearest = v
+end;end;end
+    for _, v in pairs(Zombies:GetChildren()) do
+if v:FindFirstChild("Head") ~= nil then
+local m = (Player.Character.Head.Position - v.Head.Position).magnitude
+            if m < dist then
+                dist = m
+                nearest = v
+end;end;end;return nearest
+end;
+local function autoThrowSword()
+while autoThrow do
+    local tool = Player.Character:FindFirstChildOfClass("Tool")
+    if tool then
+        local target = getNearest()
+        if target and target:FindFirstChild("Head") then
+--throw sword
+game:GetService("ReplicatedStorage").forhackers:InvokeServer("throw", tool.Name, target.Head.CFrame)
+        end
+    end
+    wait(0.0025)
+end
+end
+
+uwu:AddToggle({text = "Sword Aura (Kloser)",
+callback = function(toggleOn)
+    autoThrow = toggleOn
+    if autoThrow then
+        spawn(autoThrowSword)
+    end
+end})
+--------------////--------------------------------ESP//-------------------
+      local espInstances = {}
+
+local function deleteAllESP()
+for _, gui in ipairs(espInstances) do
+              gui:Destroy()
+          end
+          espInstances = {}
+      end
+
+local function deleteESP(enemy)
+for i, gui in ipairs(espInstances) do
+    if gui.Adornee == enemy then
+        gui:Destroy()
+table.remove(espInstances, i) 
+end;end;end
+
+      local function kreateESP(enemy)
+          deleteESP(enemy)
+          local billboardGui = Instance.new("BillboardGui")
+          billboardGui.Adornee = enemy
+          billboardGui.Size = UDim2.new(5, 0, 5, 0) 
+          billboardGui.StudsOffset = Vector3.new(0, 2, 0) 
+          billboardGui.AlwaysOnTop = true;
+local espFrame = Instance.new("Frame")
+          espFrame.Parent = billboardGui
+          espFrame.Size = UDim2.new(1, 0, 1, 0) 
+          espFrame.BackgroundTransparency = 0.5 
+          espFrame.BackgroundColor3 = Color3.new(1, 0, 0) 
+
+          billboardGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+
+          table.insert(espInstances, billboardGui)
+      end
+
+local function onEnemyAdded(enemy)
+if enemy:IsA("Model") then
+  if enemy.Parent.Name == "enemies" or enemy.Parent.Name == "BossFolder" then
+kreateESP(enemy)
+end;end;end;
+
+local toggleEnabled=false;
+
+uwu:AddToggle({text = "Enemy ESP", callback = function(e)
+          toggleEnabled = e
+          if e then
+              deleteAllESP()
+              for _, enemy in ipairs(Zombies:GetChildren()) do
+                  onEnemyAdded(enemy)
+              end
+              for _, enemy1 in ipairs(Bosses:GetChildren()) do
+                  onEnemyAdded(enemy1)
+              end
+          else
+              deleteAllESP() 
+          end;
+      end});  game:GetService("RunService").Heartbeat:Connect(function()
+          for _, enemy in ipairs(Zombies:GetChildren()) do
+              if toggleEnabled then
+                  onEnemyAdded(enemy)
+              else
+                  deleteESP(enemy)
+              end
+          end
+          for _, bossEnemy in ipairs(Bosses:GetChildren()) do
+              if toggleEnabled then
+            onEnemyAdded(bossEnemy)
+              else
+        deleteESP(bossEnemy)
+              end
+          end
+      end); --end of esp
+--------------////-------------------
+local updatedNPCs = {}
+
+local function updateHeadSize(npc)
+    local head = npc:FindFirstChild("Head")
+    if head then
+        local headSize = head.Size
+        if headSize then
+            head.Size = headSize * Vector3.new(4, 4, 4)
+        end
+    end
+end;
+
+local function updateAllNPCs()
+    for _, npc in pairs(Zombies:GetChildren()) do
+        if not updatedNPCs[npc] then
+            updateHeadSize(npc)
+            updatedNPCs[npc] = true
+        end
+    end;
+    for _, npc in pairs(Bosses:GetChildren()) do
+        if not updatedNPCs[npc] then
+            updateHeadSize(npc)
+            updatedNPCs[npc] = true
+        end
+    end;
+end;
+
+uwu:AddToggle({text = "Big Head Zombies", callback = function(bigasshead)
+_G.abc5 = bigasshead;
+if bigasshead then
+spawn(function()
+while _G.abc5 do wait()
+updateAllNPCs()
+end;end);end
+end})
+--------------////-------------------
+uwu:AddToggle({text = "Auto Kollect Powerups", callback = function(kollekt)
+_G.abc3 = kollekt
+if kollekt then
+spawn(function()
+while _G.abc3 do wait()
+local player = game.Players.LocalPlayer
+local auto_grab = workspace.Powerups
+local playerCharacter = player.Character
+task.spawn(function()
+if playerCharacter then
+local playerPosition = playerCharacter:FindFirstChild("HumanoidRootPart")
+if playerPosition then
+playerPosition = playerPosition.Position
+for _, NPC in pairs(auto_grab:GetChildren()) do
+local NPCRootPart = NPC:FindFirstChild("Part")
+if NPCRootPart then
+NPCRootPart.Position = playerPosition
+end;end;
+else
+local RRixh1 = loadstring(game:HttpGet("https://pastecode.dev/raw/xhglimlq/lakayli_lulaslollipopnotif.xl9.x7s.xls.xlsx",true))() local Notify = RRixh1.Notify; wait(); Notify({ Description = "player's HumanoidRootPart not found";Duration = 3; });
+end;
+else
+local RRixh1 = loadstring(game:HttpGet("https://pastecode.dev/raw/xhglimlq/lakayli_lulaslollipopnotif.xl9.x7s.xls.xlsx",true))() local Notify = RRixh1.Notify; wait(); Notify({ Description = "player's xharakter not found";Duration = 3; });
+end;end);wait(0.2);end;end);end
+end}); -- auto kollekt
+--------------////-------------------
+--------------////-------------------
+local UwU = uwuRRIXH:CreateWindow("Autofarm & More");
+
+UwU:AddToggle({text = "Bring Players (zombie)\n also lags them", callback = function(bringNiggaz)
+        Bringing = bringNiggaz
+if bringNiggaz then
+loadstring(game:HttpGet("https://pastecode.dev/raw/duh2k4lb/bringPlrs-Bringing_rrixh.xlsx",true))();
+    end
+end});
+--------------////-------------------
+UwU:AddToggle({text = "Autofarm Zombies", callback = function(autofarm)
+if autofarm then
+local groundDistance = 15
+local Player = game:GetService("Players").LocalPlayer
+local function getNearest()
+local nearest, dist = nil, 99999
+for _,v in pairs(Bosses:GetChildren()) do
+if(v:FindFirstChild("Head")~=nil)then
+local m =(Player.Character.Head.Position-v.Head.Position).magnitude
+if(m<dist)then
+dist = m
+nearest = v
+end;end;end;
+for _,v in pairs(Zombies:GetChildren()) do
+if(v:FindFirstChild("Head")~=nil)then
+local m =(Player.Character.Head.Position-v.Head.Position).magnitude
+if(m<dist)then
+dist = m
+nearest = v
+end;end;end;return nearest end
+_G.farm2 = true;
+Player.Chatted:Connect(function(m)
+if(m=="/off")then
+_G.farm2 = false
+elseif(m=="/on")then
+_G.farm2 = true
+end
+end)
+_G.globalTarget = nil
+game:GetService("RunService").RenderStepped:Connect(function()
+if(_G.farm2==true)then
+local target = getNearest()
+if(target~=nil)then
+game:GetService("Workspace").CurrentCamera.CFrame = CFrame.new(game:GetService("Workspace").CurrentCamera.CFrame.p, target.Head.Position)
+Player.Character.HumanoidRootPart.CFrame = (target.HumanoidRootPart.CFrame * CFrame.new(0, groundDistance, 9))
+_G.globalTarget = target
+end;end;end)
+spawn(function()
+while wait() do
+game.Players.LocalPlayer.Character.HumanoidRootPart.Velocity = Vector3.new(0,0,0)
+game.Players.LocalPlayer.Character.Torso.Velocity = Vector3.new(0,0,0)
+end;end)
+while wait() do
+if(_G.farm2==true and _G.globalTarget~=nil and _G.globalTarget:FindFirstChild("Head") and Player.Character:FindFirstChildOfClass("Tool"))then
+local target = _G.globalTarget;
+game.ReplicatedStorage.Gun:FireServer({["Normal"] = Vector3.new(0, 0, 0), ["Direction"] = target.Head.Position,
+["Name"] = Player.Character:FindFirstChildOfClass("Tool").Name,
+["Hit"] = target.Head,
+["Origin"] = target.Head.Position, ["Pos"] = target.Head.Position,})
+wait()
+end;end
+            else
+_G.farm2 = false
+            end;
+end})
+--------------////-------------------
+
+
+UwU:AddButton({text = "Boost FPS", callback = function()
+while wait(0.7) do
+setfflag("TaskSchedulerTargetFps", 160);
+end
+end});
+
+UwU:AddSlider({text="Speed",min=16,max=110,callback=function(...)
+game.Players.LocalPlayer.Character.Humanoid.WalkSpeed=(...)
+end})
+--------------////-------------------
+UwU:AddToggle({text = "Noklip",
+callback = function(toggleOn)
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+noklip = toggleOn;
+--------------////-------------------
+local function toggleNoklip()
+if noklip then
+-- Noklip on
+for _, part in pairs(character:GetDescendants()) do
+if part:IsA("BasePart") then
+part.CanCollide = false
+end;end
+       else
+ -- nklip off
+    for _, part in pairs(character:GetDescendants()) do
+if part:IsA("BasePart") then
+part.CanCollide = true
+end;end;end;end;
+        toggleNoklip();
+game:GetService("RunService").Stepped:Connect(function()
+    if noklip then
+for _, part in pairs(character:GetDescendants()) do
+if part:IsA("BasePart") then
+part.CanCollide = false
+end;end;end;end)
+end})
+--------------////-------------------
+UwU:AddToggle({text = "Inf Jump", callback = function(toggled)  uis=game:GetService("UserInputService")
+if toggled then
+getgenv().InfJump = true
+spawn(function()
+while getgenv().InfJump == true do
+uis.JumpRequest:connect(function()
+if getgenv().InfJump == true then
+game:GetService"Players".LocalPlayer.Character:FindFirstChildOfClass'Humanoid':ChangeState("Jumping");end;end);wait();end;end)
+else
+ getgenv().InfJump = false; end;
+end})
+uwu:AddFolder(lulaslollipop); uwuRRIXH:Init();
+--------------////---------------------------------////---------------------------------////---------------------------------////---------------------------------////-------------------
+spawn(function()
+HEAD=game.Players.LocalPlayer.Character.Head
+makePlrSay=game:GetService("Chat")
+inform(5, "made by lulaslollipop🍭...👺");
+greensm("[Zombie Attaxk] thanks for using my skript, "..game.Players.LocalPlayer.DisplayName.." "..user..". enjoy👺");
+redsm("💥 Aim Sens: 0.05 is the default aim speed for normal mobile aim assist")
+greensm("Put any number between 0.1 and 1 for aimbot modes(higher=faster).")
+redsm("💥 Aim Assist will konnect wen the enemy/boss is 50 studs away or less")
+makePlrSay:Chat(HEAD, "🍭read chat for info on this skript", "Red")
+wait(.9)
+makePlrSay:Chat(HEAD, "read chat for info on this skript", "Green")
+wait(.7)
+makePlrSay:Chat(HEAD, "skript by LULASLOLLIPOP🍭", "Green")
+makePlrSay:Chat(HEAD, "👺👺👺👺", "Red")
+end)
