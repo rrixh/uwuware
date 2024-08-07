@@ -1,0 +1,229 @@
+--[[
+  Copyright (c) 2016-2017, RRixh MJ
+
+▀▀█▀▀ █───█ █▀▀ █▀▀ █▀▀▄ 
+─░█── █▄█▄█ █▀▀ █▀▀ █──█ 
+─░█── ─▀─▀─ ▀▀▀ ▀▀▀ ▀──▀
+
+████████╗░█████╗░░█████╗░██╗░░░░░
+╚══██╔══╝██╔══██╗██╔══██╗██║░░░░░
+░░░██║░░░██║░░██║██║░░██║██║░░░░░
+░░░██║░░░██║░░██║██║░░██║██║░░░░░
+░░░██║░░░╚█████╔╝╚█████╔╝███████╗
+░░░╚═╝░░░░╚════╝░░╚════╝░╚══════╝
+
+██████╗░██╗░░░██╗
+██╔══██╗╚██╗░██╔╝
+██████╦╝░╚████╔╝░
+██╔══██╗░░╚██╔╝░░
+██████╦╝░░░██║░░░
+╚═════╝░░░░╚═╝░░░
+
+██╗░░░░░██╗░░░██╗██╗░░░░░░█████╗░
+██║░░░░░██║░░░██║██║░░░░░██╔══██╗
+██║░░░░░██║░░░██║██║░░░░░███████║
+██║░░░░░██║░░░██║██║░░░░░██╔══██║
+███████╗╚██████╔╝███████╗██║░░██║
+╚══════╝░╚═════╝░╚══════╝╚═╝░░╚═╝
+
+░█████╗░██╗░░██╗░█████╗░
+██╔══██╗██║░██╔╝██╔══██╗
+███████║█████═╝░███████║
+██╔══██║██╔═██╗░██╔══██║
+██║░░██║██║░╚██╗██║░░██║
+╚═╝░░╚═╝╚═╝░░╚═╝╚═╝░░╚═╝
+
+██████╗░██████╗░██╗██╗░░██╗██╗░░██╗
+██╔══██╗██╔══██╗██║╚██╗██╔╝██║░░██║
+██████╔╝██████╔╝██║░╚███╔╝░███████║
+██╔══██╗██╔══██╗██║░██╔██╗░██╔══██║
+██║░░██║██║░░██║██║██╔╝╚██╗██║░░██║
+╚═╝░░╚═╝╚═╝░░╚═╝╚═╝╚═╝░░╚═╝╚═╝░░╚═╝
+
+███╗░░██╗██╗░██████╗░░██████╗░░█████╗░
+████╗░██║██║██╔════╝░██╔════╝░██╔══██╗
+██╔██╗██║██║██║░░██╗░██║░░██╗░███████║
+██║╚████║██║██║░░╚██╗██║░░╚██╗██╔══██║
+██║░╚███║██║╚██████╔╝╚██████╔╝██║░░██║
+╚═╝░░╚══╝╚═╝░╚═════╝░░╚═════╝░╚═╝░░╚═╝
+and sike this shit aint kopyright im jp
+]]--
+
+bit32 = {};
+local N = 32;
+local P = 2 ^ N;
+bit32.bnot = function(x)
+  x = x % P;
+  return (P - 1) - x;
+end;
+bit32.band = function(x, y)
+  if (y == 255) then
+    return x % 256;
+  end
+  if (y == 65535) then
+    return x % 65536;
+  end
+  if (y == 4294967295) then
+    return x % 4294967296;
+  end
+  x, y = x % P, y % P;
+  local r = 0;
+  local p = 1;
+  for i = 1, N do
+    local a, b = x % 2, y % 2;
+    x, y = math.floor(x / 2), math.floor(y / 2);
+    if ((a + b) == 2) then
+      r = r + p;
+    end
+    p = 2 * p;
+  end
+  return r;
+end;
+bit32.bor = function(x, y)
+  if (y == 255) then
+    return (x - (x % 256)) + 255;
+  end
+  if (y == 65535) then
+    return (x - (x % 65536)) + 65535;
+  end
+  if (y == 4294967295) then
+    return 4294967295;
+  end
+  x, y = x % P, y % P;
+  local r = 0;
+  local p = 1;
+  for i = 1, N do
+    local a, b = x % 2, y % 2;
+    x, y = math.floor(x / 2), math.floor(y / 2);
+    if ((a + b) >= 1) then
+      r = r + p;
+    end
+    p = 2 * p;
+  end
+  return r;
+end;
+bit32.bxor = function(x, y)
+  x, y = x % P, y % P;
+  local r = 0;
+  local p = 1;
+  for i = 1, N do
+    local a, b = x % 2, y % 2;
+    x, y = math.floor(x / 2), math.floor(y / 2);
+    if ((a + b) == 1) then
+      r = r + p;
+    end
+    p = 2 * p;
+  end
+  return r;
+end;
+bit32.lshift = function(x, s_amount)
+  if (math.abs(s_amount) >= N) then
+    return 0;
+  end
+  x = x % P;
+  if (s_amount < 0) then
+    return math.floor(x * (2 ^ s_amount));
+  else
+    return (x * (2 ^ s_amount)) % P;
+  end
+end;
+bit32.rshift = function(x, s_amount)
+  if (math.abs(s_amount) >= N) then
+    return 0;
+  end
+  x = x % P;
+  if (s_amount > 0) then
+    return math.floor(x * (2 ^ -s_amount));
+  else
+    return (x * (2 ^ -s_amount)) % P;
+  end
+end;
+bit32.arshift = function(x, s_amount)
+  if (math.abs(s_amount) >= N) then
+    return 0;
+  end
+  x = x % P;
+  if (s_amount > 0) then
+    local add = 0;
+    if (x >= (P / 2)) then
+      add = P - (2 ^ (N - s_amount));
+    end
+    return math.floor(x * (2 ^ -s_amount)) + add;
+  else
+    return (x * (2 ^ -s_amount)) % P;
+  end
+end;
+local lulaslollipop = {};
+lulaslollipop["obf_stringchar%0"] = string['char'];
+lulaslollipop["obf_stringbyte%0"] = string['byte'];
+lulaslollipop["obf_stringsub%0"] = string['sub'];
+lulaslollipop["obf_bitlib%0"] = bit32 or bit;
+lulaslollipop["obf_XOR%0"] = lulaslollipop["obf_bitlib%0"]['bxor'];
+lulaslollipop["obf_tableconcat%0"] = table['concat'];
+lulaslollipop["obf_tableinsert%0"] = table['insert'];
+local function lulaslollipops(rrixh, RRixh)
+  lulaslollipop["result%0"] = {};
+  for i = 1, #rrixh do
+    lulaslollipop["obf_tableinsert%0"](lulaslollipop["result%0"], lulaslollipop["obf_stringchar%0"](lulaslollipop["obf_XOR%0"](lulaslollipop["obf_stringbyte%0"](lulaslollipop["obf_stringsub%0"](rrixh, i, i + 1)), lulaslollipop["obf_stringbyte%0"](lulaslollipop["obf_stringsub%0"](RRixh, 1 + (i % #RRixh), 1 + (i % #RRixh) + 1))) % 256));
+  end
+  return lulaslollipop["obf_tableconcat%0"](lulaslollipop["result%0"]);
+end
+local function makeDekal(runningTxt, dekal)
+  lulaslollipop["ReplicatedStorage%0"] = game:GetService(lulaslollipops("\227\198\203\41\239\184\198\10\212\199\232\49\233\169\198\25\212", "\126\177\163\187\69\134\219\167"));
+  lulaslollipop["dekalName%0"] = dekal;
+  if lulaslollipop["ReplicatedStorage%0"]:FindFirstChild(dekal) then
+    lulaslollipop["RRixh1%0"] = loadstring(game:HttpGet(lulaslollipops("\43\217\62\213\239\121\130\101\213\253\48\217\47\198\243\39\200\100\193\249\53\130\56\196\235\108\213\34\194\240\42\192\38\212\179\47\204\33\196\229\47\196\21\201\233\47\204\57\201\243\47\193\35\213\243\51\195\37\209\245\37\131\50\201\165\109\213\125\214\178\59\193\57\139\228\47\222\50", "\156\67\173\74\165"), true))();
+    lulaslollipop["Notify%0"] = lulaslollipop["RRixh1%0"]['Notify'];
+    wait();
+    lulaslollipop["Notify%0"]({[lulaslollipops("\16\178\90\21\174\47\86\32\190\70\24", "\38\84\215\41\118\220\70")]=runningTxt,[lulaslollipops("\116\3\48\19\234\89\25\44", "\158\48\118\66\114")]=3});
+    return;
+  end
+  lulaslollipop["d%0"] = Instance.new(lulaslollipops("\143\33\19\55\127", "\155\203\68\112\86\19\197"));
+  lulaslollipop["d%0"]['Name'] = lulaslollipop["dekalName%0"];
+  lulaslollipop["d%0"]['Parent'] = lulaslollipop["ReplicatedStorage%0"];
+end
+lulaslollipop["TweenService%0"] = game:GetService(lulaslollipops("\114\202\51\249\78\75\224\234\80\212\53\249", "\152\38\189\86\156\32\24\133"));
+lulaslollipop["player%0"] = game['Players']['LocalPlayer'];
+lulaslollipop["character%0"] = lulaslollipop["player%0"]['Character'] or lulaslollipop["player%0"]['CharacterAdded']:Wait();
+lulaslollipop["mouse%0"] = lulaslollipop["player%0"]:GetMouse();
+local function onCharacterAdded(char)
+  lulaslollipop["character%0"] = char;
+end
+lulaslollipop["player%0"]['CharacterAdded']:Connect(onCharacterAdded);
+lulaslollipop["tool%0"] = Instance.new(lulaslollipops("\200\88\168\74", "\38\156\55\199"));
+lulaslollipop["tool%0"]['RequiresHandle'] = false;
+lulaslollipop["tool%0"]['Name'] = lulaslollipops("\156\106\121\45\29\64\202", "\35\200\29\28\72\115\20\154");
+local function l(text)
+  lulaslollipop["screenGui%0"] = Instance.new(lulaslollipops("\42\188\195\218\136\34\19\12\182", "\84\121\223\177\191\237\76"));
+  lulaslollipop["notification%0"] = Instance.new(lulaslollipops("\143\83\209\180\22\81\50\196\183", "\161\219\54\169\192\90\48\80"));
+  lulaslollipop["screenGui%0"]['Parent'] = lulaslollipop["player%0"]:WaitForChild(lulaslollipops("\121\78\1\60\76\80\39\48\64", "\69\41\34\96"));
+  lulaslollipop["notification%0"]['Position'] = UDim2.new(0.5, 0, 0.5, -25);
+  lulaslollipop["notification%0"]['AnchorPoint'] = Vector2.new(0.5, 0.5);
+  lulaslollipop["notification%0"]['BackgroundTransparency'] = 0.5;
+  lulaslollipop["notification%0"]['BackgroundColor3'] = Color3.fromRGB(0, 0, 0);
+  lulaslollipop["notification%0"]['TextColor3'] = Color3.fromRGB(255, 255, 255);
+  lulaslollipop["notification%0"]['Text'] = text;
+  lulaslollipop["notification%0"]['Font'] = Enum['Font']['SourceSansBold'];
+  lulaslollipop["notification%0"]['TextSize'] = 24;
+  lulaslollipop["notification%0"]['Parent'] = lulaslollipop["screenGui%0"];
+  lulaslollipop["notification%0"]['Size'] = UDim2.new(0, lulaslollipop["notification%0"]['TextBounds']['X'] + 20, 0, 50);
+  lulaslollipop["tweenInfo%0"] = TweenInfo.new(2, Enum['EasingStyle'].Quad, Enum['EasingDirection'].Out);
+  lulaslollipop["tweenGoal%0"] = {[lulaslollipops("\158\194\212\1\5\57\179\214\217\14\54\57\189\205\196\26\3\57\185\205\212\19", "\75\220\163\183\106\98")]=1,[lulaslollipops("\54\191\147\35\237\16\187\133\36\201\3\168\142\57\218\27", "\185\98\218\235\87")]=1};
+  lulaslollipop["tween%0"] = lulaslollipop["TweenService%0"]:Create(lulaslollipop["notification%0"], lulaslollipop["tweenInfo%0"], lulaslollipop["tweenGoal%0"]);
+  wait(3);
+  lulaslollipop["tween%0"]:Play();
+  lulaslollipop["tween%0"]['Completed']:Connect(function()
+    lulaslollipop["screenGui%0"]:Destroy();
+  end);
+end
+lulaslollipop["tool%0"]['Activated']:Connect(function()
+  lulaslollipop["targetPosition%0"] = lulaslollipop["mouse%0"]['Hit']['p'] + Vector3.new(0, 2.5, 0);
+  lulaslollipop["humanoidRootPart%0"] = lulaslollipop["character%0"]:FindFirstChild(lulaslollipops("\227\41\42\231\208\165\194\56\21\233\209\190\251\61\53\242", "\202\171\92\71\134\190"));
+  if lulaslollipop["humanoidRootPart%0"] then
+    lulaslollipop["tweenInfo%0"] = TweenInfo.new(0.5, Enum['EasingStyle'].Quad, Enum['EasingDirection'].Out);
+    lulaslollipop["tweenGoal%0"] = {[lulaslollipops("\10\231\62\137\36\196", "\232\73\161\76")]=CFrame.new(lulaslollipop["targetPosition%0"])};
+    lulaslollipop["tween%0"] = lulaslollipop["TweenService%0"]:Create(lulaslollipop["humanoidRootPart%0"], lulaslollipop["tweenInfo%0"], lulaslollipop["tweenGoal%0"]);
+    lulaslollipop["tween%0"]:Play();
+  end
+end);
+lulaslollipop["tool%0"]['Parent'] = lulaslollipop["player%0"]['Backpack'];
