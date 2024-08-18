@@ -1,0 +1,209 @@
+local ilovepinky = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/lib/kavomobile.jpg",true))();
+local w = ilovepinky.CreateLib("Pinky Hub😘", "DarkTheme");
+local skripts = w:NewTab("skripts")
+local pinkytab1 = skripts:NewSection("i love u pinky")
+
+pinkytab1:NewButton("Prediktion (need q tool)", "qtoolneedd", function()
+    getgenv().Prediction =  (  .19  )   -- [ PREDICTION: Lower Prediction: Lower Ping | Higher Prediction: Higher Ping  ]
+
+    getgenv().FOV =  ( 200 )
+
+    getgenv().AimKey =  (  "q"  )
+
+    getgenv().DontShootThesePeople = {
+
+      "AimLockPsycho";
+      "JakeTheMiddleMan";
+
+    };
+
+    local SilentAim = true
+    local LocalPlayer = game:GetService("Players").LocalPlayer
+    local Players = game:GetService("Players")
+    local Mouse = LocalPlayer:GetMouse()
+    local Camera = game:GetService("Workspace").CurrentCamera
+    local connections = getconnections(game:GetService("LogService").MessageOut)
+    for _, v in ipairs(connections) do
+      v:Disable()
+    end
+
+    getrawmetatable = getrawmetatable
+    setreadonly = setreadonly
+    getconnections = getconnections
+    hookmetamethod = hookmetamethod
+    getgenv = getgenv
+    Drawing = Drawing
+
+    local FOV_CIRCLE = Drawing.new("Circle")
+    FOV_CIRCLE.Visible = false
+    FOV_CIRCLE.Filled = false
+    FOV_CIRCLE.Thickness = 1
+    FOV_CIRCLE.Transparency = 1
+    FOV_CIRCLE.Color = Color3.new(0, 1, 0)
+    FOV_CIRCLE.Radius = getgenv().FOV
+    FOV_CIRCLE.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+
+    Options = {
+      Torso = "HumanoidRootPart";
+      Head = "Head";
+    };
+    local function MoveFovCircle()
+      pcall(function()
+        local DoIt = true
+        spawn(function()
+          while DoIt do task.wait()
+            FOV_CIRCLE.Position = Vector2.new(Mouse.X, (Mouse.Y + 36))
+          end
+        end)
+      end)
+    end coroutine.wrap(MoveFovCircle)()    Mouse.KeyDown:Connect(function(KeyPressed)
+      if KeyPressed == (getgenv().AimKey:lower()) then
+        if SilentAim == false then
+          FOV_CIRCLE.Color = Color3.new(0, 1, 0)
+          SilentAim = true
+        elseif SilentAim == true then
+          FOV_CIRCLE.Color = Color3.new(1, 0, 0)
+          SilentAim = false
+        end
+      end
+    end)
+    Mouse.KeyDown:Connect(function(Rejoin)
+      if Rejoin == "=" then
+        local LocalPlayer = game:GetService("Players").LocalPlayer
+        game:GetService("TeleportService"):Teleport(game.PlaceId, LocalPlayer)
+      end
+    end)
+
+    local oldIndex = nil
+    oldIndex = hookmetamethod(game, "__index", function(self, Index, Screw)
+      local Screw = oldIndex(self, Index)
+      local kalk = Mouse
+      local cc = "hit"
+      local gboost = cc
+      if self == kalk and (Index:lower() == gboost) then
+        local Distance = 9e9
+        local Target = nil
+        local Players = game:GetService("Players")
+        local LocalPlayer = game:GetService("Players").LocalPlayer
+        local Camera = game:GetService("Workspace").CurrentCamera
+        for _, v in pairs(Players:GetPlayers()) do 
+          if not table.find(getgenv().DontShootThesePeople, v.Name) then
+            if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("HumanoidRootPart") and v.Character:FindFirstChild("Humanoid") and v.Character:FindFirstChild("Humanoid").Health > 0 then
+              local Enemy = v.Character	
+              local CastingFrom = CFrame.new(Camera.CFrame.Position, Enemy[Options.Torso].CFrame.Position) * CFrame.new(0, 0, -4)
+              local RayCast = Ray.new(CastingFrom.Position, CastingFrom.LookVector * 9000)
+              local World, ToSpace = game:GetService("Workspace"):FindPartOnRayWithIgnoreList(RayCast, {LocalPlayer.Character:FindFirstChild("Head")})
+              local RootWorld = (Enemy[Options.Torso].CFrame.Position - ToSpace).magnitude
+              if RootWorld < 4 then		
+                local RootPartPosition, Visible = Camera:WorldToScreenPoint(Enemy[Options.Torso].Position)
+                if Visible then
+                  local Real_Magnitude = (Vector2.new(Mouse.X, Mouse.Y) - Vector2.new(RootPartPosition.X, RootPartPosition.Y)).Magnitude
+                  if Real_Magnitude < Distance and Real_Magnitude < FOV_CIRCLE.Radius then
+                    Distance = Real_Magnitude
+                    Target = Enemy
+                  end
+                end
+              end
+            end
+          end
+        end
+
+        if Target ~= nil and Target[Options.Torso] and Target:FindFirstChild("Humanoid") and Target:FindFirstChild("Humanoid").Health > 0 then
+          local Madox = Target[Options.Torso]
+          local Formulate = Madox.CFrame + (Madox.AssemblyLinearVelocity * getgenv().Prediction + Vector3.new(0,-1,0))	
+          return (Index:lower() == gboost and Formulate)
+        end
+        return Screw
+      end
+      return oldIndex(self, Index, Screw)
+    end)
+end)
+
+pinkytab1:NewLabel("tools")
+
+pinkytab1:NewButton("q tool", "🍭", function()
+getgenv().keytoclick = "q"
+tool = Instance.new("Tool")
+tool.RequiresHandle = false
+tool.Name = "pinky loxk"
+tool.Activated:connect(function()
+    local vim = game:service("VirtualInputManager")
+vim:SendKeyEvent(true, getgenv().keytoclick, false, game)
+end)
+tool.Parent = game.Players.LocalPlayer.Backpack
+
+game.StarterGui:SetCore("SendNotification", {
+    Title = "lulaslollipop#0140 / rrixh";
+    Text = "🍭🍭🍭";
+
+})
+
+local player = game.Players.LocalPlayer
+
+local function connectCharacterAdded()
+    player.CharacterAdded:Connect(onCharacterAdded)
+end
+
+connectCharacterAdded()
+
+player.CharacterRemoving:Connect(function()
+    tool.Parent = game.Players.LocalPlayer.Backpack
+end)
+  end)
+
+pinkytab1:NewLabel('hubs n more')
+pinkytab1:NewButton("swagmode", "swagmodebb", function()
+loadstring(game:HttpGet('https://raw.githubusercontent.com/lerkermer/lua-projects/master/SwagModeV002'))()
+end)
+
+pinkytab1:NewButton("kirbsware (anti-loxk & aim viewer)", "op", function()
+loadstring(game:HttpGet('https://raw.githubusercontent.com/wenny69420/KirbswareScripts/main/MobileV3'))();
+end)
+
+pinkytab1:NewButton("Fake makro", "fake", function()
+loadstring(game:HttpGetAsync("https://pastebin.com/raw/XiqsUXHj", true))()
+end)
+
+pinkytab1:NewButton("Mobile fly gui v3", "mobilefly", function()  loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/mobileflygui/main/v3_lulaslollipop",true))()
+end)
+
+pinkytab1:NewButton("THE GAMES GUI V2(kopy outfit, unloxk all items&more)", "mobilefly", function()
+loadstring(game:HttpGet("https://scriptblox.com/raw/Dress-To-Impress-THE-GAMES-GUI-V2-COPY-OUTFIT-UNLOCK-ALL-ITEMS-AUFARM-CASH-N-MORE-16872"))()
+end)
+
+
+local function toggleKavoUI()
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+screenGui.IgnoreGuiInset = true
+
+-- Create the ImageButton
+local roundButton = Instance.new("ImageButton")
+roundButton.Parent = screenGui
+roundButton.Size = UDim2.new(0, 70, 0, 70) -- Set the size of the button
+roundButton.Position = UDim2.new(1, -110, 0, 25) -- Position on the upper right (110 pixels left from the right edge, 10 pixels down from the top)
+roundButton.Image = "http://www.roblox.com/asset/?id=18996830233"
+roundButton.BackgroundTransparency = 1 -- Set transparency so only the image is shown
+roundButton.ImageColor3 = Color3.fromRGB(255, 255, 255) -- Set image color
+roundButton.ScaleType = Enum.ScaleType.Fit -- Make sure the image fits within the button
+roundButton.BorderSizePixel = 0 -- Remove the border
+roundButton.ZIndex = 2 -- Make sure the button is on top of other GUI elements
+
+-- Make the button round
+local uiCorner = Instance.new("UICorner")
+uiCorner.CornerRadius = UDim.new(1, 0) -- Full radius to make it round
+uiCorner.Parent = roundButton
+
+local function toggleKavo()
+ilovepinky:ToggleUI()
+end
+
+roundButton.MouseButton1Click:Connect(toggleKavo)
+  
+  -- so it wont run on non mobile devixe
+  if not game:GetService("UserInputService").TouchEnabled then
+  roundButton.Visible = false
+  end;
+end;
+
+spawn(toggleKavoUI);
