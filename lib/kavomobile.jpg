@@ -56,8 +56,7 @@ local themes = {
     ElementColor = Color3.fromRGB(32, 32, 38)
 }
 local themeStyles = {
-    PinkTheme = {
-        SchemeColor = Color3.fromRGB(255,192,203),
+    DarkTheme = { SchemeColor = Color3.fromRGB(255,192,203),
         Background = Color3.fromRGB(0, 0, 0),
         Header = Color3.fromRGB(0, 0, 0),
         TextColor = Color3.fromRGB(255,255,255),
