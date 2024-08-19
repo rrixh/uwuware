@@ -1,0 +1,55 @@
+--Open/Klose GUI frame--  
+local LollypopHub_mobile = Instance.new("ScreenGui")
+local Frame = Instance.new("Frame")
+local TextButton = Instance.new("TextButton")
+local Frame2 = Instance.new("Frame")
+local TextButton2 = Instance.new("TextButton")
+
+LollypopHub_mobile.Parent = game.CoreGui -- to make the UI stay
+
+Frame.Parent = LollypopHub_mobile
+Frame.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+Frame.Position = UDim2.new(0.858712733, 0, 0.1050062257, 0)
+Frame.Size = UDim2.new(0, 90, 0, 30)
+Frame.Active = true
+Frame.Draggable = true
+
+TextButton.Parent = Frame
+TextButton.BackgroundColor3 = Color3.fromRGB(148, 0, 211)
+TextButton.Size = UDim2.new(0, 90, 0, 30)
+TextButton.Font = Enum.Font.GothamBold
+TextButton.Text = "OPEN"
+TextButton.TextColor3 = Color3.fromRGB(0, 0, 0)
+TextButton.TextSize = 22.000
+TextButton.MouseButton1Click:Connect(function()
+    Frame.Visible = false
+    Frame2.Visible = true    
+    local vim = game:service("VirtualInputManager")
+    vim:SendKeyEvent(true, "Insert", false, game)
+end)
+
+Frame2.Parent = LollypopHub_mobile
+Frame2.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+Frame2.Position = UDim2.new(0.858712733, 0, 0.1050062257, 0)
+Frame2.Size = UDim2.new(0, 90, 0, 30)
+Frame2.Active = true
+Frame2.Draggable = true
+
+TextButton2.Parent = Frame2
+TextButton2.BackgroundColor3 = Color3.fromRGB(128, 0, 32)
+TextButton2.Size = UDim2.new(0, 90, 0, 30)
+TextButton2.Font = Enum.Font.GothamBold
+TextButton2.Text = "KLOSE"
+TextButton2.TextColor3 = Color3.fromRGB(0, 0, 0)
+TextButton2.TextSize = 22.000
+TextButton2.MouseButton1Click:Connect(function()
+    Frame2.Visible = false
+    Frame.Visible = true
+    local vim = game:service("VirtualInputManager")
+    vim:SendKeyEvent(true, "Insert", false, game)
+end)
+
+
+
+Frame.Parent.Active = true
+Frame.Parent.Draggable = true
