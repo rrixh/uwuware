@@ -1,0 +1,49 @@
+local fpsUPDTIME = 0.9
+
+local FPSKOUNTgui = Instance.new("ScreenGui")
+FPSKOUNTgui.Name = "FPSKounter"
+FPSKOUNTgui.Parent = game.CoreGui
+
+local fpsLabel = Instance.new("TextLabel")
+fpsLabel.Name = "FPSLabel"
+fpsLabel.Size = UDim2.new(0, 100, 0, 20)
+fpsLabel.Position = UDim2.new(1, -110, 0, 8)
+fpsLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+fpsLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+fpsLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+fpsLabel.TextStrokeTransparency = 0
+fpsLabel.Font = Enum.Font.Code
+fpsLabel.TextSize = 18
+fpsLabel.Text = "FPS: --"
+fpsLabel.Parent = FPSKOUNTgui
+
+local frameKount = 0
+local lastUpdateTime = os.clock()
+
+local function updFPS()
+    frameKount = frameKount + 1
+    local kurrentTime = os.clock()
+
+    local elapsedTime = kurrentTime - lastUpdateTime
+
+    if elapsedTime >= fpsUPDTIME then
+        local fps = frameKount / elapsedTime
+        fpsLabel.Text = string.format("FPS: %.2f", fps)
+
+        frameKount = 0
+        lastUpdateTime = kurrentTime
+    end
+end
+
+-- updfpskount
+game:GetService("RunService").RenderStepped:Connect(updFPS)
+
+local function killfpsgui()
+game.Players.LocalPlayer.Chatted:Connect(function(msg)
+print'say /nofps to destroy fps gui 👺';
+if(msg=="/nofps")then 
+FPSKOUNTgui:Destroy();end;
+end)end;
+spawn(killfpsgui);
+pcall(function()
+game:GetService("StarterGui"):SetCore("SendNotification", {Title = "FPS kounter 🍭", Duration = 5.2, Button1 = "bet", Callback = function() end, Text = "say “/nofps“ to kill the gui\n lulaslollipop🍭"});end)
