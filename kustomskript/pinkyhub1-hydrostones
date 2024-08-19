@@ -2,6 +2,13 @@ local ilovepinky = loadstring(game:HttpGet("https://raw.githubusercontent.com/rr
 local w = ilovepinky.CreateLib("Pinky Hub😘", "DarkTheme");
 local skripts = w:NewTab("skripts")
 local pinkytab1 = skripts:NewSection("i love u pinky")
+local function adonis()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/Pixeluted/adoniscries/main/Source.lua",true))();end
+pcall(function()
+    repeat wait(.1) until game:IsLoaded()
+spawn(adonis);
+game:GetService("StarterGui"):SetCore("SendNotification", {Title = "Adonis anti-xheat", Duration = 5, Button1 = "prexiate it", Callback = function() end, Text = "adonis anti-xheat enabled"})
+end);
 
 pinkytab1:NewButton("Prediktion (need q tool)", "qtoolneedd", function()
     getgenv().Prediction =  (  .19  )   -- [ PREDICTION: Lower Prediction: Lower Ping | Higher Prediction: Higher Ping  ]
@@ -164,20 +171,32 @@ pinkytab1:NewButton("Fake makro", "fake", function()
 loadstring(game:HttpGetAsync("https://pastebin.com/raw/XiqsUXHj", true))()
 end)
 
+pinkytab1:NewButton("tpwalk gui", "teleport walk", function()
+loadstring(game:HttpGet("https://github.com/rrixh/uwuware/raw/main/Kustom/TPWALKgui-removedplayerlogging",true))();
+end)
+
 pinkytab1:NewButton("Mobile fly gui v3", "mobilefly", function()  loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/mobileflygui/main/v3_lulaslollipop",true))()
 end)
 
-pinkytab1:NewButton("THE GAMES GUI V2(kopy outfit, unloxk all items&more)", "mobilefly", function()
+pinkytab1:NewButton("THE GAMES GUI V2(kopy outfit, unloxk all\n items&more)", "mobilefly", function()
 loadstring(game:HttpGet("https://scriptblox.com/raw/Dress-To-Impress-THE-GAMES-GUI-V2-COPY-OUTFIT-UNLOCK-ALL-ITEMS-AUFARM-CASH-N-MORE-16872"))()
 end)
 
+--[[
+local plrskripts = w:NewTab("player")
+local pinkytab2 = plrskripts:NewSection("player skripts")
 
-local function toggleKavoUI()
+pinkytab2:NewTextBox("walkspeed", "ws", function(s)
+game.Players.LocalPlayer.Character.Humanoid.WalkSpeed =s
+end)
+]]
+
+local function toggleLollypop()
 local screenGui = Instance.new("ScreenGui")
-screenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+screenGui.Parent = game.CoreGui
 screenGui.IgnoreGuiInset = true
-
--- Create the ImageButton
+  local removeborder = 0
+local overlayAllGui = 2
 local roundButton = Instance.new("ImageButton")
 roundButton.Parent = screenGui
 roundButton.Size = UDim2.new(0, 70, 0, 70) -- Set the size of the button
@@ -185,9 +204,9 @@ roundButton.Position = UDim2.new(1, -110, 0, 25) -- Position on the upper right 
 roundButton.Image = "http://www.roblox.com/asset/?id=18996830233"
 roundButton.BackgroundTransparency = 1 -- Set transparency so only the image is shown
 roundButton.ImageColor3 = Color3.fromRGB(255, 255, 255) -- Set image color
-roundButton.ScaleType = Enum.ScaleType.Fit -- Make sure the image fits within the button
-roundButton.BorderSizePixel = 0 -- Remove the border
-roundButton.ZIndex = 2 -- Make sure the button is on top of other GUI elements
+roundButton.ScaleType = Enum.ScaleType.Fit;
+roundButton.BorderSizePixel = removeborder
+roundButton.ZIndex = overlayAllGui
 
 -- Make the button round
 local uiCorner = Instance.new("UICorner")
@@ -199,11 +218,10 @@ ilovepinky:ToggleUI()
 end
 
 roundButton.MouseButton1Click:Connect(toggleKavo)
-  
+
   -- so it wont run on non mobile devixe
   if not game:GetService("UserInputService").TouchEnabled then
-  roundButton.Visible = false
+  roundButton.Visible = true
   end;
 end;
-
-spawn(toggleKavoUI);
+spawn(toggleLollypop);
