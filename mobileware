@@ -100,7 +100,7 @@ local function createOptionHolder(holderTitle, parent, parentTable, subHolder)
         BackgroundColor3 = Color3.fromRGB(10, 10, 10),
         BorderSizePixel = 0,
         Text = holderTitle,
-        TextSize = subHolder and 16 or 17,
+        TextSize = subHolder and 25 or 30,
         Font = Enum.Font.PatrickHand,
         TextColor3 = Color3.fromRGB(255, 255, 255),
         Parent = parentTable.main
@@ -194,8 +194,8 @@ local function createLabel(option, parent)
         Size = UDim2.new(1, 0, 0, 26),
         BackgroundTransparency = 1,
         Text = " " .. option.text,
-        TextSize = 17,
-        Font = Enum.Font.Arcade,
+        TextSize = 25,
+        Font = Enum.Font.PatrickHand,
         TextColor3 = Color3.fromRGB(255, 255, 255),
         TextXAlignment = Enum.TextXAlignment.Left,
         Parent = parent.content
@@ -214,8 +214,8 @@ function createToggle(option, parent)
         Size = UDim2.new(1, 0, 0, 31),
         BackgroundTransparency = 1,
         Text = " " .. option.text,
-        TextSize = 17,
-        Font = Enum.Font.Arcade,
+        TextSize = 25,
+        Font = Enum.Font.PatrickHand,
         TextColor3 = Color3.fromRGB(255, 255, 255),
         TextXAlignment = Enum.TextXAlignment.Left,
         Parent = parent.content
@@ -320,7 +320,7 @@ function createButton(option, parent)
         Size = UDim2.new(1, 0, 0, 34),
         BackgroundTransparency = 1,
         Text = " " .. option.text,
-        TextSize = 17,
+        TextSize = 25,
         Font = Enum.Font.PatrickHand,
         TextColor3 = Color3.fromRGB(255, 255, 255),
         Parent = parent.content
@@ -383,7 +383,7 @@ local function createBind(option, parent)
         Size = UDim2.new(1, 0, 0, 33),
         BackgroundTransparency = 1,
         Text = " " .. option.text,
-        TextSize = 17,
+        TextSize = 24,
         Font = Enum.Font.PatrickHand,
         TextColor3 = Color3.fromRGB(255, 255, 255),
         TextXAlignment = Enum.TextXAlignment.Left,
@@ -512,7 +512,7 @@ local function createSlider(option, parent)
         Size = UDim2.new(1, 0, 0, 20),
         BackgroundTransparency = 1,
         Text = " " .. option.text,
-        TextSize = 17,
+        TextSize = 25,
         Font = Enum.Font.PatrickHand,
         TextColor3 = Color3.fromRGB(255, 255, 255),
         TextXAlignment = Enum.TextXAlignment.Left,
@@ -1734,4 +1734,4 @@ inputService.InputChanged:connect(function(input)
     end
 end)
 
-return library
+return library;
