@@ -1,4 +1,4 @@
-getgenv().slots = 11
+--getgenv().slots = 11
 -- Services
 local Players = game:GetService("Players")
 local slotsloaded = game.CoreGui:FindFirstChild("ToolSlotsGui")
