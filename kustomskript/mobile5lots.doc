@@ -1,12 +1,15 @@
---getgenv().slots = 11
--- Services
+--getgenv().slots = ( 11 )
+local toolbarsize = 40.6
 local Players = game:GetService("Players")
 local slotsloaded = game.CoreGui:FindFirstChild("ToolSlotsGui")
 if slotsloaded then
-    return
+local RRixh1 = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/skripts/AkaliNotif", true))()
+local Notify = RRixh1.Notify
+wait()
+Notify({ Description = "mobile5lots alrdy loaded niggy"; Duration = 3; })
+return
 end
 
--- Create the UI Elements
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "ToolSlotsGui"
 local ToolBarFrame = Instance.new("Frame")
@@ -19,107 +22,128 @@ ToolBarFrame.Parent = ScreenGui
 ToolBarFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 ToolBarFrame.BackgroundTransparency = 0.5
 ToolBarFrame.Position = UDim2.new(0.75, -200, 1, -50) -- Adjusted Position
-ToolBarFrame.Size = UDim2.new(0, 460, 0, 50)
+ToolBarFrame.Size = UDim2.new(0, toolbarsize * slots + 5, 0, 50) -- Initial size
 ToolBarFrame.AnchorPoint = Vector2.new(0.5, 1)
 
 local toolSlots = {}
 local currentTool = nil
 
-local function createToolSlot(index)
-    local ToolSlot = Instance.new("TextButton")
-    ToolSlot.Name = "ToolSlot" .. index
-    ToolSlot.Parent = ToolBarFrame
-    ToolSlot.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-    ToolSlot.BackgroundTransparency = 0.3
-    ToolSlot.Size = UDim2.new(0, 38, 0, 38) -- Increased size by +3
-    ToolSlot.Position = UDim2.new(0, (index - 1) * 41, 0.5, 0)
-    ToolSlot.AnchorPoint = Vector2.new(0, 0.5)
-    ToolSlot.Text = "Slot " .. index
-    ToolSlot.TextColor3 = Color3.fromRGB(255, 255, 255)
-    ToolSlot.TextSize = 10
-    ToolSlot.TextWrapped = true -- Ensure text fits inside the slot
+-- Function to create a tool slot
+local function makeslot(index)
+local ToolSlot = Instance.new("TextButton")
+ToolSlot.Name = "ToolSlot" .. index
+ToolSlot.Parent = ToolBarFrame
+ToolSlot.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+ToolSlot.BackgroundTransparency = 0.3
+ToolSlot.Size = UDim2.new(0, 38, 0, 38) -- Increased size by +3
+ToolSlot.Position = UDim2.new(0, (index - 1) * 41, 0.5, 0)
+ToolSlot.AnchorPoint = Vector2.new(0, 0.5)
+ToolSlot.Text = "slot " .. index
+ToolSlot.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToolSlot.TextSize = 10
+ToolSlot.TextWrapped = true
 
-    toolSlots[index] = { button = ToolSlot, tool = nil }
+toolSlots[index] = { button = ToolSlot, tool = nil }
 
-    ToolSlot.MouseButton1Click:Connect(function()
-        -- Equip the tool when the slot is clicked
-        if toolSlots[index].tool then
-            if currentTool and currentTool == toolSlots[index].tool then
-                Players.LocalPlayer.Character.Humanoid:UnequipTools()
+ToolSlot.MouseButton1Click:Connect(function()
+-- Equip the tool when the slot is clicked
+if toolSlots[index].tool then
+if currentTool and currentTool == toolSlots[index].tool then
+Players.LocalPlayer.Character.Humanoid:UnequipTools()
 currentTool = nil
-                ToolSlot.BackgroundColor3 = Color3.fromRGB(100, 100, 100) -- Change back to original color
-            else
-                if currentTool then
-                    -- Find and reset the previously equipped slot color
-                    for _, slot in pairs(toolSlots) do
-                        if slot.tool == currentTool then
-                            slot.button.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-                            break
-                        end
-                    end
-                end
-                Players.LocalPlayer.Character.Humanoid:EquipTool(toolSlots[index].tool)
-                currentTool = toolSlots[index].tool
-                ToolSlot.BackgroundColor3 = Color3.fromRGB(0, 255, 0) -- Highlight equipped tool
-            end
-        end
-    end)
+ToolSlot.BackgroundColor3 = Color3.fromRGB(100, 100, 100) -- Change back to original color
+else
+if currentTool then
+-- Find and reset the previously equipped slot color
+for _, slot in pairs(toolSlots) do
+if slot.tool == currentTool then
+slot.button.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+break
 end
-
--- Create multiple tool slots
-for i = 1, slots do
-    createToolSlot(i)
+end
+end
+Players.LocalPlayer.Character.Humanoid:EquipTool(toolSlots[index].tool)
+currentTool = toolSlots[index].tool
+ToolSlot.BackgroundColor3 = Color3.fromRGB(0, 255, 0) -- Highlight equipped tool
+end
+end
+end)
 end
 
 -- Function to check for duplicate tools
 local function isDuplicate(toolName)
-    for _, slot in pairs(toolSlots) do
-        if slot.tool and slot.tool.Name == toolName then
-            return true
-        end
-    end
-    return false
+for _, slot in pairs(toolSlots) do
+if slot.tool and slot.tool.Name == toolName then
+return true
+end
+end
+return false
 end
 
+-- Function to assign a tool to the next available slot
 local function assignToolToSlot(tool)
-    if isDuplicate(tool.Name) then return end
-    for i = 1, slots do
-        if not toolSlots[i].tool then
-            toolSlots[i].tool = tool
-            toolSlots[i].button.Text = tool.Name
-            break
-        end
-    end
+if isDuplicate(tool.Name) then return end
+for i = 1, getgenv().slots do
+if not toolSlots[i].tool then
+toolSlots[i].tool = tool
+toolSlots[i].button.Text = tool.Name
+break
+end
+end
 end
 
+-- Remove tool from slot if not in backpack
+local function removeToolFromSlot(tool)
+for i, slot in ipairs(toolSlots) do
+if slot.tool == tool then
+slot.tool = nil
+slot.button.Text = "slot " .. i
+slot.button.BackgroundColor3 = Color3.fromRGB(100, 100, 100) -- Reset the color
+break
+end
+end
+end
+
+-- Monitor tools being added to the player's character
 Players.LocalPlayer.CharacterAdded:Connect(function(character)
-    character.ChildAdded:Connect(function(child)
-        if child:IsA("Tool") then
-            assignToolToSlot(child)
-        end
-    end)
-end)
-
-Players.LocalPlayer.Backpack.ChildAdded:Connect(function(child)
-    if child:IsA("Tool") then
+character.ChildAdded:Connect(function(child)
+if child:IsA("Tool") then
 assignToolToSlot(child)
-    end
+end
+end)
 end)
 
+-- Monitor tools already in the player's backpack
+Players.LocalPlayer.Backpack.ChildAdded:Connect(function(child)
+if child:IsA("Tool") then
+assignToolToSlot(child)
+end
+end)
+
+Players.LocalPlayer.Backpack.ChildRemoved:Connect(function(child)
+if child:IsA("Tool") then
+removeToolFromSlot(child)
+end
+end)
+
+-- Initial check for tools in the player's backpack
 for _, tool in ipairs(Players.LocalPlayer.Backpack:GetChildren()) do
-    if tool:IsA("Tool") then
-        assignToolToSlot(tool)
-    end
+if tool:IsA("Tool") then
+assignToolToSlot(tool)
+end
 end
 
--- Toggle Tools Button
+for i = 1, slots do
+makeslot(i)
+end
+
 ToggleToolsButton.Name = "ToggleToolsButton"
 ToggleToolsButton.Parent = ScreenGui
 ToggleToolsButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 ToggleToolsButton.BackgroundTransparency = 0.5
 ToggleToolsButton.Position = UDim2.new(0, 10, 0, 10)
 ToggleToolsButton.Size = UDim2.new(0, 100, 0, 50)
-ToggleToolsButton.Text = "equip tool"
+ToggleToolsButton.Text = "equiptool"
 ToggleToolsButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 ToggleToolsButton.TextSize = 14
 ToggleToolsButton.TextWrapped = true -- Ensure text fits inside the button
@@ -127,24 +151,24 @@ ToggleToolsButton.TextWrapped = true -- Ensure text fits inside the button
 local toolsEquipped = false
 
 ToggleToolsButton.MouseButton1Click:Connect(function()
-    if toolsEquipped then
-        Players.LocalPlayer.Character.Humanoid:UnequipTools()
+if toolsEquipped then
+Players.LocalPlayer.Character.Humanoid:UnequipTools()
 ToggleToolsButton.Text = "equip tool"
-ToggleToolsButton.BackgroundColor3 = Color3.fromRGB(0,255,0)
-        toolsEquipped = false;
-    else
-        for _, tool in ipairs(Players.LocalPlayer.Backpack:GetChildren()) do
-            if tool:IsA("Tool") then
-                Players.LocalPlayer.Character.Humanoid:EquipTool(tool)
-            end
-        end
+ToggleToolsButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+toolsEquipped = false
+else
+for _, tool in ipairs(Players.LocalPlayer.Backpack:GetChildren()) do
+if tool:IsA("Tool") then
+Players.LocalPlayer.Character.Humanoid:EquipTool(tool)
+end
+end
 ToggleToolsButton.Text = "unequip tool"
-ToggleToolsButton.BackgroundColor3 = Color3.fromRGB(255, 0,0)
-        toolsEquipped = true
-    end
+ToggleToolsButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+toolsEquipped = true
+end
 end)
 
---destroy slots
+-- Destroy slots
 KillSlotsButton.Name = "KillSlotsButton"
 KillSlotsButton.Parent = ScreenGui
 KillSlotsButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
@@ -157,19 +181,25 @@ KillSlotsButton.TextSize = 10
 KillSlotsButton.TextWrapped = true
 
 KillSlotsButton.MouseButton1Click:Connect(function()
-    ScreenGui:Destroy()
+ScreenGui:Destroy()
 end)
 
 -- Function to handle player chatted commands
 local __ = spawn
 local function ___()
-    game.Players.LocalPlayer.Chatted:Connect(function(msg)
-        if msg == "/e noslots" then
-            ScreenGui:Destroy()
-        end
-    end)
+game.Players.LocalPlayer.Chatted:Connect(function(msg)
+if msg == "/e noslots" then
+ScreenGui:Destroy()
 end
-__(___)
+end)
+end
+__(___);
 
-print'mobile5lots loaded'
-game:GetService("StarterGui"):SetCore("SendNotification", {Title = "Mobile5lots 👺", Duration = 5, Button1 = "bet", Callback = function() end, Text = "loaded\n lulaslollipop 🍭"});
+print('mobile5lots loaded')
+game:GetService("StarterGui"):SetCore("SendNotification", {
+Title = "Mobile5lots 👺",
+Duration = 5,
+Button1 = "bet",
+Callback = function() end,
+Text = "mobile5lots loaded\n lulaslollipop 🍭"
+})
