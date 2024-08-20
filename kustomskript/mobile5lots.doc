@@ -1,11 +1,8 @@
---getgenv().slots = 11
+getgenv().slots = 11
 -- Services
 local Players = game:GetService("Players")
-local UIS = game:GetService("UserInputService")
-local StarterGui = game:GetService("StarterGui")
-
--- Check if GUI already exists
-if game.CoreGui:FindFirstChild("ToolSlotsGui") then
+local slotsloaded = game.CoreGui:FindFirstChild("ToolSlotsGui")
+if slotsloaded then
     return
 end
 
@@ -15,10 +12,8 @@ ScreenGui.Name = "ToolSlotsGui"
 local ToolBarFrame = Instance.new("Frame")
 local ToggleToolsButton = Instance.new("TextButton")
 local KillSlotsButton = Instance.new("TextButton")
+ScreenGui.Parent = game.CoreGui;
 
-ScreenGui.Parent = game.CoreGui -- Make the UI stay
-
--- Configure ToolBarFrame
 ToolBarFrame.Name = "ToolBarFrame"
 ToolBarFrame.Parent = ScreenGui
 ToolBarFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
@@ -27,11 +22,9 @@ ToolBarFrame.Position = UDim2.new(0.75, -200, 1, -50) -- Adjusted Position
 ToolBarFrame.Size = UDim2.new(0, 460, 0, 50)
 ToolBarFrame.AnchorPoint = Vector2.new(0.5, 1)
 
--- Create slots table
 local toolSlots = {}
 local currentTool = nil
 
--- Function to create a tool slot
 local function createToolSlot(index)
     local ToolSlot = Instance.new("TextButton")
     ToolSlot.Name = "ToolSlot" .. index
@@ -113,7 +106,6 @@ assignToolToSlot(child)
     end
 end)
 
--- Initial check for tools in the player's backpack
 for _, tool in ipairs(Players.LocalPlayer.Backpack:GetChildren()) do
     if tool:IsA("Tool") then
         assignToolToSlot(tool)
@@ -157,7 +149,7 @@ KillSlotsButton.Name = "KillSlotsButton"
 KillSlotsButton.Parent = ScreenGui
 KillSlotsButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
 KillSlotsButton.BackgroundTransparency = 0.45
-KillSlotsButton.Position = UDim2.new(0.5, -50, 0, 10)
+KillSlotsButton.Position = UDim2.new(0.5, 1, 0, -30)
 KillSlotsButton.Size = UDim2.new(0, 85, 0, 35)
 KillSlotsButton.Text = "kill slots"
 KillSlotsButton.TextColor3 = Color3.fromRGB(255, 255, 255)
