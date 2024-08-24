@@ -24,7 +24,7 @@ TextButton.TextSize = 22.000
 TextButton.MouseButton1Click:Connect(function()
     Frame.Visible = false
     Frame2.Visible = true
-kavo:ToggleUI()
+Kavo:ToggleUI()
     --local vim = game:service("VirtualInputManager")
     --vim:SendKeyEvent(true, "Insert", false, game)
 end)
@@ -46,7 +46,7 @@ TextButton2.TextSize = 22.000
 TextButton2.MouseButton1Click:Connect(function()
     Frame2.Visible = false
     Frame.Visible = true
-kavo:ToggleUI()
+Kavo:ToggleUI()
     --local vim = game:service("VirtualInputManager")
     --vim:SendKeyEvent(true, "Insert", false, game)
 end)
