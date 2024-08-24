@@ -24,7 +24,12 @@ TextButton.TextSize = 22.000
 TextButton.MouseButton1Click:Connect(function()
     Frame.Visible = false
     Frame2.Visible = true
-Kavo:ToggleUI()
+local LibName = tostring(math.random(1, 100))..tostring(math.random(1,50))..tostring(math.random(1, 100))
+if game.CoreGui[LibName].Enabled then
+        game.CoreGui[LibName].Enabled = false
+    else
+        game.CoreGui[LibName].Enabled = true
+    end
     --local vim = game:service("VirtualInputManager")
     --vim:SendKeyEvent(true, "Insert", false, game)
 end)
@@ -46,7 +51,12 @@ TextButton2.TextSize = 22.000
 TextButton2.MouseButton1Click:Connect(function()
     Frame2.Visible = false
     Frame.Visible = true
-Kavo:ToggleUI()
+local LibName = tostring(math.random(1, 100))..tostring(math.random(1,50))..tostring(math.random(1, 100))
+if game.CoreGui[LibName].Enabled then
+        game.CoreGui[LibName].Enabled = false
+    else
+        game.CoreGui[LibName].Enabled = true
+    end
     --local vim = game:service("VirtualInputManager")
     --vim:SendKeyEvent(true, "Insert", false, game)
 end)
