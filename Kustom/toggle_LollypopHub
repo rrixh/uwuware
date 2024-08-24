@@ -5,7 +5,7 @@ local TextButton = Instance.new("TextButton")
 local Frame2 = Instance.new("Frame")
 local TextButton2 = Instance.new("TextButton")
 
-LollypopHub_mobile.Parent = game.CoreGui -- to make the UI stay
+LollypopHub_mobile.Parent = game:GetService('CoreGui') -- to make the UI stay
 
 Frame.Parent = LollypopHub_mobile
 Frame.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
@@ -23,9 +23,10 @@ TextButton.TextColor3 = Color3.fromRGB(0, 0, 0)
 TextButton.TextSize = 22.000
 TextButton.MouseButton1Click:Connect(function()
     Frame.Visible = false
-    Frame2.Visible = true    
-    local vim = game:service("VirtualInputManager")
-    vim:SendKeyEvent(true, "Insert", false, game)
+    Frame2.Visible = true
+kavo:ToggleUI()
+    --local vim = game:service("VirtualInputManager")
+    --vim:SendKeyEvent(true, "Insert", false, game)
 end)
 
 Frame2.Parent = LollypopHub_mobile
@@ -45,8 +46,9 @@ TextButton2.TextSize = 22.000
 TextButton2.MouseButton1Click:Connect(function()
     Frame2.Visible = false
     Frame.Visible = true
-    local vim = game:service("VirtualInputManager")
-    vim:SendKeyEvent(true, "Insert", false, game)
+kavo:ToggleUI()
+    --local vim = game:service("VirtualInputManager")
+    --vim:SendKeyEvent(true, "Insert", false, game)
 end)
 
 
