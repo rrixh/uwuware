@@ -20,7 +20,7 @@ TextButton.Size = UDim2.new(0, 90, 0, 30)
 TextButton.Font = Enum.Font.PatrickHand
 TextButton.Text = "OPEN"
 TextButton.TextColor3 = Color3.fromRGB(0, 0, 0)
-TextButton.TextSize = 22.000
+TextButton.TextSize = 26
 TextButton.MouseButton1Click:Connect(function()
     Frame.Visible = false
     Frame2.Visible = true    
@@ -41,7 +41,7 @@ TextButton2.Size = UDim2.new(0, 90, 0, 30)
 TextButton2.Font = Enum.Font.PatrickHand
 TextButton2.Text = "KLOSE"
 TextButton2.TextColor3 = Color3.fromRGB(0, 0, 0)
-TextButton2.TextSize = 22.000
+TextButton2.TextSize = 26
 TextButton2.MouseButton1Click:Connect(function()
     Frame2.Visible = false
     Frame.Visible = true
