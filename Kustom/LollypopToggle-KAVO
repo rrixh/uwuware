@@ -1,5 +1,6 @@
 local function LollypopToggle()
-getgenv().togglesize = 82;
+--getgenv().togglesize = 82;
+--getgenv().getImg = 17767487755
 local screenGui = Instance.new("ScreenGui")
 screenGui.Parent = game.CoreGui
 screenGui.IgnoreGuiInset = true
@@ -9,8 +10,7 @@ local roundButton = Instance.new("ImageButton")
 roundButton.Parent = screenGui
 roundButton.Size = UDim2.new(0, togglesize, 0, togglesize) -- Set the size of the button
 roundButton.Position = UDim2.new(1, -110, 0, 25) -- Position on the upper right (110 pixels left from the right edge, 10 pixels down from the top)
-local lollypop = 17767487755
-roundButton.Image = "http://www.roblox.com/asset/?id="..lollypop
+roundButton.Image = "http://www.roblox.com/asset/?id="..getImg
 roundButton.BackgroundTransparency = 1 -- Set transparency so only the image is shown
 roundButton.ImageColor3 = Color3.fromRGB(255, 255, 255) -- Set image color
 roundButton.ScaleType = Enum.ScaleType.Fit;
