@@ -1,3 +1,5 @@
+local function LollypopToggle()
+getgenv().togglesize = 82;
 local screenGui = Instance.new("ScreenGui")
 screenGui.Parent = game.CoreGui
 screenGui.IgnoreGuiInset = true
@@ -17,15 +19,17 @@ roundButton.ZIndex = overlayAllGui
 -- Make the button round
 local uiCorner = Instance.new("UICorner")
 uiCorner.CornerRadius = UDim.new(1, 0) -- Full radius to make it round
-uiCorner.Parent = roundButton
-
+uiCorner.Parent = roundButton;
+--togglefunk
 local function toggleKavo()
 KAVO:ToggleUI()
-end
-
-roundButton.MouseButton1Click:Connect(toggleKavo)
-
+end;
+--wen pressed will toggle ui
+roundButton.MouseButton1Click:Connect(toggleKavo);
   -- so it wont run on non mobile devixe
-  if not game:GetService("UserInputService").TouchEnabled then
+local uis=game:GetService("UserInputService")
+if not uis.TouchEnabled then
   roundButton.Visible = true
   end;
+end;--togglelollypop funk
+pcall(LollypopToggle)
