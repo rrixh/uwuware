@@ -2904,5 +2904,5 @@ local function QAIZVTI_fake_script() -- ScrollingBox_2.TextBoxCode
 	end)
 end
 coroutine.wrap(QAIZVTI_fake_script)()
-wait(3)
+					wait(1)
 LoadVegaXSystem()
