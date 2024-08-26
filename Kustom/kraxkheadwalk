@@ -1,0 +1,18 @@
+game.Players.LocalPlayer.Character.Humanoid.Running:Connect(function(speed)
+    if speed > 0 then
+       	local Spin = Instance.new("BodyAngularVelocity")
+	Spin.Name = "Spinning"
+	Spin.Parent = game.Players.LocalPlayer.Character.HumanoidRootPart
+	Spin.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+	Spin.AngularVelocity = Vector3.new(0,10,0)	   
+	   
+
+        else
+     
+       for i,v in next, game.Players.LocalPlayer.Character.HumanoidRootPart:GetChildren() do
+       if v.Name == "Spinning" then
+       v:Destroy()
+       end
+end
+end
+end)
