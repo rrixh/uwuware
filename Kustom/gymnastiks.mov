@@ -1,0 +1,41 @@
+spawn(function()
+   local stateType = Enum.HumanoidStateType
+
+local character = game.Players.LocalPlayer.Character
+local humanoid = character:WaitForChild("Humanoid")
+
+humanoid:SetStateEnabled(stateType.FallingDown, false)
+humanoid:SetStateEnabled(stateType.Ragdoll, false)
+   local flipper = game.Players.LocalPlayer.Character.Humanoid
+local hi = Instance.new("Sound")
+hi.Name = "Sound"
+hi.SoundId = "http://www.roblox.com/asset/?id=4911756917"
+hi.Volume = 5
+hi.Looped = false
+hi.archivable = false
+hi.Parent = game.Workspace
+
+
+
+getgenv().gravity = game.Workspace.Gravity
+flipper:GetPropertyChangedSignal("Jump"):Connect(function()
+if flipper.Jump == true then
+hi.TimePosition = 0.6
+hi:Play()
+	local Spin = Instance.new("BodyAngularVelocity")
+	Spin.Name = "flipping"
+	Spin.Parent = game.Players.LocalPlayer.Character.Head
+	Spin.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+	Spin.AngularVelocity = Vector3.new(10,0,0)
+	
+	wait(0.5)
+	
+	game.Workspace.Gravity = 1000
+	wait()
+	game.Workspace.Gravity = gravity
+	game.Players.LocalPlayer.Character.Head.flipping:Destroy()
+	wait(0.5)
+	hi:Stop()
+	end
+	end)
+end)
