@@ -67,10 +67,10 @@ local themeStyles = {
     },
     LulaTheme = {
         SchemeColor = KustomTheme,
-        Background = Color3.fromRGB(255,255,255),
-        Header = Color3.fromRGB(200, 200, 200),
-        TextColor = Color3.fromRGB(0,0,0),
-        ElementColor = Color3.fromRGB(224, 224, 224)
+        Background = Color3.fromRGB(0, 0, 0),
+        Header = Color3.fromRGB(0, 0, 0),
+        TextColor = Color3.fromRGB(255,255,255),
+        ElementColor = Color3.fromRGB(20, 20, 20)
     },
     BloodTheme = {
         SchemeColor = Color3.fromRGB(227, 27, 27),
