@@ -56,7 +56,7 @@ local themes = {
     ElementColor = Color3.fromRGB(32, 32, 38)
 }
 local themeStyles = {
-    DarkTheme = { SchemeColor = PINKY,
+    PinkyTheme = { SchemeColor = PINKY,
         Background = Color3.fromRGB(0, 0, 0),
         Header = Color3.fromRGB(0, 0, 0),
         TextColor = Color3.fromRGB(255,255,255),
@@ -150,8 +150,8 @@ function Kavo.CreateLib(kavName, themeList)
     if not themeList then
         themeList = themes
     end
-    if themeList == "DarkTheme" then
-        themeList = themeStyles.DarkTheme
+    if themeList == "PinkyTheme" then
+        themeList = themeStyles.PinkyTheme
     elseif themeList == "LightTheme" then
         themeList = themeStyles.LightTheme
     elseif themeList == "BloodTheme" then
@@ -2263,7 +2263,7 @@ function Kavo.CreateLib(kavName, themeList)
                 togName.BackgroundTransparency = 1.000
                 togName.Position = UDim2.new(0.096704483, 0, 0.272727281, 0)
                 togName.Size = UDim2.new(0, 288, 0, 14)
-                togName.Font = Enum.Font.GothamSemibold
+                togName.Font = Enum.Font.PatrickHand
                 togName.Text = colText
                 togName.TextColor3 = themeList.TextColor
                 togName.TextSize = 14.000
