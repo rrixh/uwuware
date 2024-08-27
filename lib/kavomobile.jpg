@@ -1,4 +1,7 @@
 local Kavo = {}
+local uiKolor = Color3.fromRGB(128,0,128)
+
+local KustomTheme = uiKolor
 local PINKY = Color3.fromRGB(255,192,203)
 local tween = game:GetService("TweenService")
 local tweeninfo = TweenInfo.new
@@ -62,8 +65,8 @@ local themeStyles = {
         TextColor = Color3.fromRGB(255,255,255),
         ElementColor = Color3.fromRGB(20, 20, 20)
     },
-    LightTheme = {
-        SchemeColor = Color3.fromRGB(150, 150, 150),
+    LulaTheme = {
+        SchemeColor = KustomTheme,
         Background = Color3.fromRGB(255,255,255),
         Header = Color3.fromRGB(200, 200, 200),
         TextColor = Color3.fromRGB(0,0,0),
@@ -152,8 +155,8 @@ function Kavo.CreateLib(kavName, themeList)
     end
     if themeList == "PinkyTheme" then
         themeList = themeStyles.PinkyTheme
-    elseif themeList == "LightTheme" then
-        themeList = themeStyles.LightTheme
+    elseif themeList == "LulaTheme" then
+        themeList = themeStyles.LulaTheme
     elseif themeList == "BloodTheme" then
         themeList = themeStyles.BloodTheme
     elseif themeList == "GrapeTheme" then
