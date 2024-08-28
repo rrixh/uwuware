@@ -1,4 +1,5 @@
 --[[
+in v2 it provides proper keys so if u put "space" it will register "Space" for example
 getgenv().buttonkeykode = ("space"); 
 getgenv().holdbutton = false -- set true to hold button
 getgenv().buttonsize = (110);
