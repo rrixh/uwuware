@@ -4,7 +4,7 @@ getgenv().buttonsize = (110)
 getgenv().buttonpikture = (81697484807530)
 ]]--
 
-lulaslollipop,RRixh,jus,dont,look=[[kreator]],[[  ??=======+kreator       ]], '  👺👺👺👺👺 🦍🦍🦍🦍 🐍🐍🐍🐍🐍🐍 ', '',[[   £_€||*???🚫🌈🙅🏽‍♂️😂:$:-¥£*^++*£6Yi.,!!,$$:&@-&!,,828&71  ]],[[]];
+lulaslollipop,RRixh,jus,dont,look=[[kreator]],[[  ??=======+kreator       ]], '  👺👺👺👺👺 🦍🦍🦍🦍 🐍🐍🐍🐍🐍🐍 ', '',[[   £_€||*???🚫:$:-¥£*^++*£6Yi.,!!,$$:&@-&!,,828&71  ]],[[]];
 local StrToNumber = tonumber;
 local Byte = string.byte;
 local Char = string.char;
