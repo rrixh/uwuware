@@ -1,0 +1,112 @@
+pcall(function()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/Pixeluted/adoniscries/main/Source.lua",false))()
+end)
+local player = game.Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+local notification = Instance.new("ScreenGui")
+notification.Name = "notification"
+notification.Parent = playerGui
+
+local Background = Instance.new("Frame")
+Background.Size = UDim2.new(0, 200, 0, 33)  
+Background.Position = UDim2.new(0.65, -200, 0.4, -50) --1:position,high=right,low=left
+--3:low=up,high=down
+Background.BackgroundColor3 = Color3.new(0, 0, 0)
+Background.Parent = notification
+
+local countdownText = Instance.new("TextLabel")
+countdownText.Text = "by lulas🍭"
+countdownText.TextColor3 = Color3.new(1, 1, 1)
+countdownText.BackgroundColor3 = Color3.new(0, 0, 0, 0)
+countdownText.TextSize = 9
+countdownText.Size = UDim2.new(1, 0, 1, 0)
+countdownText.Parent = Background
+
+local countdown = 3
+local countdownInterval = 1
+
+local function updateCountdown()
+  countdown = countdown - 1
+  countdownText.Text = "👺anti-boot by rrixh/lulaslollipop (" .. countdown .. ")"
+
+  if countdown <= 0 then
+      -- código para executar quando atingir (0)
+      notification:Destroy()
+  else
+
+      wait(countdownInterval)
+      updateCountdown()
+  end
+end
+
+updateCountdown()
+
+local foundSomething = false
+
+for _, v in pairs(getgc(true)) do 
+    if pcall(function() return rawget(v, "indexInstance") end) and type(rawget(v, "indexInstance")) == "table" and (rawget(v, "indexInstance"))[1] == "kick" then 
+        v.tvk = {"kick", function() return game.Workspace:WaitForChild("") end} 
+        foundSomething = true
+    end 
+end
+
+if foundSomething then
+
+game:GetService('StarterGui'):SetCore('SendNotification', {
+  Title = "BOOT DETEKTED!",
+  Text = "game attempting to boot u....",
+  Icon = "rbxassetid://6238540373",
+  Duration = 5,
+})--tells u wen the game tries to kixk u
+wait()
+local AkaliNotif = loadstring(game:HttpGet("https://raw.githubusercontent.com/FilteringEnabled/FE/main/NotificationUI"))();
+local Notify = AkaliNotif.Notify;
+wait();
+Notify({
+Description = "🖕🏽bypassing boot...";
+Title = "👺👺👺👺";
+Duration = 5;
+});--yeaa nigga fuxk ot
+end
+
+local rrixhnigga = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/mobileware",true))();
+local hood = rrixhnigga:CreateWindow("DaHood Kash Dropper")
+
+local RunService = game:GetService("RunService")
+local money = 0
+
+RunService.RenderStepped:Connect(function()
+    local RRixh,_ = string.gsub(game.Players.LocalPlayer.PlayerGui.MainScreenGui.MoneyText.Text:split("$")[2], ",", "")
+    money = tonumber(RRixh)
+    print(tonumber(RRixh))
+end)
+
+function dropKash(amount)
+    game:GetService("ReplicatedStorage").MainEvent:FireServer("DropMoney", "" .. amount)
+    sendNotif("Kash dropped!", "$" .. amount .. " dropped!")
+
+end
+
+hood:AddButton({text = "Drop All Kash", callback = function()
+      while money > 100 do
+          dropKash(money > 10000 and 10000 or money)
+          wait(3)
+      end
+end})
+
+local selektedKash = 100
+
+hood:AddSlider({text = "Drop Kash Amount", min = 100, max = 10000, callback = function(raxks)
+      selektedKash = raxks
+end})
+
+hood:AddButton({text = "Drop Kash", callback = function() dropKash(selektedKash)
+end}) 
+hood:AddFolder("lulaslollipop🍭")
+
+local findKash = rrixhnigga:CreateWindow("Kash Finder")
+
+findKash:AddButton({text = "Find Kash", callback = function() for i, v in pairs(game.Players:GetChildren()) do if v == game.Players.LocalPlayer then v.Character.HumanoidRootPart.CFrame = workspace.Ignored.Drop.MoneyDrop.CFrame end;end;
+end})
+
+rrixhnigga:Init()
