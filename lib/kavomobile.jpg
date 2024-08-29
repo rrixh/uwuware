@@ -536,7 +536,7 @@ function Kavo.CreateLib(kavName, themeList)
             sectionName.RichText = true
             sectionName.TextColor3 = themeList.TextColor
             Objects[sectionName] = "TextColor3"
-            sectionName.TextSize = 17.6
+            sectionName.TextSize = 18.5
             sectionName.TextXAlignment = Enum.TextXAlignment.Left
             if themeList.SchemeColor == Color3.fromRGB(255,255,255) then
                 Utility:TweenObject(sectionName, {TextColor3 = Color3.fromRGB(0,0,0)}, 0.2)
@@ -601,7 +601,7 @@ function Kavo.CreateLib(kavName, themeList)
                 buttonElement.Font = Enum.Font.PatrickHand
                 buttonElement.Text = ""
                 buttonElement.TextColor3 = Color3.fromRGB(0, 0, 0)
-                buttonElement.TextSize = 18.5
+                buttonElement.TextSize = 22
 --14default
                 Objects[buttonElement] = "BackgroundColor3"
 
@@ -841,7 +841,7 @@ function Kavo.CreateLib(kavName, themeList)
            TextBox.PlaceholderText = "Type here! 🍭"
                 TextBox.Text = ""
                 TextBox.TextColor3 = themeList.SchemeColor
-                TextBox.TextSize = 15.7
+                TextBox.TextSize = 16
 
                 UICorner_2.CornerRadius = UDim.new(0, 4)
                 UICorner_2.Parent = TextBox
@@ -2607,12 +2607,12 @@ function Kavo.CreateLib(kavName, themeList)
         label.ClipsDescendants = true
               label.Text = title
               label.Size = UDim2.new(0, 352, 0, 33)
-              label.Font = Enum.Font.Gotham
+              label.Font = Enum.Font.PatrickHand --Gotham
               label.Text = "  "..title
               label.RichText = true
               label.TextColor3 = themeList.TextColor
               Objects[label] = "TextColor3"
-              label.TextSize = 14.000
+              label.TextSize = 17.7
               label.TextXAlignment = Enum.TextXAlignment.Left
 
               UICorner.CornerRadius = UDim.new(0, 4)
