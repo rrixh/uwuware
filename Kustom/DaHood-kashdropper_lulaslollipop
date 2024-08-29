@@ -1,6 +1,7 @@
 pcall(function()
 loadstring(game:HttpGet("https://raw.githubusercontent.com/Pixeluted/adoniscries/main/Source.lua",false))()
 end)
+task.spawn(function()
 local player = game.Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local notification = Instance.new("ScreenGui")
@@ -110,3 +111,5 @@ findKash:AddButton({text = "Find Kash", callback = function() for i, v in pairs(
 end})
 
 rrixhnigga:Init()
+
+end)
