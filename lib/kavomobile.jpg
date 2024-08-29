@@ -2651,6 +2651,7 @@ return Kavo
 
 
 
+
 local Kavo = {}
 local uiKolor = Color3.fromRGB(128,0,128)
 
@@ -3066,7 +3067,7 @@ function Kavo.CreateLib(kavName, themeList)
         tabButton.Text = tabName
         tabButton.TextColor3 = themeList.TextColor
         Objects[tabButton] = "TextColor3"
-        tabButton.TextSize = 24
+        tabButton.TextSize = 17.2
         tabButton.BackgroundTransparency = 1
 
         if first then
@@ -3189,7 +3190,7 @@ function Kavo.CreateLib(kavName, themeList)
             sectionName.RichText = true
             sectionName.TextColor3 = themeList.TextColor
             Objects[sectionName] = "TextColor3"
-            sectionName.TextSize = 24
+            sectionName.TextSize = 16.5
             sectionName.TextXAlignment = Enum.TextXAlignment.Left
             if themeList.SchemeColor == Color3.fromRGB(255,255,255) then
                 Utility:TweenObject(sectionName, {TextColor3 = Color3.fromRGB(0,0,0)}, 0.2)
@@ -3251,10 +3252,10 @@ function Kavo.CreateLib(kavName, themeList)
                 buttonElement.ClipsDescendants = true
                 buttonElement.Size = UDim2.new(0, 352, 0, 33)
                 buttonElement.AutoButtonColor = false
-                buttonElement.Font = Enum.Font.Code
+                buttonElement.Font = Enum.Font.PatrickHand
                 buttonElement.Text = ""
                 buttonElement.TextColor3 = Color3.fromRGB(0, 0, 0)
-                buttonElement.TextSize = 19 
+                buttonElement.TextSize = 18.5
 --14default
                 Objects[buttonElement] = "BackgroundColor3"
 
@@ -3324,12 +3325,12 @@ function Kavo.CreateLib(kavName, themeList)
                 btnInfo.BackgroundTransparency = 1.000
                 btnInfo.Position = UDim2.new(0.096704483, 0, 0.272727281, 0)
                 btnInfo.Size = UDim2.new(0, 314, 0, 14)
-                btnInfo.Font = Enum.Font.Code
+                btnInfo.Font = Enum.Font.DenkOne
                 btnInfo.Text = bname
                 btnInfo.RichText = true
                 btnInfo.TextColor3 = themeList.TextColor
                 Objects[btnInfo] = "TextColor3"
-                btnInfo.TextSize = 19
+                btnInfo.TextSize = 17.5
                 btnInfo.TextXAlignment = Enum.TextXAlignment.Left
 
                 if themeList.SchemeColor == Color3.fromRGB(255,255,255) then
@@ -3491,10 +3492,10 @@ function Kavo.CreateLib(kavName, themeList)
                 TextBox.ClearTextOnFocus = false
                 TextBox.Font = Enum.Font.PatrickHand --Gotham
                 TextBox.PlaceholderColor3 = Color3.fromRGB(themeList.SchemeColor.r * 255 - 19, themeList.SchemeColor.g * 255 - 26, themeList.SchemeColor.b * 255 - 35)
-                TextBox.PlaceholderText = "Type here!"
+           TextBox.PlaceholderText = "Type here! 🍭"
                 TextBox.Text = ""
                 TextBox.TextColor3 = themeList.SchemeColor
-                TextBox.TextSize = 17
+                TextBox.TextSize = 16
 
                 UICorner_2.CornerRadius = UDim.new(0, 4)
                 UICorner_2.Parent = TextBox
@@ -3505,11 +3506,11 @@ function Kavo.CreateLib(kavName, themeList)
                 togName.BackgroundTransparency = 1.000
                 togName.Position = UDim2.new(0.096704483, 0, 0.272727281, 0)
                 togName.Size = UDim2.new(0, 138, 0, 14)
-                togName.Font = Enum.Font.GothamSemibold
+                togName.Font = Enum.Font.PatrickHand --GothamSemibold
                 togName.Text = tname
                 togName.RichText = true
                 togName.TextColor3 = themeList.TextColor
-                togName.TextSize = 14.000
+                togName.TextSize = 18.5
                 togName.TextXAlignment = Enum.TextXAlignment.Left
 
                 local moreInfo = Instance.new("TextLabel")
@@ -4924,7 +4925,7 @@ function Kavo.CreateLib(kavName, themeList)
                 togName.Font = Enum.Font.PatrickHand
                 togName.Text = colText
                 togName.TextColor3 = themeList.TextColor
-                togName.TextSize = 24
+                togName.TextSize = 18.5
                 togName.RichText = true
                 togName.TextXAlignment = Enum.TextXAlignment.Left
 
