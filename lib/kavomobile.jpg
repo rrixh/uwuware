@@ -601,7 +601,7 @@ function Kavo.CreateLib(kavName, themeList)
                 buttonElement.Font = Enum.Font.PatrickHand
                 buttonElement.Text = ""
                 buttonElement.TextColor3 = Color3.fromRGB(0, 0, 0)
-                buttonElement.TextSize = 22
+                buttonElement.TextSize = 23
 --14default
                 Objects[buttonElement] = "BackgroundColor3"
 
@@ -1263,11 +1263,11 @@ function Kavo.CreateLib(kavName, themeList)
                 togName.BackgroundTransparency = 1.000
                 togName.Position = UDim2.new(0.096704483, 0, 0.272727281, 0)
                 togName.Size = UDim2.new(0, 138, 0, 14)
-                togName.Font = Enum.Font.GothamSemibold
+                togName.Font = Enum.Font.PatrickHand
                 togName.Text = slidInf
                 togName.RichText = true
                 togName.TextColor3 = themeList.TextColor
-                togName.TextSize = 14.000
+                togName.TextSize = 17
                 togName.TextXAlignment = Enum.TextXAlignment.Left
 
                 viewInfo.Name = "viewInfo"
@@ -1510,10 +1510,10 @@ function Kavo.CreateLib(kavName, themeList)
                 dropOpen.BackgroundColor3 = themeList.ElementColor
                 dropOpen.Size = UDim2.new(0, 352, 0, 33)
                 dropOpen.AutoButtonColor = false
-                dropOpen.Font = Enum.Font.SourceSans
+                dropOpen.Font = Enum.Font.PatrickHand
                 dropOpen.Text = ""
                 dropOpen.TextColor3 = Color3.fromRGB(0, 0, 0)
-                dropOpen.TextSize = 14.000
+                dropOpen.TextSize = 17.5
                 dropOpen.ClipsDescendants = true
                 dropOpen.MouseButton1Click:Connect(function()
                     if not focusing then
@@ -1589,11 +1589,11 @@ function Kavo.CreateLib(kavName, themeList)
                 itemTextbox.BackgroundTransparency = 1.000
                 itemTextbox.Position = UDim2.new(0.0970000029, 0, 0.273000002, 0)
                 itemTextbox.Size = UDim2.new(0, 138, 0, 14)
-                itemTextbox.Font = Enum.Font.GothamSemibold
+                itemTextbox.Font = Enum.Font.PatrickHand
                 itemTextbox.Text = dropname
                 itemTextbox.RichText = true
                 itemTextbox.TextColor3 = themeList.TextColor
-                itemTextbox.TextSize = 14.000
+                itemTextbox.TextSize = 18.5
                 itemTextbox.TextXAlignment = Enum.TextXAlignment.Left
 
                 viewInfo.Name = "viewInfo"
@@ -1642,10 +1642,10 @@ function Kavo.CreateLib(kavName, themeList)
                 moreInfo.Size = UDim2.new(0, 353, 0, 33)
                 moreInfo.ZIndex = 9
                 moreInfo.RichText = true
-                moreInfo.Font = Enum.Font.GothamSemibold
+                moreInfo.Font = Enum.Font.PatrickHand
                 moreInfo.Text = "  "..dropinf
                 moreInfo.TextColor3 = themeList.TextColor
-                moreInfo.TextSize = 14.000
+                moreInfo.TextSize = 17
                 moreInfo.TextXAlignment = Enum.TextXAlignment.Left
 
                 local hovering = false
