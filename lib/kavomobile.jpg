@@ -601,7 +601,7 @@ function Kavo.CreateLib(kavName, themeList)
                 buttonElement.Font = Enum.Font.PatrickHand
                 buttonElement.Text = ""
                 buttonElement.TextColor3 = Color3.fromRGB(0, 0, 0)
-                buttonElement.TextSize = 23
+                buttonElement.TextSize = 27
 --14default
                 Objects[buttonElement] = "BackgroundColor3"
 
