@@ -1,5 +1,14 @@
 local Kavo = {}
 local uiKolor = Color3.fromRGB(128,0,128)
+getgenv().titlesize = (16.5)
+getgenv().tabtextsize = (16)
+getgenv().sektiontextsize = (18.5)
+getgenv().labeltextsize = (17.7)
+getgenv().txtboxtxtsize = (16)
+getgenv().buttontextsize = (27)
+getgenv().RAINBOW = (27)
+getgenv().togtextsize = (17)
+getgenv().tognametextsize = (17)
 
 local KustomTheme = uiKolor
 local PINKY = Color3.fromRGB(255,192,203)
@@ -268,7 +277,7 @@ function Kavo.CreateLib(kavName, themeList)
     title.RichText = true
     title.Text = kavName
     title.TextColor3 = Color3.fromRGB(245, 245, 245)
-    title.TextSize = 16.5
+    title.TextSize = getgenv().titlesize
     title.TextXAlignment = Enum.TextXAlignment.Left
 
     close.Name = "close"
@@ -413,7 +422,7 @@ function Kavo.CreateLib(kavName, themeList)
         tabButton.Text = tabName
         tabButton.TextColor3 = themeList.TextColor
         Objects[tabButton] = "TextColor3"
-        tabButton.TextSize = 16
+        tabButton.TextSize = getgenv().tabtextsize
         tabButton.BackgroundTransparency = 1
 
         if first then
@@ -536,7 +545,7 @@ function Kavo.CreateLib(kavName, themeList)
             sectionName.RichText = true
             sectionName.TextColor3 = themeList.TextColor
             Objects[sectionName] = "TextColor3"
-            sectionName.TextSize = 18.5
+            sectionName.TextSize = getgenv().sektiontextsize
             sectionName.TextXAlignment = Enum.TextXAlignment.Left
             if themeList.SchemeColor == Color3.fromRGB(255,255,255) then
                 Utility:TweenObject(sectionName, {TextColor3 = Color3.fromRGB(0,0,0)}, 0.2)
@@ -601,7 +610,7 @@ function Kavo.CreateLib(kavName, themeList)
                 buttonElement.Font = Enum.Font.PatrickHand
                 buttonElement.Text = ""
                 buttonElement.TextColor3 = Color3.fromRGB(0, 0, 0)
-                buttonElement.TextSize = 27
+      buttonElement.TextSize = getgenv().buttontextsize
 --14default
                 Objects[buttonElement] = "BackgroundColor3"
 
@@ -841,7 +850,7 @@ function Kavo.CreateLib(kavName, themeList)
            TextBox.PlaceholderText = "Type here! 🍭"
                 TextBox.Text = ""
                 TextBox.TextColor3 = themeList.SchemeColor
-                TextBox.TextSize = 16
+                TextBox.TextSize = getgenv().txtboxtxtsize
 
                 UICorner_2.CornerRadius = UDim.new(0, 4)
                 UICorner_2.Parent = TextBox
@@ -856,7 +865,7 @@ function Kavo.CreateLib(kavName, themeList)
                 togName.Text = tname
                 togName.RichText = true
                 togName.TextColor3 = themeList.TextColor
-                togName.TextSize = 17
+                togName.TextSize = getgenv().tognametextsize
                 togName.TextXAlignment = Enum.TextXAlignment.Left
 
                 local moreInfo = Instance.new("TextLabel")
@@ -1267,7 +1276,7 @@ function Kavo.CreateLib(kavName, themeList)
                 togName.Text = slidInf
                 togName.RichText = true
                 togName.TextColor3 = themeList.TextColor
-                togName.TextSize = 17
+                togName.TextSize = getgenv().togtextsize
                 togName.TextXAlignment = Enum.TextXAlignment.Left
 
                 viewInfo.Name = "viewInfo"
@@ -2431,10 +2440,10 @@ function Kavo.CreateLib(kavName, themeList)
                 togName_2.BackgroundTransparency = 1.000
                 togName_2.Position = UDim2.new(0.779999971, 0, 0.100000001, 0)
                 togName_2.Size = UDim2.new(0, 278, 0, 14)
-                togName_2.Font = Enum.Font.GothamSemibold
+                togName_2.Font = Enum.Font.PatrickHand
                 togName_2.Text = "Rainbow"
                 togName_2.TextColor3 = themeList.TextColor
-                togName_2.TextSize = 14.000
+                togName_2.TextSize = getgenv().RAINBOW
                 togName_2.TextXAlignment = Enum.TextXAlignment.Left
 
                 if themeList.SchemeColor == Color3.fromRGB(255,255,255) then
@@ -2612,7 +2621,7 @@ function Kavo.CreateLib(kavName, themeList)
               label.RichText = true
               label.TextColor3 = themeList.TextColor
               Objects[label] = "TextColor3"
-              label.TextSize = 17.7
+              label.TextSize = getgenv().labeltextsize
               label.TextXAlignment = Enum.TextXAlignment.Left
 
               UICorner.CornerRadius = UDim.new(0, 4)
