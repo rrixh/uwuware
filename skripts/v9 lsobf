@@ -1,1 +1,6 @@
-loadstring(game:HttpGet("https://rentry.co/LollypopHubV9-zywbx1b9k75c0zynnmkq/raw",true))()
+local plr = game.Players.LocalPlayer
+local _ = [[https://raw.githubusercontent.com/rrixh/lulaslollipopmobile/main/lollypophubmobilev2]];
+kopy=setclipboard;wait(1)
+kopy("loadstring(game:HttpGet('".._.."',true))()")
+wait(1)
+plr:Kick'main skript kopied to klipboard, put it inside your exekutor (v9.3.2)'
