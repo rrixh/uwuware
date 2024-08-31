@@ -1,12 +1,13 @@
 local Kavo = {}
-local uiKolor = Color3.fromRGB(128,0,128)
+local Indigo = Color3.fromRGB(128,0,128)
+local uiKolor = Indigo
 getgenv().titlesize = (16.5)
 getgenv().tabtextsize = (16)
 getgenv().sektiontextsize = (18.5)
 getgenv().labeltextsize = (17.7)
 getgenv().txtboxtxtsize = (16)
-getgenv().buttontextsize = (27)
-getgenv().RAINBOW = (27)
+getgenv().buttontextsize = (27.3)
+getgenv().RAINBOW = (26)
 getgenv().togtextsize = (17)
 getgenv().tognametextsize = (17)
 
