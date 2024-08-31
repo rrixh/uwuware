@@ -1,5 +1,5 @@
 local ilovepinky = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/lib/kavomobile.jpg",true))();
-local w = ilovepinky.CreateLib("Pinky Hub😘", "PinkyTheme");
+local w = ilovepinky.CreateLib("Pinky Hub😘 daddy loves u", "PinkyTheme");
 local skripts = w:NewTab("skripts")
 local pinkytab1 = skripts:NewSection("i love u pinky")
 local function adonis()
