@@ -1,4 +1,3 @@
-
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
@@ -9,7 +8,7 @@ local uwu = uwuRRIXH:CreateWindow("Hitbox Expander")
 local hitboxEnabled = false
 local hitboxSize = 5
 local hitboxTransparent = false
-local hitboxTransparency = 0.5
+local hitboxTransparency = 0.99
 local espEnabled = false
 
 -- Function to toggle hitbox expander
@@ -50,7 +49,7 @@ local function toggleHitboxTransparency(toggleOn)
         for _, player in pairs(Players:GetPlayers()) do
 if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
                 local hrp = player.Character.HumanoidRootPart
-                hrp.Transparency = hitboxTransparent and 1 or hitboxTransparency
+                hrp.Transparency = 0.99
             end
         end
     end
