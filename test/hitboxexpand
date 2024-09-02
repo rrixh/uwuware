@@ -1,0 +1,146 @@
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local uwuRRIXH = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/mobileware", true))()
+local lulaslollipop = "lulaslollipop 🍭"
+local uwu = uwuRRIXH:CreateWindow("Hitbox Expander")
+
+local hitboxEnabled = false
+local hitboxSize = 5
+local hitboxTransparent = false
+local hitboxTransparency = 0.5
+local espEnabled = false
+
+-- Function to toggle hitbox expander
+local function toggleHitboxes(toggleOn)
+    hitboxEnabled = toggleOn
+    if not hitboxEnabled then
+        -- Reset hitboxes to default size
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                local hrp = player.Character.HumanoidRootPart
+                hrp.Size = Vector3.new(2, 2, 1)
+                hrp.Transparency = 1
+                hrp.Material = Enum.Material.Plastic
+            end
+        end
+    end
+end
+
+-- Function to set hitbox size
+local function setHitboxSize(size)
+    hitboxSize = size
+    if hitboxEnabled then
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                local hrp = player.Character.HumanoidRootPart
+                hrp.Size = Vector3.new(hitboxSize, hitboxSize, hitboxSize)
+                hrp.Transparency = hitboxTransparent and 1 or hitboxTransparency
+                hrp.Material = Enum.Material.Neon
+            end
+        end
+    end
+end
+
+-- Function to toggle hitbox transparency
+local function toggleHitboxTransparency(toggleOn)
+    hitboxTransparent = toggleOn
+    if hitboxEnabled then
+        for _, player in pairs(Players:GetPlayers()) do
+if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                local hrp = player.Character.HumanoidRootPart
+                hrp.Transparency = hitboxTransparent and 1 or hitboxTransparency
+            end
+        end
+    end
+end
+
+-- Function to set hitbox transparency
+local function setHitboxTransparency(transparency)
+    hitboxTransparency = transparency
+    if hitboxEnabled then
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                local hrp = player.Character.HumanoidRootPart
+                hrp.Transparency = hitboxTransparent and 1 or hitboxTransparency
+            end
+        end
+    end
+end
+
+-- ESP function to highlight players
+local function toggleESP(toggleOn)
+    espEnabled = toggleOn
+    if espEnabled then
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character then
+                local highlight = Instance.new("Highlight", player.Character)
+                highlight.FillColor = Color3.new(1, 1, 1) -- Change color to white
+                highlight.OutlineColor = Color3.new(1, 1, 1)
+            end
+        end
+    else
+        for _, player in pairs(Players:GetPlayers()) do
+            if player.Character and player.Character:FindFirstChildOfClass("Highlight") then
+                player.Character.Highlight:Destroy()
+            end
+        end
+    end
+end
+
+uwu:AddToggle({
+    text = "Hitboxes on/off",
+    callback = toggleHitboxes
+})
+
+uwu:AddBox({
+    text = "Hitbox Size",
+    callback = function(txt)
+        local size = tonumber(txt)
+        if size then
+            setHitboxSize(size)
+        else
+            print("Invalid hitbox size entered.")
+        end
+    end
+})
+
+uwu:AddBox({
+    text = "Hitbox Transparency",
+    callback = function(txt)
+        local transparency = tonumber(txt)
+if transparency and transparency >= 0 and transparency <= 1 then
+            setHitboxTransparency(transparency)
+        else
+            print("Invalid transparency value entered.")
+        end
+    end
+})
+
+uwu:AddToggle({
+    text = "Invisible Hitbox",
+    callback = toggleHitboxTransparency
+})
+
+uwu:AddToggle({
+    text = "Highlight Players",
+    callback = toggleESP
+})
+
+-- Continuously adjust hitbox size if enabled
+RunService.Heartbeat:Connect(function()
+    if hitboxEnabled then
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                local hrp = player.Character.HumanoidRootPart
+                hrp.Size = Vector3.new(hitboxSize, hitboxSize, hitboxSize)
+                hrp.Transparency = hitboxTransparent and 1 or hitboxTransparency
+                hrp.Material = Enum.Material.Neon
+            end
+        end
+    end
+end)
+
+uwu:AddFolder(lulaslollipop)
+uwuRRIXH:Init()
