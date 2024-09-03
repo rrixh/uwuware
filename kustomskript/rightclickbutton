@@ -1,0 +1,127 @@
+getgenv().buttonkeykode = ("Q")
+getgenv().buttonsize = (107)
+getgenv().buttonpikture = (81697484807530)
+local vim = game:GetService[[VirtualInputManager]]
+local pcInput = (0)
+local mobInput = (1)
+local err = function()
+local RRixh1 = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/skripts/AkaliNotif",true))(); local Notify = RRixh1.Notify; wait(); Notify({ Description = "right klick pressed";Duration = 3; });
+end
+
+local yourSkriptHere = function()
+-- Mouse button down
+ vim:SendMouseButtonEvent(0, 0, 2, true, nil, pcInput)
+-- Mouse button up
+ vim:SendMouseButtonEvent(0, 0, 2, false, nil, pcInput)
+err()
+
+end;
+
+local function write(msg,typingtime)
+spawn(function()
+local h=Instance.new("Hint");
+h.Parent = game.Workspace;
+local function typeMessage()
+for i=1,#msg do h.Text=string.sub(msg,1,i);
+wait(typingtime); end;end;
+typeMessage();wait(3.3);h:Destroy(); end)
+end;
+pcall(function()
+getgenv().msg = "skript by lulaslollipop 🍭...👺👺👺"
+write(getgenv().msg,(0.04));
+end)
+
+local function button()
+local Plrs = game:GetService[[Players]]
+local lokalplr = Plrs.LocalPlayer
+local Mouse = lokalplr:GetMouse();
+
+local kustombutton = Instance.new[[ScreenGui]]
+kustombutton.Parent = game.CoreGui
+kustombutton.Name = [[kustomlogobutton]]
+kustombutton.IgnoreGuiInset = true
+local removeborder = 0
+local overlayAllGui = 5
+getgenv().topright = UDim2.new(1, -110, 0, 25)
+
+local roundButton = Instance.new("ImageButton")
+roundButton.Parent = kustombutton
+roundButton.Size = UDim2.new(0, getgenv().buttonsize, 0, getgenv().buttonsize)
+roundButton.Position = getgenv().topright
+roundButton.Image = "http://www.roblox.com/asset/?id="..getgenv().buttonpikture
+roundButton.BackgroundTransparency = 1
+roundButton.ImageColor3 = Color3.fromRGB(255, 255, 255)
+roundButton.ScaleType = Enum.ScaleType.Fit
+roundButton.BorderSizePixel = removeborder
+roundButton.ZIndex = overlayAllGui
+
+local uiCorner = Instance.new("UICorner")
+uiCorner.CornerRadius = UDim.new(1, 0)
+uiCorner.Parent = roundButton
+
+--wen press the button
+Mouse.KeyDown:Connect(function(keykode)
+if keykode == string.lower(getgenv().buttonkeykode) then
+        yourSkriptHere()
+    end
+end)
+
+--drag
+local dragging = false
+local dragInput, mousePos, framePos
+local dragThreshold = 5
+local buttondrag = false;
+
+local function update(input)
+    local delta = input.Position - mousePos
+    if math.abs(delta.X) > dragThreshold or math.abs(delta.Y) > dragThreshold then
+        buttondrag = true
+        roundButton.Position = UDim2.new(framePos.X.Scale, framePos.X.Offset + delta.X, framePos.Y.Scale, framePos.Y.Offset + delta.Y)
+    end
+end
+
+roundButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        buttondrag = false
+        mousePos = input.Position
+        framePos = roundButton.Position
+
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+roundButton.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+game:GetService("UserInputService").InputChanged:Connect(function(input)
+  if input == dragInput and dragging then
+        update(input)
+    end
+end)
+
+-- wont press if dragging button
+roundButton.MouseButton1Click:Connect(function()
+if not buttondrag then 
+yourSkriptHere(); 
+    end;
+end)
+end;
+button()
+
+pcall(function()
+local lokalplr = game.Players.LocalPlayer
+lokalplr.Chatted:Connect(function(...)
+if(...=='/e newbutton')then
+button()
+end;
+  end);
+end);
+
