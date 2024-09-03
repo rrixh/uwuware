@@ -1,5 +1,10 @@
 getgenv().bg = Color3.fromRGB(0, 180, 0)
 getgenv().font = Enum.Font.FredokaOne
+getgenv().buttontext = [[right klick]]
+getgenv().getImg = 0
+--=====================================--
+local original = UDim2.new(0, 100, 0, 40);
+--=====================================--
 local uis = game:GetService[[UserInputService]]
 local vim = game:GetService[[VirtualInputManager]]
 local Kore = game:GetService[[CoreGui]];
@@ -7,22 +12,31 @@ local plr = game:GetService[[Players]].LocalPlayer
 
 local rightklickgui = Kore:FindFirstChild[[rightklicker]]
 if not rightklickgui then
-    rightklickgui = Instance.new[[ScreenGui]]
+rightklickgui = Instance.new[[ScreenGui]]
     rightklickgui.Name = [[rightklicker]]
     rightklickgui.Parent = Kore
 end;
 spawn, Color3, Instance, UDim2, Enum, game, task = spawn, Color3, Instance, UDim2, Enum,game, task.wait();getgenv=getgenv;
 
 local button = Instance.new[[TextButton]]
-button.Size = UDim2.new(0, 100, 0, 40)
+button.Size = UDim2.new(0, 90, 0, 40)
 button.Position = UDim2.new(0.5, -50, 0.5, -25)
-button.Text = "right klick"
+button.Text = getgenv().buttontext
 button.BackgroundTransparency = 0
 button.Font = getgenv().font
-button.TextSize = 18
+button.TextSize = 17
 button.TextColor3 = Color3.new(1, 1, 1)
 button.BackgroundColor3 = getgenv().bg
+button.BackgroundTransparency = 0
 button.Parent = rightklickgui
+button.TextWrapped = true
+
+local imageLabel = Instance.new("ImageLabel")
+imageLabel.Size = UDim2.new(1, 0, 1, 0)
+imageLabel.Position = UDim2.new(0, 0, 0, 0)
+imageLabel.Image = "rbxassetid://"..getgenv().getImg
+imageLabel.BackgroundTransparency = 1
+imageLabel.Parent = button
 
 local function simulateKeyHere()
 local mouse = plr:GetMouse()
@@ -39,10 +53,11 @@ game.StarterGui:SetCore("SendNotification", {Title = "rightklicked ✔️",
 Duration = 2})
   else     game:GetService("StarterGui"):SetCore("SendNotification", {
 Title = "rightklick fail 🚫",
-Text = "failed to simulate rightklick",
+Text = "that was not a rightklick",
 Duration = 2})
     end
 end;
+
 
 local dragging = false
 local dragStartPosition
@@ -100,7 +115,7 @@ end
 
 local worked = pcall(function()
 game.Players.LocalPlayer.Chatted:Connect(function(msg)
-        if msg == '/e dest' then
+        if msg == '.nogui' then
             destroyR()
         end
     end)
