@@ -1,127 +1,117 @@
-getgenv().buttonkeykode = ("Q")
-getgenv().buttonsize = (107)
-getgenv().buttonpikture = (81697484807530)
+getgenv().bg = Color3.fromRGB(0, 180, 0)
+getgenv().font = Enum.Font.FredokaOne
+local uis = game:GetService[[UserInputService]]
 local vim = game:GetService[[VirtualInputManager]]
-local pcInput = (0)
-local mobInput = (1)
-local err = function()
-local RRixh1 = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/skripts/AkaliNotif",true))(); local Notify = RRixh1.Notify; wait(); Notify({ Description = "right klick pressed";Duration = 3; });
-end
+local Kore = game:GetService[[CoreGui]];
+local plr = game:GetService[[Players]].LocalPlayer
 
-local yourSkriptHere = function()
--- Mouse button down
- vim:SendMouseButtonEvent(0, 0, 2, true, nil, pcInput)
--- Mouse button up
- vim:SendMouseButtonEvent(0, 0, 2, false, nil, pcInput)
-err()
-
+local rightklickgui = Kore:FindFirstChild[[rightklicker]]
+if not rightklickgui then
+    rightklickgui = Instance.new[[ScreenGui]]
+    rightklickgui.Name = [[rightklicker]]
+    rightklickgui.Parent = Kore
 end;
+spawn, Color3, Instance, UDim2, Enum, game, task = spawn, Color3, Instance, UDim2, Enum,game, task.wait();getgenv=getgenv;
 
-local function write(msg,typingtime)
-spawn(function()
-local h=Instance.new("Hint");
-h.Parent = game.Workspace;
-local function typeMessage()
-for i=1,#msg do h.Text=string.sub(msg,1,i);
-wait(typingtime); end;end;
-typeMessage();wait(3.3);h:Destroy(); end)
-end;
-pcall(function()
-getgenv().msg = "skript by lulaslollipop 🍭...👺👺👺"
-write(getgenv().msg,(0.04));
-end)
+local button = Instance.new[[TextButton]]
+button.Size = UDim2.new(0, 100, 0, 40)
+button.Position = UDim2.new(0.5, -50, 0.5, -25)
+button.Text = "right klick"
+button.BackgroundTransparency = 0
+button.Font = getgenv().font
+button.TextSize = 18
+button.TextColor3 = Color3.new(1, 1, 1)
+button.BackgroundColor3 = getgenv().bg
+button.Parent = rightklickgui
 
-local function button()
-local Plrs = game:GetService[[Players]]
-local lokalplr = Plrs.LocalPlayer
-local Mouse = lokalplr:GetMouse();
+local function simulateKeyHere()
+local mouse = plr:GetMouse()
+    local x, y = mouse.X, mouse.Y
 
-local kustombutton = Instance.new[[ScreenGui]]
-kustombutton.Parent = game.CoreGui
-kustombutton.Name = [[kustomlogobutton]]
-kustombutton.IgnoreGuiInset = true
-local removeborder = 0
-local overlayAllGui = 5
-getgenv().topright = UDim2.new(1, -110, 0, 25)
+local success = pcall(function()
+vim:SendMouseButtonEvent(x, y, 2, true, game, 0)
+vim:SendMouseButtonEvent(x, y, 2, false, game, 0)
+end);
 
-local roundButton = Instance.new("ImageButton")
-roundButton.Parent = kustombutton
-roundButton.Size = UDim2.new(0, getgenv().buttonsize, 0, getgenv().buttonsize)
-roundButton.Position = getgenv().topright
-roundButton.Image = "http://www.roblox.com/asset/?id="..getgenv().buttonpikture
-roundButton.BackgroundTransparency = 1
-roundButton.ImageColor3 = Color3.fromRGB(255, 255, 255)
-roundButton.ScaleType = Enum.ScaleType.Fit
-roundButton.BorderSizePixel = removeborder
-roundButton.ZIndex = overlayAllGui
-
-local uiCorner = Instance.new("UICorner")
-uiCorner.CornerRadius = UDim.new(1, 0)
-uiCorner.Parent = roundButton
-
---wen press the button
-Mouse.KeyDown:Connect(function(keykode)
-if keykode == string.lower(getgenv().buttonkeykode) then
-        yourSkriptHere()
+ if success then
+game.StarterGui:SetCore("SendNotification", {Title = "rightklicked ✔️",
+  Text = "simulated rightklick at position: (" .. x .. ", " .. y .. ").",
+Duration = 2})
+  else     game:GetService("StarterGui"):SetCore("SendNotification", {
+Title = "rightklick fail 🚫",
+Text = "failed to simulate rightklick",
+Duration = 2})
     end
-end)
+end;
 
---drag
 local dragging = false
-local dragInput, mousePos, framePos
-local dragThreshold = 5
-local buttondrag = false;
+local dragStartPosition
+local dragStartFramePosition
+local dragThreshold = 5.5
 
-local function update(input)
-    local delta = input.Position - mousePos
-    if math.abs(delta.X) > dragThreshold or math.abs(delta.Y) > dragThreshold then
-        buttondrag = true
-        roundButton.Position = UDim2.new(framePos.X.Scale, framePos.X.Offset + delta.X, framePos.Y.Scale, framePos.Y.Offset + delta.Y)
+local function updateDrag(input)
+ local delta = input.Position - dragStartPosition
+if (delta.magnitude >= dragThreshold) then
+        dragging = true
+button.Position = UDim2.new(dragStartFramePosition.X.Scale,
+dragStartFramePosition.X.Offset + delta.X,
+dragStartFramePosition.Y.Scale,
+dragStartFramePosition.Y.Offset + delta.Y)
     end
 end
 
-roundButton.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        buttondrag = false
-        mousePos = input.Position
-        framePos = roundButton.Position
+button.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
+        dragStartPosition = input.Position
+        dragStartFramePosition = button.Position
 
         input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
+            if input.UserInputState == Enum.UserInputState.End and not dragging then
+                simulateKeyHere()
             end
         end)
     end
 end)
 
-roundButton.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-        dragInput = input
+button.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch and dragStartPosition then
+        updateDrag(input)
     end
 end)
 
-game:GetService("UserInputService").InputChanged:Connect(function(input)
-  if input == dragInput and dragging then
-        update(input)
+uis.InputEnded:Connect(function(input, gameProcessed)
+    if input.UserInputType == Enum.UserInputType.Touch and not gameProcessed then
+        if dragging then
+            dragging = false
+            dragStartPosition = nil
+        end
     end
 end)
 
--- wont press if dragging button
-roundButton.MouseButton1Click:Connect(function()
-if not buttondrag then 
-yourSkriptHere(); 
-    end;
+local destroyR = function()
+    if rightklickgui then
+        rightklickgui:Destroy()
+        print'right-click gui destroyed'
+    else
+        print'right-click gui not found'
+    end
+end
+
+local worked = pcall(function()
+game.Players.LocalPlayer.Chatted:Connect(function(msg)
+        if msg == '/e dest' then
+            destroyR()
+        end
+    end)
 end)
-end;
-button()
 
-pcall(function()
-local lokalplr = game.Players.LocalPlayer
-lokalplr.Chatted:Connect(function(...)
-if(...=='/e newbutton')then
-button()
-end;
-  end);
-end);
+local pussy = spawn(function()
+    if worked then
+        print('rightklick gui destroyed')
+    else
+        print('rightklick gui not found')
+    end
+end)
 
+pussy()
