@@ -22,7 +22,7 @@ toggleButton.TextSize = 24
 toggleButton.TextColor3 = Color3.new(1, 1, 1)
 toggleButton.TextStrokeColor3 = Color3.new(0, 0, 0)
 toggleButton.TextStrokeTransparency = 0
-toggleButton.Text = "Kamloxk Off"
+toggleButton.Text = "loxk"
 toggleButton.BackgroundColor3 = Color3.new(1, 0, 0)
 toggleButton.TextWrapped = true
 
@@ -74,10 +74,10 @@ toggleButton.MouseButton1Click:Connect(function()
     if not dragging then
         camlockEnabled = not camlockEnabled
         if camlockEnabled then
-            toggleButton.Text = "on"
+            toggleButton.Text = "loxk"
             toggleButton.BackgroundColor3 = Color3.new(0, 1, 0)
         else
-            toggleButton.Text = "off"
+            toggleButton.Text = "unloxk"
             toggleButton.BackgroundColor3 = Color3.new(1, 0, 0)
         end
     end
