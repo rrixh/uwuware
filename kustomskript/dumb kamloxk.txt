@@ -74,10 +74,10 @@ toggleButton.MouseButton1Click:Connect(function()
     if not dragging then
         camlockEnabled = not camlockEnabled
         if camlockEnabled then
-            toggleButton.Text = "Kamloxk On"
+            toggleButton.Text = "on"
             toggleButton.BackgroundColor3 = Color3.new(0, 1, 0)
         else
-            toggleButton.Text = "Kamloxk Off"
+            toggleButton.Text = "off"
             toggleButton.BackgroundColor3 = Color3.new(1, 0, 0)
         end
     end
