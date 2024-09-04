@@ -1,0 +1,109 @@
+local players = game:GetService("Players")
+local localPlayer = players.LocalPlayer
+local camera = workspace.CurrentCamera
+local userInputService = game:GetService("UserInputService")
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = game:GetService("CoreGui") 
+
+local draggableFrame = Instance.new("Frame")
+draggableFrame.Parent = screenGui
+draggableFrame.Size = UDim2.new(0, 100, 0, 50)
+draggableFrame.Position = UDim2.new(1, -110, 0, 25)
+draggableFrame.BackgroundColor3 = Color3.new(1, 1, 1)
+draggableFrame.BorderSizePixel = 0
+draggableFrame.ClipsDescendants = true
+
+local toggleButton = Instance.new("TextButton")
+toggleButton.Parent = draggableFrame
+toggleButton.Size = UDim2.new(1, 0, 1, 0)
+toggleButton.Font = Enum.Font.SourceSansBold
+toggleButton.TextSize = 24
+toggleButton.TextColor3 = Color3.new(1, 1, 1)
+toggleButton.TextStrokeColor3 = Color3.new(0, 0, 0)
+toggleButton.TextStrokeTransparency = 0
+toggleButton.Text = "Kamloxk Off"
+toggleButton.BackgroundColor3 = Color3.new(1, 0, 0)
+toggleButton.TextWrapped = true
+
+local camlockEnabled = false
+local dragging = false
+local dragInput, dragStart, startPos
+local dragThreshold = 5 -- The threshold for starting a drag
+
+-- Handle dragging
+local function updateInput(input)
+    local delta = input.Position - dragStart
+    if delta.Magnitude > dragThreshold then
+        draggableFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end
+
+draggableFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
+        dragStart = input.Position
+        startPos = draggableFrame.Position
+
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+draggableFrame.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+userInputService.InputChanged:Connect(function(input)
+    if input == dragInput then
+        local delta = input.Position - dragStart
+        if delta.Magnitude > dragThreshold then
+            dragging = true
+            updateInput(input)
+        end
+    end
+end)
+
+-- Handle button click, only if not dragging
+toggleButton.MouseButton1Click:Connect(function()
+    if not dragging then
+        camlockEnabled = not camlockEnabled
+        if camlockEnabled then
+            toggleButton.Text = "Kamloxk On"
+            toggleButton.BackgroundColor3 = Color3.new(0, 1, 0)
+        else
+            toggleButton.Text = "Kamloxk Off"
+            toggleButton.BackgroundColor3 = Color3.new(1, 0, 0)
+        end
+    end
+end)
+
+-- Camlock functionality
+game:GetService("RunService").Stepped:Connect(function()
+    if camlockEnabled then
+        local nearestPlayer = nil
+        local nearestDistance = math.huge
+
+        for _, player in pairs(players:GetPlayers()) do
+            if player ~= localPlayer then
+                local character = player.Character
+                if character and character:FindFirstChild("HumanoidRootPart") then
+                    local distance = (character.HumanoidRootPart.Position - camera.CFrame.Position).Magnitude
+                    if distance < nearestDistance then
+                        nearestPlayer = player
+                        nearestDistance = distance
+                    end
+                end
+            end
+        end
+
+        if nearestPlayer and nearestPlayer.Character and nearestPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            camera.CFrame = CFrame.lookAt(camera.CFrame.Position, nearestPlayer.Character.HumanoidRootPart.Position)
+        end
+    end
+end)
