@@ -8,10 +8,7 @@ getgenv().lolly = (17767487755)
 getgenv().getImg = (trashimg)
 getgenv().KASimg = (0)
 getgenv().imgsize = (70)
-
-local notequal = function(a,b)
-return a ~= b 
-end; local validkey = false
+local validkey = false
 
 local fixedkeys = {
     -- letters
@@ -36,7 +33,7 @@ local fixedkeys = {
     ["printscreen"] = "PrintScreen", ["printscr"] = "PrintScreen", ["pause"] = "Pause", ["menu"] = "Menu", ["unknown"] = "Unknown",
 
 --spexial keys
-["@"] = "At", [":"] = "Colon", ["."] = "Period", ["*"] = "Asterisk", ["#"] = "Hash", ["$"] = "Dollar", ["%"] = "Percent", ["^"] = "Caret", ["&"] = "Ampersand", ["("] = "LeftParenthesis", [")"] = "RightParenthesis", ["-"] = "Minus", ["_"] = "Underscore", ["+"] = "Plus", ["="] = "Equals", ["["] = "LeftBracket", ["]"] = "RightBracket", ["{"] = "LeftBrace", ["}"] = "RightBrace", [";"] = "Semicolon", ["'"] = "Quote", ["\""] = "DoubleQuote", [","] = "Comma", ["<"] = "LessThan", [">"] = "GreaterThan", ["/"] = "Slash", ["backslash"] = "Backslash", ["|"] = "Pipe", ["`"] = "Backquote", ["~"] = "Tilde", ["!"] = "Exclamation", ["?"] = "Question", ["undo"] = "Undo", [">"] = "Right", ["<"] = "Left", ["^"] = "Up", ["up"] = "Up", ["down"] = "Down", ["clear"] = "Clear", ["klear"] = "Clear", ["clr"] = "Clear", ["klr"] = "Clear",
+["@"] = "At", [":"] = "Colon", ["."] = "Period", ["*"] = "Asterisk", ["#"] = "Hash", ["$"] = "Dollar", ["%"] = "Percent", ["^"] = "Caret", ["&"] = "Ampersand", ["("] = "LeftParenthesis", [")"] = "RightParenthesis", ["-"] = "Minus", ["_"] = "Underscore", ["+"] = "Plus", ["="] = "Equals", ["["] = "LeftBracket", ["]"] = "RightBracket", ["{"] = "LeftBrace", ["}"] = "RightBrace", [";"] = "Semicolon", ["'"] = "Quote", ["\""] = "DoubleQuote", [","] = "Comma", ["<"] = "LessThan", [">"] = "GreaterThan", ["/"] = "Slash", ["backslash"] = "Backslash", ["|"] = "Pipe", ["`"] = "Backquote", ["~"] = "Tilde", ["!"] = "Exclamation", ["?"] = "Question", ["undo"] = "Undo", ["clear"] = "Clear", ["klear"] = "Clear", ["clr"] = "Clear", ["klr"] = "Clear",
 
 --mouse klicks
 ["mouse1"] = "MouseLeftButton",
@@ -58,7 +55,8 @@ local fixedkeys = {
 ["middleklick"] = "MouseMiddleButton",
 ["mousescroll"] = "MouseMiddleButton",
 ["scroll"] = "MouseMiddleButton",
-
+["mousem"] = "MouseMiddleButton",
+["mm"] = "MouseMiddleButton",
 }
 
 local RRixh1 = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/skripts/AkaliNotif",true))(); 
@@ -226,7 +224,7 @@ end)
 end;
 
 local kredits = spawn(function()
-    write("skript by lulaslollipop 🍭...👺👺")
+write("skript by lulaslollipop 🍭...👺👺")
 task.wait(3)
 write("say /e garbage for new trash button")
 end)
