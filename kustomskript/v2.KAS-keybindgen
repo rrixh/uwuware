@@ -9,6 +9,10 @@ getgenv().getImg = (trashimg)
 getgenv().KASimg = (0)
 getgenv().imgsize = (70)
 
+local notequal = function(a,b)
+return a ~= b 
+end; local validkey = false
+
 local fixedkeys = {
     -- letters
     ["a"] = "A", ["b"] = "B", ["c"] = "C", ["d"] = "D", ["e"] = "E", ["f"] = "F", ["g"] = "G",
@@ -32,7 +36,7 @@ local fixedkeys = {
     ["printscreen"] = "PrintScreen", ["printscr"] = "PrintScreen", ["pause"] = "Pause", ["menu"] = "Menu", ["unknown"] = "Unknown",
 
 --spexial keys
-["@"] = "At", [":"] = "Colon", ["."] = "Period", ["*"] = "Asterisk", ["#"] = "Hash", ["$"] = "Dollar", ["%"] = "Percent", ["^"] = "Caret", ["&"] = "Ampersand", ["("] = "LeftParenthesis", [")"] = "RightParenthesis", ["-"] = "Minus", ["_"] = "Underscore", ["+"] = "Plus", ["="] = "Equals", ["["] = "LeftBracket", ["]"] = "RightBracket", ["{"] = "LeftBrace", ["}"] = "RightBrace", [";"] = "Semicolon", ["'"] = "Quote", ["\""] = "DoubleQuote", [","] = "Comma", ["<"] = "LessThan", [">"] = "GreaterThan", ["/"] = "Slash", ["backslash"] = "Backslash", ["|"] = "Pipe", ["`"] = "Backquote", ["~"] = "Tilde", ["!"] = "Exclamation", ["?"] = "Question", ["undo"] = "Undo", [">"] = "Right", ["<"] = "Left", ["^"] = "Up", ["up"] = "Up", ["down"] = "Down", ["clear"] = "Clear", ["klear"] = "Clear", ["clr"] = "Clear", ["klr"] = "Clear", 
+["@"] = "At", [":"] = "Colon", ["."] = "Period", ["*"] = "Asterisk", ["#"] = "Hash", ["$"] = "Dollar", ["%"] = "Percent", ["^"] = "Caret", ["&"] = "Ampersand", ["("] = "LeftParenthesis", [")"] = "RightParenthesis", ["-"] = "Minus", ["_"] = "Underscore", ["+"] = "Plus", ["="] = "Equals", ["["] = "LeftBracket", ["]"] = "RightBracket", ["{"] = "LeftBrace", ["}"] = "RightBrace", [";"] = "Semicolon", ["'"] = "Quote", ["\""] = "DoubleQuote", [","] = "Comma", ["<"] = "LessThan", [">"] = "GreaterThan", ["/"] = "Slash", ["backslash"] = "Backslash", ["|"] = "Pipe", ["`"] = "Backquote", ["~"] = "Tilde", ["!"] = "Exclamation", ["?"] = "Question", ["undo"] = "Undo", [">"] = "Right", ["<"] = "Left", ["^"] = "Up", ["up"] = "Up", ["down"] = "Down", ["clear"] = "Clear", ["klear"] = "Clear", ["clr"] = "Clear", ["klr"] = "Clear",
 
 --mouse klicks
 ["mouse1"] = "MouseLeftButton",
@@ -56,6 +60,25 @@ local fixedkeys = {
 ["scroll"] = "MouseMiddleButton",
 
 }
+
+local RRixh1 = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/skripts/AkaliNotif",true))(); 
+local Notify = RRixh1.Notify
+
+if fixedkeys[getgenv().keykode] then
+    validkey = true
+end
+
+for _, fixedkey in pairs(Enum.KeyCode:GetEnumItems()) do
+    if getgenv().keykode == fixedkey.Name then
+        validkey = true
+        break
+    end
+end
+
+if not validkey then
+Notify({ Description = "“"..getgenv().keykode.."” is not a valid key 👺";Duration = 3; }); 
+  return
+end;
 
 local _ = function(key)
     return fixedkeys[key:lower()] or key
