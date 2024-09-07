@@ -1,5 +1,6 @@
---getgenv().keykode = ""
+--getgenv().keykode = " "
 
+if getgenv().keykode == "" then return end;
 --images
 getgenv().trashimg = (83824655888536);
 getgenv().lolly = (17767487755)
@@ -107,6 +108,7 @@ local keybind = Enum.KeyCode[getgenv().KeyKode]
 local key2 = "put key here"
 
 local send = function(keybind)
+if keybind == "" then return end
     vim:SendKeyEvent(true, keybind, false, game)
 return letPass
 end;
@@ -116,6 +118,7 @@ return letSink
 end;
 
 local function pressKey(inputObject)
+if keybind == "" then return end
     if inputObject.UserInputState == Pressing then
         send(keybind)
 elseif inputObject.UserInputState == notPressing or inputObject.UserInputState == kancel then
