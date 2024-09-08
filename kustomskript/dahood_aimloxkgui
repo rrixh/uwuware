@@ -115,6 +115,10 @@ err("number only nigger 👺")
 return end
 end});
 
+uwu:AddToggle({text = "Team check", callback = function(x)
+Aiming.TeamCheck(x)
+end});
+
 uwu:AddToggle({text = "Silent Aim", callback = function(toggleState)
 getgenv().SilentAim = toggleState
 end});
