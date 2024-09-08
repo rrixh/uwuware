@@ -1,8 +1,9 @@
-if IY_LOADED and not _G.IY_DEBUG == true then
-	-- error("Infinite Yield is already running!",0)
-	return
-end
+if IY_LOADED and not _G.IY_DEBUG==true then return end;
+getgenv().deltaKolor = Color3.fromRGB(130, 0,0) 
 
+--delta original: Color3.fromRGB(17, 36, 66) 
+
+local LollypopHub = [[https://raw.githubusercontent.com/rrixh/lulaslollipopmobile/main/lollypophubmobilev2]]
 
 pcall(function() getgenv().IY_LOADED = true end)
 
@@ -15,7 +16,7 @@ if not game:IsLoaded() then
 	notLoaded:Destroy()
 end
 
-currentVersion = 'Delta IY Mobile Kraxk by 👺'
+currentVersion = '🍭..👺'
 
 Players = game:GetService("Players")
 
@@ -197,7 +198,7 @@ DELTA["DaIcon"].Size = UDim2.new(0,45,0,45)
 DELTA["DaIcon"].Position = UDim2.new(.001,0,0.5,0)
 DELTA["DaIcon"].Draggable = true
 DELTA["DaIcon"].Image = "rbxassetid://1352543873"
-DELTA["DaIcon"].BackgroundColor3 = Color3.fromRGB(17, 36, 66)
+DELTA["DaIcon"].BackgroundColor3 = getgenv().deltaKolor
 DELTA["DaIcon"].MouseButton1Click:Connect(function()
     Main.Enabled = not Main.Enabled
 end)
@@ -232,7 +233,7 @@ Title.BorderSizePixel = 0
 Title.Size = UDim2.new(0, 250, 0, 20)
 Title.Font = Enum.Font.SourceSans
 Title.TextSize = 18
-Title.Text = "Infinite Yield " .. currentVersion
+Title.Text = "Delta IY Kraxked " .. currentVersion
 
 do
 	local emoji = ({
@@ -289,7 +290,7 @@ Cmdbar.TextXAlignment = Enum.TextXAlignment.Left
 Cmdbar.TextColor3 = Color3.new(1, 1, 1)
 Cmdbar.Text = ""
 Cmdbar.ZIndex = 10
-Cmdbar.PlaceholderText = "Command Bar"
+Cmdbar.PlaceholderText = "Kommand Bar"
 
 CMDsF.Name = "CMDs"
 CMDsF.Parent = Holder
@@ -2793,7 +2794,8 @@ reference = (function()
 	end)
 end)()
 
-currentShade1 = Color3.fromRGB(17, 36, 66)
+--1 is Color3.fromRGB(17, 36, 66)
+currentShade1 = getgenv().deltaKolor
 currentShade2 = Color3.fromRGB(10, 25, 48)
 currentShade3 = Color3.fromRGB(10, 25, 48)
 currentText1 = Color3.new(1, 1, 1)
@@ -4276,6 +4278,8 @@ function autoComplete(str,curText)
 end
 
 CMDs = {}
+CMDs[#CMDs + 1] = {NAME = 'Lollypop Hub 🍭 (;lh, lollypop)', DESC = 'skripthub by @lulaslollipop 🍭'}
+CMDs[#CMDs + 1] = {NAME = 'SimpleSpy Mobile v2.2', DESC = 'opens SimpleSpy for mobile (v2.2)'}
 CMDs[#CMDs + 1] = {NAME = 'discord / support / help', DESC = 'Invite to the Infinite Yield support server.'}
 CMDs[#CMDs + 1] = {NAME = 'console', DESC = 'Loads old Roblox console'}
 CMDs[#CMDs + 1] = {NAME = 'explorer / dex', DESC = 'Opens DEX by Moon'}
@@ -6233,9 +6237,24 @@ Players.LocalPlayer.OnTeleport:Connect(function(State)
 	if State == Enum.TeleportState.Started then
 		if KeepInfYield and queueteleport then
 			queueteleport("loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))()")
+
+queueteleport("loadstring(game:HttpGet(LollypopHub))()")
 		end
 	end
 end)
+
+-- [ 👺👺👺👺MY KOMMANDS 👺👺👺👺 ] --
+
+addcmd('lh', {'lollypop', 'lollypophub'}, function(args, speaker)
+loadstring(game:HttpGet(LollypopHub))();
+end)
+
+addcmd('simplespy', {'ss', 'sspy'}, function(args, speaker)
+loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/SimpleSpyMobile2.2",true))();
+end)
+
+
+
 
 addcmd('addalias',{},function(args, speaker)
 	if #args < 2 then return end
@@ -12523,7 +12542,7 @@ task.spawn(function()
 	end)
 	
 	if success then
-			notify('IY Delta','Enjoy the mobile version of Infinite Yield')
+notify('IY Delta Kraxk 👺','Enjoy the mobile kraxk of Delta IY')
 		
 		
 		if latestVersionInfo.Announcement and latestVersionInfo.Announcement ~= '' then
