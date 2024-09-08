@@ -1,41 +1,10 @@
-local uwuRRIXH = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/mobileware",true))();local lulaslollipop="lulaslollipop 🍭";local uwu=uwuRRIXH:CreateWindow("RRixh DaHood gui");
--- // depen
-local Aiming = loadstring(game:HttpGet[[https://raw.githubusercontent.com/rrixh/uwuware/main/kustomskript/silentaimmodule]])();
-
 getgenv().SilentAim = false
 getgenv().AimLock = false
 getgenv().Prediction = (0.165)
 getgenv().AimLockKeybind = Enum.KeyCode.E
 
-local err = function(msg)
-    local RRixh1 = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/skripts/AkaliNotif",true))(); local Notify = RRixh1.Notify; wait(); Notify({ Description = msg;Duration = 3; });
-end;
-local Empty = function()
-p = getgenv().Prediction
- if(p=='' or p==" " or p=="   " or p=="    " or p=="      " or p=="        " or p== "         ")then return;end
-end
-
-
-uwu:AddBox({text = "Aimloxk Keybind", callback = function(enteredKey)
-getgenv().keykode = enteredKey
-getgenv().AimLockKeybind = getgenv().keykode
-loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/kustomskript/v2.ls.KAS-keybindgen",true))();
-end});
-
-uwu:AddBox({text = "Prediktion (default: 0.165)", callback = function(...)
-            Empty()
-  getgenv().Prediction = ...;task.wait()
-err("Prediktion set to "..(...))
-end});
-
-uwu:AddToggle({text = "Silent Aim", callback = function(toggleState)
-getgenv().SilentAim = toggleState
-end});
-
-uwu:AddToggle({text = "Aimloxk", callback = function(toggleState)
-getgenv().AimLock = toggleState
-end});
-
+-- // depen
+local Aiming = loadstring(game:HttpGet[[https://raw.githubusercontent.com/rrixh/uwuware/main/kustomskript/silentaimmodule]])();
 Aiming.TeamCheck(false)
 
 -- // Services
@@ -113,5 +82,46 @@ RunService:BindToRenderStep("AimLock", 0, function()
         CurrentCamera.CFrame = CFrame.lookAt(CurrentCamera.CFrame.Position, Hit.Position)
     end
 end)
+
+local uwuRRIXH = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/mobileware",true))();local lulaslollipop="lulaslollipop 🍭";local uwu=uwuRRIXH:CreateWindow("RRixh DaHood gui");
+
+local err = function(msg)
+    local RRixh1 = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/skripts/AkaliNotif",true))(); local Notify = RRixh1.Notify; wait(); Notify({ Description = msg;Duration = 3; });
+end;
+local Empty = function()
+p = getgenv().Prediction
+ if(p=='' or p==" " or p=="   " or p=="    " or p=="      " or p=="        " or p== "         ")then
+return;end
+end
+
+
+uwu:AddBox({text = "Aimloxk Keybind", callback = function(enteredKey)
+getgenv().keykode = enteredKey
+getgenv().AimLockKeybind = getgenv().keykode
+loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/kustomskript/v2.ls.KAS-keybindgen",true))();
+end});
+
+uwu:AddBox({text = "Prediktion (default: 0.165 — put \"def\" to reset)", callback = function(...)
+if ... == "def" then getgenv().Prediction = 0.165; task.wait()
+err("Prediktion set to default (0.165)") end;
+local _ = tonumber((...))
+if _ then
+ getgenv().Prediction = _
+task.wait()
+err("Prediktion set to "..(...))
+else
+if (...) == "def" then return true end
+err("number only nigger 👺")
+return end
+end});
+
+uwu:AddToggle({text = "Silent Aim", callback = function(toggleState)
+getgenv().SilentAim = toggleState
+end});
+
+uwu:AddToggle({text = "Aimloxk", callback = function(toggleState)
+getgenv().AimLock = toggleState
+end});
+
 
 uwu:AddFolder(lulaslollipop); uwuRRIXH:Init();
