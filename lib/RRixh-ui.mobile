@@ -8,7 +8,7 @@ local ToggleFont = Enum.Font.FredokaOne
 local TabsFont = Enum.Font.PatrickHand
 --------------------------------------------------
 local TopBoarder_Kolor = Color3.fromRGB(30, 30, 30)
-local TabsButton_Kolor = Color3.fromRGB(255, 148, 148)
+local TabsButton_Kolor = Color3.fromRGB(190, 148, 148)
 local TabsText_Kolor = Color3.fromRGB(255, 255, 255)
 local PageOpened_Kolor = Color3.fromRGB(0, 180, 0)
 local GuiFrame_Kolor = Color3.fromRGB(30, 30, 30)
