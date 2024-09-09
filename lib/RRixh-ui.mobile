@@ -11,7 +11,7 @@ local GuiFrame_Kolor = Color3.fromRGB(30, 30, 30)
 local OpenGui_Kolor = Color3.fromRGB(190, 46, 28)
 local dragFX = Color3.fromRGB(255, 255, 255)
 local buttonKlickedGlow = Color3.fromRGB(250, 250, 250)
-local toggleButtonImageID = "" -- put your image ID (without 'rbxassetid://')
+local toggleButtonImageID = "0" -- put your image ID (without 'rbxassetid://')
 local paddingHeight = 5
 
 -- Create GUI elements
@@ -286,7 +286,7 @@ SetTitle = function(newTitle)
 titleLabel.Text = newTitle
 end,
 
-SetToggleText = function(newguitxt)
+ToggleText = function(newguitxt)
 guiToggleButton.Text = newguitxt
 end,
 
