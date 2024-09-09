@@ -1,4 +1,9 @@
 -- RRIXH UI LIBRARY (KUSTOM)
+if getgenv().rrixh==true then
+local RRixh1 = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/skripts/AkaliNotif",true))(); local Notify = RRixh1.Notify; wait(); Notify({ Description = "hub already loaded nigga 👺";Duration = 3; });
+return end;
+getgenv().rrixh = true;
+
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
