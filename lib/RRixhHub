@@ -1,5 +1,3 @@
-local RRixhHub = [[
-
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 getgenv().lollypopimg = (17767487755)
@@ -305,9 +303,8 @@ makeDraggable(topBoarder, mainFrame, mainFrameGlowEffect)
 makeDraggable(guiToggleButton, guiToggleButton, toggleButtonGlowEffect)
 
 -- expose
-return { 
-Button = Button, 
-Toggle = Toggle, 
-Textbox = Textbox
-}
-]]
+--return { 
+--Button = Button, 
+--Toggle = Toggle, 
+--Textbox = Textbox
+--}
