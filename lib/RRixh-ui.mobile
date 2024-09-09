@@ -1,3 +1,4 @@
+-- RRIXH UI LIBRARY (KUSTOM)
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
@@ -9,9 +10,9 @@ local PageOpened_Kolor = Color3.fromRGB(0, 180, 0)
 local GuiFrame_Kolor = Color3.fromRGB(30, 30, 30)
 local OpenGui_Kolor = Color3.fromRGB(190, 46, 28)
 local dragFX = Color3.fromRGB(255, 255, 255)
-local buttonKlickedGlow = Color3.fromRGB(0, 190, 0)
+local buttonKlickedGlow = Color3.fromRGB(250, 250, 250)
 local toggleButtonImageID = "6031068420" -- Replace with your image ID (without 'rbxassetid://')
-local paddingHeight = 5 -- Padding height for the layout
+local paddingHeight = 5
 
 -- Create GUI elements
 local screenGui = Instance.new("ScreenGui")
