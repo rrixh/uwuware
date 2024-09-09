@@ -1,0 +1,314 @@
+local RRixhHub = [[
+
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+getgenv().lollypopimg = (17767487755)
+getgenv().getImg = (0)
+getgenv().openfont = Enum.Font.DenkOne
+getgenv().opentextsize = 20
+getgenv().GUIdefaultkolor = Color3.fromRGB(50, 50, 50)
+
+--kolors
+local lavender = Color3.fromRGB(140,91,159)
+local pastelviolet = Color3.fromRGB(177,167,255)
+local hotpink = Color3.fromRGB(255,0,191)
+local biege = Color3.fromRGB(202,191,163)
+local sunrisepink = Color3.fromRGB(212,144,189)
+local salmonred = Color3.fromRGB(255,148,148)
+local white = Color3.fromRGB(255,255,255)
+local darkgreen = Color3.fromRGB(0, 180, 0)
+local blaxk = Color3.fromRGB(30, 30, 30)
+local burgundy = Color3.fromRGB(190,46,28)
+local lime = Color3.fromRGB(0,255,0)
+local yellow = Color3.fromRGB(255,255,0)
+local guiframe_default = Color3.fromRGB(239,184,56)
+
+--ui kolors
+local TitleBar_Kolor = blaxk
+local Tabs_Kolor = salmonred
+local TabsText_Kolor = white
+local PageOpened_Kolor = darkgreen
+local GuiFrame_Kolor = blaxk
+local OpenGui_Kolor = burgundy
+local dragFX = white
+
+local OpenGui_Image = 'rbxassetid://'..getgenv().getImg
+
+-- gui elements
+local screenGui = Instance.new("ScreenGui")
+local mainFrame = Instance.new("Frame")
+local topBoarder = Instance.new("Frame")
+local titleLabel = Instance.new("TextLabel")
+local pages = {}
+local pageNames = {"Home", "Skripts", "Player", "More", "Settings"}
+local tabButtons = {}
+local guiToggleButton = Instance.new("TextButton")
+local guiToggleButtonImage = Instance.new("ImageLabel")
+local closeButton = Instance.new("ImageButton")
+local uiGradient = Instance.new("UIGradient")
+
+local hasMoved = false
+local dragThreshold = 5
+
+screenGui.Parent = game.CoreGui
+
+-- Main frame
+mainFrame.Size = UDim2.new(0.5, 0, 0.5, 0)
+mainFrame.Position = UDim2.new(0.25, 0, 0.25, 0)
+mainFrame.BackgroundColor3 = GuiFrame_Kolor
+mainFrame.ClipsDescendants = true
+mainFrame.Parent = screenGui
+
+-- Top boarder
+topBoarder.Size = UDim2.new(1, 0, 0, 30)
+topBoarder.BackgroundColor3 = TitleBar_Kolor
+topBoarder.Parent = mainFrame
+
+-- Title label
+titleLabel.Size = UDim2.new(1, -60, 1, 0)
+titleLabel.Position = UDim2.new(0, 30, 0, 0)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Text = "RRixh Hub 👺"
+titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleLabel.Parent = topBoarder
+
+-- Create pages with scrollable content
+for i, name in ipairs(pageNames) do
+local scrollingFrame = Instance.new("ScrollingFrame")
+    scrollingFrame.Name = name
+    scrollingFrame.Size = UDim2.new(1, 0, 1, -60) -- Reserving space for tab buttons and top boarder
+    scrollingFrame.Position = UDim2.new(0, 0, 0, 60)
+    scrollingFrame.Visible = i == 1 -- Only the first page is visible by default
+    scrollingFrame.ScrollBarThickness = 10
+    scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+    scrollingFrame.Parent = mainFrame
+    pages[name] = scrollingFrame
+
+    -- Layout inside the scrolling frame
+    local layout = Instance.new("UIListLayout")
+    layout.Padding = UDim.new(0, 5) -- Add padding between items
+    layout.Parent = scrollingFrame
+
+    -- kanvas auto adjustment +items
+    layout.Changed:Connect(function(property)
+        if property == "AbsoluteContentSize" then
+            scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y)
+        end
+    end)
+
+    local label = Instance.new("TextLabel")
+    label.Text = name
+    label.Size = UDim2.new(1, 0, 0, 30)
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.BackgroundTransparency = 1
+    label.Parent = scrollingFrame
+end
+
+-- tabs
+for i, name in ipairs(pageNames) do
+    local tabButton = Instance.new("TextButton")
+    tabButton.Text = name
+    tabButton.Size = UDim2.new(0.2, 0, 0, 30)
+    tabButton.Position = UDim2.new((i-1) * 0.2, 0, 0, 30)
+    tabButton.BackgroundColor3 = Tabs_Kolor
+    tabButton.TextColor3 = TabsText_Kolor
+    tabButton.Parent = mainFrame
+    tabButtons[name] = tabButton
+
+    tabButton.MouseButton1Click:Connect(function()
+        for _, btn in pairs(tabButtons) do
+            btn.BackgroundColor3 = Tabs_Kolor
+        end
+        tabButton.BackgroundColor3 = PageOpened_Kolor
+        for _, page in pairs(pages) do
+            page.Visible = false
+        end
+        pages[name].Visible = true
+    end)
+end
+
+-- klose
+closeButton.Size = UDim2.new(0, 30, 0, 30)
+closeButton.Position = UDim2.new(1, -30, 0, 0)
+closeButton.Image = "rbxassetid://6035047377" -- Red "X" icon
+closeButton.BackgroundTransparency = 1
+closeButton.Parent = topBoarder
+
+closeButton.MouseButton1Click:Connect(function()
+    local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local hideTween = TweenService:Create(mainFrame, tweenInfo, {Size = UDim2.new(0, 0, 0, 0), Position = UDim2.new(0.5, 0, 0.5, 0)})
+    hideTween:Play()
+    hideTween.Completed:Connect(function()
+        mainFrame.Visible = false
+        guiToggleButton.Visible = true
+    end)
+end)
+
+
+guiToggleButton.Size = UDim2.new(0, 100, 0, 40)
+guiToggleButton.BackgroundColor3 = OpenGui_Kolor
+guiToggleButton.Text = "RRixh Hub 👺"
+guiToggleButton.TextSize = getgenv().opentextsize
+guiToggleButton.Position = UDim2.new(0.5, -50, 0, 0)
+guiToggleButton.TextWrapped = true
+guiToggleButton.Font = getgenv().openfont
+guiToggleButton.Visible = false
+guiToggleButton.Parent = screenGui
+
+
+-- adding image to the Open gui button
+guiToggleButtonImage.Size = UDim2.new(0, 24, 0, 24)
+guiToggleButtonImage.Position = UDim2.new(0, 5, 0, 3) -- Adjust the position as per your needs
+guiToggleButtonImage.BackgroundTransparency = 1
+guiToggleButtonImage.Image = OpenGui_Image
+guiToggleButtonImage.Parent = guiToggleButton
+
+-- Adding UIStroke to the GUI toggle button
+local toggleButtonGlowEffect = Instance.new("UIStroke")
+toggleButtonGlowEffect.Parent = guiToggleButton
+toggleButtonGlowEffect.Color = dragFX
+toggleButtonGlowEffect.Thickness = 2
+toggleButtonGlowEffect.Transparency = 1
+
+guiToggleButton.MouseButton1Click:Connect(function()
+    if not hasMoved then
+        guiToggleButton.Visible = false
+        mainFrame.Visible = true
+        local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        local showTween = TweenService:Create(mainFrame, tweenInfo, {Size = UDim2.new(0.5, 0, 0.5, 0), Position = UDim2.new(0.25, 0, 0.25, 0)})
+        showTween:Play()
+    end
+hasMoved = false -- Reset move status
+end)
+
+-- Function to add a button to a page
+local function Button(pageName, buttonText, onClick)
+    local button = Instance.new("TextButton")
+    button.Text = buttonText
+    button.Size = UDim2.new(1, 0, 0, 30)
+    button.Parent = pages[pageName]
+    button.MouseButton1Click:Connect(function()
+        onClick()
+    end)
+end
+
+-- toggle
+local function Toggle(pageName, toggleText, onToggle)
+    local toggleButton = Instance.new("TextButton")
+    toggleButton.Text = toggleText
+    toggleButton.Size = UDim2.new(1, 0, 0, 30)
+    toggleButton.BackgroundColor3 = Tabs_Kolor
+    toggleButton.TextColor3 = TabsText_Kolor
+    toggleButton.Parent = pages[pageName]
+    local toggled = false
+
+    toggleButton.MouseButton1Click:Connect(function()
+        toggled = not toggled
+        toggleButton.BackgroundColor3 = toggled and PageOpened_Kolor or Tabs_Kolor
+        onToggle(toggled)
+    end)
+end
+
+-- Function to add a textbox to a page
+local function Textbox(pageName, placeholderText, onTextChanged)
+    local textBox = Instance.new("TextBox")
+    textBox.PlaceholderText = placeholderText
+    textBox.Size = UDim2.new(1, 0, 0, 30)
+    textBox.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    textBox.TextColor3 = Color3.fromRGB(0, 0, 0)
+    textBox.Parent = pages[pageName]
+
+    textBox.FocusLost:Connect(function(enterPressed)
+        if enterPressed then
+            onTextChanged(textBox.Text)
+        end
+    end)
+end
+
+-- UI Gradient
+uiGradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(50, 255, 50)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(100, 255, 100))
+}
+uiGradient.Rotation = 45
+uiGradient.Parent = mainFrame
+
+-- Animation for the gradient
+local tweenInfo = TweenInfo.new(2, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1, true)
+local tween = TweenService:Create(uiGradient, tweenInfo, {
+    Offset = Vector2.new(1, 0)
+})
+tween:Play()
+
+-- Dragging functionality
+local function makeDraggable(topObject, object, glowEffect)
+    local dragging = false
+    local dragStart, startPos
+
+    local function update(input)
+        local delta = input.Position - dragStart
+        object.Position = UDim2.new(
+            startPos.X.Scale,
+            startPos.X.Offset + delta.X,
+            startPos.Y.Scale,
+            startPos.Y.Offset + delta.Y
+        )
+        if (math.abs(delta.X) >= dragThreshold or math.abs(delta.Y) >= dragThreshold) then
+            hasMoved = true
+        end
+    end
+
+    topObject.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+        or input.UserInputType == Enum.UserInputType.Touch
+        then
+            dragging = true
+            dragStart = input.Position
+            startPos = object.Position
+
+            -- Start glowing effect
+            TweenService:Create(glowEffect, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Transparency = 0}):Play()
+
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+
+                    -- End glowing effect
+                    TweenService:Create(glowEffect, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Transparency = 1}):Play()
+                end
+            end)
+        end
+    end)
+
+    topObject.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement
+        or input.UserInputType == Enum.UserInputType.Touch
+        then
+            dragInput = input
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then update(input) end
+    end)
+end
+
+-- Adding UIStroke to mainFrame for glowing drag effect
+local mainFrameGlowEffect = Instance.new("UIStroke")
+mainFrameGlowEffect.Parent = mainFrame
+
+mainFrameGlowEffect.Color = dragFX
+mainFrameGlowEffect.Thickness = 2
+mainFrameGlowEffect.Transparency = 1
+
+makeDraggable(topBoarder, mainFrame, mainFrameGlowEffect)
+makeDraggable(guiToggleButton, guiToggleButton, toggleButtonGlowEffect)
+
+-- expose
+return { 
+Button = Button, 
+Toggle = Toggle, 
+Textbox = Textbox
+}
+]]
+local lulas = loadstring(RRixhHub)()
