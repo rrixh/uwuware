@@ -13,15 +13,24 @@ local ToggleFont = Enum.Font.FredokaOne
 local TabsFont = Enum.Font.PatrickHand
 --------------------------------------------------
 local TopBoarder_Kolor = Color3.fromRGB(30, 30, 30)
+
 local TabsButton_Kolor = Color3.fromRGB(190, 148, 148)
+
 local TabsText_Kolor = Color3.fromRGB(255, 255, 255)
+
 local PageOpened_Kolor = Color3.fromRGB(0, 180, 0)
+
 local GuiFrame_Kolor = Color3.fromRGB(30, 30, 30)
+
 local OpenGui_Kolor = Color3.fromRGB(190, 46, 28)
+
 local dragFX = Color3.fromRGB(255, 255, 255)
-local buttonKlickedGlow = Color3.fromRGB(250, 250, 250)
+
+local buttonKlickedGlow = Color3.fromRGB(190, 190, 190)
 local toggleButtonImageID = "0" -- without ('rbxassetid://')
+
 local defaultTogglePosition = UDim2.new(0.5, -50, 0, 0)
+
 local paddingHeight = 3
 --------------------------------------------------
 -- gui elements
