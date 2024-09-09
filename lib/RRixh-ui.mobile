@@ -103,6 +103,8 @@ end)
 
 local label = Instance.new("TextLabel")
 label.Text = name
+label.Font = Enum.Font.LuckiestGuy
+label.TextSize = 13
 label.Size = UDim2.new(1, 0, 0, 30)
 label.TextColor3 = Color3.fromRGB(255, 255, 255)
 label.BackgroundTransparency = 1
