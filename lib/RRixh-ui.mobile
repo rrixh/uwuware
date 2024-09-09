@@ -11,10 +11,12 @@ local UserInputService = game:GetService("UserInputService")
 local TitleFont = Enum.Font.PatrickHand
 local ToggleFont = Enum.Font.FredokaOne
 local TabsFont = Enum.Font.PatrickHand
+local biege = Color3.fromRGB(166, 146, 121)
+local pinkish = Color3.fromRGB(190, 148, 148)
 --------------------------------------------------
 local TopBoarder_Kolor = Color3.fromRGB(30, 30, 30)
 
-local TabsButton_Kolor = Color3.fromRGB(190, 148, 148)
+local TabsButton_Kolor = biege
 
 local TabsText_Kolor = Color3.fromRGB(255, 255, 255)
 
@@ -22,11 +24,12 @@ local PageOpened_Kolor = Color3.fromRGB(0, 180, 0)
 
 local GuiFrame_Kolor = Color3.fromRGB(30, 30, 30)
 
-local OpenGui_Kolor = Color3.fromRGB(190, 46, 28)
+local OpenGui_Kolor = Color3.fromRGB(190, 46, 190)
 
-local dragFX = Color3.fromRGB(255, 255, 255)
+local dragFX = Color3.fromRGB(255, 150, 150)
 
 local buttonKlickedGlow = Color3.fromRGB(190, 190, 190)
+
 local toggleButtonImageID = "0" -- without ('rbxassetid://')
 
 local defaultTogglePosition = UDim2.new(0.5, -50, 0, 0)
@@ -74,7 +77,7 @@ titleLabel.Font = TitleFont
 titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 titleLabel.Parent = topBoarder
 
--- Create pages with scrollable content
+-- skrollable kontent pages
 for i, name in ipairs(pageNames) do
 local scrollingFrame = Instance.new("ScrollingFrame")
 scrollingFrame.Name = name
@@ -132,10 +135,13 @@ pages[name].Visible = true
 end)
 end
 
--- Close button
+-- klose button
+local plusimg = (6035047377)
+local mini = (127488103892969)
+local KloseImg=(plusimg)
 closeButton.Size = UDim2.new(0, 30, 0, 30)
 closeButton.Position = UDim2.new(1, -30, 0, 0)
-closeButton.Image = "rbxassetid://6035047377" -- Red "X" icon
+closeButton.Image = "rbxassetid://"..KloseImg
 closeButton.BackgroundTransparency = 1
 closeButton.Parent = topBoarder
 closeButton.MouseButton1Click:Connect(function()
