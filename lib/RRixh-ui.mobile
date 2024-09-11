@@ -23,7 +23,8 @@ local whitelistedInputs = { mobile, mousemove, mouse1 }
 -- UI kustomize
 local pageFadeTime = -99e99
 local TitleFont = Enum.Font.PatrickHand
-local ToggleFont = Enum.Font.FredokaOne
+local toggledButtonSize = 16
+local ToggledFont = Enum.Font.FredokaOne
 local TabsFont = Enum.Font.PatrickHand
 local biege = Color3.fromRGB(166, 146, 121)
 local pinkish = Color3.fromRGB(190, 148, 148)
@@ -328,7 +329,8 @@ toggleButton.Text = toggleText
 toggleButton.Size = UDim2.new(1, 0, 0, 30)
 toggleButton.BackgroundColor3 = TabsButton_Kolor
 toggleButton.TextColor3 = TabsText_Kolor
-toggleButton.Font = ToggleFont
+toggleButton.Font = ToggledFont
+toggleButton.TextSize = toggledButtonSize
 toggleButton.Parent = pages[pageName]
 local toggled = false
 toggleButton.MouseButton1Click:Connect(function()
@@ -363,4 +365,4 @@ guiToggleButton.Text = newguitxt
 end
 }
 
-return lula;
+return lula
