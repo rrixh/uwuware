@@ -1,56 +1,59 @@
--- RRIXH UI LIBRARY (KUSTOM)
-if getgenv().rrixh==true then
-local RRixh1 = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/skripts/AkaliNotif",true))(); local Notify = RRixh1.Notify; wait(); Notify({ Description = "hub already loaded nigga 👺";Duration = 3; });
-return end;
-getgenv().rrixh = true;
+if getgenv().rrixh == true then
+local RRixh1 = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/skripts/AkaliNotif", true))()
+local Notify = RRixh1.Notify
+wait()
+Notify({
+Description = "hub already loaded 👺",
+Duration = 3
+})
+return
+end
+getgenv().rrixh = true
 
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
--- UI kustomizable
+-- Define input types
+local mobile = Enum.UserInputType.Touch
+local mouse1 = Enum.UserInputType.MouseButton1
+local mousemove = Enum.UserInputType.MouseMovement
+
+local whitelistedInputs = { mobile, mousemove, mouse1 }
+
+-- UI kustomize
+local pageFadeTime = -99e99
 local TitleFont = Enum.Font.PatrickHand
 local ToggleFont = Enum.Font.FredokaOne
 local TabsFont = Enum.Font.PatrickHand
 local biege = Color3.fromRGB(166, 146, 121)
 local pinkish = Color3.fromRGB(190, 148, 148)
---------------------------------------------------
 local TopBoarder_Kolor = Color3.fromRGB(30, 30, 30)
-
 local TabsButton_Kolor = biege
-
 local TabsText_Kolor = Color3.fromRGB(255, 255, 255)
-
 local PageOpened_Kolor = Color3.fromRGB(0, 180, 0)
-
 local GuiFrame_Kolor = Color3.fromRGB(30, 30, 30)
-
 local OpenGui_Kolor = Color3.fromRGB(190, 46, 190)
-
 local dragFX = Color3.fromRGB(255, 150, 150)
-
 local buttonKlickedGlow = Color3.fromRGB(190, 190, 190)
-
 local toggleButtonImageID = "0" -- without ('rbxassetid://')
-
 local defaultTogglePosition = UDim2.new(0.5, -50, 0, 0)
-
 local paddingHeight = 3
---------------------------------------------------
--- gui elements
+
+local pageNames = {"Home", "Skripts", "Player", "Tools", "Others"}
+
+-- Create GUI elements
 local screenGui = Instance.new("ScreenGui")
 local mainFrame = Instance.new("Frame")
 local topBoarder = Instance.new("Frame")
 local titleLabel = Instance.new("TextLabel")
 local pages = {}
-local pageNames = {"Home", "Skripts", "Player", "Tools", "Others"}
 local tabButtons = {}
 local guiToggleButton = Instance.new("TextButton")
 local guiToggleButtonImage = Instance.new("ImageLabel")
 local closeButton = Instance.new("ImageButton")
-local uiGradient = Instance.new("UIGradient")
 
 local hasMoved = false
-local dragThreshold = 5
+local dragThreshold = 12
 local dragging, dragInput, dragStart, startPos
 
 screenGui.Parent = game.CoreGui
@@ -77,7 +80,7 @@ titleLabel.Font = TitleFont
 titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 titleLabel.Parent = topBoarder
 
--- skrollable kontent pages
+-- Scrollable content pages
 for i, name in ipairs(pageNames) do
 local scrollingFrame = Instance.new("ScrollingFrame")
 scrollingFrame.Name = name
@@ -86,6 +89,7 @@ scrollingFrame.Position = UDim2.new(0, 0, 0, 60)
 scrollingFrame.Visible = i == 1 -- only the 1st page is visible by default
 scrollingFrame.ScrollBarThickness = 10
 scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+scrollingFrame.BackgroundTransparency = 0
 scrollingFrame.Parent = mainFrame
 pages[name] = scrollingFrame
 
@@ -103,15 +107,15 @@ end)
 
 local label = Instance.new("TextLabel")
 label.Text = name
+label.Size = UDim2.new(1, 0, 0, 30)
 label.Font = Enum.Font.LuckiestGuy
 label.TextSize = 13
-label.Size = UDim2.new(1, 0, 0, 30)
 label.TextColor3 = Color3.fromRGB(255, 255, 255)
 label.BackgroundTransparency = 1
 label.Parent = scrollingFrame
 end
 
--- TAB NAMES
+-- Tab names
 for i, name in ipairs(pageNames) do
 local tabButton = Instance.new("TextButton")
 tabButton.Text = name
@@ -119,7 +123,7 @@ tabButton.Size = UDim2.new(0.2, 0, 0, 30)
 tabButton.Font = TabsFont
 tabButton.TextSize = 21
 tabButton.TextWrapped = true
-tabButton.Position = UDim2.new((i-1) * 0.2, 0, 0, 30)
+tabButton.Position = UDim2.new((i - 1) * 0.2, 0, 0, 30)
 tabButton.BackgroundColor3 = TabsButton_Kolor
 tabButton.TextColor3 = TabsText_Kolor
 tabButton.Parent = mainFrame
@@ -130,20 +134,37 @@ for _, btn in pairs(tabButtons) do
 btn.BackgroundColor3 = TabsButton_Kolor
 end
 tabButton.BackgroundColor3 = PageOpened_Kolor
+
+-- Fade out the currently visible page
+local currentPage
 for _, page in pairs(pages) do
-page.Visible = false
+if page.Visible then
+currentPage = page
+break
 end
-pages[name].Visible = true
+end
+
+if currentPage then
+TweenService:Create(currentPage, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundTransparency = 1}):Play()
+wait(pageFadeTime)
+currentPage.Visible = false
+currentPage.BackgroundTransparency = 0
+end
+
+-- Fade in the new page
+local newPage = pages[name]
+newPage.Visible = true
+newPage.BackgroundTransparency = 1
+TweenService:Create(newPage, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundTransparency = 0}):Play()
 end)
 end
 
--- klose button
-local plusimg = (6035047377)
-local mini = (127488103892969)
-local KloseImg=(plusimg)
+-- Close button
+local plusimg = 6035047377
+local KloseImg = plusimg
 closeButton.Size = UDim2.new(0, 30, 0, 30)
 closeButton.Position = UDim2.new(1, -30, 0, 0)
-closeButton.Image = "rbxassetid://"..KloseImg
+closeButton.Image = "rbxassetid://" .. KloseImg
 closeButton.BackgroundTransparency = 1
 closeButton.Parent = topBoarder
 closeButton.MouseButton1Click:Connect(function()
@@ -181,21 +202,21 @@ toggleButtonGlowEffect.Color = dragFX
 toggleButtonGlowEffect.Thickness = 2
 toggleButtonGlowEffect.Transparency = 1
 
-guiToggleButton.MouseButton1Click:Connect(function()
-if not hasMoved then
-guiToggleButton.Visible = false
-mainFrame.Visible = true
-local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-local showTween = TweenService:Create(mainFrame, tweenInfo, {Size = UDim2.new(0.5, 0, 0.5, 0), Position = UDim2.new(0.25, 0, 0.25, 0)})
-showTween:Play()
+local function createGlowEffect(parent, thickness)
+local uiStroke = Instance.new("UIStroke")
+uiStroke.Parent = parent
+uiStroke.Color = dragFX
+uiStroke.Thickness = thickness or 2
+uiStroke.Transparency = 1
+return uiStroke
 end
-hasMoved = false -- Reset move status
-end)
 
--- Make draggable function
+local mainFrameGlowEffect = createGlowEffect(mainFrame, 4)
+local guiToggleButtonGlowEffect = createGlowEffect(guiToggleButton, 2)
+
+-- Enhanced makeDraggable function with threshold check on release
 local function makeDraggable(topObject, object, glowEffect)
-local dragging = false
-local dragInput, dragStart, startPos
+local dragging, dragStart, startPos, dragInput, initialPos = false, nil, nil, nil, nil
 
 local function update(input)
 local delta = input.Position - dragStart
@@ -205,33 +226,50 @@ startPos.X.Offset + delta.X,
 startPos.Y.Scale,
 startPos.Y.Offset + delta.Y
 )
-if (math.abs(delta.X) >= dragThreshold or math.abs(delta.Y) >= dragThreshold) then
-hasMoved = true
-end
 end
 
 topObject.InputBegan:Connect(function(input)
-if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+if table.find(whitelistedInputs, input.UserInputType) then
 dragging = true
 dragStart = input.Position
 startPos = object.Position
+initialPos = object.Position -- Store the initial position when dragging starts
 
 -- Start glowing effect
-TweenService:Create(glowEffect, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Transparency = 0}):Play()
+TweenService:Create(glowEffect, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+Transparency = 0
+}):Play()
 
 input.Changed:Connect(function()
 if input.UserInputState == Enum.UserInputState.End then
 dragging = false
 
 -- End glowing effect
-TweenService:Create(glowEffect, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Transparency = 1}):Play()
+TweenService:Create(glowEffect, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+Transparency = 1
+}):Play()
+
+-- Check if the drag movement exceeds the threshold
+local deltaX = math.abs(initialPos.X.Offset - object.Position.X.Offset)
+local deltaY = math.abs(initialPos.Y.Offset - object.Position.Y.Offset)
+if deltaX < dragThreshold and deltaY < dragThreshold then
+-- Open the main GUI
+guiToggleButton.Visible = false
+mainFrame.Visible = true
+local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local showTween = TweenService:Create(mainFrame, tweenInfo, {
+Size = UDim2.new(0.5, 0, 0.5, 0),
+Position = UDim2.new(0.25, 0, 0.25, 0)
+})
+showTween:Play()
+end
 end
 end)
 end
 end)
 
 topObject.InputChanged:Connect(function(input)
-if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+if table.find(whitelistedInputs, input.UserInputType) then
 dragInput = input
 end
 end)
@@ -243,15 +281,8 @@ end
 end)
 end
 
--- Adding UIStroke to mainFrame for glowing drag effect
-local mainFrameGlowEffect = Instance.new("UIStroke")
-mainFrameGlowEffect.Parent = mainFrame
-mainFrameGlowEffect.Color = dragFX
-mainFrameGlowEffect.Thickness = 2
-mainFrameGlowEffect.Transparency = 1
-
 makeDraggable(topBoarder, mainFrame, mainFrameGlowEffect)
-makeDraggable(guiToggleButton, guiToggleButton, toggleButtonGlowEffect)
+makeDraggable(guiToggleButton, guiToggleButton, guiToggleButtonGlowEffect)
 
 -- Define the "lula" table with functions
 local lula = {
@@ -270,15 +301,20 @@ buttonGlowEffect.Thickness = 2
 buttonGlowEffect.Transparency = 1
 
 button.MouseButton1Down:Connect(function()
-TweenService:Create(buttonGlowEffect, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Transparency = 0}):Play()
+TweenService:Create(buttonGlowEffect, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+Transparency = 0
+}):Play()
 end)
-
 button.MouseButton1Up:Connect(function()
-TweenService:Create(buttonGlowEffect, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Transparency = 1}):Play()
+TweenService:Create(buttonGlowEffect, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+Transparency = 1
+}):Play()
 end)
 
 button.MouseLeave:Connect(function()
-TweenService:Create(buttonGlowEffect, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Transparency = 1}):Play()
+TweenService:Create(buttonGlowEffect, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+Transparency = 1
+}):Play()
 end)
 
 button.MouseButton1Click:Connect(onClick)
@@ -292,6 +328,7 @@ toggleButton.Text = toggleText
 toggleButton.Size = UDim2.new(1, 0, 0, 30)
 toggleButton.BackgroundColor3 = TabsButton_Kolor
 toggleButton.TextColor3 = TabsText_Kolor
+toggleButton.Font = ToggleFont
 toggleButton.Parent = pages[pageName]
 local toggled = false
 toggleButton.MouseButton1Click:Connect(function()
@@ -318,16 +355,11 @@ return textBox
 end,
 
 SetTitle = function(newTitle)
-titleLabel.Text = newTitle .. " 🍭"
+titleLabel.Text = newTitle
 end,
 
-SetToggleText = function(newguitxt)
+ToggleText = function(newguitxt)
 guiToggleButton.Text = newguitxt
-end,
-
-SetToggleImageID = function(newImageID)
-toggleButtonImageID = newImageID
-guiToggleButtonImage.Image = "rbxassetid://" .. toggleButtonImageID
 end
 }
 
