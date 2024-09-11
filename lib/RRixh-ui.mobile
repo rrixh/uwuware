@@ -30,8 +30,8 @@ local buttonFont = Enum.Font.FredokaOne
 local toggledButtonSize = 16
 local ToggledFont = Enum.Font.FredokaOne
 
-local textboxSize = 16
-local textboxFont = Enum.Font.FredokaOne
+--local textboxSize = 16
+--local textboxFont = Enum.Font.FredokaOne
 
 local TabsFont = Enum.Font.PatrickHand
 
@@ -357,8 +357,8 @@ local textBox = Instance.new("TextBox")
 textBox.PlaceholderText = placeholderText
 textBox.Size = UDim2.new(1, 0, 0, 30)
 textBox.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-textBox.TextSize = textboxSize
-textBox.Font = textboxFont
+--textBox.TextSize = textboxSize
+--textBox.Font = textboxFont
 textBox.TextColor3 = Color3.fromRGB(0, 0, 0)
 textBox.Parent = pages[pageName]
 textBox.FocusLost:Connect(function(enterPressed)
