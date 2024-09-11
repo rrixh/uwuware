@@ -24,14 +24,16 @@ local whitelistedInputs = { mobile, mousemove, mouse1 }
 local pageFadeTime = -99e99
 local TitleFont = Enum.Font.PatrickHand
 
+--[[
 local buttonSize = 16
 local buttonFont = Enum.Font.FredokaOne
 
 local toggledButtonSize = 16
 local ToggledFont = Enum.Font.FredokaOne
 
---local textboxSize = 16
---local textboxFont = Enum.Font.FredokaOne
+local textboxSize = 16
+local textboxFont = Enum.Font.FredokaOne
+]]--
 
 local TabsFont = Enum.Font.PatrickHand
 
@@ -299,8 +301,8 @@ local lula = {
 Button = function(pageName, buttonText, onClick)
 local button = Instance.new("TextButton")
 button.Text = buttonText
-button.TextSize = buttonSize
-button.Font = buttonFont
+--button.TextSize = buttonSize
+--button.Font = buttonFont
 button.Size = UDim2.new(1, 0, 0, 30)
 button.BackgroundColor3 = TabsButton_Kolor
 button.TextColor3 = TabsText_Kolor
@@ -341,8 +343,8 @@ toggleButton.Size = UDim2.new(1, 0, 0, 30)
 toggleButton.BackgroundColor3 = TabsButton_Kolor
 toggleButton.TextColor3 = TabsText_Kolor
 toggleButton.Font = ToggledFont
-toggleButton.TextSize = toggledButtonSize
-toggleButton.Parent = pages[pageName]
+--toggleButton.TextSize = toggledButtonSize
+--toggleButton.Parent = pages[pageName]
 local toggled = false
 toggleButton.MouseButton1Click:Connect(function()
 toggled = not toggled
