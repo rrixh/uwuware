@@ -7,6 +7,13 @@ getgenv().rrixh = true;
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
+-- input types
+local mobile = (Enum.UserInputType.Touch)
+local mouse1 = (Enum.UserInputType.MouseButton1)
+local mousemove = (Enum.UserInputType.MouseMovement)
+local inputlist = { mobile, mousemove, mouse1 }
+local T = table.find;
+
 -- UI kustomizable
 local TitleFont = Enum.Font.PatrickHand
 local ToggleFont = Enum.Font.FredokaOne
@@ -211,7 +218,7 @@ end
 end
 
 topObject.InputBegan:Connect(function(input)
-if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+if T(inputlist, input.UserInputType) then
 dragging = true
 dragStart = input.Position
 startPos = object.Position
@@ -231,7 +238,7 @@ end
 end)
 
 topObject.InputChanged:Connect(function(input)
-if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+if T(inputlist, input.UserInputType) then
 dragInput = input
 end
 end)
