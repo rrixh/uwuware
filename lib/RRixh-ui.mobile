@@ -23,9 +23,18 @@ local whitelistedInputs = { mobile, mousemove, mouse1 }
 -- UI kustomize
 local pageFadeTime = -99e99
 local TitleFont = Enum.Font.PatrickHand
+
+local buttonSize = 16
+local buttonFont = Enum.Font.FredokaOne
+
 local toggledButtonSize = 16
 local ToggledFont = Enum.Font.FredokaOne
+
+local textboxSize = 16
+local textboxFont = Enum.Font.FredokaOne
+
 local TabsFont = Enum.Font.PatrickHand
+
 local biege = Color3.fromRGB(166, 146, 121)
 local pinkish = Color3.fromRGB(190, 148, 148)
 local TopBoarder_Kolor = Color3.fromRGB(30, 30, 30)
@@ -290,6 +299,8 @@ local lula = {
 Button = function(pageName, buttonText, onClick)
 local button = Instance.new("TextButton")
 button.Text = buttonText
+button.TextSize = buttonSize
+button.Font = buttonFont
 button.Size = UDim2.new(1, 0, 0, 30)
 button.BackgroundColor3 = TabsButton_Kolor
 button.TextColor3 = TabsText_Kolor
@@ -346,6 +357,8 @@ local textBox = Instance.new("TextBox")
 textBox.PlaceholderText = placeholderText
 textBox.Size = UDim2.new(1, 0, 0, 30)
 textBox.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+textBox.TextSize = textboxSize
+textBox.Font = textboxFont
 textBox.TextColor3 = Color3.fromRGB(0, 0, 0)
 textBox.Parent = pages[pageName]
 textBox.FocusLost:Connect(function(enterPressed)
@@ -365,4 +378,4 @@ guiToggleButton.Text = newguitxt
 end
 }
 
-return lula
+return lula;
