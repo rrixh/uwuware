@@ -1,0 +1,38 @@
+local player = game.Players.LocalPlayer
+local kam = workspace.CurrentCamera
+local loxkEnabled = false
+
+-- Funktion to loxk onto a target
+local function kamLoxk(target)
+    local function prediktPosition()
+        return target[loxk_settings.hitPart].Position + (target[loxk_settings.hitPart].Velocity * loxk_settings.prediktion)
+    end
+
+    game:GetService('RunService').RenderStepped:Connect(function()
+        if target and target.Parent and loxkEnabled then
+            local newPos = prediktPosition()
+            local smoothedPos = kam.CFrame.p:Lerp(newPos, loxk_settings.loxkSmoothing)
+            kam.CFrame = CFrame.new(kam.CFrame.p, smoothedPos)
+        end
+    end)
+end
+
+-- Konnect the kam loxk funktion to player's touch/mouse event
+local function onInput(input)
+    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        if loxkEnabled then
+            loxkEnabled = false
+            print("Camera lock disabled")
+        else
+            local target = game.Players:GetPlayers()[2] -- Placeholder, change with your target logic (excluding local player)
+            kamLoxk(target)
+            loxkEnabled = true
+            print("Camera lock enabled")
+        end
+    end
+end
+
+game:GetService("UserInputService").InputBegan:Connect(onInput)
+
+-- Set the kamera field of view
+kam.FieldOfView = loxk_settings.fov
