@@ -10,6 +10,27 @@ spawn(adonis);
 game:GetService("StarterGui"):SetCore("SendNotification", {Title = "Adonis anti-xheat", Duration = 5, Button1 = "prexiate it", Callback = function() end, Text = "adonis anti-xheat enabled"})
 end);
 
+pinkytab1:NewButton("spin loxk", "v3loader", function()
+    getgenv().ScriptSettings = {
+    Enabled = true,
+    Prediction = 0.1433,
+    HitscanPriority = "HumanoidRootPart",
+    FOV = 100, -- of ur on mobile do it on 200
+    Scan = true,
+    JumpOffset = 0, -- jump offset, ill make a video on this one
+    TargetStrafeSettings = {
+    Enabled = true,
+    GiveTool = true,
+    Speed = 1,
+    Height = 0,
+    Distance = 7
+    },
+    CameraLock = {
+    Enabled = true,
+    Smoothing = 0.5
+    } }  loadstring(game:HttpGet("https://api.luarmor.net/files/v3/loaders/7dd05d66b1acebfeec4fb31431a601eb.lua"))()
+  end)
+
 pinkytab1:NewButton("Prediktion (need q tool)", "qtoolneedd", function()
     getgenv().Prediction =  (  .19  )   -- [ PREDICTION: Lower Prediction: Lower Ping | Higher Prediction: Higher Ping  ]
 
