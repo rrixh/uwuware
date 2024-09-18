@@ -232,7 +232,7 @@ spawn(toggleLollypop);
 
 
 --[[
-local plr = game:GetService[[Players]].LocalPlayer
+local plr = game:GetService'Players'.LocalPlayer
 wait(9)
 
 plr:Kick('forgot to remove this sinxe u a random now...B-ya 👺')
