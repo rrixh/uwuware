@@ -10,7 +10,7 @@ spawn(adonis);
 game:GetService("StarterGui"):SetCore("SendNotification", {Title = "Adonis anti-xheat", Duration = 5, Button1 = "prexiate it", Callback = function() end, Text = "adonis anti-xheat enabled"})
 end);
 
-pinkytab1:NewButton("spin loxk", "v3loader", function()
+pinkytab1:NewButton("spin loxk (fatality)", "v3loader", function()
     getgenv().ScriptSettings = {
     Enabled = true,
     Prediction = 0.1433,
