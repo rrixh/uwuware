@@ -3,5 +3,8 @@ local failobby = (7584496019);
 if is(game.PlaceId, failobby) then
 loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/kustomskript/99%25failObby-KombineAvatars",true))();
 else
+spawn(function()
 local RRixh1 = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/skripts/AkaliNotif", true))(); local Notify = RRixh1.Notify Notify({Description = "must be in 99% fail obby nigger 👺"; Duration = 3});
+loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/kustomskript/99%25failObby-KombineAvatars",true))();
+end)
 return end;
