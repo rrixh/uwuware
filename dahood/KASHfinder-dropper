@@ -1,8 +1,4 @@
---DAHOOD KASHDROPPER/ESP
-if not Game:IsLoaded() then Game.Loaded:Wait() end 
---// DONT DELETE \\--
-loadstring(game:HttpGet("https://raw.githubusercontent.com/Pixeluted/adoniscries/main/Source.lua",true))();
-
+--DAHOOD KASH DROPPER/ESP
 
 local rrixhnigga = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/mobileware", true))()
 local hood = rrixhnigga:CreateWindow("DaHood Kash Dropper")
