@@ -1,4 +1,7 @@
---DAHOOD KASH DROPPER/ESP
+--DAHOOD KASHDROPPER/ESP
+if not Game:IsLoaded() then Game.Loaded:Wait() end 
+--// DONT DELETE \\--
+loadstring(game:HttpGet("https://raw.githubusercontent.com/Pixeluted/adoniscries/main/Source.lua",true))();
 
 local rrixhnigga = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/mobileware", true))()
 local hood = rrixhnigga:CreateWindow("DaHood Kash Dropper")
@@ -6,11 +9,13 @@ local hood = rrixhnigga:CreateWindow("DaHood Kash Dropper")
 local RunService = game:GetService("RunService")
 local money = 0
 
+--[[
 RunService.RenderStepped:Connect(function()
 local RRixh, _ = string.gsub(game.Players.LocalPlayer.PlayerGui.MainScreenGui.MoneyText.Text:split("$")[2], ",", "")
 money = tonumber(RRixh)
-print(money)
+print(tonumber(RRixh))
 end)
+]]--
 
 function dropKash(amount)
 game:GetService("ReplicatedStorage").MainEvent:FireServer("DropMoney", "" .. amount)
@@ -50,10 +55,11 @@ hood:AddFolder("lulaslollipop🍭")
 local findKash = rrixhnigga:CreateWindow("Kash Finder")
 
 local moneyESP = false
+local findKashToggle = false
+local pixkupNearbyKashToggle = false
+local tracersToggle = false
 
-findKash:AddToggle({
-text = "Kash ESP",
-callback = function(toggleOn)
+findKash:AddToggle({text = "Kash ESP", callback = function(toggleOn)
 moneyESP = toggleOn
 for _, m in pairs(workspace.Ignored.Drop:GetChildren()) do
 if m.Name == "MoneyDrop" then
@@ -61,40 +67,103 @@ if toggleOn then
 highlightMoney(m, true)
 else
 removeHighlight(m)
-end
-end
-end
-end
-})
+end;end;end
+end})
 
 --[[
-findKash:AddButton({text = "Find Kash (might detekt)",
-callback = function()
+findKash:AddToggle({text = "Find Kash",
+callback = function(toggleOn)
+findKashToggle = toggleOn
+
+if toggleOn then
+RunService.RenderStepped:Connect(function()
+if not findKashToggle then return end
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:FindFirstChildOfClass("Humanoid")
+
 for _, v in pairs(workspace.Ignored.Drop:GetChildren()) do
 if v.Name == "MoneyDrop" then
-local HumanoidRootPart = game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-if HumanoidRootPart then
-HumanoidRootPart.CFrame = v.CFrame
-    end
-   end
-  end
+
+-- Raycasting to avoid obstacles
+local ray = Ray.new(character.HumanoidRootPart.Position, (v.Position - character.HumanoidRootPart.Position).unit * 300)
+local hit = workspace:FindPartOnRay(ray, character)
+
+-- If there's something in the way, find a way around
+if hit and hit.Parent and hit.Parent ~= character then
+local directionVector = (v.Position - character.HumanoidRootPart.Position).unit
+local sideRay1 = Ray.new(character.HumanoidRootPart.Position, (directionVector + Vector3.new(0, 0, 1)).unit * 100)
+local sideRay2 = Ray.new(character.HumanoidRootPart.Position, (directionVector - Vector3.new(0, 0, 1)).unit * 100)
+local hit1 = workspace:FindPartOnRay(sideRay1, character)
+local hit2 = workspace:FindPartOnRay(sideRay2, character)
+
+if not hit1 then
+humanoid:MoveTo(character.HumanoidRootPart.Position + (directionVector + Vector3.new(0, 0, 1)) * 10)
+elseif not hit2 then
+humanoid:MoveTo(character.HumanoidRootPart.Position + (directionVector - Vector3.new(0, 0, 1)) * 10)
+else
+humanoid:MoveTo(v.Position)
+end
+else
+humanoid:MoveTo(v.Position)
+end;
+humanoid.MoveToFinished:Wait()
+
+if (character.HumanoidRootPart.Position - v.Position).Magnitude <= 10 then
+fireclickdetector(v:FindFirstChildWhichIsA("ClickDetector"))
+end; end; end
+end); end
 end})
 ]]--
 
-findKash:AddButton({text = "Pixkup Nearby Kash",
-callback = function()
-local function pickupKash()
+findKash:AddToggle({text = "Auto Pixkup Nearby Kash",
+callback = function(toggleOn)
+pixkupNearbyKashToggle = toggleOn
+
+local function pickupNearbyKash()
+if not pixkupNearbyKashToggle then return end
+
+local HumanoidRootPart = game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+if not HumanoidRootPart then return end
+
 for _, v in pairs(workspace.Ignored.Drop:GetChildren()) do
 if v.Name == "MoneyDrop" then
-local HumanoidRootPart = game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-if HumanoidRootPart and (HumanoidRootPart.Position - v.Position).Magnitude <= 10 then
+if (HumanoidRootPart.Position - v.Position).Magnitude <= 10 then
 fireclickdetector(v:FindFirstChildWhichIsA("ClickDetector"))
+end; end; end; end
+
+if toggleOn then
+RunService.RenderStepped:Connect(pickupNearbyKash)
 end
-end
-end
-end
-pickupKash()
 end})
+
+findKash:AddToggle({text = "Tracers",
+callback = function(toggleOn)
+tracersToggle = toggleOn
+for _, m in pairs(workspace.Ignored.Drop:GetChildren()) do
+if m.Name == "MoneyDrop" then
+if toggleOn then
+addTracer(m)
+else
+removeTracer(m)
+end
+end
+end
+
+workspace.Ignored.Drop.ChildAdded:Connect(function(child)
+if tracersToggle and child.Name == "MoneyDrop" then
+addTracer(child)
+end
+end)
+
+workspace.Ignored.Drop.ChildRemoved:Connect(function(child)
+if child.Name == "MoneyDrop" then
+removeTracer(child)
+end
+end)
+end
+})
 
 function highlightMoney(part, highlight)
 if highlight then
@@ -141,6 +210,37 @@ part.Highlight:Destroy()
 end
 if part:FindFirstChild("Billboard") then
 part.Billboard:Destroy()
+end
+end
+
+function addTracer(part)
+local att = Instance.new("Attachment", part)
+att.Name = "TracerAttachment"
+
+local beam = Instance.new("Beam", part)
+beam.Name = "Tracer"
+beam.Attachment0 = att
+beam.Attachment1 = game.Players.LocalPlayer.Character.HumanoidRootPart:FindFirstChildWhichIsA("Attachment") or Instance.new("Attachment", game.Players.LocalPlayer.Character.HumanoidRootPart)
+beam.Color = ColorSequence.new(Color3.fromRGB(255, 192, 203))
+beam.Transparency = NumberSequence.new(0.5)
+beam.FaceCamera = true
+beam.Width0 = 0.1
+beam.Width1 = 0.1
+
+part.Parent.ChildRemoved:Connect(function(child)
+if child == part then
+beam:Destroy()
+att:Destroy()
+end
+end)
+end
+
+function removeTracer(part)
+if part:FindFirstChild("Tracer") then
+part.Tracer:Destroy()
+end
+if part:FindFirstChild("TracerAttachment") then
+part.TracerAttachment:Destroy()
 end
 end
 
