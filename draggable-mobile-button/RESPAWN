@@ -1,6 +1,10 @@
+local owner = "\n\nlulaslollipop🍭"
 local UIS = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
+local kore = game.CoreGui
+local W = (115)
+local H = (50)
 
 --input types
 local mobile = Enum.UserInputType.Touch
@@ -15,11 +19,10 @@ local __ = table.find
 local function makeDraggable(guiElement)
     local dragging = false
     local dragInput, mousePos, framePos
-    local dragThreshold = 1
-    local notClicked = false
-
+    local dragThreshold = (1)
+    local notClicked = (false)
     guiElement.InputBegan:Connect(function(input)
-        if table.find(devixes, input.UserInputType) then
+if __(devixes, input.UserInputType) then
             dragging = true
             mousePos = input.Position
             framePos = guiElement.Position
@@ -34,15 +37,15 @@ local function makeDraggable(guiElement)
     end)
 
     guiElement.InputChanged:Connect(function(input)
-        if __(devixes, input.UserInputType) then
+if __(devixes, input.UserInputType) then
             dragInput = input
         end
     end)
 
     UIS.InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
-            local delta = input.Position - mousePos
-            if math.abs(delta.X) >= dragThreshold or math.abs(delta.Y) >= dragThreshold then
+   if (input == dragInput and dragging) then
+  local delta = input.Position - mousePos;
+  if math.abs(delta.X) >= dragThreshold or math.abs(delta.Y) >= dragThreshold then
                 notClicked = true
             end
 
@@ -58,27 +61,34 @@ local function makeDraggable(guiElement)
     end)
 
     return function()
-        return not dragging and notClicked == false
+return not dragging and notClicked == false
     end
 end;
 
-local screenGui = Instance.new("ScreenGui")
-screenGui.Parent = game.CoreGui
+local function makeRound(size, gui)
+local uiCorner = Instance.new("UICorner");
+uiCorner.CornerRadius = UDim.new(0, size);
+uiCorner.Parent = gui;
+end;
+
+local resetBtn = Instance.new("ScreenGui")
+resetBtn.Parent = kore
 
 local button = Instance.new("TextButton")
 button.Name = "ResetHealthButton"
-button.Text = "Reset Health"
-button.Size = UDim2.new(0, 140, 0, 50)
+button.Text = "Respawn"
+button.Size = UDim2.new(0, W, 0, H)
 button.Position = UDim2.new(0.4, 0, 0.7, 0)
 button.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 button.TextColor3 = Color3.new(1, 1, 1)
-button.Parent = screenGui
+button.Parent = resetBtn
 
+makeRound(15, button)
 local Klicked = makeDraggable(button)
 
 button.MouseButton1Click:Connect(function()
 if not Klicked() then return end;
     if player.Character and player.Character:FindFirstChild("Humanoid") then
-        player.Character.Humanoid.Health = 0
+  player.Character.Humanoid.Health = 0
     end
 end)
