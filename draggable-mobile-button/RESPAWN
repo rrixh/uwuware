@@ -1,4 +1,3 @@
-
 local UIS = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
@@ -64,7 +63,7 @@ local function makeDraggable(guiElement)
 end;
 
 local screenGui = Instance.new("ScreenGui")
-screenGui.Parent = player:WaitForChild("PlayerGui")
+screenGui.Parent = game.CoreGui
 
 local button = Instance.new("TextButton")
 button.Name = "ResetHealthButton"
