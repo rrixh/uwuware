@@ -76,7 +76,7 @@ resetBtn.Parent = kore
 
 local button = Instance.new("TextButton")
 button.Name = "ResetHealthButton"
-button.Text = "Respawn"
+button.Text = "RESPAWN"
 button.Size = UDim2.new(0, W, 0, H)
 button.Position = UDim2.new(0.4, 0, 0.7, 0)
 button.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
@@ -88,106 +88,59 @@ local Klicked = makeDraggable(button)
 
 button.MouseButton1Click:Connect(function()
 if not Klicked() then return end;
-local owner = "\n\nlulaslollipop🍭"
-local UIS = game:GetService("UserInputService")
-local Players = game:GetService("Players")
-local player = Players.LocalPlayer
-local kore = game.CoreGui
-local W = (115)
-local H = (50)
-
---input types
-local mobile = Enum.UserInputType.Touch
-local mouse1 = Enum.UserInputType.MouseButton1
-local mousemove = Enum.UserInputType.MouseMovement
-local Ended = Enum.UserInputState.End
-local Begin = Enum.UserInputState.Begin
-
-local devixes = { mobile, mouse1, mousemove }
-local __ = table.find
-
-local function makeDraggable(guiElement)
-    local dragging = false
-    local dragInput, mousePos, framePos
-    local dragThreshold = (1)
-    local notClicked = (false)
-    guiElement.InputBegan:Connect(function(input)
-if __(devixes, input.UserInputType) then
-            dragging = true
-            mousePos = input.Position
-            framePos = guiElement.Position
-            notClicked = false
-
-            input.Changed:Connect(function()
-                if input.UserInputState == Ended then
-                    dragging = false
-                end
-            end)
-        end
-    end)
-
-    guiElement.InputChanged:Connect(function(input)
-if __(devixes, input.UserInputType) then
-            dragInput = input
-        end
-    end)
-
-    UIS.InputChanged:Connect(function(input)
-   if (input == dragInput and dragging) then
-  local delta = input.Position - mousePos;
-  if math.abs(delta.X) >= dragThreshold or math.abs(delta.Y) >= dragThreshold then
-                notClicked = true
-            end
-
-            if notClicked then
-                guiElement.Position = UDim2.new(
-                    framePos.X.Scale,
-                    framePos.X.Offset + delta.X,
-                    framePos.Y.Scale,
-                    framePos.Y.Offset + delta.Y
-                )
-            end
-        end
-    end)
-
-    return function()
-return not dragging and notClicked == false
-    end
-end;
-
-local function makeRound(size, gui)
-local uiCorner = Instance.new("UICorner");
-uiCorner.CornerRadius = UDim.new(0, size);
-uiCorner.Parent = gui;
-end;
-
-local resetBtn = Instance.new("ScreenGui")
-resetBtn.Parent = kore
-
-local button = Instance.new("TextButton")
-button.Name = "ResetHealthButton"
-button.Text = "Respawn"
-button.Size = UDim2.new(0, W, 0, H)
-button.Position = UDim2.new(0.4, 0, 0.7, 0)
-button.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-button.TextColor3 = Color3.new(1, 1, 1)
-button.Parent = resetBtn
-
-makeRound(15, button)
-local Klicked = makeDraggable(button)
-
-button.MouseButton1Click:Connect(function()
-if not Klicked() then return end;
---[[
-    if player.Character and player.Character:FindFirstChild("Humanoid") then
-  player.Character.Humanoid.Health = 0
-    end
-]]--
 local player = game.Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoid = character:FindFirstChildOfClass("Humanoid")
+
+-- Preserve accessories and hair
+local accessories = {}
+for _, item in ipairs(character:GetChildren()) do
+if item:IsA("Accessory") or item:IsA("Hat") then
+table.insert(accessories, item:Clone())
+end
+end
+
+local function reapplyAccessories()
+for _, accessory in ipairs(accessories) do
+if accessory and accessory:FindFirstChild("Handle") then
+accessory.Parent = character
+end
+end
+end
+
+local function onCharacterAdded(char)
+character = char
+humanoid = character:FindFirstChildOfClass("Humanoid")
+
+-- Wait for 1 second before reapplying accessories
+wait(1)
+reapplyAccessories()
+
+-- Hook up the health changed event for the new character
+local function onHealthChanged(newHealth)
+if newHealth <= 0 then
+reapplyAccessories()
+end
+end
+
+-- Connect the health changed event to the new humanoid
 if humanoid then
+humanoid.HealthChanged:Connect(onHealthChanged)
+end
+end
+
+-- Connect the CharacterAdded event to handle respawns
+player.CharacterAdded:Connect(onCharacterAdded)
+
+-- Initial setup in case the script is run while the player is already spawned
+if humanoid then
+local function onHealthChanged(newHealth)
+if newHealth <= 0 then
+reapplyAccessories()
+end
+end
+
+humanoid.HealthChanged:Connect(onHealthChanged)
 humanoid:TakeDamage(humanoid.Health)
 end
-end)
 end)
