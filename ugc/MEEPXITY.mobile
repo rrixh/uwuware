@@ -1,0 +1,60 @@
+local MEEPCITY = [[
+loadstring(game:HttpGet("https://github.com/ToraScript/Script/raw/9392f3af36a589045bcba3dd3678cfc920bd6007/MeepCity",true))(); 
+]]
+
+local uwuRRIXH = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/mobileware", true))()
+local lulaslollipop = "lulaslollipop 🍭"
+local uwu = uwuRRIXH:CreateWindow("🎃 MEEP CITY MAZE")
+
+_G.player = game:GetService("Players").LocalPlayer
+
+local function getCharacterParts(character)
+    local parts = {}
+    for _, part in ipairs(character:GetDescendants()) do
+        if part:IsA("BasePart") then
+            table.insert(parts, part)
+        end
+    end
+    return parts
+end
+
+local function tweenTo(part, duration)
+    local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+    local goal = {CFrame = part.CFrame}
+    local tween = game:GetService("TweenService"):Create(_G.player.Character.HumanoidRootPart, tweenInfo, goal)
+
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+local function MakeInvincibleAndTeleport()
+    if not _G.player.Character or not _G.player.Character:FindFirstChild("HumanoidRootPart") then
+        return
+    end
+    local character = _G.player.Character
+    local parts = getCharacterParts(character)
+    local winnerStand = Workspace.ServerWorld["49"].WinnerStand.Path
+
+    -- Making player invincible by setting CanTouch to false
+    for _, part in ipairs(parts) do
+        part.CanTouch = false
+    end
+
+    task.wait(0.7) -- Ensure invincibility
+
+    -- Tweening to WinnerStand
+    tweenTo(winnerStand, 2)
+
+    -- Making player vulnerable again by setting CanTouch to true
+    for _, part in ipairs(parts) do
+        part.CanTouch = true
+    end
+end
+
+uwu:AddButton({text = "Go to WinnerStand Invincibly", callback = MakeInvincibleAndTeleport
+})
+
+uwu:AddFolder(lulaslollipop)
+uwuRRIXH:Init()
+
+local kornfield = Workspace.Worlds["48"].CornFieldMaze.CornmazeSign.Title
