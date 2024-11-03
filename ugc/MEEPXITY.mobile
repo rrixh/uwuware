@@ -51,7 +51,7 @@ local function MakeInvincibleAndTeleport()
     end
 end
 
-uwu:AddButton({text = "Go to WinnerStand Invincibly", callback = MakeInvincibleAndTeleport
+uwu:AddButton({text = "goto end (ugc)", callback = MakeInvincibleAndTeleport
 })
 
 uwu:AddFolder(lulaslollipop)
