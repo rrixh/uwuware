@@ -1,4 +1,4 @@
--- [[ REALISTIK TWEEN MOVEMENT ]] --
+--tween
 _G.bezier = function(t, p0, p1, p2)
 local l1 = p0:Lerp(p1, t)
 local l2 = p1:Lerp(p2, t)
@@ -25,8 +25,7 @@ hrp.CFrame = CFrame.new(bezierPos)
 task.wait()
 until t >= 1
 end;
-
---[[ REALISTIK TOUXH ]]--
+--simtouxh
 _G.touxh = function(part, duration)
 _G.plr = game.Players.LocalPlayer
 _G.hrp = _G.plr.Character and _G.plr.Character:FindFirstChild("HumanoidRootPart");
@@ -35,3 +34,13 @@ firetouchinterest(_G.hrp, part, 0)
 task.wait(duration)
 firetouchinterest(_G.hrp, part, 1)
 end;
+--tp
+_G.tp = function(part, duration)
+_G.plr = game.Players.LocalPlayer
+_G.hrp = _G.plr.Character and _G.plr.Character:FindFirstChild("HumanoidRootPart");
+if not _G.hrp then return end;
+_G.hrp.CFrame = part.CFrame
+if duration then
+task.wait(duration)
+    end;
+end
