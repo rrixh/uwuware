@@ -24,4 +24,14 @@ local bezierPos = _G.bezier(t, startPos, midPos, endPos)
 hrp.CFrame = CFrame.new(bezierPos)
 task.wait()
 until t >= 1
-end
+end;
+
+--[[ REALISTIK TOUXH ]]--
+_G.touxh = function(part, duration)
+_G.plr = game.Players.LocalPlayer
+_G.hrp = _G.plr.Character and _G.plr.Character:FindFirstChild("HumanoidRootPart");
+if not _G.hrp then return end;
+firetouchinterest(_G.hrp, part, 0)
+task.wait(duration)
+firetouchinterest(_G.hrp, part, 1)
+end;
