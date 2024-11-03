@@ -8,7 +8,7 @@ local uwuRRIXH = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrix
 local lulaslollipop = "lulaslollipop 🍭"
 local uwu = uwuRRIXH:CreateWindow("🎃 MEEP CITY MAZE")
 
-local kornfield = Workspace.Worlds["48"].CornFieldMaze.CornmazeSign.Title
+local mazegame = (137496823798619)
 
 _G.player = game:GetService("Players").LocalPlayer
 
@@ -59,7 +59,10 @@ uwu:AddButton({text = "finish maze (ugc)", callback = MakeInvincibleAndTeleport
 })
 
 uwu:AddButton({text = "goto maze", callback = function() 
+if game.PlaceId ~= mazegame then
+local kornfield = Workspace.Worlds["48"].CornFieldMaze.CornmazeSign.Title
 tweenTo(kornfield, 3)
+else return end;
 end})
 
 uwu:AddFolder(lulaslollipop)
