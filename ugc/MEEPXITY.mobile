@@ -1,10 +1,14 @@
 local MEEPCITY = [[
 loadstring(game:HttpGet("https://github.com/ToraScript/Script/raw/9392f3af36a589045bcba3dd3678cfc920bd6007/MeepCity",true))(); 
+
+loadstring(game:HttpGet("https://github.com/rrixh/uwuware/raw/refs/heads/main/ugc/MEEPXITY.mobile",true))(); 
 ]]
 
 local uwuRRIXH = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/mobileware", true))()
 local lulaslollipop = "lulaslollipop 🍭"
 local uwu = uwuRRIXH:CreateWindow("🎃 MEEP CITY MAZE")
+
+local kornfield = Workspace.Worlds["48"].CornFieldMaze.CornmazeSign.Title
 
 _G.player = game:GetService("Players").LocalPlayer
 
@@ -51,10 +55,12 @@ local function MakeInvincibleAndTeleport()
     end
 end
 
-uwu:AddButton({text = "goto end (ugc)", callback = MakeInvincibleAndTeleport
+uwu:AddButton({text = "finish maze (ugc)", callback = MakeInvincibleAndTeleport
 })
+
+uwu:AddButton({text = "goto maze", callback = function() 
+tweenTo(kornfield, 3)
+end})
 
 uwu:AddFolder(lulaslollipop)
 uwuRRIXH:Init()
-
-local kornfield = Workspace.Worlds["48"].CornFieldMaze.CornmazeSign.Title
