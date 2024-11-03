@@ -1,0 +1,25 @@
+-- [[ REALISTIK TWEEN MOVEMENT ]] --
+_G.bezier = function(t, p0, p1, p2)
+_G.l1 = p0:Lerp(p1, t)
+_G.l2 = p1:Lerp(p2, t)
+return _G.l1:Lerp(_G.l2, t)
+end;
+
+local function tweenTo(part, duration)
+_G.player = game.Players.LocalPlayer
+_G.hrp = _G.player.Character and _G.player.Character:FindFirstChild("HumanoidRootPart");
+if not _G.hrp then return end;
+_G.startPos = _G.hrp.Position;
+_G.endPos = part.Position;
+_G.midPos = (_G.startPos + _G.endPos) / 2 + Vector3.new(math.random(-5, 5), math.random(3, 7), math.random(-5, 5))
+_G.tweenStart = os.clock();
+
+repeat
+_G.elapsed = os.clock() - _G.tweenStart
+_G.t = math.min(_G.elapsed / duration, 1)
+_G.bezierPos = _G.bezier(_G.t, _G.startPos, _G.midPos, _G.endPos);
+
+_G.hrp.CFrame = CFrame.new(_G.bezierPos)
+task.wait()
+until _G.t >= 1
+end;
