@@ -1,0 +1,34 @@
+--24kgoldn goldshades
+
+local uwuRRIXH = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/mobileware", true))();
+local lulaslollipop = "lulaslollipop 🍭"
+local uwu = uwuRRIXH:CreateWindow("24kGoldn Koncert");
+loadstring(game:HttpGet('https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/skripts/globalfunks'))();
+
+_G.collectMics = false
+
+uwu:AddToggle({text = "Kollect All Mics",
+callback = function(toggleOn)
+    _G.collectMics = toggleOn
+    if toggleOn then
+      task.spawn(function()
+        while _G.collectMics do
+          for mics = 1, 24 do
+            local micNumber = tostring(mics)
+            local micContainer = workspace.Workspace:FindFirstChild(micNumber)
+            local mic = micContainer and micContainer:FindFirstChild("Collectable-Mic")
+            
+            if mic then
+              _G.touxh(mic)
+            else
+print("Mic " .. micNumber .. " does not exist. Skipping...")
+            end;
+            wait(-1e9)
+          end
+        end
+      end)
+    end
+  end});
+
+uwu:AddFolder(lulaslollipop);
+uwuRRIXH:Init();
