@@ -115,7 +115,7 @@ if not humanoidRootPart or not humanoid then
 error("Humanoid or HumanoidRootPart not found in character.")
 return
 end;
-local stepDistance = 4
+local stepDistance = 9
 local function moveToStep(targetPos)
 humanoidRootPart.CFrame = CFrame.new(targetPos)
 end;
