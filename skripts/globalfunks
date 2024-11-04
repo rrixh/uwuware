@@ -5,7 +5,7 @@ local l2 = p1:Lerp(p2, t)
 return l1:Lerp(l2, t)
 end
 
-_G.tweenTo = function(part, duration, dur)
+_G.tweenTo = function(part, duration)
 local player = game.Players.LocalPlayer
 local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart");
 if not hrp then return end;
@@ -18,7 +18,7 @@ local elapsed = os.clock() - tweenStart
 local t = math.min(elapsed / duration, 1)
 local bezierPos = _G.bezier(t, startPos, midPos, endPos);
 hrp.CFrame = CFrame.new(bezierPos)
-if dur then task.wait(dur) end;
+task.wait()
 until t >= 1
 end;
 
