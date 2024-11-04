@@ -97,7 +97,36 @@ if waypoint.Action == Enum.PathWaypointAction.Jump then
 humanoid.Jump = true
 end
 end
-
 -- Restore original walk speed after reaching the target
 humanoid.WalkSpeed = originalSpeed
+end;
+
+--tpwalkto
+_G.tpwalkTo = function(part)
+if not part then
+error("You must provide a part to teleport walk to.")
+return
+end;
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+local humanoid = character:FindFirstChildWhichIsA("Humanoid");
+if not humanoidRootPart or not humanoid then
+error("Humanoid or HumanoidRootPart not found in character.")
+return
+end;
+local stepDistance = 4
+local function moveToStep(targetPos)
+humanoidRootPart.CFrame = CFrame.new(targetPos)
+end;
+local startPos = humanoidRootPart.Position
+local endPos = part.Position
+local direction = (endPos - startPos).unit
+local currentPos = startPos;
+while (currentPos - endPos).magnitude > stepDistance do
+currentPos = currentPos + direction * stepDistance
+moveToStep(currentPos)
+task.wait(0.1) -- Small delay to simulate teleport walking
+end;
+moveToStep(endPos)
 end
