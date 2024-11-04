@@ -1,4 +1,18 @@
--- global funk skript
+--[[ global vars ]]--
+rrixh = loadstring;
+lulas = game;
+_G.plrs = game:GetService"Players"
+_G.plr = _G.plrs.LocalPlayer
+_G.char = _G.plr.Character
+_G.hum = _G.char:WaitForChild'Humanoid';
+_G.hrp = _G.char:FindFirstChild'HumanoidRootPart';
+
+--[[ servixes ]]--
+_G.run = lulas:GetService'RunService'
+_G.vim = lulas:GetService'VirtualInputManager'
+_G.uis = lulas:GetService'UserInputService'
+
+--[[ global funks ]]--
 _G.bezier = function(t, p0, p1, p2)
 local l1 = p0:Lerp(p1, t)
 local l2 = p1:Lerp(p2, t)
@@ -99,7 +113,7 @@ end
 humanoid.WalkSpeed = originalSpeed
 end;
 
---tpwalkto
+--tpwalk to
 _G.tpwalkTo = function(part)
 if not part then
 error("You must provide a part to teleport walk to.")
@@ -143,11 +157,4 @@ for _, part in pairs(parts:GetChildren()) do
      kallbaxk(part)
 if dur then wait(dur) end;
     end;
-end;
-
---loop funks
-_G.loop = function(kallbaxk,duration)
-while true do kallbaxk()
-if duration then task.wait(duration) else task.wait() end;
-   end;
 end;
