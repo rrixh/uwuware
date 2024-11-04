@@ -57,37 +57,47 @@ part.CFrame = _G.hrp.CFrame;
 end;
 
 -- moveto
-_G.walkTo = function(part, walkTime, speed)
-    if not part then
-        error"u didnt provide a part or partname invalid"
-        return
-    end
+_G.walkTo = function(part, speed)
+if not part then
+error("You must provide a part to walk to.")
+return
+end
 
-    local player = game.Players.LocalPlayer
-    local character = player.Character or player.CharacterAdded:Wait()
-    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
-    local humanoid = character:FindFirstChildWhichIsA("Humanoid");
-    if not humanoidRootPart or not humanoid then
-        error"humanoid or humanoidrootpart wasnt found in avatar"
-        return
-    end;
-    local originalSpeed = humanoid.WalkSpeed;
-    if type(speed) == "number" then
-        humanoid.WalkSpeed = speed
-    end;
-    humanoid:MoveTo(part.Position);
-    if walkTime then
-        local startTime = tick()
-        local reachedConnection
-        reachedConnection = humanoid.MoveToFinished:Connect(function(reached)
-            if reached or (tick() - startTime >= walkTime) then
-                humanoid.WalkSpeed = originalSpeed
-                reachedConnection:Disconnect()
-            end
-        end)
-        repeat task.wait() until (tick() - startTime) >= walkTime
-    else
-        repeat task.wait() until not humanoidRootPart:FindFirstChild("MoveToTarget")
-    end;
-    humanoid.WalkSpeed = originalSpeed
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+local humanoid = character:FindFirstChildWhichIsA("Humanoid")
+
+if not humanoidRootPart or not humanoid then
+error("Humanoid or HumanoidRootPart not found in character.")
+return
+end
+
+local originalSpeed = humanoid.WalkSpeed
+
+if type(speed) == "number" then
+humanoid.WalkSpeed = speed
+end
+
+local PathfindingService = game:GetService("PathfindingService")
+local path = PathfindingService:CreatePath({
+AgentHeight = humanoid.HipHeight * 2,
+AgentRadius = 2,
+AgentCanJump = true,
+})
+
+path:ComputeAsync(humanoidRootPart.Position, part.Position)
+local waypoints = path:GetWaypoints()
+
+for _, waypoint in pairs(waypoints) do
+humanoid:MoveTo(waypoint.Position)
+humanoid.MoveToFinished:Wait()
+
+if waypoint.Action == Enum.PathWaypointAction.Jump then
+humanoid.Jump = true
+end
+end
+
+-- Restore original walk speed after reaching the target
+humanoid.WalkSpeed = originalSpeed
 end
