@@ -55,3 +55,39 @@ part.CFrame = _G.hrp.CFrame;
         task.wait(duration)
     end;
 end;
+
+-- moveto
+_G.walkTo = function(part, walkTime, speed)
+    if not part then
+        error"u didnt provide a part or partname invalid"
+        return
+    end
+
+    local player = game.Players.LocalPlayer
+    local character = player.Character or player.CharacterAdded:Wait()
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    local humanoid = character:FindFirstChildWhichIsA("Humanoid");
+    if not humanoidRootPart or not humanoid then
+        error"humanoid or humanoidrootpart wasnt found in avatar"
+        return
+    end;
+    local originalSpeed = humanoid.WalkSpeed;
+    if type(speed) == "number" then
+        humanoid.WalkSpeed = speed
+    end;
+    humanoid:MoveTo(part.Position);
+    if walkTime then
+        local startTime = tick()
+        local reachedConnection
+        reachedConnection = humanoid.MoveToFinished:Connect(function(reached)
+            if reached or (tick() - startTime >= walkTime) then
+                humanoid.WalkSpeed = originalSpeed
+                reachedConnection:Disconnect()
+            end
+        end)
+        repeat task.wait() until (tick() - startTime) >= walkTime
+    else
+        repeat task.wait() until not humanoidRootPart:FindFirstChild("MoveToTarget")
+    end;
+    humanoid.WalkSpeed = originalSpeed
+end
