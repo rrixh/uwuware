@@ -131,7 +131,7 @@ end;
 
 --iterate thru parts in pairs w/funk
 _G.iPairs = function(parts, kallbaxk, dur)
-for _, part in ipairs(parts) do
+for _, part in ipairs(parts:GetChildren()) do
         kallbaxk(part)
 if dur then wait(dur) end;
     end;
@@ -139,8 +139,15 @@ end;
 
 -- find parts in pairs w/funk
 _G.Pairs = function(parts,kallbaxk,dur)
-for _, part in pairs(parts) do
+for _, part in pairs(parts:GetChildren()) do
      kallbaxk(part)
 if dur then wait(dur) end;
     end;
+end;
+
+--loop funks
+_G.loop = function(kallbaxk,duration)
+while true do kallbaxk()
+if duration then task.wait(duration) else task.wait() end;
+   end;
 end;
