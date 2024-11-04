@@ -5,33 +5,32 @@ local l2 = p1:Lerp(p2, t)
 return l1:Lerp(l2, t)
 end
 
-_G.tweenTo = function(part, duration)
+_G.tweenTo = function(part, duration, dur)
 local player = game.Players.LocalPlayer
-local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-
-if not hrp then return end
-
+local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart");
+if not hrp then return end;
 local startPos = hrp.Position
 local endPos = part.Position
 local midPos = (startPos + endPos) / 2 + Vector3.new(math.random(-5, 5), math.random(3, 7), math.random(-5, 5))
-local tweenStart = os.clock()
-
+local tweenStart = os.clock();
 repeat
 local elapsed = os.clock() - tweenStart
 local t = math.min(elapsed / duration, 1)
-local bezierPos = _G.bezier(t, startPos, midPos, endPos)
-
+local bezierPos = _G.bezier(t, startPos, midPos, endPos);
 hrp.CFrame = CFrame.new(bezierPos)
-task.wait()
+if dur then task.wait(dur) end;
 until t >= 1
 end;
---simtouxh
+
+--simulate touxhing part
 _G.touxh = function(part, duration)
 _G.plr = game.Players.LocalPlayer
 _G.hrp = _G.plr.Character and _G.plr.Character:FindFirstChild("HumanoidRootPart");
 if not _G.hrp then return end;
 firetouchinterest(_G.hrp, part, 0)
+if duration then
 task.wait(duration)
+end;
 firetouchinterest(_G.hrp, part, 1)
 end;
 
@@ -59,9 +58,8 @@ end;
 -- moveto
 _G.walkTo = function(part, speed)
 if not part then
-error("You must provide a part to walk to.")
-return
-end
+error("You must provide a part to walk to.") 
+return end;
 
 local player = game.Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
@@ -115,7 +113,7 @@ if not humanoidRootPart or not humanoid then
 error("Humanoid or HumanoidRootPart not found in character.")
 return
 end;
-local stepDistance = 9
+local stepDistance = 7
 local function moveToStep(targetPos)
 humanoidRootPart.CFrame = CFrame.new(targetPos)
 end;
@@ -126,7 +124,23 @@ local currentPos = startPos;
 while (currentPos - endPos).magnitude > stepDistance do
 currentPos = currentPos + direction * stepDistance
 moveToStep(currentPos)
-task.wait(0.1) -- Small delay to simulate teleport walking
+task.wait(0.01)
 end;
 moveToStep(endPos)
-end
+end;
+
+--iterate thru parts in pairs w/funk
+_G.iPairs = function(parts, kallbaxk, dur)
+for _, part in ipairs(parts) do
+        kallbaxk(part)
+if dur then wait(dur) end;
+    end;
+end;
+
+-- find parts in pairs w/funk
+_G.Pairs = function(parts,kallbaxk,dur)
+for _, part in pairs(parts) do
+     kallbaxk(part)
+if dur then wait(dur) end;
+    end;
+end;
