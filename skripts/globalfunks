@@ -178,7 +178,6 @@ salmon = "salmon"
 teal = "teal"
 
 -- highlight part
--- Predefined color variables
 local colorVariables = {
   red = "red",
   green = "green",
@@ -198,7 +197,6 @@ local colorVariables = {
   teal = "teal"
 }
 
--- Function to set part ESP
 _G.partesp = function(part, colorVar)
   if not part or not colorVar then
     error("Missing part or color for ESP")
@@ -236,12 +234,11 @@ _G.partesp = function(part, colorVar)
     return
   end
 
-  -- Create and setup Highlight instance
   local espHighlight = Instance.new("Highlight")
   espHighlight.Adornee = part
   espHighlight.FillColor = espColor
-  espHighlight.FillTransparency = 0.9 -- Almost fully transparent
-  espHighlight.OutlineTransparency = 0.9 -- Almost fully transparent outline
+  espHighlight.FillTransparency = 0.3 -- Almost fully transparent
+  espHighlight.OutlineTransparency = 0.5 -- Almost fully transparent outline
   espHighlight.Parent = game:GetService("CoreGui")
 end;
 
