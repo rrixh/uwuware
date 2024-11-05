@@ -178,36 +178,52 @@ salmon = "salmon"
 teal = "teal"
 
 -- highlight part
-_G.partesp = function(part, highlightKolor)
-if not part or not highlightKolor then
-error("Missing part or highlight color.")
-return end;
+_G.activeEspObjects = _G.activeEspObjects or {}
+
+_G.partesp = function(part, colorVar)
+if not part or not colorVar then
+error("Missing part or color for ESP")
+return
+end;
+local colorName = _G[colorVar]
+if not colorName then
+error("Invalid color variable provided")
+return
+end;
 local colors = {
 red = Color3.fromRGB(255, 0, 0),
 green = Color3.fromRGB(0, 255, 0),
 blue = Color3.fromRGB(0, 0, 255),
 yellow = Color3.fromRGB(255, 255, 0),
-pink = Color3.fromRGB(255, 105, 180),
+pink = Color3.fromRGB(255, 192, 203),
 orange = Color3.fromRGB(255, 165, 0),
 cyan = Color3.fromRGB(0, 255, 255),
 purple = Color3.fromRGB(128, 0, 128),
 white = Color3.fromRGB(255, 255, 255),
 black = Color3.fromRGB(0, 0, 0),
 gray = Color3.fromRGB(128, 128, 128),
-brown = Color3.fromRGB(139, 69, 19),
-lime = Color3.fromRGB(0, 255, 0),
+brown = Color3.fromRGB(165, 42, 42),
+lime = Color3.fromRGB(50, 205, 50),
 magenta = Color3.fromRGB(255, 0, 255),
 salmon = Color3.fromRGB(250, 128, 114),
 teal = Color3.fromRGB(0, 128, 128)
 };
-local highlightColor = colors[highlightKolor]
-if not highlightColor then
-error("Invalid highlight color specified.")
-return end;
-local highlight = Instance.new("SelectionBox")
-highlight.Adornee = part
-highlight.Color3 = highlightColor
-highlight.Parent = part
+local espColor = colors[colorName:lower()]
+if not espColor then
+error("Invalid color specified")
+return
+end;
+local existingEsp = _G.activeEspObjects[part]
+if existingEsp then
+existingEsp:Destroy()
+end;
+local espHighlight = Instance.new("Highlight")
+espHighlight.Adornee = part
+espHighlight.FillColor = espColor
+espHighlight.FillTransparency = 0.9 -- Almost fully transparent
+espHighlight.OutlineTransparency = 0.9 -- Almost fully transparent outline
+espHighlight.Parent = game:GetService("CoreGui");
+_G.activeEspObjects[part] = espHighlight
 end;
 
 --[[ ROBLOX INNOVATION AWARDS ]]--
