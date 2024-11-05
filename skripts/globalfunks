@@ -197,7 +197,7 @@ local colorVariables = {
   teal = "teal"
 }
 
-_G.partesp = function(part, colorVar)
+_G.partesp = function(part, colorVar, FILL)
   if not part or not colorVar then
     error("Missing part or color for ESP")
     return
@@ -237,8 +237,8 @@ _G.partesp = function(part, colorVar)
   local espHighlight = Instance.new("Highlight")
   espHighlight.Adornee = part
   espHighlight.FillColor = espColor
-  espHighlight.FillTransparency = 0.3 -- Almost fully transparent
-  espHighlight.OutlineTransparency = 0.5 -- Almost fully transparent outline
+  espHighlight.FillTransparency = FILL or -2
+  espHighlight.OutlineTransparency = 0
   espHighlight.Parent = game:GetService("CoreGui")
 end;
 
