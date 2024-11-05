@@ -242,6 +242,18 @@ _G.partesp = function(part, colorVar, FILL)
   espHighlight.Parent = game:GetService("CoreGui")
 end;
 
+_G.removeEsp = function(part)
+    if not part then
+ error"Missing part for removing ESP"
+  return end;
+    local existingEsp = _G.activeEspObjects[part]
+    if existingEsp then
+        existingEsp:Destroy()
+        _G.activeEspObjects[part] = nil
+    else
+warn("No ESP found for the given part")
+    end;
+end;
 
 --[[ ROBLOX INNOVATION AWARDS ]]--
 _G.circlet = Workspace:FindFirstChild("Scavenger") and Workspace.Scavenger:FindFirstChild("Circlet")
