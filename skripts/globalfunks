@@ -197,62 +197,77 @@ local colorVariables = {
   teal = "teal"
 }
 
-_G.partesp = function(part, colorVar, FILL)
-  if not part or not colorVar then
-    error("Missing part or color for ESP")
-    return
-  end
+local colorVariables = {
+red = "red",
+green = "green",
+blue = "blue",
+yellow = "yellow",
+pink = "pink",
+orange = "orange",
+cyan = "cyan",
+purple = "purple",
+white = "white",
+black = "black",
+gray = "gray",
+brown = "brown",
+lime = "lime",
+magenta = "magenta",
+salmon = "salmon",
+teal = "teal"
+}
 
-  local colorName = colorVariables[colorVar:lower()]
-  if not colorName then
-    error("Invalid color variable provided: " .. tostring(colorVar))
-    return
-  end
+_G.activeEspObjects = _G.activeEspObjects or {}
 
-  local colors = {
-    red = Color3.fromRGB(255, 0, 0),
-    green = Color3.fromRGB(0, 255, 0),
-    blue = Color3.fromRGB(0, 0, 255),
-    yellow = Color3.fromRGB(255, 255, 0),
-    pink = Color3.fromRGB(255, 192, 203),
-    orange = Color3.fromRGB(255, 165, 0),
-    cyan = Color3.fromRGB(0, 255, 255),
-    purple = Color3.fromRGB(128, 0, 128),
-    white = Color3.fromRGB(255, 255, 255),
-    black = Color3.fromRGB(0, 0, 0),
-    gray = Color3.fromRGB(128, 128, 128),
-    brown = Color3.fromRGB(165, 42, 42),
-    lime = Color3.fromRGB(50, 205, 50),
-    magenta = Color3.fromRGB(255, 0, 255),
-    salmon = Color3.fromRGB(250, 128, 114),
-    teal = Color3.fromRGB(0, 128, 128)
-  }
-
-  local espColor = colors[colorName]
-  if not espColor then
-    error("Invalid color provided in the script")
-    return
-  end
-
-  local espHighlight = Instance.new("Highlight")
-  espHighlight.Adornee = part
-  espHighlight.FillColor = espColor
-  espHighlight.FillTransparency = FILL or .2
-  espHighlight.OutlineTransparency = .1
-  espHighlight.Parent = game:GetService("CoreGui")
+_G.partesp = function(part, colorVar, removeESP)
+if not part or not colorVar then
+error("Missing part or color for ESP")
+return end;
+local colorName = colorVariables[colorVar:lower()]
+if not colorName then
+error("Invalid color variable provided: " .. tostring(colorVar))
+return
 end;
-
-_G.removeEsp = function(part)
-    if not part then
- error"Missing part for removing ESP"
-  return end;
-    local existingEsp = _G.activeEspObjects[part]
-    if existingEsp then
-        existingEsp:Destroy()
-        _G.activeEspObjects[part] = nil
-    else
-warn("No ESP found for the given part")
-    end;
+local colors = {
+red = Color3.fromRGB(255, 0, 0),
+green = Color3.fromRGB(0, 255, 0),
+blue = Color3.fromRGB(0, 0, 255),
+yellow = Color3.fromRGB(255, 255, 0),
+pink = Color3.fromRGB(255, 192, 203),
+orange = Color3.fromRGB(255, 165, 0),
+cyan = Color3.fromRGB(0, 255, 255),
+purple = Color3.fromRGB(128, 0, 128),
+white = Color3.fromRGB(255, 255, 255),
+black = Color3.fromRGB(0, 0, 0),
+gray = Color3.fromRGB(128, 128, 128),
+brown = Color3.fromRGB(165, 42, 42),
+lime = Color3.fromRGB(50, 205, 50),
+magenta = Color3.fromRGB(255, 0, 255),
+salmon = Color3.fromRGB(250, 128, 114),
+teal = Color3.fromRGB(0, 128, 128)
+}
+local espColor = colors[colorName]
+if not espColor then
+error("Invalid color provided in the script")
+return
+end;
+local existingEsp = _G.activeEspObjects[part]
+if existingEsp then
+existingEsp:Destroy()
+end;
+local espHighlight = Instance.new("Highlight")
+espHighlight.Adornee = part
+espHighlight.FillColor = espColor
+espHighlight.FillTransparency = 0.15 -- Default to 0.15 transparency
+espHighlight.OutlineTransparency = 0.15 -- Default to 0.15 transparency
+espHighlight.Parent = game:GetService("CoreGui");
+_G.activeEspObjects[part] = espHighlight
+if removeESP then
+spawn(function()
+wait(removeESP)
+espHighlight:Destroy()
+_G.activeEspObjects[part] = nil
+end)
+end;
 end;
 
 --[[ ROBLOX INNOVATION AWARDS ]]--
