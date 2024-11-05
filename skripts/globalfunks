@@ -281,44 +281,66 @@ _G.B4 = Workspace:FindFirstChild("CubePieces") and Workspace.CubePieces:FindFirs
 _G.rbxinnovationitems = {
 _G.B1, _G.B2, _G.B3, _G.B4, _G.stagestand, _G.circlet}
 
-_G.activeLabelObjects = _G.activeLabelObjects or {}
+--part traxers
+_G.colorVariables = {
+red = Color3.fromRGB(255, 0, 0),
+green = Color3.fromRGB(0, 255, 0),
+blue = Color3.fromRGB(0, 0, 255),
+yellow = Color3.fromRGB(255, 255, 0),
+pink = Color3.fromRGB(255, 192, 203),
+orange = Color3.fromRGB(255, 165, 0),
+cyan = Color3.fromRGB(0, 255, 255),
+purple = Color3.fromRGB(128, 0, 128),
+white = Color3.fromRGB(255, 255, 255),
+black = Color3.fromRGB(0, 0, 0),
+gray = Color3.fromRGB(128, 128, 128),
+brown = Color3.fromRGB(165, 42, 42),
+lime = Color3.fromRGB(50, 205, 50),
+magenta = Color3.fromRGB(255, 0, 255),
+salmon = Color3.fromRGB(250, 128, 114),
+teal = Color3.fromRGB(0, 128, 128)
+}
 
-_G.partlabel = function(part, fontEnum, labelName, removeTracer)
-    if not part or not fontEnum or not labelName then
-        error("Missing part, font, or label name for label")
-        return
-    end
+_G.activeTracerObjects = _G.activeTracerObjects or {}
 
-    local existingLabel = _G.activeLabelObjects[part]
-    if existingLabel then
-        existingLabel:Destroy()
-    end
+_G.tracers = function(part, colorVar, removeTracer)
+_G.part = part
+_G.colorVar = colorVar
+_G.removeTracer = removeTracer
 
-    local billboardGui = Instance.new("BillboardGui")
-    billboardGui.Adornee = part
-    billboardGui.Size = UDim2.new(1, 0, 1, 0)
-    billboardGui.StudsOffset = Vector3.new(0, 2, 0)
-    billboardGui.AlwaysOnTop = true
-    billboardGui.Parent = game:GetService("CoreGui")
+if not _G.part or not _G.colorVar then
+error("Missing part or color for tracer ESP")
+return
+end
 
-    local textLabel = Instance.new("TextLabel")
-    textLabel.Size = UDim2.new(1, 0, 1, 0)
-    textLabel.BackgroundTransparency = 1
-    textLabel.TextColor3 = Color3.fromRGB(255, 255, 255) -- White text
-    textLabel.TextScaled = true
-    textLabel.Font = fontEnum
-    textLabel.Text = labelName
-    textLabel.Parent = billboardGui
+_G.tracerColor = _G.colorVariables[_G.colorVar:lower()]
+if not _G.tracerColor then
+error("Invalid color variable provided: " .. tostring(_G.colorVar))
+return
+end
 
-    _G.activeLabelObjects[part] = billboardGui
+_G.existingTracer = _G.activeTracerObjects[_G.part]
+if _G.existingTracer then
+_G.existingTracer:Destroy()
+end
 
-    if removeTracer then
-        spawn(function()
-            wait(removeTracer)
-            if billboardGui then
-                billboardGui:Destroy()
-                _G.activeLabelObjects[part] = nil
-            end
-        end)
-    end
+_G.tracer = Instance.new("Beam")
+_G.tracer.Attachment0 = Instance.new("Attachment", _G.part)
+_G.tracer.Attachment1 = Instance.new("Attachment", game.Players.LocalPlayer.Character.Head)
+_G.tracer.Color = ColorSequence.new(_G.tracerColor)
+_G.tracer.Width0 = 0.1
+_G.tracer.Width1 = 0.1
+_G.tracer.Parent = game:GetService("CoreGui")
+
+_G.activeTracerObjects[_G.part] = _G.tracer
+
+if _G.removeTracer then
+spawn(function()
+wait(_G.removeTracer)
+if _G.tracer then
+_G.tracer:Destroy()
+_G.activeTracerObjects[_G.part] = nil
+end
+end)
+end
 end
