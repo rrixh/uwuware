@@ -209,3 +209,14 @@ highlight.Adornee = part
 highlight.Color3 = highlightColor
 highlight.Parent = part
 end;
+
+--[[ ROBLOX INNOVATION AWARDS ]]--
+_G.circlet = Workspace:FindFirstChild("Scavenger") and Workspace.Scavenger:FindFirstChild("Circlet")
+_G.stagestand = Workspace:FindFirstChild("CenterPiece") and Workspace.CenterPiece:FindFirstChild("CenterPiece_Stand") and Workspace.CenterPiece.CenterPiece_Stand:FindFirstChild("Meshes/Stand_Full_Cylinder.001")
+_G.B1 = Workspace:FindFirstChild("CubePieces") and Workspace.CubePieces:FindFirstChild("Block1")
+_G.B2 = Workspace:FindFirstChild("CubePieces") and Workspace.CubePieces:FindFirstChild("Block2")
+_G.B3 = Workspace:FindFirstChild("CubePieces") and Workspace.CubePieces:FindFirstChild("Block3")
+_G.B4 = Workspace:FindFirstChild("CubePieces") and Workspace.CubePieces:FindFirstChild("Block4")
+
+_G.rbxinnovationitems = {
+_G.B1, _G.B2, _G.B3, _G.B4, _G.stagestand, _G.circlet}
