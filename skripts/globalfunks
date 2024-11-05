@@ -143,18 +143,69 @@ end;
 moveToStep(endPos)
 end;
 
---iterate thru parts in pairs w/funk
-_G.iPairs = function(parts, kallbaxk, dur)
-for _, part in ipairs(parts:GetChildren()) do
-        kallbaxk(part)
+--i pairs
+_G.iPairs = function(part, funk, dur)
+for uh,ipair in ipairs(part:GetChildren()) do
+    funk(ipair)
 if dur then wait(dur) end;
-    end;
+  end
+end
+
+-- pairs
+_G.Pairs = function(part, funk, dur)
+for uh,pair in pairs(part:GetChildren()) do
+    funk(pair)
+if dur then wait(dur) end;
+  end
 end;
 
--- find parts in pairs w/funk
-_G.Pairs = function(parts,kallbaxk,dur)
-for _, part in pairs(parts:GetChildren()) do
-     kallbaxk(part)
-if dur then wait(dur) end;
-    end;
+--[[🖍PREDEFINED KOLORS🖍]]--
+red = "red"
+green = "green"
+blue = "blue"
+yellow = "yellow"
+pink = "pink"
+orange = "orange"
+cyan = "cyan"
+purple = "purple"
+white = "white"
+black = "black"
+gray = "gray"
+brown = "brown"
+lime = "lime"
+magenta = "magenta"
+salmon = "salmon"
+teal = "teal"
+
+-- highlight part
+_G.partesp = function(part, highlightKolor)
+if not part or not highlightKolor then
+error("Missing part or highlight color.")
+return end;
+local colors = {
+red = Color3.fromRGB(255, 0, 0),
+green = Color3.fromRGB(0, 255, 0),
+blue = Color3.fromRGB(0, 0, 255),
+yellow = Color3.fromRGB(255, 255, 0),
+pink = Color3.fromRGB(255, 105, 180),
+orange = Color3.fromRGB(255, 165, 0),
+cyan = Color3.fromRGB(0, 255, 255),
+purple = Color3.fromRGB(128, 0, 128),
+white = Color3.fromRGB(255, 255, 255),
+black = Color3.fromRGB(0, 0, 0),
+gray = Color3.fromRGB(128, 128, 128),
+brown = Color3.fromRGB(139, 69, 19),
+lime = Color3.fromRGB(0, 255, 0),
+magenta = Color3.fromRGB(255, 0, 255),
+salmon = Color3.fromRGB(250, 128, 114),
+teal = Color3.fromRGB(0, 128, 128)
+};
+local highlightColor = colors[highlightKolor]
+if not highlightColor then
+error("Invalid highlight color specified.")
+return end;
+local highlight = Instance.new("SelectionBox")
+highlight.Adornee = part
+highlight.Color3 = highlightColor
+highlight.Parent = part
 end;
