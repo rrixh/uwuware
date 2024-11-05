@@ -281,66 +281,41 @@ _G.B4 = Workspace:FindFirstChild("CubePieces") and Workspace.CubePieces:FindFirs
 _G.rbxinnovationitems = {
 _G.B1, _G.B2, _G.B3, _G.B4, _G.stagestand, _G.circlet}
 
---[[ FONTS ]]--
-local fontz = {
-arcade = Enum.Font.Arcade,
-arial = Enum.Font.Arial,
-arialbold = Enum.Font.ArialBold,
-code = Enum.Font.Code,
-gotham = Enum.Font.Gotham,
-gothamblack = Enum.Font.GothamBlack,
-gothambold = Enum.Font.GothamBold,
-gothammedium = Enum.Font.GothamMedium,
-highway = Enum.Font.Highway,
-jura = Enum.Font.Jura,
-legacy = Enum.Font.Legacy,
-luckiestguy = Enum.Font.LuckiestGuy,
-michigan = Enum.Font.Michigan,
-oswald = Enum.Font.Oswald,
-permanentmarker = Enum.Font.PermanentMarker,
-robloxbold = Enum.Font.Roboto,
-scifi = Enum.Font.SciFi,
-sourceSans = Enum.Font.SourceSans,
-sourceSansbold = Enum.Font.SourceSansBold,
-sourceSansItalic = Enum.Font.SourceSansItalic,
-sourceSansItalicBold = Enum.Font.SourceSansItalicBold,
-sourceSansLight = Enum.Font.SourceSansLight,
-sourceSansRegular = Enum.Font.SourceSansRegular,
-sourceSansSemiBold = Enum.Font.SourceSansSemibold,
-};
-_G.activeLabelObjects = _G.activeLabelObjects or {};
--- labeltext ona part
-_G.partlabel = function(part, fontVar, labelName, removeTracer)
-if not part or not fontVar or not labelName then
-error("Missing part, font or label name for label")
-return end;
-local fontName = fontz[fontVar:lower()]
-if not fontName then
-error("Invalid font variable provided: " .. tostring(fontVar))
-return end;
+_G.activeLabelObjects = _G.activeLabelObjects or {}
+
+_G.partlabel = function(part, fontEnum, labelName, removeTracer)
+if not part or not fontEnum or not labelName then
+error("Missing part, font, or label name for label")
+return
+end
+
 local existingLabel = _G.activeLabelObjects[part]
 if existingLabel then
 existingLabel:Destroy()
-end;
+end
+
 local billboardGui = Instance.new("BillboardGui")
 billboardGui.Adornee = part
 billboardGui.Size = UDim2.new(1, 0, 1, 0)
 billboardGui.StudsOffset = Vector3.new(0, 2, 0)
-billboardGui.Parent = game:GetService("CoreGui");
+billboardGui.Parent = game:GetService("CoreGui")
+
 local textLabel = Instance.new("TextLabel")
 textLabel.Size = UDim2.new(1, 0, 1, 0)
 textLabel.BackgroundTransparency = 1
 textLabel.TextColor3 = Color3.fromRGB(255, 255, 255) -- White text
 textLabel.TextScaled = true
-textLabel.Font = fontName
+textLabel.Font = fontEnum
 textLabel.Text = labelName
-textLabel.Parent = billboardGui;
-_G.activeLabelObjects[part] = billboardGui;
+textLabel.Parent = billboardGui
+
+_G.activeLabelObjects[part] = billboardGui
+
 if removeTracer then
 spawn(function()
 wait(removeTracer)
 billboardGui:Destroy()
 _G.activeLabelObjects[part] = nil
 end)
-end;
+end
 end;
