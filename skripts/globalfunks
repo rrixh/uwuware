@@ -299,7 +299,7 @@ _G.partlabel = function(part, fontEnum, labelName, removeTracer)
     billboardGui.Size = UDim2.new(1, 0, 1, 0)
     billboardGui.StudsOffset = Vector3.new(0, 2, 0)
     billboardGui.AlwaysOnTop = true
-    billboardGui.Parent = (game:GetService("CoreGui"):FindFirstChild("BillboardGuis") or Instance.new("Folder", game:GetService("CoreGui"))):WaitForChild("BillboardGuis")
+    billboardGui.Parent = game:GetService("CoreGui")
 
     local textLabel = Instance.new("TextLabel")
     textLabel.Size = UDim2.new(1, 0, 1, 0)
@@ -315,42 +315,10 @@ _G.partlabel = function(part, fontEnum, labelName, removeTracer)
     if removeTracer then
         spawn(function()
             wait(removeTracer)
-            billboardGui:Destroy()
-            _G.activeLabelObjects[part] = nil
+            if billboardGui then
+                billboardGui:Destroy()
+                _G.activeLabelObjects[part] = nil
+            end
         end)
     end
 end
-error("Missing part, font, or label name for label")
-return
-end
-
-local existingLabel = _G.activeLabelObjects[part]
-if existingLabel then
-existingLabel:Destroy()
-end
-
-local billboardGui = Instance.new("BillboardGui")
-billboardGui.Adornee = part
-billboardGui.Size = UDim2.new(1, 0, 1, 0)
-billboardGui.StudsOffset = Vector3.new(0, 2, 0)
-billboardGui.Parent = game:GetService("CoreGui")
-
-local textLabel = Instance.new("TextLabel")
-textLabel.Size = UDim2.new(1, 0, 1, 0)
-textLabel.BackgroundTransparency = 1
-textLabel.TextColor3 = Color3.fromRGB(255, 255, 255) -- White text
-textLabel.TextScaled = true
-textLabel.Font = fontEnum
-textLabel.Text = labelName
-textLabel.Parent = billboardGui
-
-_G.activeLabelObjects[part] = billboardGui
-
-if removeTracer then
-spawn(function()
-wait(removeTracer)
-billboardGui:Destroy()
-_G.activeLabelObjects[part] = nil
-end)
-end
-end;
