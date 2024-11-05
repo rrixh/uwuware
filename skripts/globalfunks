@@ -237,8 +237,8 @@ _G.partesp = function(part, colorVar, FILL)
   local espHighlight = Instance.new("Highlight")
   espHighlight.Adornee = part
   espHighlight.FillColor = espColor
-  espHighlight.FillTransparency = FILL or -2
-  espHighlight.OutlineTransparency = 0
+  espHighlight.FillTransparency = FILL or .2
+  espHighlight.OutlineTransparency = .1
   espHighlight.Parent = game:GetService("CoreGui")
 end;
 
