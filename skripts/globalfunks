@@ -1,354 +1,354 @@
---[[ global vars ]]--
-rrixh = loadstring;
-lulas = game;
-_G.plrs = game:GetService"Players"
-_G.plr = _G.plrs.LocalPlayer
-_G.char = _G.plr.Character
-_G.hum = _G.char:WaitForChild'Humanoid';
-_G.hrp = _G.char:FindFirstChild'HumanoidRootPart';
+    --[[ global vars ]]--
+    rrixh = loadstring;
+    lulas = game;
+    _G.plrs = game:GetService"Players"
+    _G.plr = _G.plrs.LocalPlayer
+    _G.char = _G.plr.Character
+    _G.hum = _G.char:WaitForChild'Humanoid';
+    _G.hrp = _G.char:FindFirstChild'HumanoidRootPart';
 
---[[ servixes ]]--
-_G.run = lulas:GetService'RunService'
-_G.vim = lulas:GetService'VirtualInputManager'
-_G.uis = lulas:GetService'UserInputService'
+    --[[ servixes ]]--
+    _G.run = lulas:GetService'RunService'
+    _G.vim = lulas:GetService'VirtualInputManager'
+    _G.uis = lulas:GetService'UserInputService'
 
---[[ global funks ]]--
-_G.bezier = function(t, p0, p1, p2)
-local l1 = p0:Lerp(p1, t)
-local l2 = p1:Lerp(p2, t)
-return l1:Lerp(l2, t)
-end
+    --[[ global funks ]]--
+    _G.bezier = function(t, p0, p1, p2)
+    local l1 = p0:Lerp(p1, t)
+    local l2 = p1:Lerp(p2, t)
+    return l1:Lerp(l2, t)
+    end
 
-_G.tweenTo = function(part, duration)
-local player = game.Players.LocalPlayer
-local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart");
-if not hrp then return end;
-local startPos = hrp.Position
-local endPos = part.Position
-local midPos = (startPos + endPos) / 2 + Vector3.new(math.random(-5, 5), math.random(3, 7), math.random(-5, 5))
-local tweenStart = os.clock();
-repeat
-local elapsed = os.clock() - tweenStart
-local t = math.min(elapsed / duration, 1)
-local bezierPos = _G.bezier(t, startPos, midPos, endPos);
-hrp.CFrame = CFrame.new(bezierPos)
-task.wait()
-until t >= 1
-end;
-
---simulate touxhing part
-_G.touxh = function(part, duration)
-_G.plr = game.Players.LocalPlayer
-_G.hrp = _G.plr.Character and _G.plr.Character:FindFirstChild("HumanoidRootPart");
-if not _G.hrp then return end;
-firetouchinterest(_G.hrp, part, 0)
-if duration then
-task.wait(duration)
-end;
-firetouchinterest(_G.hrp, part, 1)
-end;
-
---tp
-_G.tp = function(part, duration)
-_G.plr = game.Players.LocalPlayer
-_G.hrp = _G.plr.Character and _G.plr.Character:FindFirstChild("HumanoidRootPart");
-if not _G.hrp then return end;
-_G.hrp.CFrame = part.CFrame
-if duration then
-task.wait(duration)
+    _G.tweenTo = function(part, duration)
+    local player = game.Players.LocalPlayer
+    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart");
+    if not hrp then return end;
+    local startPos = hrp.Position
+    local endPos = part.Position
+    local midPos = (startPos + endPos) / 2 + Vector3.new(math.random(-5, 5), math.random(3, 7), math.random(-5, 5))
+    local tweenStart = os.clock();
+    repeat
+    local elapsed = os.clock() - tweenStart
+    local t = math.min(elapsed / duration, 1)
+    local bezierPos = _G.bezier(t, startPos, midPos, endPos);
+    hrp.CFrame = CFrame.new(bezierPos)
+    task.wait()
+    until t >= 1
     end;
-end;
 
-_G.bring = function(part, duration)
-_G.player = game.Players.LocalPlayer
-_G.hrp = _G.player.Character and _G.player.Character:FindFirstChild("HumanoidRootPart");
-if not _G.hrp then return end;
-part.CFrame = _G.hrp.CFrame;
+    --simulate touxhing part
+    _G.touxh = function(part, duration)
+    _G.plr = game.Players.LocalPlayer
+    _G.hrp = _G.plr.Character and _G.plr.Character:FindFirstChild("HumanoidRootPart");
+    if not _G.hrp then return end;
+    firetouchinterest(_G.hrp, part, 0)
     if duration then
-        task.wait(duration)
+    task.wait(duration)
     end;
-end;
-
--- moveto
-_G.walkTo = function(part, speed)
-if not part then
-error("You must provide a part to walk to.") 
-return end;
-
-local player = game.Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
-local humanoid = character:FindFirstChildWhichIsA("Humanoid")
-
-if not humanoidRootPart or not humanoid then
-error("Humanoid or HumanoidRootPart not found in character.")
-return
-end
-
-local originalSpeed = humanoid.WalkSpeed
-
-if type(speed) == "number" then
-humanoid.WalkSpeed = speed
-end
-
-local PathfindingService = game:GetService("PathfindingService")
-local path = PathfindingService:CreatePath({
-AgentHeight = humanoid.HipHeight * 2,
-AgentRadius = 2,
-AgentCanJump = true,
-})
-
-path:ComputeAsync(humanoidRootPart.Position, part.Position)
-local waypoints = path:GetWaypoints()
-
-for _, waypoint in pairs(waypoints) do
-humanoid:MoveTo(waypoint.Position)
-humanoid.MoveToFinished:Wait()
-
-if waypoint.Action == Enum.PathWaypointAction.Jump then
-humanoid.Jump = true
-end
-end
--- Restore original walk speed after reaching the target
-humanoid.WalkSpeed = originalSpeed
-end;
-
---tpwalk to
-_G.tpwalkTo = function(part)
-if not part then
-error("You must provide a part to teleport walk to.")
-return
-end;
-local player = game.Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
-local humanoid = character:FindFirstChildWhichIsA("Humanoid");
-if not humanoidRootPart or not humanoid then
-error("Humanoid or HumanoidRootPart not found in character.")
-return
-end;
-local stepDistance = 7
-local function moveToStep(targetPos)
-humanoidRootPart.CFrame = CFrame.new(targetPos)
-end;
-local startPos = humanoidRootPart.Position
-local endPos = part.Position
-local direction = (endPos - startPos).unit
-local currentPos = startPos;
-while (currentPos - endPos).magnitude > stepDistance do
-currentPos = currentPos + direction * stepDistance
-moveToStep(currentPos)
-task.wait(0.01)
-end;
-moveToStep(endPos)
-end;
-
---i pairs
-_G.iPairs = function(part, funk, dur)
-for uh,ipair in ipairs(part:GetChildren()) do
-    funk(ipair)
-if dur then wait(dur) end;
-  end
-end
-
--- pairs
-_G.Pairs = function(part, funk, dur)
-for uh,pair in pairs(part:GetChildren()) do
-    funk(pair)
-if dur then wait(dur) end;
-  end
-end;
-
---[[🖍PREDEFINED KOLORS🖍]]--
-red = "red"
-green = "green"
-blue = "blue"
-yellow = "yellow"
-pink = "pink"
-orange = "orange"
-cyan = "cyan"
-purple = "purple"
-white = "white"
-black = "black"
-gray = "gray"
-brown = "brown"
-lime = "lime"
-magenta = "magenta"
-salmon = "salmon"
-teal = "teal"
-
--- highlight part
-local colorVariables = {
-  red = "red",
-  green = "green",
-  blue = "blue",
-  yellow = "yellow",
-  pink = "pink",
-  orange = "orange",
-  cyan = "cyan",
-  purple = "purple",
-  white = "white",
-  black = "black",
-  gray = "gray",
-  brown = "brown",
-  lime = "lime",
-  magenta = "magenta",
-  salmon = "salmon",
-  teal = "teal"
-}
-
-local colorVariables = {
-red = "red",
-green = "green",
-blue = "blue",
-yellow = "yellow",
-pink = "pink",
-orange = "orange",
-cyan = "cyan",
-purple = "purple",
-white = "white",
-black = "black",
-gray = "gray",
-brown = "brown",
-lime = "lime",
-magenta = "magenta",
-salmon = "salmon",
-teal = "teal"
-}
-
-_G.activeEspObjects = _G.activeEspObjects or {}
-
-_G.partesp = function(part, colorVar, removeESP)
-if not part or not colorVar then
-error("Missing part or color for ESP")
-return end;
-local colorName = colorVariables[colorVar:lower()]
-if not colorName then
-error("Invalid color variable provided: " .. tostring(colorVar))
-return
-end;
-local colors = {
-red = Color3.fromRGB(255, 0, 0),
-green = Color3.fromRGB(0, 255, 0),
-blue = Color3.fromRGB(0, 0, 255),
-yellow = Color3.fromRGB(255, 255, 0),
-pink = Color3.fromRGB(255, 192, 203),
-orange = Color3.fromRGB(255, 165, 0),
-cyan = Color3.fromRGB(0, 255, 255),
-purple = Color3.fromRGB(128, 0, 128),
-white = Color3.fromRGB(255, 255, 255),
-black = Color3.fromRGB(0, 0, 0),
-gray = Color3.fromRGB(128, 128, 128),
-brown = Color3.fromRGB(165, 42, 42),
-lime = Color3.fromRGB(50, 205, 50),
-magenta = Color3.fromRGB(255, 0, 255),
-salmon = Color3.fromRGB(250, 128, 114),
-teal = Color3.fromRGB(0, 128, 128)
-}
-local espColor = colors[colorName]
-if not espColor then
-error("Invalid color provided in the script")
-return
-end;
-local existingEsp = _G.activeEspObjects[part]
-if existingEsp then
-existingEsp:Destroy()
-end;
-local espHighlight = Instance.new("Highlight")
-espHighlight.Adornee = part
-espHighlight.FillColor = espColor
-espHighlight.FillTransparency = 0.15 -- Default to 0.15 transparency
-espHighlight.OutlineTransparency = 0.15 -- Default to 0.15 transparency
-espHighlight.Parent = game:GetService("CoreGui");
-_G.activeEspObjects[part] = espHighlight
-if removeESP then
-spawn(function()
-wait(removeESP)
-espHighlight:Destroy()
-_G.activeEspObjects[part] = nil
-end)
-end;
-end;
-
---[[ ROBLOX INNOVATION AWARDS ]]--
-_G.circlet = Workspace:FindFirstChild("Scavenger") and Workspace.Scavenger:FindFirstChild("Circlet")
-_G.stagestand = Workspace:FindFirstChild("CenterPiece") and Workspace.CenterPiece:FindFirstChild("CenterPiece_Stand") and Workspace.CenterPiece.CenterPiece_Stand:FindFirstChild("Meshes/Stand_Full_Cylinder.001")
-_G.B1 = Workspace:FindFirstChild("CubePieces") and Workspace.CubePieces:FindFirstChild("Block1")
-_G.B2 = Workspace:FindFirstChild("CubePieces") and Workspace.CubePieces:FindFirstChild("Block2")
-_G.B3 = Workspace:FindFirstChild("CubePieces") and Workspace.CubePieces:FindFirstChild("Block3")
-_G.B4 = Workspace:FindFirstChild("CubePieces") and Workspace.CubePieces:FindFirstChild("Block4")
-
-_G.rbxinnovationitems = {
-_G.B1, _G.B2, _G.B3, _G.B4, _G.stagestand, _G.circlet}
-
---part traxers
-_G.colorVariables = {
-red = Color3.fromRGB(255, 0, 0),
-green = Color3.fromRGB(0, 255, 0),
-blue = Color3.fromRGB(0, 0, 255),
-yellow = Color3.fromRGB(255, 255, 0),
-pink = Color3.fromRGB(255, 192, 203),
-orange = Color3.fromRGB(255, 165, 0),
-cyan = Color3.fromRGB(0, 255, 255),
-purple = Color3.fromRGB(128, 0, 128),
-white = Color3.fromRGB(255, 255, 255),
-black = Color3.fromRGB(0, 0, 0),
-gray = Color3.fromRGB(128, 128, 128),
-brown = Color3.fromRGB(165, 42, 42),
-lime = Color3.fromRGB(50, 205, 50),
-magenta = Color3.fromRGB(255, 0, 255),
-salmon = Color3.fromRGB(250, 128, 114),
-teal = Color3.fromRGB(0, 128, 128)
-}
---tracers for part
-_G.activeTracerObjects = _G.activeTracerObjects or {};
-_G.tracers = function(part, colorVar, removeTracer)
-_G.part = part
-_G.colorVar = colorVar
-_G.removeTracer = removeTracer;
-if not _G.part or not _G.colorVar then
-error("Missing part or color for tracer ESP")
-return end;
-_G.tracerColor = _G.colorVariables[_G.colorVar:lower()]
-if not _G.tracerColor then
-error("Invalid color variable provided: " .. tostring(_G.colorVar))
-return end;
-_G.existingTracer = _G.activeTracerObjects[_G.part]
-if _G.existingTracer then
-_G.existingTracer:Destroy()
-end;
-_G.tracer = Instance.new("Beam")
-_G.tracer.Attachment0 = Instance.new("Attachment", _G.part)
-_G.tracer.Attachment1 = Instance.new("Attachment", game.Players.LocalPlayer.Character.Head)
-_G.tracer.Color = ColorSequence.new(_G.tracerColor)
-_G.tracer.Width0 = 0.1
-_G.tracer.Width1 = 0.1
-_G.tracer.Parent = game:GetService("CoreGui");
-_G.activeTracerObjects[_G.part] = _G.tracer;
-if _G.removeTracer then
-spawn(function()
-wait(_G.removeTracer)
-if _G.tracer then
-_G.tracer:Destroy()
-_G.activeTracerObjects[_G.part] = nil
-end;end);end;end;
-
--- get child using ipairs 
-_G.ipairs = function(p, funk, dur)
-if not p or not funk then 
-warn("nigga! '"..p.."' is an invalid part & u need to provide a valid funktion for: "'"..funk.."'"); return end;
-for lula, thang in ipairs(p:GetChildren()) do
-funk(thang) 
+    firetouchinterest(_G.hrp, part, 1)
     end;
-if dur then wait(dur) end;
- end;
 
---get child using pairs
+    --tp
+    _G.tp = function(part, duration)
+    _G.plr = game.Players.LocalPlayer
+    _G.hrp = _G.plr.Character and _G.plr.Character:FindFirstChild("HumanoidRootPart");
+    if not _G.hrp then return end;
+    _G.hrp.CFrame = part.CFrame
+    if duration then
+    task.wait(duration)
+        end;
+    end;
+
+    _G.bring = function(part, duration)
+    _G.player = game.Players.LocalPlayer
+    _G.hrp = _G.player.Character and _G.player.Character:FindFirstChild("HumanoidRootPart");
+    if not _G.hrp then return end;
+    part.CFrame = _G.hrp.CFrame;
+        if duration then
+            task.wait(duration)
+        end;
+    end;
+
+    -- moveto
+    _G.walkTo = function(part, speed)
+    if not part then
+    error("You must provide a part to walk to.") 
+    return end;
+
+    local player = game.Players.LocalPlayer
+    local character = player.Character or player.CharacterAdded:Wait()
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    local humanoid = character:FindFirstChildWhichIsA("Humanoid")
+
+    if not humanoidRootPart or not humanoid then
+    error("Humanoid or HumanoidRootPart not found in character.")
+    return
+    end
+
+    local originalSpeed = humanoid.WalkSpeed
+
+    if type(speed) == "number" then
+    humanoid.WalkSpeed = speed
+    end
+
+    local PathfindingService = game:GetService("PathfindingService")
+    local path = PathfindingService:CreatePath({
+    AgentHeight = humanoid.HipHeight * 2,
+    AgentRadius = 2,
+    AgentCanJump = true,
+    })
+
+    path:ComputeAsync(humanoidRootPart.Position, part.Position)
+    local waypoints = path:GetWaypoints()
+
+    for _, waypoint in pairs(waypoints) do
+    humanoid:MoveTo(waypoint.Position)
+    humanoid.MoveToFinished:Wait()
+
+    if waypoint.Action == Enum.PathWaypointAction.Jump then
+    humanoid.Jump = true
+    end
+    end
+    -- Restore original walk speed after reaching the target
+    humanoid.WalkSpeed = originalSpeed
+    end;
+
+    --tpwalk to
+    _G.tpwalkTo = function(part)
+    if not part then
+    error("You must provide a part to teleport walk to.")
+    return
+    end;
+    local player = game.Players.LocalPlayer
+    local character = player.Character or player.CharacterAdded:Wait()
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    local humanoid = character:FindFirstChildWhichIsA("Humanoid");
+    if not humanoidRootPart or not humanoid then
+    error("Humanoid or HumanoidRootPart not found in character.")
+    return
+    end;
+    local stepDistance = 7
+    local function moveToStep(targetPos)
+    humanoidRootPart.CFrame = CFrame.new(targetPos)
+    end;
+    local startPos = humanoidRootPart.Position
+    local endPos = part.Position
+    local direction = (endPos - startPos).unit
+    local currentPos = startPos;
+    while (currentPos - endPos).magnitude > stepDistance do
+    currentPos = currentPos + direction * stepDistance
+    moveToStep(currentPos)
+    task.wait(0.01)
+    end;
+    moveToStep(endPos)
+    end;
+
+    --i pairs
+    _G.iPairs = function(part, funk, dur)
+    for uh,ipair in ipairs(part:GetChildren()) do
+        funk(ipair)
+    if dur then wait(dur) end;
+      end
+    end
+
+    -- pairs
+    _G.Pairs = function(part, funk, dur)
+    for uh,pair in pairs(part:GetChildren()) do
+        funk(pair)
+    if dur then wait(dur) end;
+      end
+    end;
+
+    --[[🖍PREDEFINED KOLORS🖍]]--
+    red = "red"
+    green = "green"
+    blue = "blue"
+    yellow = "yellow"
+    pink = "pink"
+    orange = "orange"
+    cyan = "cyan"
+    purple = "purple"
+    white = "white"
+    black = "black"
+    gray = "gray"
+    brown = "brown"
+    lime = "lime"
+    magenta = "magenta"
+    salmon = "salmon"
+    teal = "teal"
+
+    -- highlight part
+    local colorVariables = {
+      red = "red",
+      green = "green",
+      blue = "blue",
+      yellow = "yellow",
+      pink = "pink",
+      orange = "orange",
+      cyan = "cyan",
+      purple = "purple",
+      white = "white",
+      black = "black",
+      gray = "gray",
+      brown = "brown",
+      lime = "lime",
+      magenta = "magenta",
+      salmon = "salmon",
+      teal = "teal"
+    }
+
+    local colorVariables = {
+    red = "red",
+    green = "green",
+    blue = "blue",
+    yellow = "yellow",
+    pink = "pink",
+    orange = "orange",
+    cyan = "cyan",
+    purple = "purple",
+    white = "white",
+    black = "black",
+    gray = "gray",
+    brown = "brown",
+    lime = "lime",
+    magenta = "magenta",
+    salmon = "salmon",
+    teal = "teal"
+    }
+
+    _G.activeEspObjects = _G.activeEspObjects or {}
+
+    _G.partesp = function(part, colorVar, removeESP)
+    if not part or not colorVar then
+    error("Missing part or color for ESP")
+    return end;
+    local colorName = colorVariables[colorVar:lower()]
+    if not colorName then
+    error("Invalid color variable provided: " .. tostring(colorVar))
+    return
+    end;
+    local colors = {
+    red = Color3.fromRGB(255, 0, 0),
+    green = Color3.fromRGB(0, 255, 0),
+    blue = Color3.fromRGB(0, 0, 255),
+    yellow = Color3.fromRGB(255, 255, 0),
+    pink = Color3.fromRGB(255, 192, 203),
+    orange = Color3.fromRGB(255, 165, 0),
+    cyan = Color3.fromRGB(0, 255, 255),
+    purple = Color3.fromRGB(128, 0, 128),
+    white = Color3.fromRGB(255, 255, 255),
+    black = Color3.fromRGB(0, 0, 0),
+    gray = Color3.fromRGB(128, 128, 128),
+    brown = Color3.fromRGB(165, 42, 42),
+    lime = Color3.fromRGB(50, 205, 50),
+    magenta = Color3.fromRGB(255, 0, 255),
+    salmon = Color3.fromRGB(250, 128, 114),
+    teal = Color3.fromRGB(0, 128, 128)
+    }
+    local espColor = colors[colorName]
+    if not espColor then
+    error("Invalid color provided in the script")
+    return
+    end;
+    local existingEsp = _G.activeEspObjects[part]
+    if existingEsp then
+    existingEsp:Destroy()
+    end;
+    local espHighlight = Instance.new("Highlight")
+    espHighlight.Adornee = part
+    espHighlight.FillColor = espColor
+    espHighlight.FillTransparency = 0.15 -- Default to 0.15 transparency
+    espHighlight.OutlineTransparency = 0.15 -- Default to 0.15 transparency
+    espHighlight.Parent = game:GetService("CoreGui");
+    _G.activeEspObjects[part] = espHighlight
+    if removeESP then
+    spawn(function()
+    wait(removeESP)
+    espHighlight:Destroy()
+    _G.activeEspObjects[part] = nil
+    end)
+    end;
+    end;
+
+    --[[ ROBLOX INNOVATION AWARDS ]]--
+    _G.circlet = Workspace:FindFirstChild("Scavenger") and Workspace.Scavenger:FindFirstChild("Circlet")
+    _G.stagestand = Workspace:FindFirstChild("CenterPiece") and Workspace.CenterPiece:FindFirstChild("CenterPiece_Stand") and Workspace.CenterPiece.CenterPiece_Stand:FindFirstChild("Meshes/Stand_Full_Cylinder.001")
+    _G.B1 = Workspace:FindFirstChild("CubePieces") and Workspace.CubePieces:FindFirstChild("Block1")
+    _G.B2 = Workspace:FindFirstChild("CubePieces") and Workspace.CubePieces:FindFirstChild("Block2")
+    _G.B3 = Workspace:FindFirstChild("CubePieces") and Workspace.CubePieces:FindFirstChild("Block3")
+    _G.B4 = Workspace:FindFirstChild("CubePieces") and Workspace.CubePieces:FindFirstChild("Block4")
+
+    _G.rbxinnovationitems = {
+    _G.B1, _G.B2, _G.B3, _G.B4, _G.stagestand, _G.circlet}
+
+    --part traxers
+    _G.colorVariables = {
+    red = Color3.fromRGB(255, 0, 0),
+    green = Color3.fromRGB(0, 255, 0),
+    blue = Color3.fromRGB(0, 0, 255),
+    yellow = Color3.fromRGB(255, 255, 0),
+    pink = Color3.fromRGB(255, 192, 203),
+    orange = Color3.fromRGB(255, 165, 0),
+    cyan = Color3.fromRGB(0, 255, 255),
+    purple = Color3.fromRGB(128, 0, 128),
+    white = Color3.fromRGB(255, 255, 255),
+    black = Color3.fromRGB(0, 0, 0),
+    gray = Color3.fromRGB(128, 128, 128),
+    brown = Color3.fromRGB(165, 42, 42),
+    lime = Color3.fromRGB(50, 205, 50),
+    magenta = Color3.fromRGB(255, 0, 255),
+    salmon = Color3.fromRGB(250, 128, 114),
+    teal = Color3.fromRGB(0, 128, 128)
+    }
+    --tracers for part
+    _G.activeTracerObjects = _G.activeTracerObjects or {};
+    _G.tracers = function(part, colorVar, removeTracer)
+    _G.part = part
+    _G.colorVar = colorVar
+    _G.removeTracer = removeTracer;
+    if not _G.part or not _G.colorVar then
+    error("Missing part or color for tracer ESP")
+    return end;
+    _G.tracerColor = _G.colorVariables[_G.colorVar:lower()]
+    if not _G.tracerColor then
+    error("Invalid color variable provided: " .. tostring(_G.colorVar))
+    return end;
+    _G.existingTracer = _G.activeTracerObjects[_G.part]
+    if _G.existingTracer then
+    _G.existingTracer:Destroy()
+    end;
+    _G.tracer = Instance.new("Beam")
+    _G.tracer.Attachment0 = Instance.new("Attachment", _G.part)
+    _G.tracer.Attachment1 = Instance.new("Attachment", game.Players.LocalPlayer.Character.Head)
+    _G.tracer.Color = ColorSequence.new(_G.tracerColor)
+    _G.tracer.Width0 = 0.1
+    _G.tracer.Width1 = 0.1
+    _G.tracer.Parent = game:GetService("CoreGui");
+    _G.activeTracerObjects[_G.part] = _G.tracer;
+    if _G.removeTracer then
+    spawn(function()
+    wait(_G.removeTracer)
+    if _G.tracer then
+    _G.tracer:Destroy()
+    _G.activeTracerObjects[_G.part] = nil
+    end;end);end;end;
+
+    -- get child using ipairs 
+    _G.ipairs = function(p, funk, dur)
+    if not p or not funk then 
+warn("nigga! '"..p.."' is an invalid part & u need to provide a valid funktion for: '"..funk.. "'"); return end;
+    for lula, thang in ipairs(p:GetChildren()) do
+    funk(thang) 
+        end;
+    if dur then wait(dur) end;
+end;
+
+    --get child using pairs
 _G.pairs = function(p, funk, dur)
-if not p or not funk then 
-warn("nigga! '"..p.."' is an invalid part & u need to provide a valid funktion for: "'"..funk.."'"); return end;
-for lula, thang in pairs(p:GetChildren()) do
-funk(thang) 
-    end;
-if dur then wait(dur) end;
- end;
+    if not p or not funk then 
+warn("nigga! '"..p.."' is an invalid part & u need to provide a valid funktion for: '"..funk.. "'"); return end;
+    for lula, thang in pairs(p:GetChildren()) do
+    funk(thang) 
+        end;
+    if dur then wait(dur) end;
+end;
