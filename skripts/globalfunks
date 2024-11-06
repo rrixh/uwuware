@@ -300,47 +300,55 @@ magenta = Color3.fromRGB(255, 0, 255),
 salmon = Color3.fromRGB(250, 128, 114),
 teal = Color3.fromRGB(0, 128, 128)
 }
-
-_G.activeTracerObjects = _G.activeTracerObjects or {}
-
+--tracers for part
+_G.activeTracerObjects = _G.activeTracerObjects or {};
 _G.tracers = function(part, colorVar, removeTracer)
 _G.part = part
 _G.colorVar = colorVar
-_G.removeTracer = removeTracer
-
+_G.removeTracer = removeTracer;
 if not _G.part or not _G.colorVar then
 error("Missing part or color for tracer ESP")
-return
-end
-
+return end;
 _G.tracerColor = _G.colorVariables[_G.colorVar:lower()]
 if not _G.tracerColor then
 error("Invalid color variable provided: " .. tostring(_G.colorVar))
-return
-end
-
+return end;
 _G.existingTracer = _G.activeTracerObjects[_G.part]
 if _G.existingTracer then
 _G.existingTracer:Destroy()
-end
-
+end;
 _G.tracer = Instance.new("Beam")
 _G.tracer.Attachment0 = Instance.new("Attachment", _G.part)
 _G.tracer.Attachment1 = Instance.new("Attachment", game.Players.LocalPlayer.Character.Head)
 _G.tracer.Color = ColorSequence.new(_G.tracerColor)
 _G.tracer.Width0 = 0.1
 _G.tracer.Width1 = 0.1
-_G.tracer.Parent = game:GetService("CoreGui")
-
-_G.activeTracerObjects[_G.part] = _G.tracer
-
+_G.tracer.Parent = game:GetService("CoreGui");
+_G.activeTracerObjects[_G.part] = _G.tracer;
 if _G.removeTracer then
 spawn(function()
 wait(_G.removeTracer)
 if _G.tracer then
 _G.tracer:Destroy()
 _G.activeTracerObjects[_G.part] = nil
-end
-end)
-end
-end
+end;end);end;end;
+
+-- get child using ipairs 
+_G.ipairs = function(p, funk, dur)
+if not p or not funk then 
+warn("nigga! '"..p.."' is an invalid part & u need to provide a valid funktion for: "'"..funk.."'"); return end;
+for lula, thang in ipairs(p:GetChildren()) do
+funk(thang) 
+    end;
+if dur then wait(dur) end;
+ end;
+
+--get child using pairs
+_G.pairs = function(p, funk, dur)
+if not p or not funk then 
+warn("nigga! '"..p.."' is an invalid part & u need to provide a valid funktion for: "'"..funk.."'"); return end;
+for lula, thang in pairs(p:GetChildren()) do
+funk(thang) 
+    end;
+if dur then wait(dur) end;
+ end;
