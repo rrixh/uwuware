@@ -1,0 +1,52 @@
+getgenv().MansionOfWonder_IslandOfMove = [[ 
+mansion of wonder:  glimmer,fxartist, particlewizard, thingsgoboom
+
+island of move:  strikeapose, diy, worldalive, settingthestage, victorylap, getmoving
+]];
+local spot = game:GetService[[MarketplaceService]]:GetProductInfo(game.PlaceId).Name
+local uwuRRIXH = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/mobileware",true))();local lulaslollipop="lulaslollipop 🍭";local uwu=uwuRRIXH:CreateWindow(spot)
+
+--island move & mansion wonder remote
+local redeem = function(kodes)
+local rk = { [1] = kodes }
+game:GetService("ReplicatedStorage").Events.RedeemCode:FireServer(unpack(rk))
+end;
+
+--items island of move
+local IslandOfMove = {"StrikeAPose", "DIY", "WorldAlive", "SettingTheStage", "VictoryLap", "GetMoving"};
+local MansionOfWonder = {"Glimmer" ,"FXArtist", "ParticleWizard", "ThingsGoBoom"};
+
+local mansionGame = (6901029464);
+local islandGame = (5306359293);
+
+local togame = function(id)
+game:GetService("TeleportService"):Teleport(id, game:GetService("Players").LocalPlayer)
+end;
+
+local island = uwu:AddFolder("Island of Move");
+
+island:AddButton({text = "get all items", callback = function()
+for get,kode in pairs(IslandOfMove) do
+redeem(kode)
+task.wait(0.8)
+  end;
+end}) 
+
+island:AddButton({text = "goto island of move", callback = function() 
+togame(islandGame);
+end})
+
+local mansion = uwu:AddFolder("Mansion of Wonder")
+
+mansion:AddButton({text = "get all items", callback = function() 
+for get,kode in pairs(MansionOfWonder) do
+redeem(kode)
+task.wait(0.8)
+  end;
+end})
+
+mansion:AddButton({text = "goto mansion of wonder", callback = function()
+togame(mansionGame);
+end})
+
+uwu:AddFolder(lulaslollipop); uwuRRIXH:Init();
