@@ -1,5 +1,8 @@
+local function partialName(p, par)
+ return string.find(p.Name:lower(), par:lower()) or string.find(p.DisplayName:lower(), par:lower())
+end;
 spawn(function()
-                while bringPlayersState do
+    while bringPlayersState do
                     wait(0.1)
                     task.spawn(function()
                         local localPlayer = game:GetService("Players").LocalPlayer
