@@ -1,0 +1,17 @@
+spawn(function()
+                while bringPlayersState do
+                    wait(0.1)
+                    task.spawn(function()
+                        local localPlayer = game:GetService("Players").LocalPlayer
+                        if targetPlayerName and getgenv().targetDistance then
+         for _, v in pairs(game:GetService("Players"):GetChildren()) do
+   if v:IsA("Player") and v.Name ~= localPlayer.Name then
+        if v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
+  if partialName(v, targetPlayerName) then
+local newPosition = localPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, -getgenv().targetDistance)
+                                            v.Character.HumanoidRootPart.CFrame = newPosition;
+end;end;end;end
+        end
+      end)
+     end
+        end); --spawn
