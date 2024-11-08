@@ -428,7 +428,12 @@ _G.part = function(partPath, argument, color)
             end
         end)
     elseif argument == "esp" then
-        highlightPart(part, color)
+        local highlightColor = color
+        if type(highlightColor) ~= "Color3" then
+            highlightColor = Color3.new(1, 0, 0) -- Default to red if invalid
+            warn("Invalid color provided for 'esp', using default red.")
+        end
+        highlightPart(part, highlightColor)
     end
 end
 
