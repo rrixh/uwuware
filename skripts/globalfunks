@@ -364,10 +364,6 @@ _G.part = function(partPath, argument, color)
         warn("Invalid argument provided to _G.part. Use 'studs' or 'esp'.")
         return
     end
-    if not color or not color:IsA("Color3") then
-        warn("Invalid color provided to _G.part.")
-        return
-    end
 
     local Players = game:GetService("Players")
     local RunService = game:GetService("RunService")
