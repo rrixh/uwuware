@@ -370,6 +370,20 @@ _G.part = function(partPath, argument, color)
     local player = Players.LocalPlayer
     local UPDATE_INTERVAL = 0.1 -- Increased interval for performance
 
+local function findPartByPath(path)
+    local parts = path:split(".")
+    local current = game.Workspace
+    for i, partName in ipairs(parts) do
+        local child = current:FindFirstChild(partName)
+        if not child then
+            warn("Part not found in path: " .. path)
+            return nil
+        end
+        current = child
+    end
+    return current
+end;
+
     local part = findPartByPath(partPath)
     if not part then
         warn("Part not found at path: " .. partPath)
@@ -435,18 +449,4 @@ _G.part = function(partPath, argument, color)
         end
         highlightPart(part, highlightColor)
     end
-end
-
-local function findPartByPath(path)
-    local parts = path:split(".")
-    local current = game.Workspace
-    for i, partName in ipairs(parts) do
-        local child = current:FindFirstChild(partName)
-        if not child then
-            warn("Part not found in path: " .. path)
-            return nil
-        end
-        current = child
-    end
-    return current
 end;
