@@ -352,3 +352,70 @@ warn("nigga! '"..p.."' is an invalid part & u need to provide a valid funktion f
         end;
     if dur then wait(dur) end;
 end;
+
+-- [[ PART ESP OR HIGHLIGHT ]] --
+_G.partdistance = function(part, argument, color)
+	local Workspace = game:GetService("Workspace")
+	local Players = game:GetService("Players")
+	local RunService = game:GetService("RunService")
+	local player = Players.LocalPlayer
+
+	local UPDATE_INTERVAL = 0.001
+
+	local function createBillboardGui(part)
+		local billboardGui = Instance.new("BillboardGui")
+		billboardGui.Parent = part
+		billboardGui.Adornee = part
+		billboardGui.Size = UDim2.new(0, 100, 0, 40)
+		billboardGui.StudsOffset = Vector3.new(0, 3, 0)
+		billboardGui.AlwaysOnTop = true
+		return billboardGui
+	end
+
+	local function createTextLabel(billboardGui, textColor)
+		local textLabel = Instance.new("TextLabel")
+		textLabel.Parent = billboardGui
+		textLabel.Size = UDim2.new(1, 0, 1, 0)
+		textLabel.TextScaled = true
+		textLabel.BackgroundTransparency = 1
+		textLabel.TextColor3 = textColor
+		textLabel.Font = Enum.Font.SourceSansBold
+		textLabel.Text = "Calculating..."
+		textLabel.TextSize = 14
+		return textLabel
+	end
+
+	local function updateDistance(textLabel, stairs)
+		if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+			local distance = (player.Character.HumanoidRootPart.Position - stairs.Position).Magnitude
+			textLabel.Text = string.format("Distance: %.2f studs", distance)
+		else
+			textLabel.Text = "Player not found"
+		end
+	end
+
+	local function highlightPart(part, highlightColor)
+		local highlight = Instance.new("Highlight")
+		highlight.Parent = part
+		highlight.FillColor = highlightColor
+		highlight.OutlineColor = highlightColor
+	end
+
+	if argument == "studs" then
+		local billboardGui = createBillboardGui(part)
+		local textLabel = createTextLabel(billboardGui, color)
+
+		local lastUpdate = tick()
+		RunService.Heartbeat:Connect(function(dt)
+			if tick() - lastUpdate >= UPDATE_INTERVAL then
+				updateDistance(textLabel, part)
+				lastUpdate = tick()
+			end
+		end)
+	elseif argument == "esp" then
+		highlightPart(part, color)
+	else
+		warn("Invalid argument provided to _G.partdistance. Use 'studs' or 'esp'.")
+	end
+end;
+
