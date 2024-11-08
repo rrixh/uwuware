@@ -371,16 +371,16 @@ _G.part = function(partName, argument, color)
         return
     end
 
+    local Players = game:GetService("Players")
+    local RunService = game:GetService("RunService")
+    local player = Players.LocalPlayer
+    local UPDATE_INTERVAL = 0.1
+
     for _, part in ipairs(parts) do
         if not argument or (argument ~= "studs" and argument ~= "esp") then
             warn("Invalid argument provided to _G.part. Use 'studs' or 'esp'.")
             return
         end
-
-        local Players = game:GetService("Players")
-        local RunService = game:GetService("RunService")
-        local player = Players.LocalPlayer
-        local UPDATE_INTERVAL = 0.1
 
         if argument == "studs" then
             local billboardGui = Instance.new("BillboardGui")
@@ -400,23 +400,13 @@ _G.part = function(partName, argument, color)
             textLabel.Text = "Calculating..."
             textLabel.TextSize = 14
 
-            local lastUpdate = tick()
-            RunService.Heartbeat:Connect(function(dt)
-                if tick() - lastUpdate >= UPDATE_INTERVAL then
-                    local character = player.Character
-                    if character and character:FindFirstChild("HumanoidRootPart") then
-                        local distance = (character.HumanoidRootPart.Position - part.Position).Magnitude
-                        textLabel.Text = string.format("Distance: %.2f studs", distance)
-                    else
-                        textLabel.Text = "Player not found"
-                    end
-                    lastUpdate = tick()
-                end
-            end)
+            --Store references for updating later
+            part.TextLabel = textLabel;
+
         elseif argument == "esp" then
             local highlightColor = color
             if type(highlightColor) ~= "Color3" then
-                highlightColor = Color3.new(1, 0, 0) -- Default to red if invalid
+                highlightColor = Color3.new(1, 0, 0) 
                 warn("Invalid color provided for 'esp', using default red.")
             end
 
@@ -426,4 +416,23 @@ _G.part = function(partName, argument, color)
             highlight.OutlineColor = highlightColor
         end
     end
+
+    -- Single Heartbeat connection to update ALL parts
+    local lastUpdate = tick()
+    RunService.Heartbeat:Connect(function(dt)
+        if tick() - lastUpdate >= UPDATE_INTERVAL then
+            for _, part in ipairs(parts) do
+                if part.TextLabel then
+                  local character = player.Character
+                  if character and character:FindFirstChild("HumanoidRootPart") then
+                      local distance = (character.HumanoidRootPart.Position - part.Position).Magnitude
+                      part.TextLabel.Text = string.format("Distance: %.2f studs", distance)
+                  else
+                      part.TextLabel.Text = "Player not found"
+                  end
+                end
+            end
+            lastUpdate = tick()
+        end
+    end)
 end;
