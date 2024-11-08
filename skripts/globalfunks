@@ -354,100 +354,76 @@ warn("nigga! '"..p.."' is an invalid part & u need to provide a valid funktion f
 end;
 
 -- [[ PART ESP OR HIGHLIGHT ]] --
-
-_G.findPartByPath = function(path)
-    local parts = path:split(".")
-    local current = game.Workspace
-    for i, partName in ipairs(parts) do
-        local child = current:FindFirstChild(partName)
-        if not child then
-            warn("Part not found in path: " .. path)
-            return nil
+_G.findPartsByName = function(partName)
+    local parts = {}
+    for _, part in pairs(workspace:GetDescendants()) do
+        if part:IsA("BasePart") and part.Name == partName then
+            table.insert(parts, part)
         end
-        current = child
     end
-    return current
+    return parts
 end
 
-_G.part = function(partPath, argument, color)
-    -- Error handling for invalid inputs
-    if not partPath or type(partPath) ~= "string" then
-        warn("Invalid part path provided to _G.part.")
-        return
-    end
-    if not argument or (argument ~= "studs" and argument ~= "esp") then
-        warn("Invalid argument provided to _G.part. Use 'studs' or 'esp'.")
+_G.part = function(partName, argument, color)
+    local parts = _G.findPartsByName(partName)
+    if #parts == 0 then
+        warn("No parts found with name: " .. partName)
         return
     end
 
-    local Players = game:GetService("Players")
-    local RunService = game:GetService("RunService")
-    local player = Players.LocalPlayer
-    local UPDATE_INTERVAL = 0.1 -- Increased interval for performance
-
-    local part = _G.findPartByPath(partPath)
-    if not part then
-        warn("Part not found at path: " .. partPath)
-        return
-    end
-
-    _G.createBillboardGui = function(part)
-        local billboardGui = Instance.new("BillboardGui")
-        billboardGui.Parent = part
-        billboardGui.Adornee = part
-        billboardGui.Size = UDim2.new(0, 100, 0, 40)
-        billboardGui.StudsOffset = Vector3.new(0, 3, 0)
-        billboardGui.AlwaysOnTop = true
-        return billboardGui
-    end
-
-    _G.createTextLabel = function(billboardGui, textColor)
-        local textLabel = Instance.new("TextLabel")
-        textLabel.Parent = billboardGui
-        textLabel.Size = UDim2.new(1, 0, 1, 0)
-        textLabel.TextScaled = true
-        textLabel.BackgroundTransparency = 1
-        textLabel.TextColor3 = textColor
-        textLabel.Font = Enum.Font.SourceSansBold
-        textLabel.Text = "Calculating..."
-        textLabel.TextSize = 14
-        return textLabel
-    end
-
-    _G.updateDistance = function(textLabel, part)
-        local character = player.Character
-        if character and character:FindFirstChild("HumanoidRootPart") then
-            local distance = (character.HumanoidRootPart.Position - part.Position).Magnitude
-            textLabel.Text = string.format("Distance: %.2f studs", distance)
-        else
-            textLabel.Text = "Player not found"
+    for _, part in ipairs(parts) do
+        if not argument or (argument ~= "studs" and argument ~= "esp") then
+            warn("Invalid argument provided to _G.part. Use 'studs' or 'esp'.")
+            return
         end
-    end
 
-    _G.highlightPart = function(part, highlightColor)
-        local highlight = Instance.new("Highlight")
-        highlight.Parent = part
-        highlight.FillColor = highlightColor
-        highlight.OutlineColor = highlightColor
-    end
+        local Players = game:GetService("Players")
+        local RunService = game:GetService("RunService")
+        local player = Players.LocalPlayer
+        local UPDATE_INTERVAL = 0.1
 
-    if argument == "studs" then
-        local billboardGui = _G.createBillboardGui(part)
-        local textLabel = _G.createTextLabel(billboardGui, color)
-        local lastUpdate = tick()
+        if argument == "studs" then
+            local billboardGui = Instance.new("BillboardGui")
+            billboardGui.Parent = part
+            billboardGui.Adornee = part
+            billboardGui.Size = UDim2.new(0, 100, 0, 40)
+            billboardGui.StudsOffset = Vector3.new(0, 3, 0)
+            billboardGui.AlwaysOnTop = true
 
-        RunService.Heartbeat:Connect(function(dt)
-            if tick() - lastUpdate >= UPDATE_INTERVAL then
-                _G.updateDistance(textLabel, part)
-                lastUpdate = tick()
+            local textLabel = Instance.new("TextLabel")
+            textLabel.Parent = billboardGui
+            textLabel.Size = UDim2.new(1, 0, 1, 0)
+            textLabel.TextScaled = true
+            textLabel.BackgroundTransparency = 1
+            textLabel.TextColor3 = color
+            textLabel.Font = Enum.Font.SourceSansBold
+            textLabel.Text = "Calculating..."
+            textLabel.TextSize = 14
+
+            local lastUpdate = tick()
+            RunService.Heartbeat:Connect(function(dt)
+                if tick() - lastUpdate >= UPDATE_INTERVAL then
+                    local character = player.Character
+                    if character and character:FindFirstChild("HumanoidRootPart") then
+                        local distance = (character.HumanoidRootPart.Position - part.Position).Magnitude
+                        textLabel.Text = string.format("Distance: %.2f studs", distance)
+                    else
+                        textLabel.Text = "Player not found"
+                    end
+                    lastUpdate = tick()
+                end
+            end)
+        elseif argument == "esp" then
+            local highlightColor = color
+            if type(highlightColor) ~= "Color3" then
+                highlightColor = Color3.new(1, 0, 0) -- Default to red if invalid
+                warn("Invalid color provided for 'esp', using default red.")
             end
-        end)
-    elseif argument == "esp" then
-        local highlightColor = color
-        if type(highlightColor) ~= "Color3" then
-            highlightColor = Color3.new(1, 0, 0) -- Default to red if invalid
-            warn("Invalid color provided for 'esp', using default red.")
+
+            local highlight = Instance.new("Highlight")
+            highlight.Parent = part
+            highlight.FillColor = highlightColor
+            highlight.OutlineColor = highlightColor
         end
-        _G.highlightPart(part, highlightColor)
     end
 end;
