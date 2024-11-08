@@ -354,6 +354,21 @@ warn("nigga! '"..p.."' is an invalid part & u need to provide a valid funktion f
 end;
 
 -- [[ PART ESP OR HIGHLIGHT ]] --
+
+_G.findPartByPath = function(path)
+    local parts = path:split(".")
+    local current = game.Workspace
+    for i, partName in ipairs(parts) do
+        local child = current:FindFirstChild(partName)
+        if not child then
+            warn("Part not found in path: " .. path)
+            return nil
+        end
+        current = child
+    end
+    return current
+end
+
 _G.part = function(partPath, argument, color)
     -- Error handling for invalid inputs
     if not partPath or type(partPath) ~= "string" then
@@ -370,27 +385,13 @@ _G.part = function(partPath, argument, color)
     local player = Players.LocalPlayer
     local UPDATE_INTERVAL = 0.1 -- Increased interval for performance
 
-local function findPartByPath(path)
-    local parts = path:split(".")
-    local current = game.Workspace
-    for i, partName in ipairs(parts) do
-        local child = current:FindFirstChild(partName)
-        if not child then
-            warn("Part not found in path: " .. path)
-            return nil
-        end
-        current = child
-    end
-    return current
-end;
-
-    local part = findPartByPath(partPath)
+    local part = _G.findPartByPath(partPath)
     if not part then
         warn("Part not found at path: " .. partPath)
         return
     end
 
-    local function createBillboardGui(part)
+    _G.createBillboardGui = function(part)
         local billboardGui = Instance.new("BillboardGui")
         billboardGui.Parent = part
         billboardGui.Adornee = part
@@ -400,7 +401,7 @@ end;
         return billboardGui
     end
 
-    local function createTextLabel(billboardGui, textColor)
+    _G.createTextLabel = function(billboardGui, textColor)
         local textLabel = Instance.new("TextLabel")
         textLabel.Parent = billboardGui
         textLabel.Size = UDim2.new(1, 0, 1, 0)
@@ -413,7 +414,7 @@ end;
         return textLabel
     end
 
-    local function updateDistance(textLabel, part)
+    _G.updateDistance = function(textLabel, part)
         local character = player.Character
         if character and character:FindFirstChild("HumanoidRootPart") then
             local distance = (character.HumanoidRootPart.Position - part.Position).Magnitude
@@ -423,7 +424,7 @@ end;
         end
     end
 
-    local function highlightPart(part, highlightColor)
+    _G.highlightPart = function(part, highlightColor)
         local highlight = Instance.new("Highlight")
         highlight.Parent = part
         highlight.FillColor = highlightColor
@@ -431,13 +432,13 @@ end;
     end
 
     if argument == "studs" then
-        local billboardGui = createBillboardGui(part)
-        local textLabel = createTextLabel(billboardGui, color)
+        local billboardGui = _G.createBillboardGui(part)
+        local textLabel = _G.createTextLabel(billboardGui, color)
         local lastUpdate = tick()
 
         RunService.Heartbeat:Connect(function(dt)
             if tick() - lastUpdate >= UPDATE_INTERVAL then
-                updateDistance(textLabel, part)
+                _G.updateDistance(textLabel, part)
                 lastUpdate = tick()
             end
         end)
@@ -447,6 +448,6 @@ end;
             highlightColor = Color3.new(1, 0, 0) -- Default to red if invalid
             warn("Invalid color provided for 'esp', using default red.")
         end
-        highlightPart(part, highlightColor)
+        _G.highlightPart(part, highlightColor)
     end
 end;
