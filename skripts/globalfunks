@@ -354,98 +354,98 @@ warn("nigga! '"..p.."' is an invalid part & u need to provide a valid funktion f
 end;
 
 -- [[ PART ESP OR HIGHLIGHT ]] --
-_G.part = function(partName, argument, color)
-	-- Error handling for invalid inputs
-	if not partName or type(partName) ~= "string" then
-		warn("Invalid part name provided to _G.part.")
-		return
-	end
-	if not argument or (argument ~= "studs" and argument ~= "esp") then
-		warn("Invalid argument provided to _G.part. Use 'studs' or 'esp'.")
-		return
-	end
-	if not color or not color:IsA("Color3") then
-		warn("Invalid color provided to _G.part.")
-		return
-	end
+_G.part = function(partPath, argument, color)
+    -- Error handling for invalid inputs
+    if not partPath or type(partPath) ~= "string" then
+        warn("Invalid part path provided to _G.part.")
+        return
+    end
+    if not argument or (argument ~= "studs" and argument ~= "esp") then
+        warn("Invalid argument provided to _G.part. Use 'studs' or 'esp'.")
+        return
+    end
+    if not color or not color:IsA("Color3") then
+        warn("Invalid color provided to _G.part.")
+        return
+    end
 
+    local Players = game:GetService("Players")
+    local RunService = game:GetService("RunService")
+    local player = Players.LocalPlayer
+    local UPDATE_INTERVAL = 0.1 -- Increased interval for performance
 
-	local Players = game:GetService("Players")
-	local RunService = game:GetService("RunService")
-	local player = Players.LocalPlayer
-	local UPDATE_INTERVAL = 0.1 -- Increased interval for performance
+    local part = findPartByPath(partPath)
+    if not part then
+        warn("Part not found at path: " .. partPath)
+        return
+    end
 
-	local parts = workspace:GetChildren()
-	local partsToHighlight = {}
+    local function createBillboardGui(part)
+        local billboardGui = Instance.new("BillboardGui")
+        billboardGui.Parent = part
+        billboardGui.Adornee = part
+        billboardGui.Size = UDim2.new(0, 100, 0, 40)
+        billboardGui.StudsOffset = Vector3.new(0, 3, 0)
+        billboardGui.AlwaysOnTop = true
+        return billboardGui
+    end
 
-	for _, p in pairs(parts) do
-		if p:IsA("BasePart") and p.Name == partName then
-			table.insert(partsToHighlight, p)
-		end
-	end
+    local function createTextLabel(billboardGui, textColor)
+        local textLabel = Instance.new("TextLabel")
+        textLabel.Parent = billboardGui
+        textLabel.Size = UDim2.new(1, 0, 1, 0)
+        textLabel.TextScaled = true
+        textLabel.BackgroundTransparency = 1
+        textLabel.TextColor3 = textColor
+        textLabel.Font = Enum.Font.SourceSansBold
+        textLabel.Text = "Calculating..."
+        textLabel.TextSize = 14
+        return textLabel
+    end
 
-	if #partsToHighlight == 0 then
-		warn("No parts found with the name: " .. partName)
-		return
-	end
+    local function updateDistance(textLabel, part)
+        local character = player.Character
+        if character and character:FindFirstChild("HumanoidRootPart") then
+            local distance = (character.HumanoidRootPart.Position - part.Position).Magnitude
+            textLabel.Text = string.format("Distance: %.2f studs", distance)
+        else
+            textLabel.Text = "Player not found"
+        end
+    end
 
+    local function highlightPart(part, highlightColor)
+        local highlight = Instance.new("Highlight")
+        highlight.Parent = part
+        highlight.FillColor = highlightColor
+        highlight.OutlineColor = highlightColor
+    end
 
-	local function createBillboardGui(part)
-		local billboardGui = Instance.new("BillboardGui")
-		billboardGui.Parent = part
-		billboardGui.Adornee = part
-		billboardGui.Size = UDim2.new(0, 100, 0, 40)
-		billboardGui.StudsOffset = Vector3.new(0, 3, 0)
-		billboardGui.AlwaysOnTop = true
-		return billboardGui
-	end
+    if argument == "studs" then
+        local billboardGui = createBillboardGui(part)
+        local textLabel = createTextLabel(billboardGui, color)
+        local lastUpdate = tick()
 
-	local function createTextLabel(billboardGui, textColor)
-		local textLabel = Instance.new("TextLabel")
-		textLabel.Parent = billboardGui
-		textLabel.Size = UDim2.new(1, 0, 1, 0)
-		textLabel.TextScaled = true
-		textLabel.BackgroundTransparency = 1
-		textLabel.TextColor3 = textColor
-		textLabel.Font = Enum.Font.SourceSansBold
-		textLabel.Text = "Calculating..."
-		textLabel.TextSize = 14
-		return textLabel
-	end
+        RunService.Heartbeat:Connect(function(dt)
+            if tick() - lastUpdate >= UPDATE_INTERVAL then
+                updateDistance(textLabel, part)
+                lastUpdate = tick()
+            end
+        end)
+    elseif argument == "esp" then
+        highlightPart(part, color)
+    end
+end
 
-	local function updateDistance(textLabel, part)
-		local character = player.Character
-		if character and character:FindFirstChild("HumanoidRootPart") then
-			local distance = (character.HumanoidRootPart.Position - part.Position).Magnitude
-			textLabel.Text = string.format("Distance: %.2f studs", distance)
-		else
-			textLabel.Text = "Player not found"
-		end
-	end
-
-	local function highlightPart(part, highlightColor)
-		local highlight = Instance.new("Highlight")
-		highlight.Parent = part
-		highlight.FillColor = highlightColor
-		highlight.OutlineColor = highlightColor
-	end
-
-	if argument == "studs" then
-		for _, p in pairs(partsToHighlight) do
-			local billboardGui = createBillboardGui(p)
-			local textLabel = createTextLabel(billboardGui, color)
-			local lastUpdate = tick()
-
-			RunService.Heartbeat:Connect(function(dt)
-				if tick() - lastUpdate >= UPDATE_INTERVAL then
-					updateDistance(textLabel, p)
-					lastUpdate = tick()
-				end
-			end)
-		end
-	elseif argument == "esp" then
-		for _, p in pairs(partsToHighlight) do
-			highlightPart(p, color)
-		end
-	end
+local function findPartByPath(path)
+    local parts = path:split(".")
+    local current = game.Workspace
+    for i, partName in ipairs(parts) do
+        local child = current:FindFirstChild(partName)
+        if not child then
+            warn("Part not found in path: " .. path)
+            return nil
+        end
+        current = child
+    end
+    return current
 end;
