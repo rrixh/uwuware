@@ -354,7 +354,7 @@ warn("nigga! '"..p.."' is an invalid part & u need to provide a valid funktion f
 end;
 
 -- [[ PART ESP OR HIGHLIGHT ]] --
-_G.partdistance = function(part, argument, color)
+_G.part = function(part, argument, color)
 	local Workspace = game:GetService("Workspace")
 	local Players = game:GetService("Players")
 	local RunService = game:GetService("RunService")
