@@ -364,6 +364,8 @@ _G.part = function(part, argument, color)
         return
     end
 
+    local success = false -- Flag to track successful part modification
+
     if argument == "studs" then
         local billboardGui = Instance.new("BillboardGui")
         billboardGui.Parent = part
@@ -377,31 +379,37 @@ _G.part = function(part, argument, color)
         textLabel.Size = UDim2.new(1, 0, 1, 0)
         textLabel.TextScaled = true
         textLabel.BackgroundTransparency = 1
-        textLabel.TextColor3 = color or Color3.new(1, 1, 1) -- Default to white
+        textLabel.TextColor3 = color or Color3.new(1, 1, 1)
         textLabel.Font = Enum.Font.SourceSansBold
         textLabel.Text = "Calculating..."
         textLabel.TextSize = 14
 
-        part.TextLabel = textLabel -- Store reference
+        part.TextLabel = textLabel
+        success = true -- Set success flag if studs are added
     elseif argument == "esp" then
-        local highlightColor = color or Color3.new(1, 0, 0) -- Default to red
+        local highlightColor = color or Color3.new(1, 0, 0)
         local highlight = Instance.new("Highlight")
         highlight.Parent = part
         highlight.FillColor = highlightColor
         highlight.OutlineColor = highlightColor
+        success = true -- Set success flag if esp is added
     end
-end
 
-local function updateDistances()
-    local player = game.Players.LocalPlayer
-    local character = player.Character
-    if character and character:FindFirstChild("HumanoidRootPart") then
-        for _, part in pairs(workspace:GetDescendants()) do
-            if part:IsA("BasePart") and part.TextLabel then
-                local distance = (character.HumanoidRootPart.Position - part.Position).Magnitude
-                part.TextLabel.Text = string.format("Distance: %.2f studs", distance)
-game:GetService("RunService").Heartbeat:Connect(updateDistances);
+    if success and not heartbeatConnected then  -- Connect only if successful and not already connected
+        local function updateDistances()
+            local player = game.Players.LocalPlayer
+            local character = player.Character
+            if character and character:FindFirstChild("HumanoidRootPart") then
+                for _, p in pairs(workspace:GetDescendants()) do
+                    if p:IsA("BasePart") and p.TextLabel then
+                        local distance = (character.HumanoidRootPart.Position - p.Position).Magnitude
+                        p.TextLabel.Text = string.format("Distance: %.2f studs", distance)
+                    end
+                end
             end
         end
+        game:GetService("RunService").Heartbeat:Connect(updateDistances)
+        heartbeatConnected = true
     end
 end;
+local heartbeatConnected = false;
