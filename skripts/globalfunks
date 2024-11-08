@@ -255,7 +255,7 @@
     existingEsp:Destroy()
     end;
     local espHighlight = Instance.new("Highlight")
-    espHighlight.Adornee = part or part
+    espHighlight.Adornee = part
     espHighlight.FillColor = espColor or green
     espHighlight.FillTransparency = 0.15 -- Default to 0.15 transparency
     espHighlight.OutlineTransparency = 0.15 -- Default to 0.15 transparency
