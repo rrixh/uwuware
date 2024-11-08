@@ -354,20 +354,13 @@ warn("nigga! '"..p.."' is an invalid part & u need to provide a valid funktion f
 end;
 
 -- [[ PART ESP OR HIGHLIGHT ]] --
-_G.findPartsByName = function(partName)
-    local parts = {}
-    for _, part in pairs(workspace:GetDescendants()) do
-        if part:IsA("BasePart") and part.Name == partName then
-            table.insert(parts, part)
-        end
+_G.part = function(part, argument, color)
+    if not part then
+        warn("Invalid part provided to _G.part. Must be a part instance.")
+        return
     end
-    return parts
-end
-
-_G.part = function(partName, argument, color)
-    local parts = _G.findPartsByName(partName)
-    if #parts == 0 then
-        warn("No parts found with name: " .. partName)
+    if not argument or (argument ~= "studs" and argument ~= "esp") then
+        warn("Invalid argument provided to _G.part. Use 'studs' or 'esp'.")
         return
     end
 
@@ -376,63 +369,54 @@ _G.part = function(partName, argument, color)
     local player = Players.LocalPlayer
     local UPDATE_INTERVAL = 0.1
 
-    for _, part in ipairs(parts) do
-        if not argument or (argument ~= "studs" and argument ~= "esp") then
-            warn("Invalid argument provided to _G.part. Use 'studs' or 'esp'.")
-            return
+    if argument == "studs" then
+        local billboardGui = Instance.new("BillboardGui")
+        billboardGui.Parent = part
+        billboardGui.Adornee = part
+        billboardGui.Size = UDim2.new(0, 100, 0, 40)
+        billboardGui.StudsOffset = Vector3.new(0, 3, 0)
+        billboardGui.AlwaysOnTop = true
+
+        local textLabel = Instance.new("TextLabel")
+        textLabel.Parent = billboardGui
+        textLabel.Size = UDim2.new(1, 0, 1, 0)
+        textLabel.TextScaled = true
+        textLabel.BackgroundTransparency = 1
+        textLabel.TextColor3 = color
+        textLabel.Font = Enum.Font.SourceSansBold
+        textLabel.Text = "Calculating..."
+        textLabel.TextSize = 14
+
+        part.TextLabel = textLabel;
+
+    elseif argument == "esp" then
+        local highlightColor = color
+        if type(highlightColor) ~= "Color3" then
+            highlightColor = Color3.new(1, 0, 0) 
+            warn("Invalid color provided for 'esp', using default red.")
         end
 
-        if argument == "studs" then
-            local billboardGui = Instance.new("BillboardGui")
-            billboardGui.Parent = part
-            billboardGui.Adornee = part
-            billboardGui.Size = UDim2.new(0, 100, 0, 40)
-            billboardGui.StudsOffset = Vector3.new(0, 3, 0)
-            billboardGui.AlwaysOnTop = true
+        local highlight = Instance.new("Highlight")
+        highlight.Parent = part
+        highlight.FillColor = highlightColor
+        highlight.OutlineColor = highlightColor
+    end
+end
 
-            local textLabel = Instance.new("TextLabel")
-            textLabel.Parent = billboardGui
-            textLabel.Size = UDim2.new(1, 0, 1, 0)
-            textLabel.TextScaled = true
-            textLabel.BackgroundTransparency = 1
-            textLabel.TextColor3 = color
-            textLabel.Font = Enum.Font.SourceSansBold
-            textLabel.Text = "Calculating..."
-            textLabel.TextSize = 14
-
-            --Store references for updating later
-            part.TextLabel = textLabel;
-
-        elseif argument == "esp" then
-            local highlightColor = color
-            if type(highlightColor) ~= "Color3" then
-                highlightColor = Color3.new(1, 0, 0) 
-                warn("Invalid color provided for 'esp', using default red.")
+local function updateDistances()
+    local Players = game:GetService("Players")
+    local player = Players.LocalPlayer
+    local character = player.Character
+    if character and character:FindFirstChild("HumanoidRootPart") then
+        for _, part in pairs(workspace:GetDescendants()) do
+            if part.TextLabel then
+                local distance = (character.HumanoidRootPart.Position - part.Position).Magnitude
+                part.TextLabel.Text = string.format("Distance: %.2f studs", distance)
             end
-
-            local highlight = Instance.new("Highlight")
-            highlight.Parent = part
-            highlight.FillColor = highlightColor
-            highlight.OutlineColor = highlightColor
         end
     end
+end
 
-    -- Single Heartbeat connection to update ALL parts
-    local lastUpdate = tick()
-    RunService.Heartbeat:Connect(function(dt)
-        if tick() - lastUpdate >= UPDATE_INTERVAL then
-            for _, part in ipairs(parts) do
-                if part.TextLabel then
-                  local character = player.Character
-                  if character and character:FindFirstChild("HumanoidRootPart") then
-                      local distance = (character.HumanoidRootPart.Position - part.Position).Magnitude
-                      part.TextLabel.Text = string.format("Distance: %.2f studs", distance)
-                  else
-                      part.TextLabel.Text = "Player not found"
-                  end
-                end
-            end
-            lastUpdate = tick()
-        end
-    end)
-end;
+game:GetService("RunService").Heartbeat:Connect(function()
+    updateDistances()
+end);
