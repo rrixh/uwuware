@@ -364,11 +364,6 @@ _G.part = function(part, argument, color)
         return
     end
 
-    local Players = game:GetService("Players")
-    local RunService = game:GetService("RunService")
-    local player = Players.LocalPlayer
-    local UPDATE_INTERVAL = 0.1
-
     if argument == "studs" then
         local billboardGui = Instance.new("BillboardGui")
         billboardGui.Parent = part
@@ -382,20 +377,14 @@ _G.part = function(part, argument, color)
         textLabel.Size = UDim2.new(1, 0, 1, 0)
         textLabel.TextScaled = true
         textLabel.BackgroundTransparency = 1
-        textLabel.TextColor3 = color
+        textLabel.TextColor3 = color or Color3.new(1, 1, 1) -- Default to white
         textLabel.Font = Enum.Font.SourceSansBold
         textLabel.Text = "Calculating..."
         textLabel.TextSize = 14
 
-        part.TextLabel = textLabel;
-
+        part.TextLabel = textLabel -- Store reference
     elseif argument == "esp" then
-        local highlightColor = color
-        if type(highlightColor) ~= "Color3" then
-            highlightColor = Color3.new(1, 0, 0) 
-            warn("Invalid color provided for 'esp', using default red.")
-        end
-
+        local highlightColor = color or Color3.new(1, 0, 0) -- Default to red
         local highlight = Instance.new("Highlight")
         highlight.Parent = part
         highlight.FillColor = highlightColor
@@ -404,19 +393,15 @@ _G.part = function(part, argument, color)
 end
 
 local function updateDistances()
-    local Players = game:GetService("Players")
-    local player = Players.LocalPlayer
+    local player = game.Players.LocalPlayer
     local character = player.Character
     if character and character:FindFirstChild("HumanoidRootPart") then
         for _, part in pairs(workspace:GetDescendants()) do
-            if part.TextLabel then
+            if part:IsA("BasePart") and part.TextLabel then
                 local distance = (character.HumanoidRootPart.Position - part.Position).Magnitude
                 part.TextLabel.Text = string.format("Distance: %.2f studs", distance)
+game:GetService("RunService").Heartbeat:Connect(updateDistances);
             end
         end
     end
-end
-
-game:GetService("RunService").Heartbeat:Connect(function()
-    updateDistances()
-end);
+end;
