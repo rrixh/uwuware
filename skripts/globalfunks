@@ -354,44 +354,63 @@ warn("nigga! '"..p.."' is an invalid part & u need to provide a valid funktion f
 end;
 
 -- [[ PART ESP OR HIGHLIGHT ]] --
-_G.part = function(partName, argument, color)
-    local parts = workspace:GetDescendants()
-    local success = false -- Flag to track successful part modification
+_G.part = function(part, argument, color)
+    if not part then
+        warn("Invalid part provided to _G.part. Must be a part instance.")
+        return
+    end
+    if not argument or (argument ~= "studs" and argument ~= "esp") then
+        warn("Invalid argument provided to _G.part. Use 'studs' or 'esp'.")
+        return
+    end
 
-    for _, part in pairs(parts) do
-        if part:IsA("BasePart") and part.Name == partName then
-            if argument == "studs" then
-                local billboardGui = Instance.new("BillboardGui")
-                billboardGui.Parent = part
-                billboardGui.Adornee = part
-                billboardGui.Size = UDim2.new(0, 100, 0, 40)
-                billboardGui.StudsOffset = Vector3.new(0, 3, 0)
-                billboardGui.AlwaysOnTop = true
-
-                local textLabel = Instance.new("TextLabel")
-                textLabel.Parent = billboardGui
-                textLabel.Size = UDim2.new(1, 0, 1, 0)
-                textLabel.TextScaled = true
-                textLabel.BackgroundTransparency = 1
-                textLabel.TextColor3 = color or Color3.new(1, 1, 1)
-                textLabel.Font = Enum.Font.SourceSansBold
-                textLabel.Text = "Calculating..."
-                textLabel.TextSize = 14
-
-                part.TextLabel = textLabel
-                success = true -- Set success flag if studs are added
-            elseif argument == "esp" then
-                local highlightColor = color or Color3.new(1, 0, 0)
-                local highlight = Instance.new("Highlight")
-                highlight.Parent = part
-                highlight.FillColor = highlightColor
-                highlight.OutlineColor = highlightColor
-                success = true -- Set success flag if esp is added
+    local partsToModify = {}
+    if part:IsA("BasePart") then
+        table.insert(partsToModify, part)
+    elseif part:IsA("Model") then
+        for _, p in pairs(part:GetChildren()) do
+            if p:IsA("BasePart") then
+                table.insert(partsToModify, p)
             end
+        end
+    else
+        warn("Invalid part type provided to _G.part. Use a BasePart or Model.")
+        return
+    end
+
+    local success = false
+    for _, p in pairs(partsToModify) do
+        if argument == "studs" then
+            local billboardGui = Instance.new("BillboardGui")
+            billboardGui.Parent = p
+            billboardGui.Adornee = p
+            billboardGui.Size = UDim2.new(0, 100, 0, 40)
+            billboardGui.StudsOffset = Vector3.new(0, 3, 0)
+            billboardGui.AlwaysOnTop = true
+
+            local textLabel = Instance.new("TextLabel")
+            textLabel.Parent = billboardGui
+            textLabel.Size = UDim2.new(1, 0, 1, 0)
+            textLabel.TextScaled = true
+            textLabel.BackgroundTransparency = 1
+            textLabel.TextColor3 = color or Color3.new(1, 1, 1)
+            textLabel.Font = Enum.Font.SourceSansBold
+            textLabel.Text = "Calculating..."
+            textLabel.TextSize = 14
+
+            p.TextLabel = textLabel
+            success = true
+        elseif argument == "esp" then
+            local highlightColor = color or Color3.new(1, 0, 0)
+            local highlight = Instance.new("Highlight")
+            highlight.Parent = p
+            highlight.FillColor = highlightColor
+            highlight.OutlineColor = highlightColor
+            success = true
         end
     end
 
-    if success and not heartbeatConnected then  -- Connect only if successful and not already connected
+    if success and not heartbeatConnected then
         local function updateDistances()
             local player = game.Players.LocalPlayer
             local character = player.Character
@@ -407,4 +426,5 @@ _G.part = function(partName, argument, color)
         game:GetService("RunService").Heartbeat:Connect(updateDistances)
         heartbeatConnected = true
     end
-end; local heartbeatConnected = false;
+end;
+local heartbeatConnected = false;
