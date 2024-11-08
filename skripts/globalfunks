@@ -382,7 +382,7 @@ _G.part = function(part, argument, color)
     for _, p in pairs(partsToModify) do
         if argument == "studs" then
             local billboardGui = Instance.new("BillboardGui")
-            billboardGui.Parent = p
+            billboardGui.Parent = p  -- Correctly parent to the BasePart
             billboardGui.Adornee = p
             billboardGui.Size = UDim2.new(0, 100, 0, 40)
             billboardGui.StudsOffset = Vector3.new(0, 3, 0)
@@ -398,7 +398,7 @@ _G.part = function(part, argument, color)
             textLabel.Text = "Calculating..."
             textLabel.TextSize = 14
 
-            p.TextLabel = textLabel
+            -- p.TextLabel = textLabel -- This line is unnecessary and was causing issues.
             success = true
         elseif argument == "esp" then
             local highlightColor = color or Color3.new(1, 0, 0)
@@ -416,9 +416,9 @@ _G.part = function(part, argument, color)
             local character = player.Character
             if character and character:FindFirstChild("HumanoidRootPart") then
                 for _, p in pairs(workspace:GetDescendants()) do
-                    if p:IsA("BasePart") and p.TextLabel then
+                    if p:IsA("BasePart") and p:FindFirstChild("BillboardGui") then -- Check for BillboardGui instead of TextLabel
                         local distance = (character.HumanoidRootPart.Position - p.Position).Magnitude
-                        p.TextLabel.Text = string.format("Distance: %.2f studs", distance)
+                        p.BillboardGui.TextLabel.Text = string.format("Distance: %.2f studs", distance)
                     end
                 end
             end
