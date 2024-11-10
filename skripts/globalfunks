@@ -426,5 +426,61 @@ _G.part = function(part, argument, color)
         game:GetService("RunService").Heartbeat:Connect(updateDistances)
         heartbeatConnected = true
     end
+end; local heartbeatConnected = (false);
+
+--[[ MAKE DRAGGABLE / input types ]]--
+local mobile = Enum.UserInputType.Touch;
+local mouse1 = Enum.UserInputType.MouseButton1;
+local mousemove = Enum.UserInputType.MouseMovement;
+local Ended = Enum.UserInputState.End
+local Begin = Enum.UserInputState.Begin
+
+-- [[ 📱~ 💻 ~ 🖥 ~ ⌨️ ]] --
+local devixes = { mobile,mouse1,mousemove }
+local __ = table.find;
+
+--[[ 🀄️ MAKE DRAGGABLE 🀄️ ]]--
+_G.draggable = function(guiElement)
+    local dragging = false
+    local dragInput, mousePos, framePos
+    local dragThreshold = 1
+    local notClicked = false;
+    guiElement.InputBegan:Connect(function(input)
+        if table.find(devixes, input.UserInputType) then
+            dragging = true
+            mousePos = input.Position
+            framePos = guiElement.Position
+            notClicked = false
+
+            input.Changed:Connect(function()
+      if input.UserInputState == Ended then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+
+    guiElement.InputChanged:Connect(function(input)
+if __(devixes, input.UserInputType) then
+            dragInput = input
+        end
+    end)
+UIS.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - mousePos
+            if math.abs(delta.X) >= dragThreshold or math.abs(delta.Y) >= dragThreshold then
+                notClicked = true
+            end
+
+            if notClicked then
+                guiElement.Position = UDim2.new(
+                    framePos.X.Scale,
+                    framePos.X.Offset + delta.X,
+                    framePos.Y.Scale,
+                    framePos.Y.Offset + delta.Y
+                )
+            end
+        end
+    end); return function() return not dragging and notClicked == false end
 end;
-local heartbeatConnected = false;
+-- [[ END DRAG ]] --
