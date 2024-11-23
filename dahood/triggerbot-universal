@@ -1,0 +1,108 @@
+local InputService = game:GetService('UserInputService')
+local Players = game:GetService('Players')
+local RunService = game:GetService('RunService')
+
+local Target
+local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
+local HitBoxPart
+local isToggled = false
+local Camera = workspace.CurrentCamera
+local Cycle
+
+local function GetTarget()
+    local ClosestPlr, ClosestDistance = nil, math.huge
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character ~= nil and plr.Character['HumanoidRootPart'] ~= nil then
+            local ScreenPos = Camera:WorldToScreenPoint(plr.Character['HumanoidRootPart'].Position)
+            ScreenPos = Vector2.new(ScreenPos.X, ScreenPos.Y)
+            local MousePos = InputService:GetMouseLocation()
+            local Magnitude = (MousePos - ScreenPos).Magnitude
+            if Magnitude < ClosestDistance then
+                ClosestDistance = Magnitude
+                ClosestPlr = plr
+            end
+        end
+    end
+    return ClosestPlr
+end
+
+local function CheckForPartOnRayOrInFov(Part)
+    if getgenv().SimpleTB.Mode == 'Hitbox' then
+        local Params = RaycastParams.new()
+        Params.IgnoreWater = true
+        Params.FilterType = Enum.RaycastFilterType.Include
+        if Part then Params.FilterDescendantsInstances = {Part} end
+        local MouseRay = workspace:Raycast(
+            Camera.CFrame.Position,
+            (Mouse.Hit.Position - Camera.CFrame.Position) * 2^10,
+            Params
+        )
+        if Part and MouseRay ~= nil and MouseRay.Instance ~= nil and MouseRay.Instance == Part then
+            mouse1click()
+        end
+    elseif getgenv().SimpleTB.Mode == 'FOV' then
+        local ScreenPos = Camera:WorldToScreenPoint(Part.Position)
+        ScreenPos = Vector2.new(ScreenPos.X, ScreenPos.Y)
+        local MousePos = InputService:GetMouseLocation()
+        local Magnitude = (MousePos - ScreenPos).Magnitude
+        if Magnitude < getgenv().SimpleTB.FOV then
+            mouse1click()
+            print('clicked')
+        end
+    else
+        warn('invalid tb mode')
+        if Cycle then Cycle:Disconnect() end
+        if HitBoxPart then HitBoxPart:Destroy() end
+        isToggled = false
+        Target = false
+        HitBoxPart = nil
+    end
+end
+
+-- main funk
+local function main()
+    Target = GetTarget()
+    HitBoxPart = Instance.new('Part')
+    Cycle = RunService.RenderStepped:Connect(function()
+        if Target ~= nil and Target.Character ~= nil and Target.Character['HumanoidRootPart'] and HitBoxPart ~= nil then
+            if getgenv().SimpleTB.Mode == 'Hitbox' then
+                HitBoxPart.Transparency = getgenv().SimpleTB.HitBoxSettings.Transparency
+            else
+                HitBoxPart.Transparency = 1
+            end
+            HitBoxPart.Size = getgenv().SimpleTB.HitBoxSettings.Size
+            HitBoxPart.Color = getgenv().SimpleTB.HitBoxSettings.Color
+            HitBoxPart.Anchored = true
+            HitBoxPart.CanCollide = false
+            HitBoxPart.Parent = workspace
+            HitBoxPart.Position = Target.Character['HumanoidRootPart'].Position + (Target.Character['HumanoidRootPart'].Velocity * (game:GetService('Stats').Network.ServerStatsItem['Data Ping']:GetValue() // 0.01 / 100 * getgenv().SimpleTB.Pred_Per_Ping))
+            HitBoxPart.Rotation = Target.Character['HumanoidRootPart'].Rotation
+            CheckForPartOnRayOrInFov(HitBoxPart)
+        else
+if Cycle then Cycle:Disconnect(); Cycle=nil; 
+  end
+            if HitBoxPart then HitBoxPart:Destroy() end
+            isToggled = false
+            Target = false
+            HitBoxPart = nil
+        end
+    end)
+end
+
+-- toggling
+InputService.InputBegan:Connect(function(Key, E)
+    if E then return end
+    if Key.KeyCode == Enum.KeyCode[getgenv().SimpleTB.Bind] then
+        if not isToggled then
+            main()
+            isToggled = true
+        else
+            if Cycle then Cycle:Disconnect() end
+            if HitBoxPart then HitBoxPart:Destroy() end
+            isToggled = false
+            Target = false
+            HitBoxPart = nil
+        end
+    end
+end)
