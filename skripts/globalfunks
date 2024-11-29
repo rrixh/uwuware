@@ -484,3 +484,84 @@ UIS.InputChanged:Connect(function(input)
     end); return function() return not dragging and notClicked == false end
 end;
 -- [[ END DRAG ]] --
+
+-- [[ KALK HOLIDAY ]] --
+local Year = os.date("%Y");
+local newline = [[\n]]
+-- (Gauss's Algorithm)
+local getEasterDate = function(year)
+  local a = year % 19
+  local b = math.floor(year / 100)
+  local c = year % 100
+  local d = math.floor(b / 4)
+  local e = b % 4
+  local f = math.floor((b + 8) / 25)
+  local g = math.floor((b - f + 1) / 3)
+  local h = (19 * a + b - d - g + 15) % 30
+  local i = math.floor(c / 4)
+  local k = c % 4
+  local l = (32 + 2 * e + 2 * i - h - k) % 7
+  local m = math.floor((a + 11 * h + 22 * l) / 451)
+  local month = math.floor((h + l - 7 * m + 114) / 31)
+  local day = ((h + l - 7 * m + 114) % 31) + 1
+  return month, day
+end;
+-- Meeus/Jones/Butcher algorithm
+local getPassoverDate = function(year)
+  local g = year % 19
+  local c = math.floor(year / 100)
+  local x = math.floor(3 * c / 4) - 12 * math.floor(c / 100) + math.floor(8 * c / 25) + 19 * g + 15
+  local i = x % 30
+  local j = year + math.floor(year / 4) - math.floor(year / 100) + math.floor(year / 400)
+  local l = j % 7
+  local m = 20 + 7 * l - 11 * i
+  local month = math.floor((m + 30) / 30) + 3
+  local day = m - 30 * math.floor((m - 1) / 30)
+  return month, day
+end;
+local getdate = function(month, day)
+    local currentDate = os.date("*t")
+    return currentDate.month == month and currentDate.day == day
+end;
+
+local HOLIDAY;
+local getHoliday = function()
+    local easterMonth, easterDay = getEasterDate(Year);
+    local passoverMonth, passoverDay = getPassoverDate(Year);
+    local currentDate = os.date("*t")
+    print("Easter "..Year.." is: ", easterMonth, easterDay);
+    print("Passover "..Year.."  is: ", passoverMonth, passoverDay);
+
+    if getdate(1, 1) then
+ HOLIDAY =  "\nHAPPY NEW YEARZ 🎉🎆🎇 " .. Year
+    elseif getdate(2, 14) then
+        HOLIDAY = "\nHAPPY VALENTINE'S DAY 💝🍫"
+    elseif getdate(3, 17) then
+        HOLIDAY = "\nHAPPY ST. PATRIXKS DAY ☘️"
+    elseif getdate(4, 1) then
+  HOLIDAY = "\nHAPPY APRIL FOOLS DAY 🤡"
+    elseif getdate(5, 5) then
+        HOLIDAY = "\nHAPPY CINCO DE MAYO 🇲🇽"
+    elseif getdate(6, 2) then
+        HOLIDAY = "\nLULAS🍭 BIRTHDAY 🥳🎂"
+    elseif getdate(7, 4) then
+        HOLIDAY = "\nHAPPY INDEPENDENCE DAY! 🇺🇸🎆"
+    elseif getdate(easterMonth, easterDay) then
+        HOLIDAY = "\nHAPPY EASTER! 🐰🥚"
+    elseif getdate(passoverMonth, passoverDay) then
+        HOLIDAY = "\nHAPPY PASSOVER! ✡️"
+    elseif getdate(10, 31) then
+        HOLIDAY = "\nHAPPY HALLOWEEN! 🎃👻"
+    elseif getdate(11, 28) then
+        HOLIDAY = "\n🦃🤎HAPPY THANKSGIVING! 🤎🦃 " .. Year
+    elseif getdate(12, 25) then
+        HOLIDAY = "\nMERRY XMAS 🎁🎄 " .. Year
+elseif getdate(12, 29) then
+HOLIDAY = "\nThis is Test Nov29"
+    else
+        HOLIDAY = "\nNo Holiday"
+-- os.date("%m/%d/%Y")
+    end;
+    return HOLIDAY;
+end;
+-- [[ END KALK HOLIDAY ]] --
