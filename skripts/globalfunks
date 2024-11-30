@@ -525,7 +525,7 @@ local function getdate(month, day)
     return currentDate.month == month and currentDate.day == day
 end
 
-local getHoliday = function()
+_G.getHoliday = function()
     local easterMonth, easterDay = getEasterDate(Year)
     local passoverMonth, passoverDay = getPassoverDate(Year)
     local currentDate = os.date("*t")
@@ -564,6 +564,7 @@ local getHoliday = function()
     end
     return HOLIDAY;
 end
+return {_G.getHoliday = _G.getHoliday}
 
 --[[
 local function getYear()
