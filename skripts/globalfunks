@@ -525,7 +525,7 @@ local function getdate(month, day)
     return currentDate.month == month and currentDate.day == day
 end
 
-local function getHoliday()
+local getHoliday = function()
     local easterMonth, easterDay = getEasterDate(Year)
     local passoverMonth, passoverDay = getPassoverDate(Year)
     local currentDate = os.date("*t")
@@ -565,6 +565,7 @@ local function getHoliday()
     return HOLIDAY;
 end
 
+--[[
 local function getYear()
     return Year
 end;
@@ -574,4 +575,5 @@ return {
     getPassoverDate = getPassoverDate,
     getYear = getYear,
 };
+]]--
 -- [[ END KALK HOLIDAY ]] --
