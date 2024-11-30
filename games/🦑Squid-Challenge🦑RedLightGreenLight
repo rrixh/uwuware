@@ -116,7 +116,7 @@ playermoved = hookmetamethod(game, "__namecall", function(self, ...)
 	local method = getnamecallmethod();
 	if ((tostring(self) == "PlayerMoved") and (method == "FireServer")) then
 warn("bloxked "..self.." and "..(...).."")
-		return nil;
+		return;
 	end
 	return playermoved(self, unpack(shit));
 end);
