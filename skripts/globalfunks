@@ -1,16 +1,29 @@
     --[[ global vars ]]--
     rrixh = loadstring;
     lulas = game;
-    _G.plrs = game:GetService"Players"
-    _G.plr = _G.plrs.LocalPlayer
-    _G.char = _G.plr.Character
-    _G.hum = _G.char:WaitForChild'Humanoid';
+    _G.plrs = game:GetService'Players';
+    _G.plr = _G.plrs.LocalPlayer;
+    _G.gplrs = _G.plrs:GetPlayers();
+    _G.char = _G.plr.Character;
+    _G.hum = _G.char:FindFirstChild'Humanoid';
     _G.hrp = _G.char:FindFirstChild'HumanoidRootPart';
+    _G.health = _G.hum.Health;
+    _G.kam = workspace.CurrentCamera;
+    _G.ws = _G.hum.WalkSpeed;
+    _G.jp = _G.hum.JumpPower;
+    _G.sit = _G.hum.Sit;
 
     --[[ servixes ]]--
-    _G.run = lulas:GetService'RunService'
-    _G.vim = lulas:GetService'VirtualInputManager'
-    _G.uis = lulas:GetService'UserInputService'
+    _G.run = lulas:GetService'RunService';
+    _G.vim = lulas:GetService'VirtualInputManager';
+    _G.uis = lulas:GetService'UserInputService';
+    _G.w = lulas:GetService'Workspace';
+ 
+-- [[ others ]] --
+_G.roblox = game;
+_G.rawmt = getrawmetatable(game);
+_G.method = getnamecallmethod();
+_G.server, _G.klient, _G.invoke = ("FireServer"), ("FireClient"), ("InvokeServer");
 
 -- [[ WRITE MSG ]] --
 _G.write = function(msg,typingtime,destroytime)
