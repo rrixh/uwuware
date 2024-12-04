@@ -12,6 +12,22 @@
     _G.vim = lulas:GetService'VirtualInputManager'
     _G.uis = lulas:GetService'UserInputService'
 
+-- [[ WRITE MSG ]] --
+_G.write = function(msg,typingtime,destroytime)
+spawn(function()
+local h=Instance.new("Hint");
+h.Parent = game.Workspace;
+local function typeMessage()
+for i=1,#msg do 
+h.Text=string.sub(msg,1,i);
+if typingtime then wait(typingtime); else wait(.06) end;
+  end;
+end;
+typeMessage();
+if destroytime then wait(destroytime); else wait(3.3) end;
+h:Destroy(); end)
+end;
+
     --[[ global funks ]]--
     _G.bezier = function(t, p0, p1, p2)
     local l1 = p0:Lerp(p1, t)
