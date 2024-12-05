@@ -1,0 +1,242 @@
+-- BADDIES v1.4 💅🏽--
+if getgenv().bady then return end;
+getgenv().bady = true;
+local kredits = "YT @rsgmj / Diskord @bommunity"
+loadstring(game:HttpGet('https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/skripts/globaLS', true))();
+local uwuRRIXH = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/mobileware", true))()
+local lulaslollipop = "lulaslollipop 🍭"
+local uwu = uwuRRIXH:CreateWindow("BADDIES 💅🏽")
+local autofarm = uwuRRIXH:CreateWindow("Autofarm")
+local annoy = uwu:AddFolder("Annoying")
+local target = uwu:AddFolder("Target ah Bitxh")
+-- local extra = uwu:AddFolder("Extra")
+if _G.AdminKommands then
+spawn(function()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/ltseverydayyou/Nameless-Admin/main/Source"))(); 
+  end)
+      else 
+print('Admin Kommands = false')
+   end;
+
+local runService = game:GetService("RunService")
+local players = game:GetService("Players")
+local replicatedStorage = game:GetService("ReplicatedStorage")
+local hitting, spamming, bringing, spammingHit, bringTarget, autoFarmStompEnabled, autofarmStomp = false, false, false, false, false, false, false;
+local hitConnection, spamConnection, bringConnection, spamHitConnection, bringTargetConnection, currentTarget, targetPlayer, startPosition, autofarmStompConnection;
+local distanceBehind, distanceInFront = (4.15), (-4.22);
+
+local function hit()
+local args = { [1] = 1 }
+replicatedStorage.PUNCHEVENT:FireServer(unpack(args))
+end;
+
+local function grab()
+replicatedStorage.JALADADEPELOEVENT:FireServer()
+end;
+local function stomp()
+game:GetService("ReplicatedStorage").STOMPEVENT:FireServer()
+end;
+
+local function killPlayers()
+hit(); grab();
+end;
+
+local function findNearestPlayer()
+local nearestPlayer = nil
+local shortestDistance = math.huge;
+for _, otherPlayer in ipairs(players:GetPlayers()) do
+if otherPlayer ~= players.LocalPlayer and otherPlayer.Character and otherPlayer.Character:FindFirstChild("HumanoidRootPart") then
+local distance = (players.LocalPlayer.Character.HumanoidRootPart.Position - otherPlayer.Character.HumanoidRootPart.Position).Magnitude
+if distance < shortestDistance then
+shortestDistance = distance
+nearestPlayer = otherPlayer
+end; end; end
+return nearestPlayer
+end;
+
+local function teleportBehind(target)
+if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+local targetCFrame = target.Character.HumanoidRootPart.CFrame
+local newPosition = targetCFrame * CFrame.new(0, 0, distanceBehind)
+players.LocalPlayer.Character.HumanoidRootPart.CFrame = newPosition
+end;
+end;
+local function bringPlayer(target)
+if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+local localPlayerCFrame = players.LocalPlayer.Character.HumanoidRootPart.CFrame
+local newPosition = localPlayerCFrame * CFrame.new(0, 0, distanceInFront)
+target.Character.HumanoidRootPart.CFrame = newPosition
+end;end;
+local function findTargetPlayer(name)
+for _, player in ipairs(players:GetPlayers()) do if player.DisplayName:lower():find(name:lower()) or player.Name:lower():find(name:lower()) then
+return player
+end;end; return nil
+end;
+
+annoy:AddToggle({text = "Auto Kill (nearest)",
+callback = function(toggleOn)
+        hitting = toggleOn;
+        if hitting then
+            hitConnection = runService.RenderStepped:Connect(function()
+                if currentTarget and currentTarget.Character and currentTarget.Character:FindFirstChild("Humanoid") then
+                    if currentTarget.Character.Humanoid.Health <= 0 then
+                        local targetCFrame = currentTarget.Character.HumanoidRootPart.CFrame
+                        players.LocalPlayer.Character.HumanoidRootPart.CFrame = targetCFrame * CFrame.new(0, 5, 0) -- Teleport on top
+   stomp();
+          else                        teleportBehind(currentTarget)                        killPlayers();
+                    end
+                else
+ currentTarget = findNearestPlayer()
+                end
+            end)
+        else
+  if hitConnection then                hitConnection:Disconnect()
+    hitConnection = nil
+      currentTarget = nil;
+            end
+        end
+end})
+
+annoy:AddToggle({text = "Ghost Hit All (will lag them)",
+callback = function(toggleOn)
+spamming = toggleOn;
+if spamming then
+spamConnection = runService.RenderStepped:Connect(function()
+for _, otherPlayer in ipairs(players:GetPlayers()) do
+if otherPlayer ~= players.LocalPlayer and otherPlayer.Character and otherPlayer.Character:FindFirstChild("HumanoidRootPart") then
+bringPlayer(otherPlayer)
+hit()
+end; end; end)
+else
+if spamConnection then
+spamConnection:Disconnect()
+spamConnection = nil
+end
+end
+end})
+
+local IS = table.find;
+local invalid = {"", " ", "  ", "   ", "    ", "     ", "      ", "       ", "        "}
+target:AddBox({text = "USERNAME or DISPLAY NAME (kan be shortened)",
+callback = function(targetName)
+if IS(invalid, targetName) then
+print"name kannot be blank" return end;
+if targetName and targetName ~= "" then
+targetPlayer = findTargetPlayer(targetName)
+if not targetPlayer then
+print"the bitxh was not found"
+targetPlayer = nil
+end
+else
+print"text kant be empty"
+targetPlayer = nil
+end
+end})
+
+target:AddToggle({text = "Ghost Hit target",
+callback = function(toggleOn)
+bringTarget = toggleOn;
+if bringTarget then
+bringTargetConnection = runService.RenderStepped:Connect(function()
+ if targetPlayer then
+bringPlayer(targetPlayer);
+hit();
+end; end)
+else
+if bringTargetConnection then
+bringTargetConnection:Disconnect()
+bringTargetConnection = nil
+end; end
+end})
+
+--[[ AUTOfarm ]]--
+local stomping = false
+local stompCoroutine
+
+local function stompdead()
+    local Players = game:GetService("Players")
+    local localPlayer = Players.LocalPlayer
+    local character = localPlayer.Character
+    if not character then
+ warn'No char found!' return end;
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart then
+   warn'no HumanoidRootPart found!'
+        return end;
+    while stomping do
+        local deadPlayerFound = false
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= localPlayer and player.Character then
+                local humanoid = player.Character:FindFirstChild("Humanoid")
+     if humanoid and humanoid.Health <= 0 then
+                    local deadplrHRP = player.Character:FindFirstChild("HumanoidRootPart")
+                    if deadplrHRP then
+    local prevPos = humanoidRootPart.CFrame
+   humanoidRootPart.CFrame = deadplrHRP.CFrame
+                        stomp()
+                        deadPlayerFound = true
+                        wait(.1)
+                        humanoidRootPart.CFrame = prevPos --Teleport back
+                    end
+                end
+            end
+        end
+  if not deadPlayerFound then
+            wait(.41)
+        end
+    end
+end
+
+
+autofarm:AddToggle({text = "Auto Stomp", callback = function(toggleOn)
+        stomping = toggleOn
+   print("Stomping: " .. tostring(stomping))
+        if stomping then
+          if stompCoroutine then return end;
+  stompCoroutine = coroutine.wrap(stompdead)();
+        else
+   stompCoroutine = (nil)
+     stomping = (false);
+    end;
+end})
+
+
+--[[
+extra:AddToggle({text = "Bring All Players",
+callback = function(toggleOn)
+bringing = toggleOn;
+if bringing then
+bringConnection = runService.RenderStepped:Connect(function() for _, otherPlayer in ipairs(players:GetPlayers()) do
+if otherPlayer ~= players.LocalPlayer and otherPlayer.Character and otherPlayer.Character:FindFirstChild("HumanoidRootPart") then
+bringPlayer(otherPlayer)
+end; end; end)
+else
+if bringConnection then
+bringConnection:Disconnect()
+bringConnection = nil
+end; end
+end})
+
+extra:AddToggle({text = "Spam Hit",
+callback = function(toggleOn)
+spammingHit = toggleOn;
+if spammingHit then
+spamHitConnection = runService.RenderStepped:Connect(hit)
+else
+if spamHitConnection then
+spamHitConnection:Disconnect();
+spamHitConnection = nil;
+end; end
+end})
+]]--
+
+task.spawn(function()
+_G.write(kredits, .07, 6)
+task.wait(7)
+_G.write("send DM to request more features—enjoy👺", .07)
+end);
+
+uwu:AddFolder(lulaslollipop);
+uwuRRIXH:Init();
+
+print([[DISKORD: @bommunity * BADDIES💅🏽TROLL GUI]])
