@@ -1,6 +1,7 @@
     --[[ global vars ]]--
     rrixh = loadstring;
-    lulas = game;
+    lulas, _G.roblox = game, game
+    _G.exp = identifyexecutor();
     _G.plrs = game:GetService'Players';
     _G.plr = _G.plrs.LocalPlayer;
     _G.gplrs = _G.plrs:GetPlayers();
@@ -20,10 +21,13 @@
     _G.w = lulas:GetService'Workspace';
  
 -- [[ others ]] --
-_G.roblox = game;
+if _G.exp ~= "Solara" then
+if getgenv().hook then
 _G.rawmt = getrawmetatable(game);
 _G.method = getnamecallmethod();
 _G.server, _G.klient, _G.invoke = ("FireServer"), ("FireClient"), ("InvokeServer");
+  end;
+end;
 
 -- [[ WRITE MSG ]] --
 _G.write = function(msg,typingtime,destroytime)
