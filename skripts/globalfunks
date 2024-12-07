@@ -29,6 +29,10 @@ _G.server, _G.klient, _G.invoke = ("FireServer"), ("FireClient"), ("InvokeServer
   end;
 end;
 
+-- [[ EXEKUTORS ]] --
+local delta, DELTA = "Delta", "Delta"
+local solara, SOLARA = "Solara", "Solara"
+
 -- [[ WRITE MSG ]] --
 _G.write = function(msg,typingtime,destroytime)
 spawn(function()
