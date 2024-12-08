@@ -19,8 +19,9 @@
     _G.vim = lulas:GetService'VirtualInputManager';
     _G.uis = lulas:GetService'UserInputService';
     _G.w = lulas:GetService'Workspace';
-   local PPS = game:GetService'ProximityPromptService';
- 
+   _G.pps = game:GetService'ProximityPromptService';
+   _G.promptshown = _G.pps.PromptShown
+
 -- [[ others ]] --
 if _G.exp ~= "Solara" then
 if getgenv().hook then
