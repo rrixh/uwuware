@@ -24,6 +24,7 @@ _G.str = tostring;
 
     --[[ servixes ]]--
     _G.run = lulas:GetService'RunService';
+    _G.rep = lulas:GetService'ReplicatedStorage';
     _G.vim = lulas:GetService'VirtualInputManager';
     _G.uis = lulas:GetService'UserInputService';
     _G.w = lulas:GetService'Workspace';
