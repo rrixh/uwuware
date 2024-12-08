@@ -15,13 +15,20 @@
     _G.sit = _G.hum.Sit;
    _G.jump = _G.hum.Jump;
 
+_G.find = table.find;
+
     --[[ servixes ]]--
     _G.run = lulas:GetService'RunService';
     _G.vim = lulas:GetService'VirtualInputManager';
     _G.uis = lulas:GetService'UserInputService';
     _G.w = lulas:GetService'Workspace';
    _G.pps = game:GetService'ProximityPromptService';
-   _G.promptshown = _G.pps.PromptShown
+
+-- [[ SHORTKUT KONNEKTIONS ]] --
+   _G.ppshown = _G.pps.PromptShown;
+  _G.renderstepped = _G.run.RenderStepped;
+  _G.stepped = _G.run.Stepped;
+  _G.heartbeat = _G.run.Heartbeat;
 
 -- [[ others ]] --
 if _G.exp ~= "Solara" then
