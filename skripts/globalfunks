@@ -8,6 +8,8 @@
     _G.plrs = game:GetService'Players';
     _G.plr = _G.plrs.LocalPlayer;
     _G.userid = _G.plr.UserId;
+    _G.user = _G.plr.Name;
+    _G.display = _G.plr.DisplayName;
     _G.gplrs = _G.plrs:GetPlayers();
     _G.char = _G.plr.Character;
     _G.hum = _G.char:FindFirstChild'Humanoid';
