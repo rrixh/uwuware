@@ -70,6 +70,56 @@ h:Destroy(); end)
 end;
 
     --[[ global funks ]]--
+_G.getNearestPlr = function(bodyPart)
+    local players = game:GetService("Players")
+    local localPlayer = players.LocalPlayer
+    local nearestPlayer = nil
+    local nearestDistance = math.huge
+
+    bodyPart = bodyPart:lower()
+
+    local bodyParts = {
+        head = "Head",
+        hrp = "HumanoidRootPart",
+        humanoidrootpart = "HumanoidRootPart",
+        torso = "Torso",
+        leftleg = "Left Leg",
+        rightleg = "Right Leg",
+        leftarm = "Left Arm",
+        rightarm = "Right Arm",
+        -- Add other body parts if needed
+    }
+
+    local correctCaseBodyPart = bodyParts[bodyPart]
+    if not correctCaseBodyPart then
+        print("Invalid body part name")
+        return nil
+    end
+
+    for _, player in pairs(players:GetPlayers()) do
+        if player ~= localPlayer then
+            local character = player.Character
+            if character and character:FindFirstChild(correctCaseBodyPart) then
+                local targetPart = character:FindFirstChild(correctCaseBodyPart)
+                local distance = (localPlayer.Character.HumanoidRootPart.Position - targetPart.Position).magnitude
+                if distance < nearestDistance then
+                    nearestPlayer = player
+                    nearestDistance = distance
+                end
+            end
+        end
+    end
+
+    if nearestPlayer and nearestPlayer.Character then
+        local nearestPart = nearestPlayer.Character:FindFirstChild(correctCaseBodyPart)
+        if nearestPart then
+     print("Nearest player: "..nearestPlayer.Name..", Body Part: "..nearestPart.Name)
+            return nearestPart
+        end
+    end;
+ return nil;
+end;
+
 _G.firepp = function(prompt)
     local promptTime = prompt.HoldDuration
     prompt.HoldDuration = 0
