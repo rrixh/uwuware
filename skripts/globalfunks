@@ -51,6 +51,14 @@ h:Destroy(); end)
 end;
 
     --[[ global funks ]]--
+local firepp = function(prompt)
+    local promptTime = prompt.HoldDuration
+    prompt.HoldDuration = 0
+    prompt:InputHoldBegin()
+    prompt:InputHoldEnd()
+    prompt.HoldDuration = promptTime
+end;
+
     _G.bezier = function(t, p0, p1, p2)
     local l1 = p0:Lerp(p1, t)
     local l2 = p1:Lerp(p2, t)
