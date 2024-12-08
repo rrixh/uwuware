@@ -13,7 +13,8 @@
     _G.ws = _G.hum.WalkSpeed;
     _G.jp = _G.hum.JumpPower;
     _G.sit = _G.hum.Sit;
-   _G.jump = _G.hum.Jump
+   _G.jump = _G.hum.Jump;
+
     --[[ servixes ]]--
     _G.run = lulas:GetService'RunService';
     _G.vim = lulas:GetService'VirtualInputManager';
@@ -52,7 +53,7 @@ h:Destroy(); end)
 end;
 
     --[[ global funks ]]--
-local firepp = function(prompt)
+_G.firepp = function(prompt)
     local promptTime = prompt.HoldDuration
     prompt.HoldDuration = 0
     prompt:InputHoldBegin()
