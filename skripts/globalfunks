@@ -1,6 +1,7 @@
     --[[ global vars ]]--
     rrixh = loadstring;
     lulas, _G.roblox = game, game
+    _G.id = lulas.PlaceId;
     _G.exp = identifyexecutor();
     _G.plrs = game:GetService'Players';
     _G.plr = _G.plrs.LocalPlayer;
