@@ -72,6 +72,20 @@ _G.firepp = function(prompt)
     prompt.HoldDuration = promptTime
 end;
 
+_G.kopy = function(uh)
+setclipboard(uh)
+end;
+
+_G.konsole = function(arg, txt)
+if arg == "warn" then warn(txt)
+elseif arg == "print" then print(txt)
+elseif arg == "error" then error(txt)
+  end;
+end;
+_G.konsole("warn", "GLOBAL FUNKTIONS✅")
+_G.konsole("print", "GLOBAL FUNKTIONS✅")
+_G.konsole("error", "GLOBAL FUNKTIONS✅")
+
     _G.bezier = function(t, p0, p1, p2)
     local l1 = p0:Lerp(p1, t)
     local l2 = p1:Lerp(p2, t)
