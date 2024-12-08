@@ -16,7 +16,9 @@
     _G.sit = _G.hum.Sit;
    _G.jump = _G.hum.Jump;
 
-_G.find = table.find;
+   _G.find = table.find;
+_G.num = tonumber;
+_G.str = tostring;
 
     --[[ servixes ]]--
     _G.run = lulas:GetService'RunService';
@@ -41,8 +43,8 @@ _G.server, _G.klient, _G.invoke = ("FireServer"), ("FireClient"), ("InvokeServer
 end;
 
 -- [[ EXEKUTORS ]] --
-local delta, DELTA = "Delta", "Delta"
-local solara, SOLARA = "Solara", "Solara"
+local delta, Delta, DELTA = "Delta", "Delta", "Delta"
+local solara, Solara, SOLARA = "Solara", "Solara", "Solara"
 
 -- [[ WRITE MSG ]] --
 _G.write = function(msg,typingtime,destroytime)
@@ -98,9 +100,7 @@ end;
     _G.hrp = _G.plr.Character and _G.plr.Character:FindFirstChild("HumanoidRootPart");
     if not _G.hrp then return end;
     firetouchinterest(_G.hrp, part, 0)
-    if duration then
-    task.wait(duration)
-    end;
+    if duration then task.wait(duration) else task.wait(.1) end;
     firetouchinterest(_G.hrp, part, 1)
     end;
 
@@ -170,7 +170,7 @@ end;
     end;
 
     --tpwalk to
-    _G.tpwalkTo = function(part)
+    _G.tpwalkTo = function(part, tpWalkDistanxe)
     if not part then
     error("You must provide a part to teleport walk to.")
     return
@@ -183,7 +183,7 @@ end;
     error("Humanoid or HumanoidRootPart not found in character.")
     return
     end;
-    local stepDistance = 7
+    local stepDistance = 5.6 or tpWalkDistanxe
     local function moveToStep(targetPos)
     humanoidRootPart.CFrame = CFrame.new(targetPos)
     end;
