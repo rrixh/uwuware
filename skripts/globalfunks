@@ -7,6 +7,7 @@
     _G.exp = identifyexecutor();
     _G.plrs = game:GetService'Players';
     _G.plr = _G.plrs.LocalPlayer;
+    _G.userid = _G.plr.UserId;
     _G.gplrs = _G.plrs:GetPlayers();
     _G.char = _G.plr.Character;
     _G.hum = _G.char:FindFirstChild'Humanoid';
