@@ -19,6 +19,7 @@
     _G.vim = lulas:GetService'VirtualInputManager';
     _G.uis = lulas:GetService'UserInputService';
     _G.w = lulas:GetService'Workspace';
+   local PPS = game:GetService'ProximityPromptService';
  
 -- [[ others ]] --
 if _G.exp ~= "Solara" then
