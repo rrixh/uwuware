@@ -71,7 +71,7 @@ end;
 
     --[[ global funks ]]--
 if _G.exp ~= SOLARA then
-if getgenv().extras then
+if getgenv().allowed then
 _G.getNearestPlr = function(bodyPart)
     local players = game:GetService("Players")
     local localPlayer = players.LocalPlayer
@@ -117,14 +117,14 @@ for _, player in pairs(players:GetPlayers()) do
    end;
 
 _G.firepp = function(prompt)
-    local promptTime = prompt.HoldDuration
+    local defaultHoldingTime = prompt.HoldDuration
     prompt.HoldDuration = 0
     prompt:InputHoldBegin()
     prompt:InputHoldEnd()
-    prompt.HoldDuration = promptTime
+    prompt.HoldDuration = defaultHoldingTime
     end;
 end; -- dont allow solara
-end; -- if getgenv().extras is enabled
+end; -- if getgenv().allowed is enabled
 
 _G.kopy = function(uh)
 setclipboard(uh)
