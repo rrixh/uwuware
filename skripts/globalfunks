@@ -21,6 +21,10 @@
     _G.sit = _G.hum.Sit;
    _G.jump = _G.hum.Jump;
 
+-- [[ EXEKUTORS ]] --
+local delta, Delta, DELTA = "Delta", "Delta", "Delta"
+local solara, Solara, SOLARA = "Solara", "Solara", "Solara"
+
    _G.find = table.find;
 _G.num = tonumber;
 _G.str = tostring;
@@ -41,17 +45,13 @@ _G.str = tostring;
   _G.heartbeat = _G.run.Heartbeat;
 
 -- [[ others ]] --
-if _G.exp ~= "Solara" then
+if _G.exp ~= SOLARA then
 if getgenv().hook then
 _G.rawmt = getrawmetatable(game);
 _G.method = getnamecallmethod();
 _G.server, _G.klient, _G.invoke = ("FireServer"), ("FireClient"), ("InvokeServer");
   end;
 end;
-
--- [[ EXEKUTORS ]] --
-local delta, Delta, DELTA = "Delta", "Delta", "Delta"
-local solara, Solara, SOLARA = "Solara", "Solara", "Solara"
 
 -- [[ WRITE MSG ]] --
 _G.write = function(msg,typingtime,destroytime)
@@ -70,14 +70,14 @@ h:Destroy(); end)
 end;
 
     --[[ global funks ]]--
+if _G.exp ~= SOLARA then
+if getgenv().extras then
 _G.getNearestPlr = function(bodyPart)
     local players = game:GetService("Players")
     local localPlayer = players.LocalPlayer
     local nearestPlayer = nil
     local nearestDistance = math.huge
-
     bodyPart = bodyPart:lower()
-
     local bodyParts = {
         head = "Head",
         hrp = "HumanoidRootPart",
@@ -87,16 +87,13 @@ _G.getNearestPlr = function(bodyPart)
         rightleg = "Right Leg",
         leftarm = "Left Arm",
         rightarm = "Right Arm",
-        -- Add other body parts if needed
-    }
-
-    local correctCaseBodyPart = bodyParts[bodyPart]
+    };
+local correctCaseBodyPart = bodyParts[bodyPart]
     if not correctCaseBodyPart then
         print("Invalid body part name")
         return nil
-    end
-
-    for _, player in pairs(players:GetPlayers()) do
+    end;
+for _, player in pairs(players:GetPlayers()) do
         if player ~= localPlayer then
             local character = player.Character
             if character and character:FindFirstChild(correctCaseBodyPart) then
@@ -108,8 +105,7 @@ _G.getNearestPlr = function(bodyPart)
                 end
             end
         end
-    end
-
+    end;
     if nearestPlayer and nearestPlayer.Character then
         local nearestPart = nearestPlayer.Character:FindFirstChild(correctCaseBodyPart)
         if nearestPart then
@@ -118,7 +114,7 @@ _G.getNearestPlr = function(bodyPart)
         end
     end;
  return nil;
-end;
+   end;
 
 _G.firepp = function(prompt)
     local promptTime = prompt.HoldDuration
@@ -126,7 +122,9 @@ _G.firepp = function(prompt)
     prompt:InputHoldBegin()
     prompt:InputHoldEnd()
     prompt.HoldDuration = promptTime
-end;
+    end;
+end; -- dont allow solara
+end; -- if getgenv().extras is enabled
 
 _G.kopy = function(uh)
 setclipboard(uh)
