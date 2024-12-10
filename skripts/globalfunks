@@ -115,6 +115,8 @@ for _, player in pairs(players:GetPlayers()) do
     end;
  return nil;
    end;
+
+else warn("set getgenv().nearestbodypart to true") return
  end; -- if getgenv().nearestbodypart is enabled
 end; -- dont allow solara
 
@@ -127,6 +129,7 @@ _G.firepp = function(prompt)
     prompt:InputHoldEnd()
     prompt.HoldDuration = defaultHoldingTime
     end;
+else warn("set getgenv().pps to true") return
  end; -- if getgenv().pps (proximityprompts) is enabled
 end; -- dont allow solara
 
@@ -658,4 +661,5 @@ _G.removeESP(player)
         end
       end
    end;
+else warn("set getgenv().hitboxexpander to true") return
 end; -- if getgenv().hitboxexpander enabled
