@@ -116,7 +116,7 @@ for _, player in pairs(players:GetPlayers()) do
  return nil;
    end;
 
-else warn("set getgenv().nearestbodypart to true") return
+else warn("set getgenv().nearestbodypart to true")
  end; -- if getgenv().nearestbodypart is enabled
 end; -- dont allow solara
 
@@ -129,7 +129,7 @@ _G.firepp = function(prompt)
     prompt:InputHoldEnd()
     prompt.HoldDuration = defaultHoldingTime
     end;
-else warn("set getgenv().pps to true") return
+else warn("set getgenv().pps to true")
  end; -- if getgenv().pps (proximityprompts) is enabled
 end; -- dont allow solara
 
@@ -607,7 +607,7 @@ UIS.InputChanged:Connect(function(input)
 end;
 -- [[ END DRAG ]] --
 
--- [[ HITBOX EXPANDER
+-- [[ HITBOX EXPANDER ]] --
 if getgenv().hitboxexpander then
 _G.updateHitboxes = function()
 for _, player in pairs(_G.gplrs) do
@@ -661,5 +661,5 @@ _G.removeESP(player)
         end
       end
    end;
-else warn("set getgenv().hitboxexpander to true") return
+else warn("set getgenv().hitboxexpander to true")
 end; -- if getgenv().hitboxexpander enabled
