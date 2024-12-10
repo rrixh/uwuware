@@ -627,7 +627,7 @@ end
 end
 end
 
-_G.ESP = function(player)
+_G.ESP = function(player, kolor)
 for _, part in pairs(player.Character:GetChildren()) do
 if part:IsA"BasePart" then
 local esp = Instance.new"BoxHandleAdornment"
@@ -637,7 +637,7 @@ esp.ZIndex = 20
 esp.Adornee = part
 esp.Size = part.Size
 esp.Transparency = 0.5
-esp.Color3 = _G.green
+esp.Color3 = Color3.new(0, 1, 0) or kolor
 esp.Parent = part
    end
   end
