@@ -599,3 +599,59 @@ UIS.InputChanged:Connect(function(input)
     end); return function() return not dragging and notClicked == false end
 end;
 -- [[ END DRAG ]] --
+
+-- [[ HITBOX EXPANDER
+if getgenv().hitboxexpander then
+_G.updateHitboxes = function()
+for _, player in pairs(_G.gplrs) do
+if player ~= game.Players.LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+local rootPart = player.Character:FindFirstChild("HumanoidRootPart")
+if _G.hitboxesEnabled then
+rootPart.Size = Vector3.new(tonumber(_G.hitboxSize), tonumber(_G.hitboxSize), tonumber(_G.hitboxSize))
+rootPart.Transparency = _G.invisibleHitbox and 1 or _G.normalTransparenxy
+rootPart.CanCollide = false
+else
+rootPart.Size = Vector3.new(2, 2, 1) -- Default size
+rootPart.Transparency = 0
+rootPart.CanCollide = true
+end
+end
+end
+end
+
+_G.ESP = function(player)
+for _, part in pairs(player.Character:GetChildren()) do
+if part:IsA"BasePart" then
+local esp = Instance.new"BoxHandleAdornment"
+esp.Name = "ESP"
+esp.AlwaysOnTop = true
+esp.ZIndex = 20
+esp.Adornee = part
+esp.Size = part.Size
+esp.Transparency = 0.5
+esp.Color3 = _G.green
+esp.Parent = part
+   end
+  end
+end;
+
+_G.removeESP = function(player)
+for _, part in pairs(player.Character:GetChildren()) do
+if part:IsA("BasePart") and part:FindFirstChild("ESP") then
+part:FindFirstChild("ESP"):Destroy()
+     end;
+   end;
+end;
+
+_G.highlightPlayers = function()
+for _, player in pairs(game:GetService("Players"):GetPlayers()) do
+if player ~= game.Players.LocalPlayer and player.Character then
+if _G.highlightEnabled then
+_G.ESP(player)
+else
+_G.removeESP(player)
+          end
+        end
+      end
+   end;
+end; -- if getgenv().hitboxexpander enabled
