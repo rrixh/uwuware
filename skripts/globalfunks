@@ -50,8 +50,9 @@ if getgenv().hook then
 _G.rawmt = getrawmetatable(game);
 _G.method = getnamecallmethod();
 _G.server, _G.klient, _G.invoke = ("FireServer"), ("FireClient"), ("InvokeServer");
-  end;
-end;
+  else warn("set \"getgenv().hook\" to true if u are trying to use hooking funktions")
+ end; -- if getgenv().hook is enabled
+end; -- dont allow solara
 
 -- [[ WRITE MSG ]] --
 _G.write = function(msg,typingtime,destroytime)
@@ -116,7 +117,7 @@ for _, player in pairs(players:GetPlayers()) do
  return nil;
    end;
 
-else warn("set getgenv().nearestbodypart to true")
+else warn("set getgenv().nearestbodypart to true if u are trying to use the \"_G.getNearestPlr(bodyPart)\" funktion")
  end; -- if getgenv().nearestbodypart is enabled
 end; -- dont allow solara
 
@@ -129,7 +130,7 @@ _G.firepp = function(prompt)
     prompt:InputHoldEnd()
     prompt.HoldDuration = defaultHoldingTime
     end;
-else warn("set getgenv().pps to true")
+else warn("set getgenv().pps to true if u are trying to use the \"_G.firepp()\" funktion")
  end; -- if getgenv().pps (proximityprompts) is enabled
 end; -- dont allow solara
 
@@ -661,5 +662,5 @@ _G.removeESP(player)
         end
       end
    end;
-else warn("set getgenv().hitboxexpander to true")
+else warn("set \"getgenv().hitboxexpander\" to true if u are trying to use hitbox funktions")
 end; -- if getgenv().hitboxexpander enabled
