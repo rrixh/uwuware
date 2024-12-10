@@ -71,7 +71,7 @@ end;
 
     --[[ global funks ]]--
 if _G.exp ~= SOLARA then
-if getgenv().allowed then
+if getgenv().nearestbodypart then
 _G.getNearestPlr = function(bodyPart)
     local players = game:GetService("Players")
     local localPlayer = players.LocalPlayer
@@ -115,7 +115,11 @@ for _, player in pairs(players:GetPlayers()) do
     end;
  return nil;
    end;
+ end; -- if getgenv().nearestbodypart is enabled
+end; -- dont allow solara
 
+if _G.exp ~= SOLARA then
+if getgenv().pps then
 _G.firepp = function(prompt)
     local defaultHoldingTime = prompt.HoldDuration
     prompt.HoldDuration = 0
@@ -123,8 +127,8 @@ _G.firepp = function(prompt)
     prompt:InputHoldEnd()
     prompt.HoldDuration = defaultHoldingTime
     end;
+ end; -- if getgenv().pps (proximityprompts) is enabled
 end; -- dont allow solara
-end; -- if getgenv().allowed is enabled
 
 _G.kopy = function(uh)
 setclipboard(uh)
