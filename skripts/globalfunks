@@ -637,7 +637,7 @@ esp.ZIndex = 20
 esp.Adornee = part
 esp.Size = part.Size
 esp.Transparency = 0.5
-esp.Color3 = Color3.new(0, 1, 0) or kolor
+esp.Color3 = Color3.new(.75, 0, 0) or kolor
 esp.Parent = part
    end
   end
