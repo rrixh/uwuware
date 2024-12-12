@@ -612,8 +612,6 @@ end;
 _G.hitboxesEnabled = false;
 _G.invisibleHitbox = false;
 _G.highlightEnabled = false;
-_G.hitboxSize = "10" or getgenv().hitboxSize
-_G.normalTransparenxy = .5 or getgenv().normalTransparenxy
 if getgenv().hitboxexpander then
 _G.updateHitboxes = function()
 for _, player in pairs(_G.gplrs) do
