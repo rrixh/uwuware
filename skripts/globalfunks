@@ -609,6 +609,9 @@ end;
 -- [[ END DRAG ]] --
 
 -- [[ HITBOX EXPANDER ]] --
+_G.hitboxesEnabled = false;
+_G.invisibleHitbox = false;
+_G.highlightEnabled = false;
 if getgenv().hitboxexpander then
 _G.updateHitboxes = function()
 for _, player in pairs(_G.gplrs) do
