@@ -609,7 +609,7 @@ end;
 -- [[ END DRAG ]] --
 
 -- [[ HITBOX EXPANDER ]] --
-if getgenv().hitboxexpander then
+if getgenv().hitboxexpander == "enabled" then
 _G.updateHitboxes = function()
 for _, player in pairs(_G.gplrs) do
 if player ~= game.Players.LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
