@@ -29,7 +29,6 @@
     _G.w = lulas:GetService'Workspace';
    _G.pps = game:GetService'ProximityPromptService';
    _G.tcs = game:GetService'TextChatService';
-   _G.ftcs = game:FindService'TextChatService';
    _G.chat = game:GetService'Chat'
 
 -- [[ SHORTKUT KONNEKTIONS ]] --
