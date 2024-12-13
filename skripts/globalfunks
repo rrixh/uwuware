@@ -35,7 +35,7 @@
    _G.pptriggered = _G.pps.PromptTriggered;
   _G.renderstepped = _G.run.RenderStepped;
   _G.stepped = _G.run.Stepped;
-  _G.heartbeat = _G.run.Heartbeat;
+_G.heartbeat = _G.run.Heartbeat; _G.hb = _G.heartbeat;
 
 -- [[ EXEKUTORS ]] --
 local delta, Delta, DELTA = "Delta", "Delta", "Delta"
