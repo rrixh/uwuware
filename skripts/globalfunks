@@ -21,6 +21,24 @@
     _G.sit = _G.hum.Sit;
    _G.jump = _G.hum.Jump;
 
+    --[[ servixes ]]--
+    _G.run = lulas:GetService'RunService';
+    _G.rep = lulas:GetService'ReplicatedStorage';
+    _G.vim = lulas:GetService'VirtualInputManager';
+    _G.uis = lulas:GetService'UserInputService';
+    _G.w = lulas:GetService'Workspace';
+   _G.pps = game:GetService'ProximityPromptService';
+   _G.tcs = game:GetService'TextChatService';
+   _G.ftcs = game:FindService'TextChatService';
+   _G.chat = game:GetService'Chat'
+
+-- [[ SHORTKUT KONNEKTIONS ]] --
+   _G.ppshown = _G.pps.PromptShown;
+   _G.pptriggered = _G.pps.PromptTriggered;
+  _G.renderstepped = _G.run.RenderStepped;
+  _G.stepped = _G.run.Stepped;
+  _G.heartbeat = _G.run.Heartbeat;
+
 -- [[ EXEKUTORS ]] --
 local delta, Delta, DELTA = "Delta", "Delta", "Delta"
 local solara, Solara, SOLARA = "Solara", "Solara", "Solara"
@@ -29,20 +47,30 @@ local solara, Solara, SOLARA = "Solara", "Solara", "Solara"
 _G.num = tonumber;
 _G.str = tostring;
 
-    --[[ servixes ]]--
-    _G.run = lulas:GetService'RunService';
-    _G.rep = lulas:GetService'ReplicatedStorage';
-    _G.vim = lulas:GetService'VirtualInputManager';
-    _G.uis = lulas:GetService'UserInputService';
-    _G.w = lulas:GetService'Workspace';
-   _G.pps = game:GetService'ProximityPromptService';
+   -- [[ servixes 2 ]] --
+  _G.oldchat = Enum.ChatVersion.LegacyChatService;
+ _G.chatversion = _G.tcs.ChatVersion;
+_G.SMR = game._G.rep:FindFirstChild'DefaultChatSystemChatEvents'.SayMessageRequest
+_G.tc = _G.tcs.ChatInputBarConfiguration.TargetTextChannel;
 
--- [[ SHORTKUT KONNEKTIONS ]] --
-   _G.ppshown = _G.pps.PromptShown;
-   _G.pptriggered = _G.pps.PromptTriggered;
-  _G.renderstepped = _G.run.RenderStepped;
-  _G.stepped = _G.run.Stepped;
-  _G.heartbeat = _G.run.Heartbeat;
+  -- [[ XHAT SERVIXE ]] --
+if _G.exp ~= solara then
+if getgenv().chatenabled then
+
+_G.sendchat = function(msg)
+local filteredMessage = _G.chat:FilterStringForBroadcast(msg, _G.plr)
+ local tagged = filteredMessage ~= msg
+  if tagged then warn("“", msg, "” got tagged!") else
+    if _G.chatversion == _G.oldchat then
+   _G.SMR:FireServer(msg,"All")
+   else
+_G.tc:SendAsync(msg)
+   end; -- xhexk xhat version
+    end; -- tagged
+    end; -- _G.sendchat funktion
+else warn("enable \"getgenv().chatenabled\" to use chat funktions 👺")
+end; -- if getgenv().chatenabled is enabled
+end; -- dont allow solara
 
 -- [[ others ]] --
 if _G.exp ~= SOLARA then
