@@ -29,7 +29,6 @@
     _G.w = lulas:GetService'Workspace';
    _G.pps = game:GetService'ProximityPromptService';
    _G.tcs = game:GetService'TextChatService';
-   _G.chat = game:GetService'Chat'
 
 -- [[ SHORTKUT KONNEKTIONS ]] --
    _G.ppshown = _G.pps.PromptShown;
@@ -47,10 +46,6 @@ _G.num = tonumber;
 _G.str = tostring;
 
    -- [[ servixes 2 ]] --
-  _G.oldchat = Enum.ChatVersion.LegacyChatService;
- _G.chatversion = _G.tcs.ChatVersion;
-_G.SMR = game._G.rep:FindFirstChild'DefaultChatSystemChatEvents'.SayMessageRequest
-_G.tc = _G.tcs.ChatInputBarConfiguration.TargetTextChannel;
 
 -- [[ others ]] --
 if _G.exp ~= SOLARA then
