@@ -29,6 +29,7 @@
     _G.w = lulas:GetService'Workspace';
    _G.pps = game:GetService'ProximityPromptService';
    _G.tcs = game:GetService'TextChatService';
+   _G.tps = game:GetService'TeleportService';
 
 -- [[ SHORTKUT KONNEKTIONS ]] --
    _G.ppshown = _G.pps.PromptShown;
@@ -139,6 +140,10 @@ end; -- dont allow solara
 
 _G.kopy = function(uh)
 setclipboard(uh)
+end;
+
+_G.goto = function(id)
+game:GetService("TeleportService"):Teleport(id,game:GetService("Players").LocalPlayer)
 end;
 
     _G.bezier = function(t, p0, p1, p2)
