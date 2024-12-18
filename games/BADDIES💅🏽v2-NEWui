@@ -1,11 +1,7 @@
-local new = {"NEW", "NEw", "New", "new", "nEW", "nEw", "neW", "v2", "V2"};
-local old = {"OLD", "OLd", "Old", "old", "oLd", "olD", "v1", "V1"};
-local chose = table.find;
 ui = getgenv().Version;
-
-if chose(new, ui) then
+if ui == "new" then
 loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/games/BADDIES💅🏽v2",true))();
 elseif 
-chose(old, ui) then
+ui == "old" then
 _G.AdminKommands = (true); loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/games/BADDIES💅🏽",true))();
 end;
