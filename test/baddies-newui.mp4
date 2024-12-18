@@ -254,9 +254,15 @@ _G.kopy(YTLink)
 local RRixh1 = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/skripts/AkaliNotif", true))(); local Notify = RRixh1.Notify; Notify({Description = "Telegram link kopied", Duration = 4});
 end)
 
+wiz:Button("testing: RBX @qiurco 💚", function()
+print""
+end)
+
 spawn(function()
 task.wait(3)
 _G.write("send DM to request more features—enjoy👺", .07)
+task.wait(5)
+_G.write("kredits to @qiurco on RBX for helping me test", .08, 4)
 end);
 
 print([[DISKORD: @bommunity * BADDIES💅🏽TROLL GUI]])
