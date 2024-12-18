@@ -1,0 +1,27 @@
+local wizRRIXH = loadstring(game:HttpGet('https://github.com/rrixh/uwuware/raw/refs/heads/main/lib/wizRRIXH'))(); 
+local wizard = wizRRIXH:NewWindow("TITLE");
+local wiz = wizard:NewSection("SEKTION")
+
+wiz:Button("BUTTON", function()
+print("HI")
+end)
+
+wiz:Txtbox("TEXTBOX", function(text)
+        print(text)
+end)
+
+wiz:Toggle("TOGGLEBUTTON", function(value)
+print(value)
+end)
+
+wiz:List("DROPDOWN", {"Hello", "World", "Hello World"}, 1, function(text)
+print(text)
+end)
+
+wiz:Slider("Slider", 16, 100, 16, false, function(value)
+print(value)
+ end) 
+
+wiz:Kolorpixker("Kolor Pixker", Color3.new(255, 255, 255), function(value)
+print(value)
+end)
