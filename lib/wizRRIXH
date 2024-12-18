@@ -1,4 +1,5 @@
-   local UserInputService = game:GetService("UserInputService")
+ --WIZARD UI (modified) --
+local UserInputService = game:GetService("UserInputService")
     local TweenService = game:GetService("TweenService")
     local RunService = game:GetService("RunService")
 
@@ -12,14 +13,17 @@
 
     local WindowPosition = 0
 
-    local CoastifiedLibrary = Instance.new("ScreenGui")
+if game:GetService("CoreGui"):FindFirstChild("WizardLibrary") then	game:GetService("CoreGui"):FindFirstChild("WizardLibrary"):Destroy()
+end
+
+    local WizardLibrary = Instance.new("ScreenGui")
     local Container = Instance.new("Frame")
 
-    CoastifiedLibrary.Name = "CoastifiedLibrary"
-    CoastifiedLibrary.Parent = game:GetService("CoreGui")
+    WizardLibrary.Name = "WizardLibrary"
+    WizardLibrary.Parent = game:GetService("CoreGui")
 
     Container.Name = "Container"
-    Container.Parent = CoastifiedLibrary
+    Container.Parent = WizardLibrary
     Container.BackgroundColor3 = Color3.new(1, 1, 1)
     Container.BackgroundTransparency = 1
     Container.Size = UDim2.new(0, 100, 0, 100)
@@ -341,7 +345,7 @@
 
             local LibraryElements = {}
 
-            function LibraryElements:CreateToggle(name, action)
+            function LibraryElements:Toggle(name, action)
                 local ToggleHolder = Instance.new("Frame")
                 local ToggleTitle = Instance.new("TextLabel")
                 local ToggleBackground = Instance.new("ImageLabel")
@@ -442,7 +446,7 @@
                 end)
             end
 
-            function LibraryElements:CreateSlider(name, minimumvalue, maximumvalue, startvalue, precisevalue, action)
+            function LibraryElements:Slider(name, minimumvalue, maximumvalue, startvalue, precisevalue, action)
                 local SliderHolder = Instance.new("Frame")
                 local SliderTitle = Instance.new("TextLabel")
                 local SliderValueHolder = Instance.new("ImageLabel")
@@ -600,7 +604,7 @@
                 end)
             end
 
-            function LibraryElements:CreateColorPicker(name, presetcolor, action)
+            function LibraryElements:Kolorpixker(name, presetcolor, action)
                 local ColorPickerHolder = Instance.new("Frame")
                 local RainbowToggleHolder = Instance.new("Frame")
                 local RainbowTitle = Instance.new("TextLabel")
@@ -1085,7 +1089,7 @@
                 end)
             end
 
-            function LibraryElements:CreateButton(name, action)
+            function LibraryElements:Button(name, action)
                 local ButtonHolder = Instance.new("Frame")
                 local Button = Instance.new("TextButton")
                 local ButtonRound = Instance.new("ImageLabel")
@@ -1174,7 +1178,7 @@
                 end)
             end
 
-            function LibraryElements:CreateTextbox(name, action)
+            function LibraryElements:Txtbox(name, action)
                 local TextBoxHolder = Instance.new("Frame")
                 local TextBox = Instance.new("TextBox")
                 local TextBoxRound = Instance.new("ImageLabel")
@@ -1264,7 +1268,7 @@
                 end)
             end
 
-            function LibraryElements:CreateDropdown(name, options, presetoption, action)
+            function LibraryElements:List(name, options, presetoption, action)
                 local DropdownHolder = Instance.new("Frame")
                 local DropdownTitle = Instance.new("TextLabel")
                 local DropdownRound = Instance.new("ImageLabel")
@@ -1423,10 +1427,10 @@
                 end
         
                 DropdownToggle.MouseButton1Down:Connect(function()
-                    if IsDropdownWindowOpen then
-                        IsDropdownWindowOpen = false
+             if IsDropdownWindowOpen then
+          IsDropdownWindowOpen = false
 
-                        DropdownToggle.Text = ">"
+               DropdownToggle.Text = ">"
                         TweenService:Create(DropdownToggle, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Rotation = 0}):Play()
 
                         TweenService:Create(DropdownTitle, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {TextColor3 = Color3.new(1, 1, 1)}):Play()
@@ -1530,7 +1534,6 @@
 
             return LibraryElements;
         end
-
         return Sections;
 end
 return Library;
