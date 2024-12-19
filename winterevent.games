@@ -5,5 +5,7 @@ getgenv().eventgames = {
 [9049840490] = "https://github.com/ToraScript/Script/raw/dc78339a6b9f5a17cb7e34053a969cdfd6f678ba/SonicWinter", -- sonik speed sim
 [735030788] = "https://raw.githubusercontent.com/ToraScript/Script/e9d570199bfea777d22f60a82ec9fe6ae6007057/RoyaleHighWinter", -- royale high
 [5589831112] = "https://raw.githubusercontent.com/ToraScript/Script/e9d570199bfea777d22f60a82ec9fe6ae6007057/RoyaleHighWinter", -- royale high (on bus game)
+[891852901] = "https://github.com/ToraScript/Script/raw/8e05eb6e8096f523cba8b2b9654c3f4cd41c490d/GreenvilleWinter", -- Greenville
+[3663340706] = "https://github.com/ToraScript/Script/raw/702c0f3b2124a2a7775d254bf9d2d03a23963fe4/WarriorCatsWinter", -- warrior kat
 };
 getgenv().lollypop=game.PlaceId;
