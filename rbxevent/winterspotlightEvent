@@ -1,0 +1,6 @@
+loadstring(game:HttpGet("https://github.com/rrixh/uwuware/raw/refs/heads/main/rbxevent/winterevent-gamelist",true))(); 
+for lulas, skript in pairs(eventgames) do
+    if lulas == lollypop then
+        loadstring(game:HttpGet(skript))();
+    end;
+end;
