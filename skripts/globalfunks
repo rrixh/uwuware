@@ -617,7 +617,7 @@ end;
 -- [[ END DRAG ]] --
 
 -- [[ HITBOX EXPANDER ]] --
-if getgenv().hitboxexpander == "enabled" then
+if getgenv().hitboxexpander then
 _G.updateHitboxes = function()
 for _, player in pairs(_G.gplrs) do
 if player ~= game.Players.LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
@@ -670,7 +670,7 @@ _G.removeESP(player)
         end
       end
    end;
-else warn("set \"getgenv().hitboxexpander\" to true if u are trying to use hitbox funktions")
+else print(" \"getgenv().hitboxexpander\" = false")
 end; -- if getgenv().hitboxexpander enabled
 
 -- [[ PivotTo & CFrame tp ]] --
@@ -704,7 +704,8 @@ hrp.CFrame = part.CFrame * CFrame.new(0, -distance, 0);
           end;
           end;
    end;
-end;
+else print(" \"getgenv().topart\" = false")
+end; -- if getgenv().topart is true
 
 -- [[ KOLORS ]] --
 if getgenv().kolors then
@@ -879,4 +880,5 @@ _G.lightskyblue = Color3.new(0.53, 0.81, 0.98)
 _G.lightslategray = Color3.new(0.47, 0.53, 0.6)
 _G.lightsteelblue = Color3.new(0.69, 0.77, 0.87)
 _G.lightyellow = Color3.new(1, 1, 0.88)
+else print(" \"getgenv().kolors\" = false")
 end;
