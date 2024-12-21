@@ -673,6 +673,39 @@ _G.removeESP(player)
 else warn("set \"getgenv().hitboxexpander\" to true if u are trying to use hitbox funktions")
 end; -- if getgenv().hitboxexpander enabled
 
+-- [[ PivotTo & CFrame tp ]] --
+if getgenv().topart and _G.exp ~= Solara then
+_G.topart = function(part, arg, method, distance)
+    game=game;CFrame=CFrame;
+local hrp = game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart");
+if not hrp then print(tostring(hrp), "not found"); return end;
+-- PivotTo --
+if method == "pivot" then
+if arg == "behind" then
+hrp:PivotTo(part:GetPivot() * CFrame.new(0, 0, distance));
+elseif arg == "front" then
+hrp:PivotTo(part:GetPivot() * CFrame.new(0, 0, -distance));
+elseif arg == "above" then
+hrp:PivotTo(part:GetPivot() * CFrame.new(0, distance, 0));
+elseif arg == "below" then
+hrp:PivotTo(part:GetPivot() * CFrame.new(0, -distance, 0));
+        end;
+     end;
+-- CFrame --
+if method == "cframe" then
+if arg == "behind" then
+hrp.CFrame = part.CFrame * CFrame.new(0, 0, distance);
+elseif arg == "front" then
+hrp.CFrame = part.CFrame * CFrame.new(0, 0, -distance);
+elseif arg == "above" then
+hrp.CFrame = part.CFrame * CFrame.new(0, distance, 0);
+elseif arg == "below" then
+hrp.CFrame = part.CFrame * CFrame.new(0, -distance, 0);
+          end;
+          end;
+   end;
+end;
+
 -- [[ KOLORS ]] --
 if getgenv().kolors then
 _G.green = Color3.new(0, 1, 0)
