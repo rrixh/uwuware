@@ -31,6 +31,9 @@
    _G.tcs = game:GetService'TextChatService';
    _G.tps = game:GetService'TeleportService';
 
+_G.platform = _G.uis:GetPlatform();
+_G.IsOnMobile, _G.Mobile, _G.isMobile, _G.IsMobile, _G.isonmobile = Enum.Platform.IOS,Enum.Platform.Android;
+
 -- [[ SHORTKUT KONNEKTIONS ]] --
    _G.ppshown = _G.pps.PromptShown;
    _G.pptriggered = _G.pps.PromptTriggered;
