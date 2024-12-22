@@ -31,6 +31,7 @@
    _G.tcs = game:GetService'TextChatService';
    _G.tps = game:GetService'TeleportService';
 
+-- [[ get devixe ]] --
 _G.platform = _G.uis:GetPlatform();
 _G.IsOnMobile = Enum.Platform.IOS,Enum.Platform.Android;
 
