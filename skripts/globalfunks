@@ -55,14 +55,12 @@ _G.str = tostring;
    -- [[ servixes 2 ]] --
 
 -- [[ others ]] --
-if _G.exp ~= SOLARA then
-if getgenv().hook then
+if getgenv().hook and _G.exp ~= SOLARA then
 _G.rawmt = getrawmetatable(game);
 _G.method = getnamecallmethod();
 _G.server, _G.klient, _G.invoke = ("FireServer"), ("FireClient"), ("InvokeServer");
-  else warn("set \"getgenv().hook\" to true if u are trying to use hooking funktions 👺")
- end; -- if getgenv().hook is enabled
-end; -- dont allow solara
+  else print("set \"getgenv().hook\" = true if you are trying to use hooking funktions 👺")
+ end; -- if getgenv().hook is enabled (nonsolara)
 
 -- [[ WRITE MSG ]] --
 _G.write = function(msg,typingtime,destroytime)
@@ -86,8 +84,7 @@ _G.RRixh = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuw
 _G.Notify = _G.RRixh.Notify; _G.Notify({Description = txt, Duration = 4 or dur}); 
 end;
 
-if _G.exp ~= SOLARA then
-if getgenv().nearestbodypart then
+if getgenv().nearestbodypart and _G.exp ~= SOLARA then
 _G.getNearestPlr = function(bodyPart)
     local players = game:GetService("Players")
     local localPlayer = players.LocalPlayer
@@ -132,9 +129,8 @@ for _, player in pairs(players:GetPlayers()) do
  return nil;
    end;
 
-else warn("set \"getgenv().nearestbodypart\" to true if u are trying to use the \"_G.getNearestPlr(”bodyPart“)\" funktion 👺")
+else print("status: getgenv().nearestbodypart = false")
  end; -- if getgenv().nearestbodypart is enabled
-end; -- dont allow solara
 
 if _G.exp ~= SOLARA then
 if getgenv().pps then
@@ -681,7 +677,7 @@ _G.removeESP(player)
         end
       end
    end;
-else print(" \"getgenv().hitboxexpander\" = false")
+else print("status: getgenv().hitboxexpander = false")
 end; -- if getgenv().hitboxexpander enabled
 
 -- [[ PivotTo & CFrame tp ]] --
@@ -715,7 +711,7 @@ hrp.CFrame = part.CFrame * CFrame.new(0, -distance, 0);
           end;
           end;
    end;
-else print(" \"getgenv().topart\" = false")
+else print("getgenv().topart = false")
 end; -- if getgenv().topart is true
 
 -- [[ KOLORS ]] --
@@ -891,5 +887,5 @@ _G.lightskyblue = Color3.new(0.53, 0.81, 0.98)
 _G.lightslategray = Color3.new(0.47, 0.53, 0.6)
 _G.lightsteelblue = Color3.new(0.69, 0.77, 0.87)
 _G.lightyellow = Color3.new(1, 1, 0.88)
-else print(" \"getgenv().kolors\" = false")
+else print("status: getgenv().kolors = false")
 end;
