@@ -59,7 +59,7 @@ if getgenv().hook and _G.exp ~= SOLARA then
 _G.rawmt = getrawmetatable(game);
 _G.method = getnamecallmethod();
 _G.server, _G.klient, _G.invoke = ("FireServer"), ("FireClient"), ("InvokeServer");
-  else print("set \"getgenv().hook\" = true if you are trying to use hooking funktions 👺")
+  else print("status: getgenv().hook = false")
  end; -- if getgenv().hook is enabled (nonsolara)
 
 -- [[ WRITE MSG ]] --
@@ -132,8 +132,8 @@ for _, player in pairs(players:GetPlayers()) do
 else print("status: getgenv().nearestbodypart = false")
  end; -- if getgenv().nearestbodypart is enabled
 
-if _G.exp ~= SOLARA then
-if getgenv().pps then
+-- [[ PROXIMITY PROMPT ]] --
+if getgenv().pps and _G.exp ~= SOLARA then
 _G.firepp = function(prompt)
     local defaultHoldingTime = prompt.HoldDuration
     prompt.HoldDuration = 0
@@ -141,9 +141,8 @@ _G.firepp = function(prompt)
     prompt:InputHoldEnd()
     prompt.HoldDuration = defaultHoldingTime
     end;
-else warn("set \"getgenv().pps\" to true if u are trying to use the \"_G.firepp()\" funktion")
+else print("status: getgenv().pps = false");
  end; -- if getgenv().pps (proximityprompts) is enabled
-end; -- dont allow solara
 
 _G.kopy = function(uh)
 setclipboard(uh)
