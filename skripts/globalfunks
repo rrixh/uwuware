@@ -1,4 +1,6 @@
-    --[[ global vars ]]--
+local globalsLoaded, syntaxError = pcall(function()
+
+--[[ global vars ]]--
     rrixh = loadstring;
     lulas = game;
     _G.rbx = lulas;
@@ -48,9 +50,14 @@ _G.platform = _G.uis:GetPlatform();
 _G.IsOnMobile = Enum.Platform.IOS,Enum.Platform.Android;
 end;
 
+-- [[ T O & T A B L E S  ]] --
    _G.find = table.find;
 _G.num = tonumber;
 _G.str = tostring;
+_G.lowerkase = string.lower;
+_G.kapital = string.upper;
+_G.strfind = string.find;
+
 
    -- [[ servixes 2 ]] --
 
@@ -59,8 +66,9 @@ if getgenv().hook and _G.exp ~= SOLARA then
 _G.rawmt = getrawmetatable(game);
 _G.method = getnamecallmethod();
 _G.server, _G.klient, _G.invoke = ("FireServer"), ("FireClient"), ("InvokeServer");
-  else print("status: getgenv().hook = false")
- end; -- if getgenv().hook is enabled (nonsolara)
+  else 
+print("Globals: getgenv().hook = false")
+ end; -- if getgenv().hook true (no solara)
 
 -- [[ WRITE MSG ]] --
 _G.write = function(msg,typingtime,destroytime)
@@ -129,8 +137,8 @@ for _, player in pairs(players:GetPlayers()) do
  return nil;
    end;
 
-else print("status: getgenv().nearestbodypart = false")
- end; -- if getgenv().nearestbodypart is enabled
+else print("Globals: getgenv().nearestbodypart = false")
+ end; -- if getgenv().nearestbodypart
 
 -- [[ PROXIMITY PROMPT ]] --
 if getgenv().pps and _G.exp ~= SOLARA then
@@ -141,7 +149,8 @@ _G.firepp = function(prompt)
     prompt:InputHoldEnd()
     prompt.HoldDuration = defaultHoldingTime
     end;
-else print("status: getgenv().pps = false");
+else 
+print("Globals: getgenv().pps = false");
  end; -- if getgenv().pps (proximityprompts) is enabled
 
 _G.kopy = function(uh)
@@ -676,7 +685,7 @@ _G.removeESP(player)
         end
       end
    end;
-else print("status: getgenv().hitboxexpander = false")
+else print("Globals: getgenv().hitboxexpander = false")
 end; -- if getgenv().hitboxexpander enabled
 
 -- [[ PivotTo & CFrame tp ]] --
@@ -715,22 +724,22 @@ end; -- if getgenv().topart is true
 
 -- [[ KOLORS ]] --
 if getgenv().kolors then
-_G.green = Color3.new(0, 1, 0)
-_G.red = Color3.new(1, 0, 0)
+_G.green = Color3.new(0, 1, 0) -- bright
+_G.red = Color3.new(1, 0, 0) -- bright
 _G.blue = Color3.new(0, 0, 1)
 _G.yellow = Color3.new(1, 1, 0)
 _G.cyan = Color3.new(0, 1, 1)
 _G.magenta = Color3.new(1, 0, 1)
 _G.orange = Color3.new(1, 0.5, 0)
 _G.purple = Color3.new(0.5, 0, 0.5)
-_G.pink = Color3.new(1, 0.75, 0.8)
+_G.pink = Color3.new(1, 0.75, 0.8) -- bright
 _G.brown = Color3.new(0.6, 0.3, 0)
 _G.gray = Color3.new(0.5, 0.5, 0.5)
 _G.white = Color3.new(1, 1, 1)
 _G.black = Color3.new(0, 0, 0)
 _G.lightblue = Color3.new(0.68, 0.85, 0.9)
 _G.darkblue = Color3.new(0, 0, 0.55)
-_G.lightgreen = Color3.new(0.56, 0.93, 0.56)
+_G.lightgreen = Color3.new(0.56, 0.93, 0.56) -- bright af
 _G.darkgreen = Color3.new(0, 0.39, 0)
 _G.lightred = Color3.new(1, 0.71, 0.76)
 _G.darkred = Color3.new(0.55, 0, 0)
@@ -801,7 +810,7 @@ _G.burgundy = Color3.new(0.5, 0, 0.13)
 _G.honeydew = Color3.new(0.94, 1, 0.94)
 _G.peacock = Color3.new(0.2, 0.63, 0.79)
 _G.almond = Color3.new(0.94, 0.87, 0.8)
-_G.eggplant = Color3.new(0.38, 0.25, 0.32)
+_G.eggplant = Color3.new(0.38, 0.25, 0.32) -- good✅
 _G.bubblegum = Color3.new(1, 0.75, 0.8)
 _G.merlot = Color3.new(0.45, 0.19, 0.22)
 _G.limegreen = Color3.new(0.2, 0.8, 0.2)
@@ -886,5 +895,12 @@ _G.lightskyblue = Color3.new(0.53, 0.81, 0.98)
 _G.lightslategray = Color3.new(0.47, 0.53, 0.6)
 _G.lightsteelblue = Color3.new(0.69, 0.77, 0.87)
 _G.lightyellow = Color3.new(1, 1, 0.88)
-else print("status: getgenv().kolors = false")
+     else 
+print("Globals: getgenv().kolors = false")
+end;
+-- [[ END OF KOLORS ]] --
+
+end); -- protekted kall
+if not globalsLoaded then
+warn("error okkured:", syntaxError); 
 end;
