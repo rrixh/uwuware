@@ -32,6 +32,7 @@ local globalsLoaded, syntaxError = pcall(function()
    _G.pps = game:GetService'ProximityPromptService';
    _G.tcs = game:GetService'TextChatService';
    _G.tps = game:GetService'TeleportService';
+   _G.sgui = game:GetService'StarterGui';
 
 -- [[ SHORTKUT KONNEKTIONS ]] --
    _G.ppshown = _G.pps.PromptShown;
@@ -84,6 +85,16 @@ end;
 typeMessage();
 if destroytime then wait(destroytime); else wait(3.3) end;
 h:Destroy(); end)
+end;
+
+-- [[ LOLLYPOP HUB NOTIF ]] --
+_G.ok = function(text,dur)
+_G.sgui:SetCore("SendNotification",{
+Title = "Lollypop Hub 🍭",
+Duration = 5 or dur,
+Button1 = "okay",
+Callback = function() print('ok'); end,
+Text = text});
 end;
 
     --[[ global funks ]]--
