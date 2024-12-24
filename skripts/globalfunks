@@ -1,11 +1,15 @@
 local globals, syntaxerror = pcall(function()
 
---[[ global vars ]]--
-_G.lulas = 'lulaslollipop';
-_G.kh3we = 'kh3we';
+--[[ names/users ]]--
+_G.lulas = ('lulaslollipop');
+_G.kh3we = ('kh3we');
+_G.xheru = ('cherussii');
+_G.hg = ('smileszbaby');
+
+-- [[ setting/global vars ]] --
     rrixh = loadstring;
     lulas = game;
-    _G.kore = game:GetService'CoreGui';
+    _G.kore = lulas:GetService'CoreGui';
     _G.rbx = lulas;
     _G.game = lulas.PlaceId;
     _G.gamename = game:GetService'MarketplaceService':GetProductInfo(_G.game).Name;
@@ -25,6 +29,22 @@ _G.kh3we = 'kh3we';
     _G.jp = _G.hum.JumpPower;
     _G.sit = _G.hum.Sit;
    _G.jump = _G.hum.Jump;
+
+-- [[ IMAGES ]] --
+_G.cheruimg = (17104316554);
+_G.hgimg = (15729672382);
+_G.lollypop = (17767487755);
+_G.hublogo = (81697484807530);
+_G.qlogo = (83208221166718);
+_G.nekogirls = (99387651581628);
+_G.nekogirlsfull = (129450989114634);
+_G.animekatgirl = (18817519330);
+_G.turkey = (124622552375747);
+_G.xmastree = (83624080780174);
+_G.halloween = (111324508198120);
+_G.valentines = (99511253993554);
+_G.newyears = (140472834812860);
+_G.stpatrixks = (110841053352535);
 
     --[[ servixes ]]--
     _G.run = lulas:GetService'RunService';
@@ -48,9 +68,10 @@ end;
 -- [[ SHORTKUT KONNEKTIONS ]] --
    _G.ppshown = _G.pps.PromptShown;
    _G.pptriggered = _G.pps.PromptTriggered;
-  _G.renderstepped = _G.run.RenderStepped;
+_G.renderstepped = _G.run.RenderStepped;
   _G.stepped = _G.run.Stepped;
-_G.heartbeat = _G.run.Heartbeat; _G.hb = _G.heartbeat;
+_G.heartbeat = _G.run.Heartbeat;
+_G.hb = _G.heartbeat;
 
 -- [[ EXEKUTORS ]] --
 local delta, Delta, DELTA = "Delta", "Delta", "Delta"
@@ -165,11 +186,11 @@ else print("Globals: getgenv().nearestbodypart = false")
 -- [[ PROXIMITY PROMPT ]] --
 if getgenv().pps and _G.exp ~= SOLARA then
 _G.firepp = function(prompt)
-    local defaultHoldingTime = prompt.HoldDuration
-    prompt.HoldDuration = 0
-    prompt:InputHoldBegin()
-    prompt:InputHoldEnd()
-    prompt.HoldDuration = defaultHoldingTime
+local defaultDur = prompt.HoldDuration;
+    prompt.HoldDuration = 0;
+    prompt:InputHoldBegin();
+    prompt:InputHoldEnd();
+    prompt.HoldDuration = defaultDur;
     end;
 else 
 print("Globals: getgenv().pps = false");
