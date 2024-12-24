@@ -130,6 +130,46 @@ Text = text});
 end;
 
     --[[ global funks ]]--
+if getgenv().tpWalk then
+_G.toggleTPWalk = function(value)
+tpwalk = value
+if value then
+tpwalking = game:GetService("RunService").Stepped:Connect(function()
+if tpwalk then
+local character = game.Players.LocalPlayer.Character
+local humanoid = character and character:FindFirstChildWhichIsA("Humanoid")
+if humanoid and humanoid.MoveDirection.Magnitude>0 then
+
+local moveDirection = humanoid.MoveDirection;
+if speed then
+character:TranslateBy(moveDirection * speed);
+   else
+character:TranslateBy(moveDirection)
+    end;
+  end;
+    else
+tpwalking:Disconnect()
+   end;
+ end);
+else
+tpwalking:Disconnect()
+ end;
+end;
+_G.updateTPWalkSpeed = function(text)
+local newSpeed = tonumber(text);
+if newSpeed then
+local formattedSpeed = string.format("%.1f", newSpeed)
+speed = tonumber(formattedSpeed)
+text = formattedSpeed;
+      else
+text = "1"
+speed = 1
+   end
+return text;
+  end;
+else print("enable \"getgenv().tpWalk\" ");
+end; -- if getgenv().tpWalk is on
+
 _G.note = function(txt, dur)
 _G.RRixh = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/skripts/AkaliNotif", true))();
 _G.Notify = _G.RRixh.Notify; _G.Notify({Description = txt, Duration = 4 or dur}); 
