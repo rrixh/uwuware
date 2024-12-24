@@ -1,4 +1,4 @@
-local globalsLoaded, syntaxError = pcall(function()
+local globals, syntaxerror = pcall(function()
 
 --[[ global vars ]]--
 _G.lulas = 'lulaslollipop';
@@ -921,7 +921,9 @@ print("Globals: getgenv().kolors = false")
 end;
 -- [[ END OF KOLORS ]] --
 
-end); -- protekted kall
-if not globalsLoaded then
-warn("error okkured:", syntaxError); 
+end); --[[protekted kall]]--
+if not globals then
+warn("error okkured:", syntaxerror);
+else 
+print("Globals:", globals, "✅")
 end;
