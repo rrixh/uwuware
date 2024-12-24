@@ -1,6 +1,8 @@
 local globalsLoaded, syntaxError = pcall(function()
 
 --[[ global vars ]]--
+_G.lulas = 'lulaslollipop';
+_G.kh3we = 'kh3we';
     rrixh = loadstring;
     lulas = game;
     _G.rbx = lulas;
