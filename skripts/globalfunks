@@ -36,11 +36,13 @@ _G.kh3we = 'kh3we';
    _G.sgui = game:GetService'StarterGui';
 
 -- [[ TO ENABLE TEXTXHATSERVIXE ]] --
+--[[
 if getgenv().textcs then 
 _G.tcs = game:GetService'TextChatService'
    else 
 print("Globals/Servixe: getgenv().textcs = false");
 end;
+]]--
 
 -- [[ SHORTKUT KONNEKTIONS ]] --
    _G.ppshown = _G.pps.PromptShown;
