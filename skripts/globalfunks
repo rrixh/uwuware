@@ -32,9 +32,15 @@ _G.kh3we = 'kh3we';
     _G.uis = lulas:GetService'UserInputService';
     _G.w = lulas:GetService'Workspace';
    _G.pps = game:GetService'ProximityPromptService';
-   _G.tcs = game:GetService'TextChatService';
    _G.tps = game:GetService'TeleportService';
    _G.sgui = game:GetService'StarterGui';
+
+-- [[ TO ENABLE TEXTXHATSERVIXE ]] --
+if getgenv().textcs then 
+_G.tcs = game:GetService'TextChatService'
+   else 
+print("Globals/Servixe: getgenv().textcs = false");
+end;
 
 -- [[ SHORTKUT KONNEKTIONS ]] --
    _G.ppshown = _G.pps.PromptShown;
