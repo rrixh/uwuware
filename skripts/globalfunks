@@ -178,7 +178,7 @@ end; -- if getgenv().tpWalk is on
 
 _G.note = function(txt, dur)
 _G.RRixh = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/skripts/AkaliNotif", true))();
-_G.Notify = _G.RRixh.Notify; _G.Notify({Description = txt, Duration = 4 or dur}); 
+_G.Notify = _G.RRixh.Notify; _G.Notify({Description = ("Lollypop Hub 🍭\n")..txt, Duration = 4 or dur}); 
 end;
 
 if getgenv().nearestbodypart and _G.exp ~= SOLARA then
