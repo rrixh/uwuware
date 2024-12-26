@@ -84,7 +84,7 @@ local delta, Delta, DELTA = "Delta", "Delta", "Delta"
 local solara, Solara, SOLARA = "Solara", "Solara", "Solara"
 
 -- [[ get devixe ]] --
-if getgenv().devixe and _G.exp ~= solara then
+if getgenv().devixe then
 _G.platform = _G.uis:GetPlatform();
 _G.IsOnMobile = Enum.Platform.IOS,Enum.Platform.Android;
 end;
@@ -178,7 +178,7 @@ end; -- if getgenv().tpWalk is on
 
 _G.note = function(txt, dur)
 _G.RRixh = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/skripts/AkaliNotif", true))();
-_G.Notify = _G.RRixh.Notify; _G.Notify({Description = ("Lollypop Hub 🍭\n")..txt, Duration = 4 or dur}); 
+_G.Notify = _G.RRixh.Notify; _G.Notify({Description = ("Lollypop Hub 🍭\n")..txt, Duration = dur or 7}); 
 end;
 
 if getgenv().nearestbodypart and _G.exp ~= SOLARA then
