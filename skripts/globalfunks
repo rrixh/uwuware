@@ -129,7 +129,7 @@ end;
 _G.ok = function(text,dur)
 _G.sgui:SetCore("SendNotification",{
 Title = "Lollypop Hub 🍭",
-Duration = 5 or dur,
+Duration = dur or 5,
 Button1 = "okay",
 Callback = function() print('ok'); end,
 Text = text});
