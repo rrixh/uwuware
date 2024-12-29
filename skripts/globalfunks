@@ -1012,23 +1012,6 @@ print("Globals: getgenv().kolors = false")
 end;
 -- [[ END OF KOLORS ]] --
 
---[[ SPEKTATE GUI ]]--
-_G.LocalPlayer = game.Players.LocalPlayer;
-_G.setKamera = function(player)
-if player then
-_G.kamera.CameraSubject = player.Character:FindFirstChildWhichIsA("Humanoid")
-   end;
-end;
-
-_G.resetKamera = function()
-_G.kamera.CameraSubject = _G.LocalPlayer.Character:FindFirstChildWhichIsA("Humanoid")
-end;
-
-_G.updateKamera = function()
-_G.setKamera(targetPlayer)
-task.wait(.33)
-end;
-
 end); --[[protekted kall]]--
 if not globals then
 warn("error okkured:", syntaxerror);
