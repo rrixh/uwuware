@@ -1012,6 +1012,25 @@ print("Globals: getgenv().kolors = false")
 end;
 -- [[ END OF KOLORS ]] --
 
+--[[ SPEKTATE GUI ]]--
+if getgenv().spektate then
+_G.setKamera = function(player)
+if player then
+_G.kamera.CameraSubject = player.Character:FindFirstChildWhichIsA("Humanoid")
+   end;
+end;
+
+_G.resetKamera = function()
+_G.kamera.CameraSubject = LocalPlayer.Character:FindFirstChildWhichIsA("Humanoid")
+end;
+
+_G.updateKamera = function()
+_G.setKamera(targetPlayer)
+task.wait(.33)
+  end;
+else print("Globals: getgenv().spektate = false")
+end;-- if getgenv().spektate is on
+
 end); --[[protekted kall]]--
 if not globals then
 warn("error okkured:", syntaxerror);
