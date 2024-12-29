@@ -57,6 +57,9 @@ _G.valentines = (99511253993554);
 _G.newyears = (140472834812860);
 _G.stpatrixks = (110841053352535);
 
+--[[ invalids(10) ]]--
+_G.invalid = {"", " ", "  ", "   ", "    ", "     ", "      ", "       ", "        ", "         ", "          "}
+
     --[[ servixes ]]--
     _G.run = lulas:GetService'RunService';
     _G.rep = lulas:GetService'ReplicatedStorage';
