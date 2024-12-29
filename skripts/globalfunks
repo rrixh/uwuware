@@ -1013,8 +1013,7 @@ end;
 -- [[ END OF KOLORS ]] --
 
 --[[ SPEKTATE GUI ]]--
-if (getgenv().spektate==true) then
-_G.LocalPlayer = _G.plr
+_G.LocalPlayer = game.Players.LocalPlayer;
 _G.setKamera = function(player)
 if player then
 _G.kamera.CameraSubject = player.Character:FindFirstChildWhichIsA("Humanoid")
@@ -1028,9 +1027,7 @@ end;
 _G.updateKamera = function()
 _G.setKamera(targetPlayer)
 task.wait(.33)
-  end;
-else print("Globals: getgenv().spektate = false")
-end;-- if getgenv().spektate is on
+end;
 
 end); --[[protekted kall]]--
 if not globals then
