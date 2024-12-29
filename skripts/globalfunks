@@ -176,6 +176,16 @@ return text;
 else print("enable \"getgenv().tpWalk\" ");
 end; -- if getgenv().tpWalk is on
 
+-- [[ FIND PLR BY PARTIAL NAME ]] -- 
+_G.findTargetPlr = function(name)
+for _, player in ipairs(Players:GetPlayers()) do
+if player.DisplayName:lower():find(name:lower()) or player.Name:lower():find(name:lower()) then
+return player
+    end;
+  end;
+return nil
+end;
+
 _G.note = function(txt, dur)
 _G.RRixh = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/skripts/AkaliNotif", true))();
 _G.Notify = _G.RRixh.Notify; _G.Notify({Description = ("Lollypop Hub 🍭\n")..txt, Duration = dur or 7}); 
