@@ -178,7 +178,7 @@ end; -- if getgenv().tpWalk is on
 
 -- [[ FIND PLR BY PARTIAL NAME ]] -- 
 _G.findTargetPlr = function(name)
-for _, player in ipairs(Players:GetPlayers()) do
+for _, player in ipairs(_G.gplrs) do
 if player.DisplayName:lower():find(name:lower()) or player.Name:lower():find(name:lower()) then
 return player
     end;
