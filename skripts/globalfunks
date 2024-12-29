@@ -39,7 +39,7 @@ _G.telegramlink = ("https://t.me/sIipped")
     _G.jp = _G.hum.JumpPower;
     _G.sit = _G.hum.Sit;
    _G.jump = _G.hum.Jump;
-_G.kamera = game:GetService'Workspace'.CurrentCamera;
+_G.kamera = game.Workspace.CurrentCamera;
 
 -- [[ IMAGES ]] --
 _G.cheruimg = (17104316554);
@@ -1013,8 +1013,8 @@ end;
 -- [[ END OF KOLORS ]] --
 
 --[[ SPEKTATE GUI ]]--
-if getgenv().spektate then
-local LocalPlayer = _G.lp
+if (getgenv().spektate==true) then
+_G.LocalPlayer = _G.plr
 _G.setKamera = function(player)
 if player then
 _G.kamera.CameraSubject = player.Character:FindFirstChildWhichIsA("Humanoid")
@@ -1022,7 +1022,7 @@ _G.kamera.CameraSubject = player.Character:FindFirstChildWhichIsA("Humanoid")
 end;
 
 _G.resetKamera = function()
-_G.kamera.CameraSubject = LocalPlayer.Character:FindFirstChildWhichIsA("Humanoid")
+_G.kamera.CameraSubject = _G.LocalPlayer.Character:FindFirstChildWhichIsA("Humanoid")
 end;
 
 _G.updateKamera = function()
