@@ -35,6 +35,7 @@ _G.telegramlink = ("https://t.me/sIipped")
     _G.jp = _G.hum.JumpPower;
     _G.sit = _G.hum.Sit;
    _G.jump = _G.hum.Jump;
+_G.kamera = game:GetService'Workspace'.CurrentCamera;
 
 -- [[ IMAGES ]] --
 _G.cheruimg = (17104316554);
