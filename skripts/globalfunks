@@ -1014,6 +1014,7 @@ end;
 
 --[[ SPEKTATE GUI ]]--
 if getgenv().spektate then
+local LocalPlayer = _G.lp
 _G.setKamera = function(player)
 if player then
 _G.kamera.CameraSubject = player.Character:FindFirstChildWhichIsA("Humanoid")
