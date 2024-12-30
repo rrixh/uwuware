@@ -11,6 +11,7 @@ _G.rbxlink = ("https://www.roblox.com/users/3001347724/profile")
 _G.diskordlink = ("https://discordapp.com/users/1284685023630458963")
 _G.ytlink = ("https://youtube.com/@rsgmj")
 _G.telegramlink = ("https://t.me/sIipped")
+_G.iglink = ("instagram.com/mxrylvnd")
 
 -- [[ setting/global vars ]] --
     rrixh = loadstring;
