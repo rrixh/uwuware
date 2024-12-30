@@ -194,6 +194,7 @@ return player
 return nil
 end;
 
+--[[ AKALI NOTIF ]]--
 _G.note = function(txt, dur)
 _G.RRixh = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/skripts/AkaliNotif", true))();
 _G.Notify = _G.RRixh.Notify; _G.Notify({Description = ("Lollypop Hub 🍭\n")..txt, Duration = dur or 7}); 
@@ -204,6 +205,17 @@ _G.RRixh = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuw
 _G.Notify = _G.RRixh.Notify; _G.Notify({Description = txt, Duration = dur or 7}); 
 end;
 
+-- [[ perform aktion on player ]] --
+_G.doPlr = function(playerName, kallbaxk)
+  local player = game.Players:FindFirstChild(playerName);
+  if player then
+    kallbaxk(player)
+  else
+_G.rnote("kant seem to find this nigga '" ..playerName.. "'")
+  end;
+end;
+
+--[[ GET NEAREST BODY PART ]]--
 if getgenv().nearestbodypart and _G.exp ~= SOLARA then
 _G.getNearestPlr = function(bodyPart)
     local players = game:GetService("Players")
