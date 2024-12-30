@@ -207,12 +207,14 @@ end;
 
 -- [[ perform aktion on player ]] --
 _G.doPlr = function(playerName, kallbaxk)
+spawn(function()
   local player = game.Players:FindFirstChild(playerName);
   if player then
     kallbaxk(player)
   else
 _G.rnote("kant seem to find this nigga '" ..playerName.. "'")
   end;
+end); -- spawn the funk faster
 end;
 
 --[[ GET NEAREST BODY PART ]]--
