@@ -205,6 +205,47 @@ _G.RRixh = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuw
 _G.Notify = _G.RRixh.Notify; _G.Notify({Description = txt, Duration = dur or 7}); 
 end;
 
+-- [[ make BUTTON1 & BUTTON2 FUNKS ]] --
+_G.button2 = function(title, text, duration, B1text, B2text, func, func2, assetID)
+  local function Callback(answer)
+    if answer == B1text then
+     if func then func() else _G.rnote("No funktion set for:\n'"..B1text.."' and '"..B2text.."'"); end;
+    elseif answer == B2text then
+    if func2 then func2() else _G.rnote("No funktion set for:\n'"..B2text.."'"); end;
+    end;
+  end;
+
+local troll = (7635712200);
+local lollypop = (17767487755);
+local hublogo = (81697484807530);
+local yougay = Instance.new("BindableFunction");
+yougay.OnInvoke = Callback;
+
+  local notifData = {
+    Title = title or "Title Blank dumbass",
+    Text = text or "Text Blank stupid",
+    Duration = duration or 15,
+    Button1 = B1text or "Button1",
+    Button2 = B2text or "Button2",
+    Callback = yougay or warn("funktions not set")
+  }
+
+  if assetID then
+    notifData.Icon = "rbxassetid://"..assetID
+-- else
+-- notifData.Icon = "rbxassetid://"..lollypop
+  end;
+
+  local starterGui = game:GetService("StarterGui")
+starterGui:SetCore("SendNotification", notifData)
+end; 
+--[[ 
+** example usage: 
+_G.button2("Title Here", "Text Here", 15, "Button1Text", "Button2Text", function1, function2, asset_ID_Here) 
+-- without "rbxassetid://"
+]]--
+--[[end button2 funk]]--
+
 -- [[ perform aktion on player ]] --
 _G.doPlr = function(playerName, kallbaxk)
 spawn(function()
