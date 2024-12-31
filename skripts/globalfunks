@@ -59,7 +59,7 @@ _G.newyears = (140472834812860);
 _G.stpatrixks = (110841053352535);
 
 --[[ invalids(10) ]]--
-_G.invalid = {"", " ", "  ", "   ", "    ", "     ", "      ", "       ", "        ", "         ", "          "}
+_G.invalid = {"ggerrtasalt", "", " ", "  ", "   ", "    ", "     ", "      ", "       ", "        ", "         ", "          "}
 
     --[[ servixes ]]--
     _G.run = lulas:GetService'RunService';
