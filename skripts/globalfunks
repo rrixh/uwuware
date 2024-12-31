@@ -182,7 +182,7 @@ speed = 1
    end
 return text;
   end;
-else print("enable \"getgenv().tpWalk\" ");
+else print("Globals: getgenv().tpWalk = false");
 end; -- if getgenv().tpWalk is on
 
 -- [[ FIND PLR BY PARTIAL NAME ]] -- 
@@ -887,7 +887,7 @@ hrp.CFrame = part.CFrame * CFrame.new(0, -distance, 0);
           end;
           end;
    end;
-else print("getgenv().topart = false")
+else print("Globals: getgenv().topart = false")
 end; -- if getgenv().topart is true
 
 -- [[ KOLORS ]] --
@@ -1070,7 +1070,7 @@ end;
 
 end); --[[protekted kall]]--
 if not globals then
-warn("error okkured:", syntaxerror);
+warn("Globals error okkured:", syntaxerror);
 else 
 print("Globals:", globals, "✅")
 end;
