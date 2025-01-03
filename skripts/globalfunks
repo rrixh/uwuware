@@ -88,6 +88,7 @@ _G.renderstepped = _G.run.RenderStepped;
   _G.stepped = _G.run.Stepped;
 _G.heartbeat = _G.run.Heartbeat;
 _G.hb = _G.heartbeat;
+_G.chatted = _G.plr.Chatted;
 
 -- [[ EXEKUTORS ]] --
 local delta, Delta, DELTA = "Delta", "Delta", "Delta"
@@ -106,6 +107,8 @@ _G.str = tostring;
 _G.lowerkase = string.lower;
 _G.kapital = string.upper;
 _G.strfind = string.find;
+
+--[[ cframe pos ]]--
 
 
    -- [[ servixes 2 ]] --
