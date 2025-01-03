@@ -35,6 +35,7 @@ _G.iglink = ("instagram.com/mxrylvnd")
     _G.hum = _G.char:FindFirstChild'Humanoid';
     _G.hrp = _G.char:FindFirstChild'HumanoidRootPart';
     _G.health = _G.hum.Health;
+   _G.anim = game.Players.LocalPlayer.Character.Animate;
     _G.kam = workspace.CurrentCamera;
     _G.ws = _G.hum.WalkSpeed;
     _G.jp = _G.hum.JumpPower;
