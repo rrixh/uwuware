@@ -197,11 +197,11 @@ if _G.find(_G.immune, player.Name) then
      task.wait(); targetPlayer = nil; 
              return nil;
          else
-             return player
+             return player;
          end
      end;
  end;
- return nil
+ return nil;
 end;
 
 --[[ AKALI NOTIF ]]--
