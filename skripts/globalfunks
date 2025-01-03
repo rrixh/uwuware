@@ -191,10 +191,10 @@ end; -- if getgenv().tpWalk is on
 
 -- [[ FIND PLR BY PARTIAL NAME ]] -- 
 _G.findTargetPlr = function(name)
-for _, player in ipairs(_G.gplrs) do
+for _, player in ipairs(players:GetPlayers()) do
      if player.DisplayName:lower():find(name:lower()) or player.Name:lower():find(name:lower()) then
 if _G.find(_G.immune, player.Name) then
-     task.wait(); targetPlayer=nil;targetPlr=nil;
+     task.wait(); targetPlayer = nil; 
              return nil;
          else
              return player
