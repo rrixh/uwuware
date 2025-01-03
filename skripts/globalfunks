@@ -326,9 +326,26 @@ local defaultDur = prompt.HoldDuration;
     prompt:InputHoldEnd();
     prompt.HoldDuration = defaultDur;
     end;
-else 
+_G.fireprompt = function(...)
+local fppname=...
+if fppname then
+local name = fppname
+for _, firedapp in ipairs(game:GetService("Workspace"):GetDescendants()) do
+if firedapp:IsA("ProximityPrompt") and firedapp.Name:lower() == name:lower() or firedapp:IsA("ProximityPrompt") and firedapp.Parent.Name:lower() == name:lower() then
+fireproximityprompt(firedapp, 1)
+end
+end
+else
+for i, v in ipairs(game:GetService("Workspace"):GetDescendants()) do
+if v:IsA("ProximityPrompt") then
+fireproximityprompt(v, 1)
+    end
+   end;
+  end;
+end;
+      else 
 print("Globals: getgenv().pps = false");
- end; -- if getgenv().pps (proximityprompts) is enabled
+end; -- if getgenv().pps (proximityprompts) is enabled
 
 _G.kopy = function(uh)
 setclipboard(uh)
