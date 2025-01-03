@@ -1,7 +1,10 @@
  --WIZARD UI (modified) --
 local UserInputService = game:GetService("UserInputService")
     local TweenService = game:GetService("TweenService")
-    local RunService = game:GetService("RunService")
+    local RunService = game:GetService("RunService");
+
+_G.originalToggleKolor = Color3.new(1, 0.341176, 0.341176)
+_G.togKolor = getgenv().togKolor or Color3.new(0.341176, .75, 0.341176)
 
     local Mouse = game:GetService("Players").LocalPlayer:GetMouse()
 
@@ -390,7 +393,7 @@ end
                 ToggleButton.Position = UDim2.new(0, 2, 0, 2)
                 ToggleButton.Size = UDim2.new(0, 16, 0, 16)
                 ToggleButton.Image = "rbxassetid://3570695787"
-                ToggleButton.ImageColor3 = Color3.new(1, 0.341176, 0.341176)
+ ToggleButton.ImageColor3 = _G.togKolor
                 ToggleButton.ImageTransparency = 1
 
                 ToggleButton.MouseButton1Down:Connect(function()	
