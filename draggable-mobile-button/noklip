@@ -1,0 +1,131 @@
+local owner = "\nlulaslollipop🍭"
+local W = (120)
+local H = (52)
+local UIS = game:GetService("UserInputService")
+local CoreGui = game:GetService("CoreGui")
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+
+local mobile = Enum.UserInputType.Touch
+local mouse1 = Enum.UserInputType.MouseButton1
+local mousemove = Enum.UserInputType.MouseMovement
+local Ended = Enum.UserInputState.End
+local Begin = Enum.UserInputState.Begin
+
+local devixes = { mobile, mouse1, mousemove }
+local __ = table.find
+
+local noclip = false
+
+local function makeDraggable(guiElement)
+local dragging = false
+local dragInput, mousePos, framePos
+local dragThreshold = 1
+local notClicked = false
+
+guiElement.InputBegan:Connect(function(input)
+if __(devixes, input.UserInputType) then
+dragging = true
+mousePos = input.Position
+framePos = guiElement.Position
+notClicked = false
+
+input.Changed:Connect(function()
+if input.UserInputState == Ended then
+dragging = false
+end
+end)
+end
+end)
+
+guiElement.InputChanged:Connect(function(input)
+if __(devixes, input.UserInputType) then
+dragInput = input
+end
+end)
+
+UIS.InputChanged:Connect(function(input)
+if (input == dragInput and dragging) then
+local delta = input.Position - mousePos
+if math.abs(delta.X) >= dragThreshold or math.abs(delta.Y) >= dragThreshold then
+notClicked = true
+end
+
+if notClicked then
+guiElement.Position = UDim2.new(
+framePos.X.Scale,
+framePos.X.Offset + delta.X,
+framePos.Y.Scale,
+framePos.Y.Offset + delta.Y
+)
+end
+end
+end)
+
+return function()
+return not dragging and notClicked == false
+end
+end
+
+local function makeRound(size, gui)
+local uiCorner = Instance.new("UICorner")
+uiCorner.CornerRadius = UDim.new(0, size)
+uiCorner.Parent = gui
+end
+
+local function Wallhaxk()
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = CoreGui
+
+local button = Instance.new("TextButton")
+button.Name = "WallhaxkToggleButton"
+button.Text = "NOKLIP"..owner
+button.Size = UDim2.new(0, W, 0, H)
+button.Position = UDim2.new(0.4, 0, 0.7, 0)
+button.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+button.TextColor3 = Color3.new(1, 1, 1)
+button.Parent = screenGui
+
+makeRound(15, button)
+
+local uiStroke = Instance.new("UIStroke")
+uiStroke.Thickness = 2
+uiStroke.Color = Color3.fromRGB(255, 0, 0)
+uiStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border -- Ensure it applies to the border
+uiStroke.Parent = button
+
+local function toggleNoclip()
+noclip = not noclip
+if noclip then
+uiStroke.Color = Color3.fromRGB(0, 255, 0)
+else
+uiStroke.Color = Color3.fromRGB(255, 0, 0)
+end
+end
+
+local Klicked = makeDraggable(button)
+
+button.MouseButton1Click:Connect(function()
+if not Klicked() then return end
+toggleNoclip()
+end)
+
+RunService.Stepped:Connect(function()
+if noclip and player.Character then
+for _, part in pairs(player.Character:GetDescendants()) do
+if part:IsA("BasePart") and part.CanCollide then
+part.CanCollide = false
+end
+end
+elseif player.Character then
+for _, part in pairs(player.Character:GetDescendants()) do
+if part:IsA("BasePart") and not part.CanCollide then
+part.CanCollide = true
+end
+end
+end
+end)
+end
+
+Wallhaxk()
