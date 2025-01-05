@@ -1,3 +1,4 @@
+if(_)then return end;_=true;
 local owner = "\nlulaslollipop🍭"
 local W = (120)
 local H = (52)
