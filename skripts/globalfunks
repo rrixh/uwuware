@@ -45,6 +45,13 @@ _G.kamera = game.Workspace.CurrentCamera;
 _G.plrkount = #game.Players:GetPlayers();
 _G.maxplrs = game.Players.MaxPlayers;
 
+--[[ inputs ]]--
+_G.mobile = Enum.UserInputType.Touch
+_G.mouse1 = Enum.UserInputType.MouseButton1
+_G.mousem = Enum.UserInputType.MouseMovement
+_G.Ended = Enum.UserInputState.End
+_G.Begin = Enum.UserInputState.Begin
+
 -- [[ IMAGES ]] --
 _G.cheruimg = (17104316554);
 _G.hgimg = (15729672382);
@@ -88,6 +95,8 @@ end;
 -- [[ SHORTKUT KONNEKTIONS ]] --
    _G.ppshown = _G.pps.PromptShown;
    _G.pptriggered = _G.pps.PromptTriggered;
+_G.ppholdbegan = _G.pps.PromptButtonHoldBegan;
+_G.ppholdended = _G.pps.PromptButtonHoldEnded;
 _G.renderstepped = _G.run.RenderStepped;
   _G.stepped = _G.run.Stepped;
 _G.heartbeat = _G.run.Heartbeat;
@@ -102,7 +111,7 @@ local solara, Solara, SOLARA = "Solara", "Solara", "Solara"
 -- [[ get devixe ]] --
 if getgenv().devixe then
 _G.platform = _G.uis:GetPlatform();
-_G.IsOnMobile = Enum.Platform.IOS,Enum.Platform.Android;
+_G.IsOnMobile = table.find({Enum.Platform.IOS,Enum.Platform.Android}, _G.uis:GetPlatform());
 end;
 
 -- [[ T O & T A B L E S  ]] --
