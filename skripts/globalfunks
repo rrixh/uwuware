@@ -39,8 +39,6 @@ _G.iglink = ("instagram.com/mxrylvnd")
     _G.kam = workspace.CurrentCamera;
     _G.ws = _G.hum.WalkSpeed;
     _G.jp = _G.hum.JumpPower;
-    _G.sit = _G.hum.Sit;
-   _G.jump = _G.hum.Jump;
 _G.kamera = game.Workspace.CurrentCamera;
 _G.plrkount = #game.Players:GetPlayers();
 _G.maxplrs = game.Players.MaxPlayers;
@@ -164,6 +162,14 @@ end;
 
 
     --[[ global funks ]]--
+_G.jump = function(val)
+game.Players.LocalPlayer.Character.Humanoid.Jump = val
+end;
+
+_G.sit = function(val)
+game.Players.LocalPlayer.Character.Humanoid.Sit = val
+end;
+
 if getgenv().tpWalk then
 _G.toggleTPWalk = function(value)
 tpwalk = value
