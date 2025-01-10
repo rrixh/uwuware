@@ -91,6 +91,7 @@ _G.renderstepped = _G.run.RenderStepped;
 _G.heartbeat = _G.run.Heartbeat;
 _G.hb = _G.heartbeat;
 _G.chatted = _G.plr.Chatted;
+_G.kloxk = _G.light.ClockTime;
 
 -- [[ EXEKUTORS ]] --
 local delta, Delta, DELTA = "Delta", "Delta", "Delta"
