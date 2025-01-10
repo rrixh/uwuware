@@ -219,7 +219,7 @@ roundButton.MouseButton1Click:Connect(function()
     if not hasMoved then
         toggleKavo()
     end
- end)
+  end)
 end; -- toggle/dragfunk (KAVO)
 end; -- if getgenv().kustomtog
 
