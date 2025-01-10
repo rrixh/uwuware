@@ -162,14 +162,27 @@ end;
 
 
     --[[ global funks ]]--
+-- AUTO SKREEN TAP (MOBILE) --
+_G.tap = function(value, x, y, duration)
+local viewportSize = game.Workspace.CurrentCamera.ViewportSize;
+local useVal1 = value or true
+local useVal2 = value or false
+  local useX = x or viewportSize.X / 2;
+  local useY = y or viewportSize.Y / 2;
+  _G.vim:SendMouseButtonEvent(useX, useY, 0, useVal1, game, 0)
+  if duration then wait(duration) else wait(.1) end;
+    _G.vim:SendMouseButtonEvent(useX, useY, 0, useVal2, game, 0)
+end;
+
+-- jump --
 _G.jump = function(val)
 game.Players.LocalPlayer.Character.Humanoid.Jump = val
 end;
-
+-- sit --
 _G.sit = function(val)
 game.Players.LocalPlayer.Character.Humanoid.Sit = val
 end;
-
+-- TP WALK --
 if getgenv().tpWalk then
 _G.toggleTPWalk = function(value)
 tpwalk = value
@@ -276,6 +289,8 @@ _G.button2("Title Here", "Text Here", 15, "Button1Text", "Button2Text", function
 -- without "rbxassetid://"
 ]]--
 --[[end button2 funk]]--
+
+
 
 -- [[ perform aktion on player ]] --
 _G.doPlr = function(playerName, kallbaxk)
