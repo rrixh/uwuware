@@ -165,14 +165,25 @@ end;
     --[[ global funks ]]--
 -- AUTO SKREEN TAP (MOBILE) --
 _G.tap = function(value, x, y, duration)
-local viewportSize = game.Workspace.CurrentCamera.ViewportSize;
-local useVal1 = value or true
-local useVal2 = value or false
+  local viewportSize = game.Workspace.CurrentCamera.ViewportSize;
   local useX = x or viewportSize.X / 2;
   local useY = y or viewportSize.Y / 2;
+  local useVal1 = value or true;
+  local useVal2 = value or false;
+-- MAKE DOT
+  local screenGui = game.Players.LocalPlayer:WaitForChild("PlayerGui") --playergui
+  local dot = Instance.new("Frame")
+  dot.Size = UDim2.new(0, 10, 0, 10) -- Adjust size as needed (10x10 pixels)
+  dot.Position = UDim2.new(0, useX - 5, 0, useY - 5) -- dot at koordinates
+  dot.BackgroundColor3 = Color3.new(1.5, 0, 0) -- Red
+  dot.BackgroundTransparency = 0
+  dot.Parent = screenGui
   _G.vim:SendMouseButtonEvent(useX, useY, 0, useVal1, game, 0)
-  if duration then wait(duration) else wait(.1) end;
-    _G.vim:SendMouseButtonEvent(useX, useY, 0, useVal2, game, 0)
+ if duration then wait(duration) else wait(0.1); end
+  _G.vim:SendMouseButtonEvent(useX, useY, 0, useVal2, game, 0)
+-- DESTROY DOT AFTER RELEASE
+task.wait() dot:Destroy();
+ game:GetService("Debris"):AddItem(dot, .5)
 end;
 
 -- jump --
