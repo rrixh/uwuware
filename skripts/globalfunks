@@ -99,6 +99,7 @@ _G.ppholdended = _G.pps.PromptButtonHoldEnded;
 _G.renderstepped = _G.run.RenderStepped;
   _G.stepped = _G.run.Stepped;
 _G.heartbeat = _G.run.Heartbeat;
+_G.prerender = _G.run.PreRender;
 _G.hb = _G.heartbeat;
 _G.chatted = _G.plr.Chatted;
 _G.brightness = _G.light.ClockTime;
