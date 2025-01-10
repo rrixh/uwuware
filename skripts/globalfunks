@@ -42,6 +42,8 @@ _G.iglink = ("instagram.com/mxrylvnd")
     _G.sit = _G.hum.Sit;
    _G.jump = _G.hum.Jump;
 _G.kamera = game.Workspace.CurrentCamera;
+_G.plrkount = #game.Players:GetPlayers();
+_G.maxplrs = game.Players.MaxPlayers;
 
 -- [[ IMAGES ]] --
 _G.cheruimg = (17104316554);
