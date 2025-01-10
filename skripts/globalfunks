@@ -149,6 +149,81 @@ Callback = function() print('ok'); end,
 Text = text});
 end;
 
+-- [[ KUSTOM KAVO TOGGLE IMG ]] --
+if getgenv().kustomtog then
+_G.toggle = function()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/lib/kavomobile.lula",true))();
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "KustomToggle"
+screenGui.Parent = game:GetService("CoreGui")
+screenGui.IgnoreGuiInset = true
+local removeborder = 0
+local overlayAllGui = 5
+local roundButton = Instance.new("ImageButton")
+roundButton.Parent = screenGui
+roundButton.Size = UDim2.new(0, togglesize, 0, togglesize)
+roundButton.Position = UDim2.new(1, -110, 0, 25)
+roundButton.Image = "http://www.roblox.com/asset/?id="..getgenv().getImg
+roundButton.BackgroundTransparency = 1
+roundButton.ImageColor3 = Color3.fromRGB(255, 255, 255)
+roundButton.ScaleType = Enum.ScaleType.Fit
+roundButton.BorderSizePixel = removeborder
+roundButton.ZIndex = overlayAllGui;
+--roundbtn
+local uiCorner = Instance.new("UICorner")
+uiCorner.CornerRadius = UDim.new(1, 0)
+uiCorner.Parent = roundButton;
+local function toggleKavo()
+KAVO:ToggleUI();
+end;
+-- dragging
+local dragging = false
+local dragInput, mousePos, framePos
+local dragThreshold = 5 --wont tap by mistake
+local hasMoved = false;
+
+local function update(input)
+    local delta = input.Position - mousePos
+    if math.abs(delta.X) > dragThreshold or math.abs(delta.Y) > dragThreshold then
+        hasMoved = true
+        roundButton.Position = UDim2.new(framePos.X.Scale, framePos.X.Offset + delta.X, framePos.Y.Scale, framePos.Y.Offset + delta.Y)
+    end
+end;
+
+roundButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        hasMoved = false
+        mousePos = input.Position
+        framePos = roundButton.Position;
+
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end);
+roundButton.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end);
+game:GetService("UserInputService").InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        update(input)
+    end
+end);
+-- wont tap if dragging
+roundButton.MouseButton1Click:Connect(function()
+    if not hasMoved then
+        toggleKavo()
+    end
+ end)
+end; -- toggle/dragfunk (KAVO)
+end; -- if getgenv().kustomtog
+
+
     --[[ global funks ]]--
 if getgenv().tpWalk then
 _G.toggleTPWalk = function(value)
