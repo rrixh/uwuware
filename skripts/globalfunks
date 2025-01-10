@@ -82,15 +82,6 @@ _G.invalid = {"ggerrtasalt", "", " ", "  ", "   ", "    ", "     ", "      ", " 
   _G.light = game:GetService'Lighting'; -- light:14, dark:0
 _G.debris = game:GetService'Debris';
 
--- [[ TO ENABLE TEXTXHATSERVIXE ]] --
---[[
-if getgenv().textcs then 
-_G.tcs = game:GetService'TextChatService'
-   else 
-print("Globals/Servixe: getgenv().textcs = false");
-end;
-]]--
-
 -- [[ SHORTKUT KONNEKTIONS ]] --
    _G.ppshown = _G.pps.PromptShown;
    _G.pptriggered = _G.pps.PromptTriggered;
