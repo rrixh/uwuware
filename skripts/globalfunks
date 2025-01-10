@@ -72,6 +72,7 @@ _G.invalid = {"ggerrtasalt", "", " ", "  ", "   ", "    ", "     ", "      ", " 
    _G.pps = game:GetService'ProximityPromptService';
    _G.tps = game:GetService'TeleportService';
    _G.sgui = game:GetService'StarterGui';
+  _G.light = game:GetService'Lighting'; -- light:14, dark:0
 
 -- [[ TO ENABLE TEXTXHATSERVIXE ]] --
 --[[
