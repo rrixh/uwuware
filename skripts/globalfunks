@@ -129,6 +129,13 @@ _G.strfind = string.find;
    -- [[ servixes 2 ]] --
 
 -- [[ others ]] --
+
+-- [[ XHEXK RIGTYPE ]] --
+_G.rigtype = function(rig)
+return game.Players.LocalPlayer.Character:FindFirstChildOfClass('Humanoid').RigType == Enum.HumanoidRigType[rig]
+end;
+
+--[[ FOR HOOKING TIngs ]]--
 if getgenv().hook and _G.exp ~= SOLARA then
 _G.rawmt = getrawmetatable(game);
 _G.method = getnamecallmethod();
