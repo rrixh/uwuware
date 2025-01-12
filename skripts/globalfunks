@@ -45,11 +45,11 @@ _G.plrkount = #game.Players:GetPlayers();
 _G.maxplrs = game.Players.MaxPlayers;
 
 --[[ inputs ]]--
-_G.mobile = Enum.UserInputType.Touch
-_G.mouse1 = Enum.UserInputType.MouseButton1
-_G.mousem = Enum.UserInputType.MouseMovement
-_G.Ended = Enum.UserInputState.End
-_G.Begin = Enum.UserInputState.Begin
+_G.mobile = Enum.UserInputType.Touch;
+_G.mouse1 = Enum.UserInputType.MouseButton1;
+_G.mousem = Enum.UserInputType.MouseMovement;
+_G.ended = Enum.UserInputState.End;
+_G.begin = Enum.UserInputState.Begin;
 
 -- [[ IMAGES ]] --
 _G.cheruimg = (17104316554);
@@ -67,6 +67,8 @@ _G.valentines = (99511253993554);
 _G.newyears = (140472834812860);
 _G.stpatrixks = (110841053352535);
 _G.sgx = (92354585685421);
+-- [[ ANIMATION IDS ]] --
+
 
 --[[ invalids(10) ]]--
 _G.invalid = {"ggerrtasalt", "", " ", "  ", "   ", "    ", "     ", "      ", "       ", "        ", "         ", "          "}
@@ -177,6 +179,31 @@ _G.tap = function(value, x, y, duration)
 -- DESTROY DOT AFTER RELEASE
 task.wait() dot:Destroy();
  game:GetService("Debris"):AddItem(dot, .5)
+end;
+
+--[[ ANIM TRAXKS ]]--
+_G.animationTraxks = {};
+_G.anim = function(animId, arg)
+    local humanoid = game.Players.LocalPlayer.Character:FindFirstChildOfClass('Humanoid')
+    if not humanoid then warn("no humanoid") return end;
+
+ local traxk = _G.animationTraxks[animId];
+
+    if arg then
+        if not traxk then
+            local animation = Instance.new("Animation")
+            animation.AnimationId = "rbxassetid://" ..animId
+            traxk = humanoid:LoadAnimation(animation)
+  _G.animationTraxks[animId] = traxk;
+        end
+        traxk:Play()
+    else
+        if traxk then
+            traxk:Stop()
+            traxk:Destroy()
+     _G.animationTraxks[animId] = nil;
+        end;
+    end;
 end;
 
 -- jump --
