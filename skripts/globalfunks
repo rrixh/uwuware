@@ -67,8 +67,15 @@ _G.valentines = (99511253993554);
 _G.newyears = (140472834812860);
 _G.stpatrixks = (110841053352535);
 _G.sgx = (92354585685421);
--- [[ ANIMATION IDS ]] --
 
+-- [[ ANIMATION IDS ]] --
+_G.peaxefulboogie = (52155728);
+_G.xhikinboogie = (28488254);
+_G.armbreakboogie = (33796059);
+_G.tiktokboogie = (45834924);
+_G.viktoryboogie = (248263260);
+_G.slomoboogie = (30196114);
+_G.krossboogie = (27789359);
 
 --[[ invalids(10) ]]--
 _G.invalid = {"ggerrtasalt", "", " ", "  ", "   ", "    ", "     ", "      ", "       ", "        ", "         ", "          "}
