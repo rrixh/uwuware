@@ -200,9 +200,7 @@ _G.animationTraxks = {};
 _G.anim = function(animId, arg)
     local humanoid = game.Players.LocalPlayer.Character:FindFirstChildOfClass('Humanoid')
     if not humanoid then warn("no humanoid") return end;
-
  local traxk = _G.animationTraxks[animId];
-
     if arg then
         if not traxk then
             local animation = Instance.new("Animation")
@@ -294,6 +292,34 @@ _G.rnote = function(txt, dur)
 _G.RRixh = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/skripts/AkaliNotif", true))();
 _G.Notify = _G.RRixh.Notify; _G.Notify({Description = txt, Duration = dur or 7}); 
 end;
+
+--[[ EXEK SKRIPT ON TP ]]--
+_G.queueteleport = function(kode, state)
+local queueteleport = (syn and syn.queue_on_teleport) or (fluxus and fluxus.queue_on_teleport) or (queue_on_teleport)
+local QUEUE_false = -9e9;
+if(type(kode)=="string")then
+ if(state and queueteleport)then
+local y,n=pcall(function()
+    queueteleport(kode)
+end);
+if y then warn"yay";end;
+if n then warn"nooo";end;
+  elseif not state then          wait(QUEUE_false)
+        else
+ if _G.note then _G.note("⚠️ No queue_on_teleport funktion available or your exploit doesnt support it", 5); else warn("⚠️ No queue_on_teleport funktion available or your exploit doesnt support it"); end;
+      end
+    else
+if _G.note then _G.note("⚠️ kode should be a string!", 3.5); else warn("⚠️ kode should be a string!"); end;
+    end;
+end;
+_G.qtp = _G.queueteleport;
+_G.queueonteleport = _G.queueteleport;
+_G.qteleport = _G.queueteleport;
+_G.queuetp = _G.queueteleport;
+_G.queueonteleport = _G.queueteleport;
+_G.qontp = _G.queueteleport;
+_G.qonteleport = _G.queueteleport;
+_G.autoexek = _G.queueteleport;
 
 -- [[ make BUTTON1 & BUTTON2 FUNKS ]] --
 _G.button2 = function(title, text, duration, B1text, B2text, func, func2, assetID)
