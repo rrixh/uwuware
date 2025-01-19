@@ -144,6 +144,33 @@ _G.server, _G.klient, _G.invoke = ("FireServer"), ("FireClient"), ("InvokeServer
 print("Globals: getgenv().hook = false")
  end; -- if getgenv().hook true (no solara)
 
+--[[find part do funk]]--
+_G.findpart = function(part, kall, m1, m2)
+    if m1 and m2 then
+if (m1 == "child" or m1 == "children") and (m2 == "ipairs") then
+   for i, v in ipairs(part:GetChildren()) do
+            kall(v)
+       end;
+elseif (m1 == "child" or m1 == "children") and (m2 == "pairs") then
+   for i, v in pairs(part:GetChildren()) do
+                kall(v)
+            end;
+elseif (m1 == "desc" or m1 == "descendants") and (m2 == "ipairs") then
+for i, v in ipairs(part:GetDescendants()) do
+                kall(v)
+            end;
+elseif (m1 == "desc" or m1 == "descendants") and (m2 == "pairs") then
+ for i, v in pairs(part:GetDescendants()) do
+                kall(v)
+            end;
+        end
+    else
+for i,v in pairs(part:GetChildren()) do
+            kall(v)
+        end;
+    end
+end;
+
 -- [[ WRITE MSG ]] --
 _G.write = function(msg,typingtime,destroytime)
 spawn(function()
