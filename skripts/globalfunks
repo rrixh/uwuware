@@ -342,7 +342,6 @@ _G.sit = function(val)
 game.Players.LocalPlayer.Character.Humanoid.Sit = val
 end;
 -- TP WALK --
-if getgenv().tpWalk then
 _G.toggleTPWalk = function(value)
 tpwalk = value
 if value then
@@ -379,8 +378,9 @@ speed = 1
    end
 return text;
   end;
-else print("Globals: getgenv().tpWalk = false");
-end; -- if getgenv().tpWalk is on
+--tpwalk getgenv--
+getgenv().toggleTPWalk = _G.toggleTPWalk;
+getgenv().updateTPWalkSpeed = _G.updateTPWalkSpeed;
 
 -- [[ FIND PLR BY PARTIAL NAME ]] -- 
 _G.findTargetPlr = function(name)
