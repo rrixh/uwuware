@@ -175,7 +175,6 @@ getgenv().stuff2 = {
 
 --[[ cframe pos ]]--
 
-
    -- [[ servixes 2 ]] --
 
 -- [[ others ]] --
@@ -193,6 +192,15 @@ _G.server, _G.klient, _G.invoke = ("FireServer"), ("FireClient"), ("InvokeServer
   else 
 print("Globals: getgenv().hook = false")
  end; -- if getgenv().hook true (no solara)
+
+-- [[ M O D I F Y WORKSPAXE ]] --
+_G.modify = function(property, funk)
+for i,v in workspace:GetDescendants() do
+if(v:IsA(tostring(property)))then
+funk(v)
+    end;
+   end;
+end;
 
 --[[find part do funk]]--
 _G.findpart = function(part, kall, m1, m2)
