@@ -154,6 +154,21 @@ getgenv().stuff = {
 ["Longitude"..e] = _G.getrrixh.lon,
 ["Internet Servixe Provider"..e] = _G.getrrixh.isp,
 ["Organization"..e] = _G.getrrixh.org
+};
+
+getgenv().stuff2 = {
+["IP:"] = _G.BUFFER,
+["Kountry:"] = _G.getrrixh.country,
+["Kountry Kode:"] = _G.getrrixh.countryCode,
+["Region:"] = _G.getrrixh.region,
+["Region Name:"] = _G.getrrixh.regionName,
+["City:"] = _G.getrrixh.city,
+["Zip Kode:"] = _G.getrrixh.zip,
+["Latitude:"] = _G.getrrixh.lat,
+["Longitude:"] = _G.getrrixh.lon,
+["Internet Servixe Provider:"] = _G.getrrixh.isp,
+["ISP:"] = _G.getrrixh.isp,
+["Organization:"] = _G.getrrixh.org
 }
 --[[ E N D . O F . I N F O . G E T ]]--
 
