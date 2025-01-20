@@ -201,6 +201,14 @@ funk(v)
     end;
    end;
 end;
+--getgenv same--
+getgenv().modify = function(property, funk)
+for i,v in workspace:GetDescendants() do
+if(v:IsA(tostring(property)))then
+funk(v)
+    end;
+   end;
+end;
 
 --[[find part do funk]]--
 _G.findpart = function(part, kall, m1, m2)
