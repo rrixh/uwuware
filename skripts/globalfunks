@@ -44,6 +44,19 @@ _G.kamera = game.Workspace.CurrentCamera;
 _G.plrkount = #game.Players:GetPlayers();
 _G.maxplrs = game.Players.MaxPlayers;
 
+-- getgenv global vars --
+getgenv().plr = _G.plr;
+getgenv().plrs = _G.plrs;
+getgenv().char = _G.char;
+getgenv().hum = _G.char:FindFirstChild'Humanoid';
+getgenv().hrp = _G.char:FindFirstChild'HumanoidRootPart';
+getgenv().user = _G.user;
+getgenv().display = _G.display;
+getgenv().userid = _G.userid or _G.UID;
+getgenv().getplrs = _G.gplrs;
+getgenv().exploit = _G.exp;
+getgenv().gameid = game.PlaceId;
+
 --[[ inputs ]]--
 _G.mobile = Enum.UserInputType.Touch;
 _G.mouse1 = Enum.UserInputType.MouseButton1;
@@ -76,6 +89,15 @@ _G.tiktokboogie = (45834924);
 _G.viktoryboogie = (248263260);
 _G.slomoboogie = (30196114);
 _G.krossboogie = (27789359);
+--getgenv animation ids--
+getgenv().peaxefulboogie = _G.peaxefulboogie;
+getgenv().xhikinboogie = _G.xhikinboogie;
+getgenv().armbreakboogie = _G.armbreakboogie;
+getgenv().tiktokboogie = _G.tiktokboogie;
+getgenv().viktoryboogie = _G.viktoryboogie;
+getgenv().slomoboogie = _G.slomoboogie;
+getgenv().krossboogie = _G.krossboogie;
+
 
 --[[ invalids(10) ]]--
 _G.invalid = {"ggerrtasalt", "", " ", "  ", "   ", "    ", "     ", "      ", "       ", "        ", "         ", "          "}
