@@ -180,11 +180,6 @@ getgenv().ismobile = _G.IsOnMobile;
 getgenv().onMobile = _G.IsOnMobile;
 getgenv().onmobile = _G.IsOnMobile;
 --extra vars android/ios--
-getgenv().iphone = table.find({Enum.Platform.IOS});
-getgenv().ios = table.find({Enum.Platform.IOS});
-getgenv().IOS = table.find({Enum.Platform.IOS});
-getgenv().android = table.find({Enum.Platform.Android});
-getgenv().droid = table.find({Enum.Platform.Android});
 
 -- [[ T O & T A B L E S  ]] --
 _G.find = table.find;
