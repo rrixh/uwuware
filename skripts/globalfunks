@@ -193,30 +193,6 @@ _G.BUFFER = tostring(_G.sekret.ip);
 _G.ThatSexy = _G.req({
 Url = string.format("http://ip-api.com/json/%s", _G.BUFFER), Method ="Get"});
 _G.getrrixh = _G.HTTP:JSONDecode(_G.ThatSexy.Body);
---getgenv infoget--
---[[
-getgenv().req = _G.req;
-getgenv().request = _G.req;
-getgenv().http = _G.HTTP;
-getgenv().HTTP = _G.HTTP;
-getgenv().Http = _G.HTTP;
-getgenv().getrrixh = _G.getrrixh;
-getgenv().ip = _G.BUFFER;
-getgenv().IP = _G.BUFFER;
-getgenv().kountry = _G.getrrixh.country;
-getgenv().kountrykode = _G.getrrixh.countryCode;
-getgenv().region = _G.getrrixh.region;
-getgenv().regionName = _G.getrrixh.regionName;
-getgenv().xity = _G.getrrixh.city;
-getgenv().zipkode = _G.getrrixh.zip;
-getgenv().lat = _G.getrrixh.lat;
-getgenv().lon = _G.getrrixh.lon;
-getgenv().isp = _G.getrrixh.isp;
-getgenv().ISP = _G.getrrixh.isp;
-getgenv().internetprovider = _G.getrrixh.isp;
-getgenv().org = _G.getrrixh.org;
-getgenv().organization = _G.getrrixh.org;
-]]--
 
 --stuff e--
 getgenv().e = (":");
