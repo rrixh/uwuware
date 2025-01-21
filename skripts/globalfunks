@@ -446,6 +446,21 @@ getgenv().stopsign = function()
 game:GetService("ReplicatedStorage").Modules.Net:FindFirstChild("RE/stopsignalHit"):FireServer(1)
 end; 
 stopsign,stopsignalhit=getgenv().stopsign;
+--hit/punxh
+getgenv().hit=function()
+game:GetService("ReplicatedStorage").PUNCHEVENT:FireServer(1)
+end;
+hit,punch=getgenv().hit;
+--grab
+getgenv().grab=function()
+game:GetService("ReplicatedStorage").JALADADEPELOEVENT:FireServer()
+end;
+grab,pull=getgenv().grab;
+--stomp/slay
+getgenv().stomp=function()
+game:GetService("ReplicatedStorage").STOMPEVENT:FireServer()
+end;
+stomp,slay=getgenv().stomp;
 --[[baddiez💅🏻remotes]]--
 
 -- jump --
