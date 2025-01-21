@@ -15,31 +15,31 @@ _G.telegramlink = ("https://t.me/sIipped")
 _G.iglink = ("instagram.com/mxrylvnd")
 
 -- [[ setting/global vars ]] --
-    rrixh = loadstring;
-    lulas = game;
-    _G.kore = lulas:GetService'CoreGui';
-    _G.rbx = lulas;
-    _G.game = lulas.PlaceId;
-    _G.gamename = game:GetService'MarketplaceService':GetProductInfo(_G.game).Name;
-    _G.exp = identifyexecutor();
-    _G.plrs = game:GetService'Players';
-    _G.plr = _G.plrs.LocalPlayer;
-    _G.lp = _G.plrs.LocalPlayer;
-    _G.userid = _G.plr.UserId;
-    _G.UID = _G.plr.UserId;
-    _G.user = _G.plr.Name;
-    _G.username = _G.plr.Name;
-    _G.display = _G.plr.DisplayName;
-    _G.displayname = _G.plr.DisplayName;
-    _G.gplrs = _G.plrs:GetPlayers();
-    _G.char = _G.plr:FindFirstChild("Character") or _G.plr.CharacterAdded:Wait();
-    _G.hum = _G.char:FindFirstChild'Humanoid';
-    _G.hrp = _G.char:FindFirstChild'HumanoidRootPart';
-    _G.health = _G.hum.Health;
-   _G.anim = game.Players.LocalPlayer.Character.Animate;
-    _G.kam = workspace.CurrentCamera;
-    _G.ws = _G.hum.WalkSpeed;
-    _G.jp = _G.hum.JumpPower;
+rrixh = loadstring;
+lulas = game;
+_G.kore = lulas:GetService'CoreGui';
+_G.rbx = lulas;
+_G.game = lulas.PlaceId;
+_G.gamename = game:GetService'MarketplaceService':GetProductInfo(_G.game).Name;
+_G.exp = identifyexecutor();
+_G.plrs = game:GetService'Players';
+_G.plr = _G.plrs.LocalPlayer;
+_G.lp = _G.plrs.LocalPlayer;
+_G.userid = _G.plr.UserId;
+_G.UID = _G.plr.UserId;
+_G.user = _G.plr.Name;
+_G.username = _G.plr.Name;
+_G.display = _G.plr.DisplayName;
+_G.displayname = _G.plr.DisplayName;
+_G.gplrs = _G.plrs:GetPlayers();
+_G.char = _G.plr:FindFirstChild("Character") or _G.plr.CharacterAdded:Wait();
+_G.hum = _G.char:FindFirstChild'Humanoid';
+_G.hrp = _G.char:FindFirstChild'HumanoidRootPart';
+_G.health = _G.hum.Health;
+_G.anim = game.Players.LocalPlayer.Character.Animate;
+_G.kam = workspace.CurrentCamera;
+_G.ws = _G.hum.WalkSpeed;
+_G.jp = _G.hum.JumpPower;
 _G.kamera = game.Workspace.CurrentCamera;
 _G.plrkount = #game.Players:GetPlayers();
 _G.maxplrs = game.Players.MaxPlayers;
@@ -102,25 +102,25 @@ getgenv().krossboogie = _G.krossboogie;
 --[[ invalids(10) ]]--
 _G.invalid = {"ggerrtasalt", "", " ", "  ", "   ", "    ", "     ", "      ", "       ", "        ", "         ", "          "}
 
-    --[[ servixes ]]--
-    _G.run = lulas:GetService'RunService';
-    _G.rep = lulas:GetService'ReplicatedStorage';
-    _G.vim = lulas:GetService'VirtualInputManager';
-    _G.uis = lulas:GetService'UserInputService';
-    _G.w = lulas:GetService'Workspace';
-   _G.pps = game:GetService'ProximityPromptService';
-   _G.tps = game:GetService'TeleportService';
-   _G.sgui = game:GetService'StarterGui';
-  _G.light = game:GetService'Lighting'; -- light:14, dark:0
+--[[ servixes ]]--
+_G.run = lulas:GetService'RunService';
+_G.rep = lulas:GetService'ReplicatedStorage';
+_G.vim = lulas:GetService'VirtualInputManager';
+_G.uis = lulas:GetService'UserInputService';
+_G.w = lulas:GetService'Workspace';
+_G.pps = game:GetService'ProximityPromptService';
+_G.tps = game:GetService'TeleportService';
+_G.sgui = game:GetService'StarterGui';
+_G.light = game:GetService'Lighting'; -- light:14, dark:0
 _G.debris = game:GetService'Debris';
 
 -- [[ SHORTKUT KONNEKTIONS ]] --
-   _G.ppshown = _G.pps.PromptShown;
-   _G.pptriggered = _G.pps.PromptTriggered;
+_G.ppshown = _G.pps.PromptShown;
+_G.pptriggered = _G.pps.PromptTriggered;
 _G.ppholdbegan = _G.pps.PromptButtonHoldBegan;
 _G.ppholdended = _G.pps.PromptButtonHoldEnded;
 _G.renderstepped = _G.run.RenderStepped;
-  _G.stepped = _G.run.Stepped;
+_G.stepped = _G.run.Stepped;
 _G.heartbeat = _G.run.Heartbeat;
 _G.prerender = _G.run.PreRender;
 _G.hb = _G.heartbeat;
@@ -197,7 +197,7 @@ getgenv().stuff2 = {
 
 --[[ cframe pos ]]--
 
-   -- [[ servixes 2 ]] --
+-- [[ servixes 2 ]] --
 
 -- [[ others ]] --
 
@@ -211,52 +211,52 @@ if getgenv().hook and _G.exp ~= SOLARA then
 _G.rawmt = getrawmetatable(game);
 _G.method = getnamecallmethod();
 _G.server, _G.klient, _G.invoke = ("FireServer"), ("FireClient"), ("InvokeServer");
-  else 
+else 
 print("Globals: getgenv().hook = false")
- end; -- if getgenv().hook true (no solara)
+end; -- if getgenv().hook true (no solara)
 
 -- [[ M O D I F Y WORKSPAXE ]] --
 _G.modify = function(property, funk)
 for i,v in workspace:GetDescendants() do
 if(v:IsA(tostring(property)))then
 funk(v)
-    end;
-   end;
+end;
+end;
 end;
 --getgenv same--
 getgenv().modify = function(property, funk)
 for i,v in workspace:GetDescendants() do
 if(v:IsA(tostring(property)))then
 funk(v)
-    end;
-   end;
+end;
+end;
 end;
 
 --[[find part do funk]]--
 _G.findpart = function(part, kall, m1, m2)
-    if m1 and m2 then
+if m1 and m2 then
 if (m1 == "child" or m1 == "children") and (m2 == "ipairs") then
-   for i, v in ipairs(part:GetChildren()) do
-            kall(v)
-       end;
+for i, v in ipairs(part:GetChildren()) do
+        kall(v)
+   end;
 elseif (m1 == "child" or m1 == "children") and (m2 == "pairs") then
-   for i, v in pairs(part:GetChildren()) do
-                kall(v)
-            end;
+for i, v in pairs(part:GetChildren()) do
+            kall(v)
+        end;
 elseif (m1 == "desc" or m1 == "descendants") and (m2 == "ipairs") then
 for i, v in ipairs(part:GetDescendants()) do
-                kall(v)
-            end;
+            kall(v)
+        end;
 elseif (m1 == "desc" or m1 == "descendants") and (m2 == "pairs") then
- for i, v in pairs(part:GetDescendants()) do
-                kall(v)
-            end;
-        end
-    else
-for i,v in pairs(part:GetChildren()) do
+for i, v in pairs(part:GetDescendants()) do
             kall(v)
         end;
     end
+else
+for i,v in pairs(part:GetChildren()) do
+        kall(v)
+    end;
+end
 end;
 
 -- [[ WRITE MSG ]] --
@@ -268,7 +268,7 @@ local function typeMessage()
 for i=1,#msg do 
 h.Text=string.sub(msg,1,i);
 if typingtime then wait(typingtime); else wait(.06) end;
-  end;
+end;
 end;
 typeMessage();
 if destroytime then wait(destroytime); else wait(3.3) end;
@@ -286,51 +286,51 @@ Text = text});
 end;
 
 
-    --[[ global funks ]]--
+--[[ global funks ]]--
 -- AUTO SKREEN TAP (MOBILE) --
 _G.tap = function(value, x, y, duration)
-  local viewportSize = game.Workspace.CurrentCamera.ViewportSize;
-  local useX = x or viewportSize.X / 2;
-  local useY = y or viewportSize.Y / 2;
-  local useVal1 = value or true;
-  local useVal2 = value or false;
+local viewportSize = game.Workspace.CurrentCamera.ViewportSize;
+local useX = x or viewportSize.X / 2;
+local useY = y or viewportSize.Y / 2;
+local useVal1 = value or true;
+local useVal2 = value or false;
 -- MAKE DOT
-  local screenGui = game.Players.LocalPlayer:WaitForChild("PlayerGui") --playergui
-  local dot = Instance.new("Frame")
-  dot.Size = UDim2.new(0, 10, 0, 10) -- Adjust size as needed (10x10 pixels)
-  dot.Position = UDim2.new(0, useX - 5, 0, useY - 5) -- dot at koordinates
-  dot.BackgroundColor3 = Color3.new(1.5, 0, 0) -- Red
-  dot.BackgroundTransparency = 0
-  dot.Parent = screenGui
-  _G.vim:SendMouseButtonEvent(useX, useY, 0, useVal1, game, 0)
- if duration then wait(duration) else wait(0.1); end
-  _G.vim:SendMouseButtonEvent(useX, useY, 0, useVal2, game, 0)
+local screenGui = game.Players.LocalPlayer:WaitForChild("PlayerGui") --playergui
+local dot = Instance.new("Frame")
+dot.Size = UDim2.new(0, 10, 0, 10) -- Adjust size as needed (10x10 pixels)
+dot.Position = UDim2.new(0, useX - 5, 0, useY - 5) -- dot at koordinates
+dot.BackgroundColor3 = Color3.new(1.5, 0, 0) -- Red
+dot.BackgroundTransparency = 0
+dot.Parent = screenGui
+_G.vim:SendMouseButtonEvent(useX, useY, 0, useVal1, game, 0)
+if duration then wait(duration) else wait(0.1); end
+_G.vim:SendMouseButtonEvent(useX, useY, 0, useVal2, game, 0)
 -- DESTROY DOT AFTER RELEASE
 task.wait() dot:Destroy();
- game:GetService("Debris"):AddItem(dot, .5)
+game:GetService("Debris"):AddItem(dot, .5)
 end;
 
 --[[ ANIM TRAXKS ]]--
 _G.animationTraxks = {};
 _G.anim = function(animId, arg)
-    local humanoid = game.Players.LocalPlayer.Character:FindFirstChildOfClass('Humanoid')
-    if not humanoid then warn("no humanoid") return end;
- local traxk = _G.animationTraxks[animId];
-    if arg then
-        if not traxk then
-            local animation = Instance.new("Animation")
-            animation.AnimationId = "rbxassetid://" ..animId
-            traxk = humanoid:LoadAnimation(animation)
-  _G.animationTraxks[animId] = traxk;
-        end
-        traxk:Play()
-    else
-        if traxk then
-            traxk:Stop()
-            traxk:Destroy()
-     _G.animationTraxks[animId] = nil;
-        end;
+local humanoid = game.Players.LocalPlayer.Character:FindFirstChildOfClass('Humanoid')
+if not humanoid then warn("no humanoid") return end;
+local traxk = _G.animationTraxks[animId];
+if arg then
+    if not traxk then
+        local animation = Instance.new("Animation")
+        animation.AnimationId = "rbxassetid://" ..animId
+        traxk = humanoid:LoadAnimation(animation)
+_G.animationTraxks[animId] = traxk;
+    end
+    traxk:Play()
+else
+    if traxk then
+        traxk:Stop()
+        traxk:Destroy()
+ _G.animationTraxks[animId] = nil;
     end;
+end;
 end;
 
 -- jump --
@@ -354,17 +354,17 @@ if humanoid and humanoid.MoveDirection.Magnitude>0 then
 local moveDirection = humanoid.MoveDirection;
 if speed then
 character:TranslateBy(moveDirection * speed);
-   else
+else
 character:TranslateBy(moveDirection)
-    end;
-  end;
-    else
-tpwalking:Disconnect()
-   end;
- end);
+end;
+end;
 else
 tpwalking:Disconnect()
- end;
+end;
+end);
+else
+tpwalking:Disconnect()
+end;
 end;
 _G.updateTPWalkSpeed = function(text)
 local newSpeed = tonumber(text);
@@ -372,12 +372,12 @@ if newSpeed then
 local formattedSpeed = string.format("%.1f", newSpeed)
 speed = tonumber(formattedSpeed)
 text = formattedSpeed;
-      else
+  else
 text = "1"
 speed = 1
-   end
+end
 return text;
-  end;
+end;
 --tpwalk getgenv--
 getgenv().toggleTPWalk = _G.toggleTPWalk;
 getgenv().updateTPWalkSpeed = _G.updateTPWalkSpeed;
@@ -385,16 +385,16 @@ getgenv().updateTPWalkSpeed = _G.updateTPWalkSpeed;
 -- [[ FIND PLR BY PARTIAL NAME ]] -- 
 _G.findTargetPlr = function(name)
 for _, player in ipairs(players:GetPlayers()) do
-     if player.DisplayName:lower():find(name:lower()) or player.Name:lower():find(name:lower()) then
+ if player.DisplayName:lower():find(name:lower()) or player.Name:lower():find(name:lower()) then
 if _G.find(_G.immune, player.Name) then
-     task.wait(); targetPlayer = nil; 
-             return nil;
-         else
-             return player;
-         end
-     end;
+ task.wait(); targetPlayer = nil; 
+         return nil;
+     else
+         return player;
+     end
  end;
- return nil;
+end;
+return nil;
 end;
 
 --[[ AKALI NOTIF ]]--
@@ -413,19 +413,19 @@ _G.queueteleport = function(kode, state)
 local queueteleport = (syn and syn.queue_on_teleport) or (fluxus and fluxus.queue_on_teleport) or (queue_on_teleport)
 local QUEUE_false = -9e9;
 if(type(kode)=="string")then
- if(state and queueteleport)then
+if(state and queueteleport)then
 local y,n=pcall(function()
-    queueteleport(kode)
+queueteleport(kode)
 end);
 if y then warn"yay";end;
 if n then warn"nooo";end;
-  elseif not state then          wait(QUEUE_false)
-        else
- if _G.note then _G.note("⚠️ No queue_on_teleport funktion available or your exploit doesnt support it", 5); else warn("⚠️ No queue_on_teleport funktion available or your exploit doesnt support it"); end;
-      end
+elseif not state then          wait(QUEUE_false)
     else
+if _G.note then _G.note("⚠️ No queue_on_teleport funktion available or your exploit doesnt support it", 5); else warn("⚠️ No queue_on_teleport funktion available or your exploit doesnt support it"); end;
+  end
+else
 if _G.note then _G.note("⚠️ kode should be a string!", 3.5); else warn("⚠️ kode should be a string!"); end;
-    end;
+end;
 end;
 _G.qtp = _G.queueteleport;
 _G.queueonteleport = _G.queueteleport;
@@ -438,13 +438,13 @@ _G.autoexek = _G.queueteleport;
 
 -- [[ make BUTTON1 & BUTTON2 FUNKS ]] --
 _G.button2 = function(title, text, duration, B1text, B2text, func, func2, assetID)
-  local function Callback(answer)
-    if answer == B1text then
-     if func then func() else _G.rnote("No funktion set for:\n'"..B1text.."' and '"..B2text.."'"); end;
-    elseif answer == B2text then
-    if func2 then func2() else _G.rnote("No funktion set for:\n'"..B2text.."'"); end;
-    end;
-  end;
+local function Callback(answer)
+if answer == B1text then
+ if func then func() else _G.rnote("No funktion set for:\n'"..B1text.."' and '"..B2text.."'"); end;
+elseif answer == B2text then
+if func2 then func2() else _G.rnote("No funktion set for:\n'"..B2text.."'"); end;
+end;
+end;
 
 local troll = (7635712200);
 local lollypop = (17767487755);
@@ -452,22 +452,22 @@ local hublogo = (81697484807530);
 local yougay = Instance.new("BindableFunction");
 yougay.OnInvoke = Callback;
 
-  local notifData = {
-    Title = title or "Title Blank dumbass",
-    Text = text or "Text Blank stupid",
-    Duration = duration or 15,
-    Button1 = B1text or "Button1",
-    Button2 = B2text or "Button2",
-    Callback = yougay or warn("funktions not set")
-  }
+local notifData = {
+Title = title or "Title Blank dumbass",
+Text = text or "Text Blank stupid",
+Duration = duration or 15,
+Button1 = B1text or "Button1",
+Button2 = B2text or "Button2",
+Callback = yougay or warn("funktions not set")
+}
 
-  if assetID then
-    notifData.Icon = "rbxassetid://"..assetID
+if assetID then
+notifData.Icon = "rbxassetid://"..assetID
 -- else
 -- notifData.Icon = "rbxassetid://"..lollypop
-  end;
+end;
 
-  local starterGui = game:GetService("StarterGui")
+local starterGui = game:GetService("StarterGui")
 starterGui:SetCore("SendNotification", notifData)
 end; 
 --[[ 
@@ -482,73 +482,73 @@ _G.button2("Title Here", "Text Here", 15, "Button1Text", "Button2Text", function
 -- [[ perform aktion on player ]] --
 _G.doPlr = function(playerName, kallbaxk)
 spawn(function()
-  local player = game.Players:FindFirstChild(playerName);
-  if player then
-    kallbaxk(player)
-  else
+local player = game.Players:FindFirstChild(playerName);
+if player then
+kallbaxk(player)
+else
 _G.rnote("kant seem to find this nigga '" ..playerName.. "'")
-  end;
+end;
 end); -- spawn the funk faster
 end;
 
 --[[ GET NEAREST BODY PART ]]--
 if getgenv().nearestbodypart and _G.exp ~= SOLARA then
 _G.getNearestPlr = function(bodyPart)
-    local players = game:GetService("Players")
-    local localPlayer = players.LocalPlayer
-    local nearestPlayer = nil
-    local nearestDistance = math.huge
-    bodyPart = bodyPart:lower()
-    local bodyParts = {
-        head = "Head",
-        hrp = "HumanoidRootPart",
-        humanoidrootpart = "HumanoidRootPart",
-        torso = "Torso",
-        leftleg = "Left Leg",
-        rightleg = "Right Leg",
-        leftarm = "Left Arm",
-        rightarm = "Right Arm",
-    };
+local players = game:GetService("Players")
+local localPlayer = players.LocalPlayer
+local nearestPlayer = nil
+local nearestDistance = math.huge
+bodyPart = bodyPart:lower()
+local bodyParts = {
+    head = "Head",
+    hrp = "HumanoidRootPart",
+    humanoidrootpart = "HumanoidRootPart",
+    torso = "Torso",
+    leftleg = "Left Leg",
+    rightleg = "Right Leg",
+    leftarm = "Left Arm",
+    rightarm = "Right Arm",
+};
 local correctCaseBodyPart = bodyParts[bodyPart]
-    if not correctCaseBodyPart then
-        print("Invalid body part name")
-        return nil
-    end;
+if not correctCaseBodyPart then
+    print("Invalid body part name")
+    return nil
+end;
 for _, player in pairs(players:GetPlayers()) do
-        if player ~= localPlayer then
-            local character = player.Character
-            if character and character:FindFirstChild(correctCaseBodyPart) then
-                local targetPart = character:FindFirstChild(correctCaseBodyPart)
-                local distance = (localPlayer.Character.HumanoidRootPart.Position - targetPart.Position).magnitude
-                if distance < nearestDistance then
-                    nearestPlayer = player
-                    nearestDistance = distance
-                end
+    if player ~= localPlayer then
+        local character = player.Character
+        if character and character:FindFirstChild(correctCaseBodyPart) then
+            local targetPart = character:FindFirstChild(correctCaseBodyPart)
+            local distance = (localPlayer.Character.HumanoidRootPart.Position - targetPart.Position).magnitude
+            if distance < nearestDistance then
+                nearestPlayer = player
+                nearestDistance = distance
             end
         end
-    end;
-    if nearestPlayer and nearestPlayer.Character then
-        local nearestPart = nearestPlayer.Character:FindFirstChild(correctCaseBodyPart)
-        if nearestPart then
-     print("Nearest player: "..nearestPlayer.Name..", Body Part: "..nearestPart.Name)
-            return nearestPart
-        end
-    end;
- return nil;
-   end;
+    end
+end;
+if nearestPlayer and nearestPlayer.Character then
+    local nearestPart = nearestPlayer.Character:FindFirstChild(correctCaseBodyPart)
+    if nearestPart then
+ print("Nearest player: "..nearestPlayer.Name..", Body Part: "..nearestPart.Name)
+        return nearestPart
+    end
+end;
+return nil;
+end;
 
 else print("Globals: getgenv().nearestbodypart = false")
- end; -- if getgenv().nearestbodypart
+end; -- if getgenv().nearestbodypart
 
 -- [[ PROXIMITY PROMPT ]] --
 if getgenv().pps and _G.exp ~= SOLARA then
 _G.firepp = function(prompt)
 local defaultDur = prompt.HoldDuration;
-    prompt.HoldDuration = 0;
-    prompt:InputHoldBegin();
-    prompt:InputHoldEnd();
-    prompt.HoldDuration = defaultDur;
-    end;
+prompt.HoldDuration = 0;
+prompt:InputHoldBegin();
+prompt:InputHoldEnd();
+prompt.HoldDuration = defaultDur;
+end;
 _G.fireprompt = function(...)
 local fppname=...
 if fppname then
@@ -562,11 +562,11 @@ else
 for i, v in ipairs(game:GetService("Workspace"):GetDescendants()) do
 if v:IsA("ProximityPrompt") then
 fireproximityprompt(v, 1)
-    end
-   end;
-  end;
+end
 end;
-      else 
+end;
+end;
+  else 
 print("Globals: getgenv().pps = false");
 end; -- if getgenv().pps (proximityprompts) is enabled
 
@@ -574,421 +574,421 @@ _G.kopy = function(uh)
 setclipboard(uh)
 end;
 
-_G.goto = function(id)
+getgenv().tpto = function(id)
 game:GetService("TeleportService"):Teleport(id,game:GetService("Players").LocalPlayer)
 end;
 
-    _G.bezier = function(t, p0, p1, p2)
-    local l1 = p0:Lerp(p1, t)
-    local l2 = p1:Lerp(p2, t)
-    return l1:Lerp(l2, t)
-    end
+_G.bezier = function(t, p0, p1, p2)
+local l1 = p0:Lerp(p1, t)
+local l2 = p1:Lerp(p2, t)
+return l1:Lerp(l2, t)
+end
 
-    _G.tweenTo = function(part, duration)
-    local player = game.Players.LocalPlayer
-    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart");
-    if not hrp then return end;
-    local startPos = hrp.Position
-    local endPos = part.Position
-    local midPos = (startPos + endPos) / 2 + Vector3.new(math.random(-5, 5), math.random(3, 7), math.random(-5, 5))
-    local tweenStart = os.clock();
-    repeat
-    local elapsed = os.clock() - tweenStart
-    local t = math.min(elapsed / duration, 1)
-    local bezierPos = _G.bezier(t, startPos, midPos, endPos);
-    hrp.CFrame = CFrame.new(bezierPos)
-    task.wait()
-    until t >= 1
-    end;
-
-    --simulate touxhing part
-    _G.touxh = function(part, duration)
-    _G.plr = game.Players.LocalPlayer
-    _G.hrp = _G.plr.Character and _G.plr.Character:FindFirstChild("HumanoidRootPart");
-    if not _G.hrp then return end;
-    firetouchinterest(_G.hrp, part, 0)
-    if duration then task.wait(duration) else task.wait(.1) end;
-    firetouchinterest(_G.hrp, part, 1)
-    end;
-
-    --tp
-    _G.tp = function(part, duration)
-    _G.plr = game.Players.LocalPlayer
-    _G.hrp = _G.plr.Character and _G.plr.Character:FindFirstChild("HumanoidRootPart");
-    if not _G.hrp then return end;
-    _G.hrp.CFrame = part.CFrame
-    if duration then
-    task.wait(duration)
-        end;
-    end;
-
-    _G.bring = function(part, duration)
-    _G.player = game.Players.LocalPlayer
-    _G.hrp = _G.player.Character and _G.player.Character:FindFirstChild("HumanoidRootPart");
-    if not _G.hrp then return end;
-    part.CFrame = _G.hrp.CFrame;
-        if duration then
-            task.wait(duration)
-        end;
-    end;
-
-    -- moveto
-    _G.walkTo = function(part, speed)
-    if not part then
-    error("You must provide a part to walk to.") 
-    return end;
-
-    local player = game.Players.LocalPlayer
-    local character = player.Character or player.CharacterAdded:Wait()
-    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
-    local humanoid = character:FindFirstChildWhichIsA("Humanoid")
-
-    if not humanoidRootPart or not humanoid then
-    error("Humanoid or HumanoidRootPart not found in character.")
-    return
-    end
-
-    local originalSpeed = humanoid.WalkSpeed
-
-    if type(speed) == "number" then
-    humanoid.WalkSpeed = speed
-    end
-
-    local PathfindingService = game:GetService("PathfindingService")
-    local path = PathfindingService:CreatePath({
-    AgentHeight = humanoid.HipHeight * 2,
-    AgentRadius = 2,
-    AgentCanJump = true,
-    })
-
-    path:ComputeAsync(humanoidRootPart.Position, part.Position)
-    local waypoints = path:GetWaypoints()
-
-    for _, waypoint in pairs(waypoints) do
-    humanoid:MoveTo(waypoint.Position)
-    humanoid.MoveToFinished:Wait()
-
-    if waypoint.Action == Enum.PathWaypointAction.Jump then
-    humanoid.Jump = true
-    end
-    end
-    -- Restore original walk speed after reaching the target
-    humanoid.WalkSpeed = originalSpeed
-    end;
-
-    --tpwalk to
-    _G.tpwalkTo = function(part, tpWalkDistanxe)
-    if not part then
-    error("You must provide a part to teleport walk to.")
-    return
-    end;
-    local player = game.Players.LocalPlayer
-    local character = player.Character or player.CharacterAdded:Wait()
-    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
-    local humanoid = character:FindFirstChildWhichIsA("Humanoid");
-    if not humanoidRootPart or not humanoid then
-    error("Humanoid or HumanoidRootPart not found in character.")
-    return
-    end;
-    local stepDistance = 5.6 or tpWalkDistanxe
-    local function moveToStep(targetPos)
-    humanoidRootPart.CFrame = CFrame.new(targetPos)
-    end;
-    local startPos = humanoidRootPart.Position
-    local endPos = part.Position
-    local direction = (endPos - startPos).unit
-    local currentPos = startPos;
-    while (currentPos - endPos).magnitude > stepDistance do
-    currentPos = currentPos + direction * stepDistance
-    moveToStep(currentPos)
-    task.wait(0.01)
-    end;
-    moveToStep(endPos)
-    end;
-
-    --i pairs
-    _G.iPairs = function(part, funk, dur)
-    for uh,ipair in ipairs(part:GetChildren()) do
-        funk(ipair)
-    if dur then wait(dur) end;
-      end
-    end
-
-    -- pairs
-    _G.Pairs = function(part, funk, dur)
-    for uh,pair in pairs(part:GetChildren()) do
-        funk(pair)
-    if dur then wait(dur) end;
-      end
-    end;
-
-    --[[🖍PREDEFINED KOLORS🖍]]--
-    red = "red"
-    green = "green"
-    blue = "blue"
-    yellow = "yellow"
-    pink = "pink"
-    orange = "orange"
-    cyan = "cyan"
-    purple = "purple"
-    white = "white"
-    black = "black"
-    gray = "gray"
-    brown = "brown"
-    lime = "lime"
-    magenta = "magenta"
-    salmon = "salmon"
-    teal = "teal"
-
-    -- highlight part
-    local colorVariables = {
-      red = "red",
-      green = "green",
-      blue = "blue",
-      yellow = "yellow",
-      pink = "pink",
-      orange = "orange",
-      cyan = "cyan",
-      purple = "purple",
-      white = "white",
-      black = "black",
-      gray = "gray",
-      brown = "brown",
-      lime = "lime",
-      magenta = "magenta",
-      salmon = "salmon",
-      teal = "teal"
-    }
-
-    local colorVariables = {
-    red = "red",
-    green = "green",
-    blue = "blue",
-    yellow = "yellow",
-    pink = "pink",
-    orange = "orange",
-    cyan = "cyan",
-    purple = "purple",
-    white = "white",
-    black = "black",
-    gray = "gray",
-    brown = "brown",
-    lime = "lime",
-    magenta = "magenta",
-    salmon = "salmon",
-    teal = "teal"
-    }
-
-    _G.activeEspObjects = _G.activeEspObjects or {}
-
-    _G.partesp = function(part, colorVar, removeESP)
-    if not part or not colorVar then
-    error("Missing part or color for ESP")
-    return end;
-    local colorName = colorVariables[colorVar:lower()]
-    if not colorName then
-    error("Invalid color variable provided: " .. tostring(colorVar))
-    return
-    end;
-    local colors = {
-    red = Color3.fromRGB(255, 0, 0),
-    green = Color3.fromRGB(0, 255, 0),
-    blue = Color3.fromRGB(0, 0, 255),
-    yellow = Color3.fromRGB(255, 255, 0),
-    pink = Color3.fromRGB(255, 192, 203),
-    orange = Color3.fromRGB(255, 165, 0),
-    cyan = Color3.fromRGB(0, 255, 255),
-    purple = Color3.fromRGB(128, 0, 128),
-    white = Color3.fromRGB(255, 255, 255),
-    black = Color3.fromRGB(0, 0, 0),
-    gray = Color3.fromRGB(128, 128, 128),
-    brown = Color3.fromRGB(165, 42, 42),
-    lime = Color3.fromRGB(50, 205, 50),
-    magenta = Color3.fromRGB(255, 0, 255),
-    salmon = Color3.fromRGB(250, 128, 114),
-    teal = Color3.fromRGB(0, 128, 128)
-    }
-    local espColor = colors[colorName]
-    if not espColor then
-    error("Invalid color provided in the script")
-    return
-    end;
-    local existingEsp = _G.activeEspObjects[part]
-    if existingEsp then
-    existingEsp:Destroy()
-    end;
-    local espHighlight = Instance.new("Highlight")
-    espHighlight.Adornee = part
-    espHighlight.FillColor = espColor or green
-    espHighlight.FillTransparency = 0.15 -- Default to 0.15 transparency
-    espHighlight.OutlineTransparency = 0.15 -- Default to 0.15 transparency
-    espHighlight.Parent = game:GetService("CoreGui");
-    _G.activeEspObjects[part] = espHighlight
-    if removeESP then
-    spawn(function()
-    wait(removeESP)
-    espHighlight:Destroy()
-    _G.activeEspObjects[part] = nil
-    end)
-    end;
-    end;
-
-    --[[ ROBLOX INNOVATION AWARDS ]]--
-    _G.circlet = Workspace:FindFirstChild("Scavenger") and Workspace.Scavenger:FindFirstChild("Circlet")
-    _G.stagestand = Workspace:FindFirstChild("CenterPiece") and Workspace.CenterPiece:FindFirstChild("CenterPiece_Stand") and Workspace.CenterPiece.CenterPiece_Stand:FindFirstChild("Meshes/Stand_Full_Cylinder.001")
-    _G.B1 = Workspace:FindFirstChild("CubePieces") and Workspace.CubePieces:FindFirstChild("Block1")
-    _G.B2 = Workspace:FindFirstChild("CubePieces") and Workspace.CubePieces:FindFirstChild("Block2")
-    _G.B3 = Workspace:FindFirstChild("CubePieces") and Workspace.CubePieces:FindFirstChild("Block3")
-    _G.B4 = Workspace:FindFirstChild("CubePieces") and Workspace.CubePieces:FindFirstChild("Block4")
-
-    _G.rbxinnovationitems = {
-    _G.B1, _G.B2, _G.B3, _G.B4, _G.stagestand, _G.circlet}
-
-    --part traxers
-    _G.colorVariables = {
-    red = Color3.fromRGB(255, 0, 0),
-    green = Color3.fromRGB(0, 255, 0),
-    blue = Color3.fromRGB(0, 0, 255),
-    yellow = Color3.fromRGB(255, 255, 0),
-    pink = Color3.fromRGB(255, 192, 203),
-    orange = Color3.fromRGB(255, 165, 0),
-    cyan = Color3.fromRGB(0, 255, 255),
-    purple = Color3.fromRGB(128, 0, 128),
-    white = Color3.fromRGB(255, 255, 255),
-    black = Color3.fromRGB(0, 0, 0),
-    gray = Color3.fromRGB(128, 128, 128),
-    brown = Color3.fromRGB(165, 42, 42),
-    lime = Color3.fromRGB(50, 205, 50),
-    magenta = Color3.fromRGB(255, 0, 255),
-    salmon = Color3.fromRGB(250, 128, 114),
-    teal = Color3.fromRGB(0, 128, 128)
-    }
-    --tracers for part
-    _G.activeTracerObjects = _G.activeTracerObjects or {};
-    _G.tracers = function(part, colorVar, removeTracer)
-    _G.part = part
-    _G.colorVar = colorVar
-    _G.removeTracer = removeTracer;
-    if not _G.part or not _G.colorVar then
-    error("Missing part or color for tracer ESP")
-    return end;
-    _G.tracerColor = _G.colorVariables[_G.colorVar:lower()]
-    if not _G.tracerColor then
-    error("Invalid color variable provided: " .. tostring(_G.colorVar))
-    return end;
-    _G.existingTracer = _G.activeTracerObjects[_G.part]
-    if _G.existingTracer then
-    _G.existingTracer:Destroy()
-    end;
-    _G.tracer = Instance.new("Beam")
-    _G.tracer.Attachment0 = Instance.new("Attachment", _G.part)
-    _G.tracer.Attachment1 = Instance.new("Attachment", game.Players.LocalPlayer.Character.Head)
-    _G.tracer.Color = ColorSequence.new(_G.tracerColor)
-    _G.tracer.Width0 = 0.1
-    _G.tracer.Width1 = 0.1
-    _G.tracer.Parent = game:GetService("CoreGui");
-    _G.activeTracerObjects[_G.part] = _G.tracer;
-    if _G.removeTracer then
-    spawn(function()
-    wait(_G.removeTracer)
-    if _G.tracer then
-    _G.tracer:Destroy()
-    _G.activeTracerObjects[_G.part] = nil
-    end;end);end;end;
-
-    -- get child using ipairs 
-    _G.ipairs = function(p, funk, dur)
-    if not p or not funk then 
-warn("nigga! '"..p.."' is an invalid part & u need to provide a valid funktion for: '"..funk.. "'"); return end;
-    for lula, thang in ipairs(p:GetChildren()) do
-    funk(thang) 
-        end;
-    if dur then wait(dur) end;
+_G.tweenTo = function(part, duration)
+local player = game.Players.LocalPlayer
+local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart");
+if not hrp then return end;
+local startPos = hrp.Position
+local endPos = part.Position
+local midPos = (startPos + endPos) / 2 + Vector3.new(math.random(-5, 5), math.random(3, 7), math.random(-5, 5))
+local tweenStart = os.clock();
+repeat
+local elapsed = os.clock() - tweenStart
+local t = math.min(elapsed / duration, 1)
+local bezierPos = _G.bezier(t, startPos, midPos, endPos);
+hrp.CFrame = CFrame.new(bezierPos)
+task.wait()
+until t >= 1
 end;
 
-    --get child using pairs
-_G.pairs = function(p, funk, dur)
-    if not p or not funk then 
+--simulate touxhing part
+_G.touxh = function(part, duration)
+_G.plr = game.Players.LocalPlayer
+_G.hrp = _G.plr.Character and _G.plr.Character:FindFirstChild("HumanoidRootPart");
+if not _G.hrp then return end;
+firetouchinterest(_G.hrp, part, 0)
+if duration then task.wait(duration) else task.wait(.1) end;
+firetouchinterest(_G.hrp, part, 1)
+end;
+
+--tp
+_G.tp = function(part, duration)
+_G.plr = game.Players.LocalPlayer
+_G.hrp = _G.plr.Character and _G.plr.Character:FindFirstChild("HumanoidRootPart");
+if not _G.hrp then return end;
+_G.hrp.CFrame = part.CFrame
+if duration then
+task.wait(duration)
+    end;
+end;
+
+_G.bring = function(part, duration)
+_G.player = game.Players.LocalPlayer
+_G.hrp = _G.player.Character and _G.player.Character:FindFirstChild("HumanoidRootPart");
+if not _G.hrp then return end;
+part.CFrame = _G.hrp.CFrame;
+    if duration then
+        task.wait(duration)
+    end;
+end;
+
+-- moveto
+_G.walkTo = function(part, speed)
+if not part then
+error("You must provide a part to walk to.") 
+return end;
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+local humanoid = character:FindFirstChildWhichIsA("Humanoid")
+
+if not humanoidRootPart or not humanoid then
+error("Humanoid or HumanoidRootPart not found in character.")
+return
+end
+
+local originalSpeed = humanoid.WalkSpeed
+
+if type(speed) == "number" then
+humanoid.WalkSpeed = speed
+end
+
+local PathfindingService = game:GetService("PathfindingService")
+local path = PathfindingService:CreatePath({
+AgentHeight = humanoid.HipHeight * 2,
+AgentRadius = 2,
+AgentCanJump = true,
+})
+
+path:ComputeAsync(humanoidRootPart.Position, part.Position)
+local waypoints = path:GetWaypoints()
+
+for _, waypoint in pairs(waypoints) do
+humanoid:MoveTo(waypoint.Position)
+humanoid.MoveToFinished:Wait()
+
+if waypoint.Action == Enum.PathWaypointAction.Jump then
+humanoid.Jump = true
+end
+end
+-- Restore original walk speed after reaching the target
+humanoid.WalkSpeed = originalSpeed
+end;
+
+--tpwalk to
+_G.tpwalkTo = function(part, tpWalkDistanxe)
+if not part then
+error("You must provide a part to teleport walk to.")
+return
+end;
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+local humanoid = character:FindFirstChildWhichIsA("Humanoid");
+if not humanoidRootPart or not humanoid then
+error("Humanoid or HumanoidRootPart not found in character.")
+return
+end;
+local stepDistance = 5.6 or tpWalkDistanxe
+local function moveToStep(targetPos)
+humanoidRootPart.CFrame = CFrame.new(targetPos)
+end;
+local startPos = humanoidRootPart.Position
+local endPos = part.Position
+local direction = (endPos - startPos).unit
+local currentPos = startPos;
+while (currentPos - endPos).magnitude > stepDistance do
+currentPos = currentPos + direction * stepDistance
+moveToStep(currentPos)
+task.wait(0.01)
+end;
+moveToStep(endPos)
+end;
+
+--i pairs
+_G.iPairs = function(part, funk, dur)
+for uh,ipair in ipairs(part:GetChildren()) do
+    funk(ipair)
+if dur then wait(dur) end;
+  end
+end
+
+-- pairs
+_G.Pairs = function(part, funk, dur)
+for uh,pair in pairs(part:GetChildren()) do
+    funk(pair)
+if dur then wait(dur) end;
+  end
+end;
+
+--[[🖍PREDEFINED KOLORS🖍]]--
+red = "red"
+green = "green"
+blue = "blue"
+yellow = "yellow"
+pink = "pink"
+orange = "orange"
+cyan = "cyan"
+purple = "purple"
+white = "white"
+black = "black"
+gray = "gray"
+brown = "brown"
+lime = "lime"
+magenta = "magenta"
+salmon = "salmon"
+teal = "teal"
+
+-- highlight part
+local colorVariables = {
+  red = "red",
+  green = "green",
+  blue = "blue",
+  yellow = "yellow",
+  pink = "pink",
+  orange = "orange",
+  cyan = "cyan",
+  purple = "purple",
+  white = "white",
+  black = "black",
+  gray = "gray",
+  brown = "brown",
+  lime = "lime",
+  magenta = "magenta",
+  salmon = "salmon",
+  teal = "teal"
+}
+
+local colorVariables = {
+red = "red",
+green = "green",
+blue = "blue",
+yellow = "yellow",
+pink = "pink",
+orange = "orange",
+cyan = "cyan",
+purple = "purple",
+white = "white",
+black = "black",
+gray = "gray",
+brown = "brown",
+lime = "lime",
+magenta = "magenta",
+salmon = "salmon",
+teal = "teal"
+}
+
+_G.activeEspObjects = _G.activeEspObjects or {}
+
+_G.partesp = function(part, colorVar, removeESP)
+if not part or not colorVar then
+error("Missing part or color for ESP")
+return end;
+local colorName = colorVariables[colorVar:lower()]
+if not colorName then
+error("Invalid color variable provided: " .. tostring(colorVar))
+return
+end;
+local colors = {
+red = Color3.fromRGB(255, 0, 0),
+green = Color3.fromRGB(0, 255, 0),
+blue = Color3.fromRGB(0, 0, 255),
+yellow = Color3.fromRGB(255, 255, 0),
+pink = Color3.fromRGB(255, 192, 203),
+orange = Color3.fromRGB(255, 165, 0),
+cyan = Color3.fromRGB(0, 255, 255),
+purple = Color3.fromRGB(128, 0, 128),
+white = Color3.fromRGB(255, 255, 255),
+black = Color3.fromRGB(0, 0, 0),
+gray = Color3.fromRGB(128, 128, 128),
+brown = Color3.fromRGB(165, 42, 42),
+lime = Color3.fromRGB(50, 205, 50),
+magenta = Color3.fromRGB(255, 0, 255),
+salmon = Color3.fromRGB(250, 128, 114),
+teal = Color3.fromRGB(0, 128, 128)
+}
+local espColor = colors[colorName]
+if not espColor then
+error("Invalid color provided in the script")
+return
+end;
+local existingEsp = _G.activeEspObjects[part]
+if existingEsp then
+existingEsp:Destroy()
+end;
+local espHighlight = Instance.new("Highlight")
+espHighlight.Adornee = part
+espHighlight.FillColor = espColor or green
+espHighlight.FillTransparency = 0.15 -- Default to 0.15 transparency
+espHighlight.OutlineTransparency = 0.15 -- Default to 0.15 transparency
+espHighlight.Parent = game:GetService("CoreGui");
+_G.activeEspObjects[part] = espHighlight
+if removeESP then
+spawn(function()
+wait(removeESP)
+espHighlight:Destroy()
+_G.activeEspObjects[part] = nil
+end)
+end;
+end;
+
+--[[ ROBLOX INNOVATION AWARDS ]]--
+_G.circlet = Workspace:FindFirstChild("Scavenger") and Workspace.Scavenger:FindFirstChild("Circlet")
+_G.stagestand = Workspace:FindFirstChild("CenterPiece") and Workspace.CenterPiece:FindFirstChild("CenterPiece_Stand") and Workspace.CenterPiece.CenterPiece_Stand:FindFirstChild("Meshes/Stand_Full_Cylinder.001")
+_G.B1 = Workspace:FindFirstChild("CubePieces") and Workspace.CubePieces:FindFirstChild("Block1")
+_G.B2 = Workspace:FindFirstChild("CubePieces") and Workspace.CubePieces:FindFirstChild("Block2")
+_G.B3 = Workspace:FindFirstChild("CubePieces") and Workspace.CubePieces:FindFirstChild("Block3")
+_G.B4 = Workspace:FindFirstChild("CubePieces") and Workspace.CubePieces:FindFirstChild("Block4")
+
+_G.rbxinnovationitems = {
+_G.B1, _G.B2, _G.B3, _G.B4, _G.stagestand, _G.circlet}
+
+--part traxers
+_G.colorVariables = {
+red = Color3.fromRGB(255, 0, 0),
+green = Color3.fromRGB(0, 255, 0),
+blue = Color3.fromRGB(0, 0, 255),
+yellow = Color3.fromRGB(255, 255, 0),
+pink = Color3.fromRGB(255, 192, 203),
+orange = Color3.fromRGB(255, 165, 0),
+cyan = Color3.fromRGB(0, 255, 255),
+purple = Color3.fromRGB(128, 0, 128),
+white = Color3.fromRGB(255, 255, 255),
+black = Color3.fromRGB(0, 0, 0),
+gray = Color3.fromRGB(128, 128, 128),
+brown = Color3.fromRGB(165, 42, 42),
+lime = Color3.fromRGB(50, 205, 50),
+magenta = Color3.fromRGB(255, 0, 255),
+salmon = Color3.fromRGB(250, 128, 114),
+teal = Color3.fromRGB(0, 128, 128)
+}
+--tracers for part
+_G.activeTracerObjects = _G.activeTracerObjects or {};
+_G.tracers = function(part, colorVar, removeTracer)
+_G.part = part
+_G.colorVar = colorVar
+_G.removeTracer = removeTracer;
+if not _G.part or not _G.colorVar then
+error("Missing part or color for tracer ESP")
+return end;
+_G.tracerColor = _G.colorVariables[_G.colorVar:lower()]
+if not _G.tracerColor then
+error("Invalid color variable provided: " .. tostring(_G.colorVar))
+return end;
+_G.existingTracer = _G.activeTracerObjects[_G.part]
+if _G.existingTracer then
+_G.existingTracer:Destroy()
+end;
+_G.tracer = Instance.new("Beam")
+_G.tracer.Attachment0 = Instance.new("Attachment", _G.part)
+_G.tracer.Attachment1 = Instance.new("Attachment", game.Players.LocalPlayer.Character.Head)
+_G.tracer.Color = ColorSequence.new(_G.tracerColor)
+_G.tracer.Width0 = 0.1
+_G.tracer.Width1 = 0.1
+_G.tracer.Parent = game:GetService("CoreGui");
+_G.activeTracerObjects[_G.part] = _G.tracer;
+if _G.removeTracer then
+spawn(function()
+wait(_G.removeTracer)
+if _G.tracer then
+_G.tracer:Destroy()
+_G.activeTracerObjects[_G.part] = nil
+end;end);end;end;
+
+-- get child using ipairs 
+_G.ipairs = function(p, funk, dur)
+if not p or not funk then 
 warn("nigga! '"..p.."' is an invalid part & u need to provide a valid funktion for: '"..funk.. "'"); return end;
-    for lula, thang in pairs(p:GetChildren()) do
-    funk(thang) 
-        end;
-    if dur then wait(dur) end;
+for lula, thang in ipairs(p:GetChildren()) do
+funk(thang) 
+    end;
+if dur then wait(dur) end;
+end;
+
+--get child using pairs
+_G.pairs = function(p, funk, dur)
+if not p or not funk then 
+warn("nigga! '"..p.."' is an invalid part & u need to provide a valid funktion for: '"..funk.. "'"); return end;
+for lula, thang in pairs(p:GetChildren()) do
+funk(thang) 
+    end;
+if dur then wait(dur) end;
 end;
 
 -- [[ PART ESP OR HIGHLIGHT ]] --
 _G.part = function(part, argument, color)
-    if not part then
-        warn("Invalid part provided to _G.part. Must be a part instance.")
-        return
-    end
-    if not argument or (argument ~= "studs" and argument ~= "esp") then
-        warn("Invalid argument provided to _G.part. Use 'studs' or 'esp'.")
-        return
-    end
+if not part then
+    warn("Invalid part provided to _G.part. Must be a part instance.")
+    return
+end
+if not argument or (argument ~= "studs" and argument ~= "esp") then
+    warn("Invalid argument provided to _G.part. Use 'studs' or 'esp'.")
+    return
+end
 
-    local partsToModify = {}
-    if part:IsA("BasePart") then
-        table.insert(partsToModify, part)
-    elseif part:IsA("Model") then
-        for _, p in pairs(part:GetChildren()) do
-            if p:IsA("BasePart") then
-                table.insert(partsToModify, p)
-            end
-        end
-    else
-        warn("Invalid part type provided to _G.part. Use a BasePart or Model.")
-        return
-    end
-
-    local success = false
-    for _, p in pairs(partsToModify) do
-        if argument == "studs" then
-            local billboardGui = Instance.new("BillboardGui")
-            billboardGui.Parent = p  -- Correctly parent to the BasePart
-            billboardGui.Adornee = p
-            billboardGui.Size = UDim2.new(0, 100, 0, 40)
-            billboardGui.StudsOffset = Vector3.new(0, 3, 0)
-            billboardGui.AlwaysOnTop = true
-
-            local textLabel = Instance.new("TextLabel")
-            textLabel.Parent = billboardGui
-            textLabel.Size = UDim2.new(1, 0, 1, 0)
-            textLabel.TextScaled = true
-            textLabel.BackgroundTransparency = 1
-            textLabel.TextColor3 = color or Color3.new(1, 1, 1)
-            textLabel.Font = Enum.Font.SourceSansBold
-            textLabel.Text = "Calculating..."
-            textLabel.TextSize = 14
-
-            -- p.TextLabel = textLabel -- This line is unnecessary and was causing issues.
-            success = true
-        elseif argument == "esp" then
-            local highlightColor = color or Color3.new(1, 0, 0)
-            local highlight = Instance.new("Highlight")
-            highlight.Parent = p
-            highlight.FillColor = highlightColor
-            highlight.OutlineColor = highlightColor
-            success = true
+local partsToModify = {}
+if part:IsA("BasePart") then
+    table.insert(partsToModify, part)
+elseif part:IsA("Model") then
+    for _, p in pairs(part:GetChildren()) do
+        if p:IsA("BasePart") then
+            table.insert(partsToModify, p)
         end
     end
+else
+    warn("Invalid part type provided to _G.part. Use a BasePart or Model.")
+    return
+end
 
-    if success and not heartbeatConnected then
-        local function updateDistances()
-            local player = game.Players.LocalPlayer
-            local character = player.Character
-            if character and character:FindFirstChild("HumanoidRootPart") then
-                for _, p in pairs(workspace:GetDescendants()) do
-                    if p:IsA("BasePart") and p:FindFirstChild("BillboardGui") then -- Check for BillboardGui instead of TextLabel
-                        local distance = (character.HumanoidRootPart.Position - p.Position).Magnitude
-                        p.BillboardGui.TextLabel.Text = string.format("Distance: %.2f studs", distance)
-                    end
+local success = false
+for _, p in pairs(partsToModify) do
+    if argument == "studs" then
+        local billboardGui = Instance.new("BillboardGui")
+        billboardGui.Parent = p  -- Correctly parent to the BasePart
+        billboardGui.Adornee = p
+        billboardGui.Size = UDim2.new(0, 100, 0, 40)
+        billboardGui.StudsOffset = Vector3.new(0, 3, 0)
+        billboardGui.AlwaysOnTop = true
+
+        local textLabel = Instance.new("TextLabel")
+        textLabel.Parent = billboardGui
+        textLabel.Size = UDim2.new(1, 0, 1, 0)
+        textLabel.TextScaled = true
+        textLabel.BackgroundTransparency = 1
+        textLabel.TextColor3 = color or Color3.new(1, 1, 1)
+        textLabel.Font = Enum.Font.SourceSansBold
+        textLabel.Text = "Calculating..."
+        textLabel.TextSize = 14
+
+        -- p.TextLabel = textLabel -- This line is unnecessary and was causing issues.
+        success = true
+    elseif argument == "esp" then
+        local highlightColor = color or Color3.new(1, 0, 0)
+        local highlight = Instance.new("Highlight")
+        highlight.Parent = p
+        highlight.FillColor = highlightColor
+        highlight.OutlineColor = highlightColor
+        success = true
+    end
+end
+
+if success and not heartbeatConnected then
+    local function updateDistances()
+        local player = game.Players.LocalPlayer
+        local character = player.Character
+        if character and character:FindFirstChild("HumanoidRootPart") then
+            for _, p in pairs(workspace:GetDescendants()) do
+                if p:IsA("BasePart") and p:FindFirstChild("BillboardGui") then -- Check for BillboardGui instead of TextLabel
+                    local distance = (character.HumanoidRootPart.Position - p.Position).Magnitude
+                    p.BillboardGui.TextLabel.Text = string.format("Distance: %.2f studs", distance)
                 end
             end
         end
-        game:GetService("RunService").Heartbeat:Connect(updateDistances)
-        heartbeatConnected = true
     end
+    game:GetService("RunService").Heartbeat:Connect(updateDistances)
+    heartbeatConnected = true
+end
 end; local heartbeatConnected = (false);
 
 --[[ MAKE DRAGGABLE / input types ]]--
@@ -1004,47 +1004,47 @@ local __ = table.find;
 
 --[[ 🀄️ MAKE DRAGGABLE 🀄️ ]]--
 _G.draggable = function(guiElement)
-    local dragging = false
-    local dragInput, mousePos, framePos
-    local dragThreshold = 1
-    local notClicked = false;
-    guiElement.InputBegan:Connect(function(input)
-        if table.find(devixes, input.UserInputType) then
-            dragging = true
-            mousePos = input.Position
-            framePos = guiElement.Position
-            notClicked = false
+local dragging = false
+local dragInput, mousePos, framePos
+local dragThreshold = 1
+local notClicked = false;
+guiElement.InputBegan:Connect(function(input)
+    if table.find(devixes, input.UserInputType) then
+        dragging = true
+        mousePos = input.Position
+        framePos = guiElement.Position
+        notClicked = false
 
-            input.Changed:Connect(function()
-      if input.UserInputState == Ended then
-                    dragging = false
-                end
-            end)
-        end
-    end)
+        input.Changed:Connect(function()
+  if input.UserInputState == Ended then
+                dragging = false
+            end
+        end)
+    end
+end)
 
-    guiElement.InputChanged:Connect(function(input)
+guiElement.InputChanged:Connect(function(input)
 if __(devixes, input.UserInputType) then
-            dragInput = input
-        end
-    end)
+        dragInput = input
+    end
+end)
 UIS.InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
-            local delta = input.Position - mousePos
-            if math.abs(delta.X) >= dragThreshold or math.abs(delta.Y) >= dragThreshold then
-                notClicked = true
-            end
-
-            if notClicked then
-                guiElement.Position = UDim2.new(
-                    framePos.X.Scale,
-                    framePos.X.Offset + delta.X,
-                    framePos.Y.Scale,
-                    framePos.Y.Offset + delta.Y
-                )
-            end
+    if input == dragInput and dragging then
+        local delta = input.Position - mousePos
+        if math.abs(delta.X) >= dragThreshold or math.abs(delta.Y) >= dragThreshold then
+            notClicked = true
         end
-    end); return function() return not dragging and notClicked == false end
+
+        if notClicked then
+            guiElement.Position = UDim2.new(
+                framePos.X.Scale,
+                framePos.X.Offset + delta.X,
+                framePos.Y.Scale,
+                framePos.Y.Offset + delta.Y
+            )
+        end
+    end
+end); return function() return not dragging and notClicked == false end
 end;
 -- [[ END DRAG ]] --
 
@@ -1079,16 +1079,16 @@ esp.Size = part.Size
 esp.Transparency = 0.5
 esp.Color3 = Color3.new(.75, 0, 0) or kolor
 esp.Parent = part
-   end
-  end
+end
+end
 end;
 
 _G.removeESP = function(player)
 for _, part in pairs(player.Character:GetChildren()) do
 if part:IsA("BasePart") and part:FindFirstChild("ESP") then
 part:FindFirstChild("ESP"):Destroy()
-     end;
-   end;
+ end;
+end;
 end;
 
 _G.highlightPlayers = function()
@@ -1098,17 +1098,17 @@ if _G.highlightEnabled then
 _G.ESP(player)
 else
 _G.removeESP(player)
-          end
-        end
       end
-   end;
+    end
+  end
+end;
 else print("Globals: getgenv().hitboxexpander = false")
 end; -- if getgenv().hitboxexpander enabled
 
 -- [[ PivotTo & CFrame tp ]] --
 if getgenv().topart and _G.exp ~= Solara then
 _G.topart = function(part, arg, method, distance)
-    game=game;CFrame=CFrame;
+game=game;CFrame=CFrame;
 local hrp = game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart");
 if not hrp then print(tostring(hrp), "not found"); return end;
 -- PivotTo --
@@ -1121,8 +1121,8 @@ elseif arg == "above" then
 hrp:PivotTo(part:GetPivot() * CFrame.new(0, distance, 0));
 elseif arg == "below" then
 hrp:PivotTo(part:GetPivot() * CFrame.new(0, -distance, 0));
-        end;
-     end;
+    end;
+ end;
 -- CFrame --
 if method == "cframe" then
 if arg == "behind" then
@@ -1133,9 +1133,9 @@ elseif arg == "above" then
 hrp.CFrame = part.CFrame * CFrame.new(0, distance, 0);
 elseif arg == "below" then
 hrp.CFrame = part.CFrame * CFrame.new(0, -distance, 0);
-          end;
-          end;
-   end;
+      end;
+      end;
+end;
 else print("Globals: getgenv().topart = false")
 end; -- if getgenv().topart is true
 
@@ -1312,7 +1312,7 @@ _G.lightskyblue = Color3.new(0.53, 0.81, 0.98)
 _G.lightslategray = Color3.new(0.47, 0.53, 0.6)
 _G.lightsteelblue = Color3.new(0.69, 0.77, 0.87)
 _G.lightyellow = Color3.new(1, 1, 0.88)
-     else 
+ else 
 print("Globals: getgenv().kolors = false")
 end;
 -- [[ END OF KOLORS ]] --
