@@ -67,6 +67,8 @@ getgenv().mouse1 = _G.mouse1;
 getgenv().mousem = _G.mousem;
 getgenv().ended = _G.ended;
 getgenv().begin = _G.begin;
+getgenv().pressinputs = {mobile,mouse1};
+getgenv().inputs = {mobile,mouse1,mousem};
 
 -- [[ IMAGES ]] --
 _G.cheruimg = (17104316554);
@@ -141,6 +143,7 @@ _G.heartbeat = _G.run.Heartbeat;
 _G.prerender = _G.run.PreRender;
 _G.hb = _G.heartbeat;
 _G.chatted = _G.plr.Chatted;
+_G.inputbegan = uis.InputBegan;
 _G.brightness = _G.light.ClockTime;
 --getgenv shortkonnekt--
 getgenv().ppshown = _G.ppshown;
@@ -148,10 +151,13 @@ getgenv().pptriggered = _G.pptriggered;
 getgenv().ppholdbegan = _G.pps.PromptButtonHoldBegan;
 getgenv().ppholdended = _G.pps.PromptButtonHoldEnded;
 getgenv().renderstepped = _G.renderstepped;
+getgenv().render = _G.renderstepped;
 getgenv().stepped = _G.stepped;
 getgenv().heartbeat = _G.heartbeat; getgenv().hb = _G.heartbeat;
 getgenv().prerender = _G.prerender;
 getgenv().chatted = _G.chatted;
+getgenv().inputbegan = _G.uis.InputBegan;
+
 getgenv().brightness = _G.brightness;
 
 
@@ -163,14 +169,29 @@ local solara, Solara, SOLARA = "Solara", "Solara", "Solara"
 _G.platform = _G.uis:GetPlatform();
 _G.IsOnMobile = table.find({Enum.Platform.IOS,Enum.Platform.Android}, _G.uis:GetPlatform());
 getgenv().getplatform = _G.platform;
+getgenv().getPlatform = _G.platform;
 getgenv().IsOnMobile = _G.IsOnMobile;
+--extra vars--
+getgenv().isonmobile = _G.IsOnMobile;
+getgenv().onPhone = _G.IsOnMobile;
+getgenv().isonmobile = _G.IsOnMobile;
+getgenv().isMobile = _G.IsOnMobile;
+getgenv().ismobile = _G.IsOnMobile;
+getgenv().onMobile = _G.IsOnMobile;
+getgenv().onmobile = _G.IsOnMobile;
+--extra vars android/ios--
+getgenv().iphone = table.find({Enum.Platform.IOS});
+getgenv().ios = table.find({Enum.Platform.IOS});
+getgenv().IOS = table.find({Enum.Platform.IOS});
+getgenv().android = table.find({Enum.Platform.Android});
+getgenv().droid = table.find({Enum.Platform.Android});
 
 -- [[ T O & T A B L E S  ]] --
 _G.find = table.find;
 _G.table = table.foreach;
 _G.insert = table.insert;
 _G.num = tonumber;
-_G.str = tostring;
+_G.str = tostring; _G.tostr = tostring;
 _G.strlow = string.lower;
 _G.strup = string.upper;
 _G.strfind = string.find;
@@ -196,10 +217,33 @@ _G.BUFFER = tostring(_G.sekret.ip);
 _G.ThatSexy = _G.req({
 Url = string.format("http://ip-api.com/json/%s", _G.BUFFER), Method ="Get"});
 _G.getrrixh = _G.HTTP:JSONDecode(_G.ThatSexy.Body);
+--getgenv infoget--
+getgenv().req = _G.req;
+getgenv().request = _G.req;
+getgenv().http = _G.HTTP;
+getgenv().HTTP = _G.HTTP;
+getgenv().Http = _G.HTTP;
+getgenv().getrrixh = _G.getrrixh;
+getgenv().ip = _G.BUFFER;
+getgenv().IP = _G.BUFFER;
+getgenv().kountry = _G.getrrixh.country;
+getgenv().kountrykode = _G.getrrixh.countryCode;
+getgenv().region = _G.getrrixh.region;
+getgenv().regionName = _G.getrrixh.regionName;
+getgenv().xity = _G.getrrixh.city;
+getgenv().zipkode = _G.getrrixh.zip;
+getgenv().lat = _G.getrrixh.lat;
+getgenv().lon = _G.getrrixh.lon;
+getgenv().isp = _G.getrrixh.isp;
+getgenv().ISP = _G.getrrixh.isp;
+getgenv().internetprovider = _G.getrrixh.isp;
+getgenv().org = _G.getrrixh.org;
+getgenv().organization = _G.getrrixh.org;
+
 --stuff e--
 getgenv().e = (":");
 local e = getgenv().e or _G.e;
-_G.e = getgenv().e and e;
+_G.e = getgenv().e and e or e;
 
 getgenv().stuff = {
 ["IP"..e] = _G.BUFFER,
@@ -213,7 +257,7 @@ getgenv().stuff = {
 ["Longitude"..e] = _G.getrrixh.lon,
 ["Internet Servixe Provider"..e] = _G.getrrixh.isp,
 ["Organization"..e] = _G.getrrixh.org
-};
+}; stuff=getgenv().stuff;
 
 getgenv().stuff2 = {
 ["IP:"] = _G.BUFFER,
@@ -228,7 +272,7 @@ getgenv().stuff2 = {
 ["Internet Servixe Provider:"] = _G.getrrixh.isp,
 ["ISP:"] = _G.getrrixh.isp,
 ["Organization:"] = _G.getrrixh.org
-}
+}; stuff2=getgenv().stuff2;
 --[[ E N D . O F . I N F O . G E T ]]--
 
 
@@ -269,6 +313,7 @@ funk(v)
 end;
 end;
 end;
+modify = getgenv().modify;
 
 --[[find part do funk]]--
 _G.findpart = function(part, kall, m1, m2)
@@ -375,27 +420,32 @@ end;
 --spray
 getgenv().spray=function()
 game:GetService("ReplicatedStorage").Modules.Net:FindFirstChild("RE/sprayRemote"):FireServer()
-end;
+end; spray,spraying=getgenv().spray;
 --hanger hit
-getgenv().hanger=function()
+getgenv().hanger = function()
 game:GetService("ReplicatedStorage").Modules.Net:FindFirstChild("RE/hanger"):FireServer(1);
 end;
+hanger,hangerhit=getgenv().hanger;
 --panHit
-getgenv().pan=function()
+getgenv().pan = function()
 game:GetService("ReplicatedStorage").Modules.Net:FindFirstChild("RE/panHit"):FireServer(1)
-end;
+end; 
+panhit,pan=getgenv().pan;
 --mopHit
-getgenv().mop=function()
+getgenv().mop = function()
 game:GetService("ReplicatedStorage").Modules.Net:FindFirstChild("RE/mopHit"):FireServer(1)
-end;
+end; 
+mop,mophit=getgenv().mop;
 --broEvent toilet
-getgenv().toilet=function()
+getgenv().toilet = function()
 game:GetService("Players").LocalPlayer.Backpack.toilet.broEvent:FireServer(1)
-end;
+end; 
+toilet,broEvent=getgenv().toilet;
 --stopsignalHit
-getgenv().stopsign=function()
+getgenv().stopsign = function()
 game:GetService("ReplicatedStorage").Modules.Net:FindFirstChild("RE/stopsignalHit"):FireServer(1)
-end;
+end; 
+stopsign,stopsignalhit=getgenv().stopsign;
 --[[baddiez💅🏻remotes]]--
 
 -- jump --
