@@ -194,6 +194,7 @@ _G.ThatSexy = _G.req({
 Url = string.format("http://ip-api.com/json/%s", _G.BUFFER), Method ="Get"});
 _G.getrrixh = _G.HTTP:JSONDecode(_G.ThatSexy.Body);
 --getgenv infoget--
+--[[
 getgenv().req = _G.req;
 getgenv().request = _G.req;
 getgenv().http = _G.HTTP;
@@ -215,6 +216,7 @@ getgenv().ISP = _G.getrrixh.isp;
 getgenv().internetprovider = _G.getrrixh.isp;
 getgenv().org = _G.getrrixh.org;
 getgenv().organization = _G.getrrixh.org;
+]]--
 
 --stuff e--
 getgenv().e = (":");
