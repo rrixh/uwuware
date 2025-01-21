@@ -30,7 +30,7 @@ _G.username = _G.plr.Name;
 _G.display = _G.plr.DisplayName;
 _G.displayname = _G.plr.DisplayName;
 _G.gplrs = _G.plrs:GetPlayers();
-_G.char = _G.plr:FindFirstChild("Character") or _G.plr.CharacterAdded:Wait();
+_G.char = _G.plr.Character
 _G.hum = _G.char:FindFirstChild'Humanoid';
 _G.hrp = _G.char:FindFirstChild'HumanoidRootPart';
 _G.health = _G.hum.Health;
@@ -145,6 +145,15 @@ _G.strlow = string.lower;
 _G.strup = string.upper;
 _G.strfind = string.find;
 _G.strformat = string.format;
+_G.strsub = string.sub;
+_G.strchar = string.char;
+_G.strbyte = string.byte;
+_G.strlen = string.len;
+_G.strrep = string.rep;
+_G.strgsub = string.gsub;
+_G.strmatch = string.match;
+_G.strreverse = string.reverse;
+
 
 --[[info get]]--
 _G.req = http_request or request or HttpPost or syn.request;
@@ -203,6 +212,7 @@ getgenv().stuff2 = {
 _G.rigtype = function(rig)
 return game.Players.LocalPlayer.Character:FindFirstChildOfClass('Humanoid').RigType == Enum.HumanoidRigType[rig]
 end;
+getgenv().rigtype = _G.rigtype;
 
 --[[ FOR HOOKING TIngs ]]--
 if getgenv().hook and _G.exp ~= SOLARA then
@@ -215,7 +225,7 @@ end; -- if getgenv().hook true (no solara)
 
 -- [[ M O D I F Y WORKSPAXE ]] --
 _G.modify = function(property, funk)
-for i,v in workspace:GetDescendants() do
+for i,v in game:GetService("Workspace"):GetDescendants() do
 if(v:IsA(tostring(property)))then
 funk(v)
 end;
@@ -1314,3 +1324,4 @@ else
 print("Globals: getgenv().kolors = false")
 end;
 -- [[ END OF KOLORS ]] --
+print"Globals Loaded✅";
