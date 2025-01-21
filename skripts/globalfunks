@@ -4,7 +4,6 @@ _G.kh3we = ('kh3we');
 _G.xheru = ('cherussii');
 _G.hg = ('smileszbaby');
 _G.kookie = ('sii_uuu7');
-
 -- [[ my soxials ]] --
 _G.rbxlink = ("https://www.roblox.com/users/3001347724/profile")
 _G.diskordlink = ("https://discordapp.com/users/1284685023630458963")
@@ -169,17 +168,7 @@ local solara, Solara, SOLARA = "Solara", "Solara", "Solara"
 _G.platform = _G.uis:GetPlatform();
 _G.IsOnMobile = table.find({Enum.Platform.IOS,Enum.Platform.Android}, _G.uis:GetPlatform());
 getgenv().getplatform = _G.platform;
-getgenv().getPlatform = _G.platform;
 getgenv().IsOnMobile = _G.IsOnMobile;
---extra vars--
-getgenv().isonmobile = _G.IsOnMobile;
-getgenv().onPhone = _G.IsOnMobile;
-getgenv().isonmobile = _G.IsOnMobile;
-getgenv().isMobile = _G.IsOnMobile;
-getgenv().ismobile = _G.IsOnMobile;
-getgenv().onMobile = _G.IsOnMobile;
-getgenv().onmobile = _G.IsOnMobile;
---extra vars android/ios--
 
 -- [[ T O & T A B L E S  ]] --
 _G.find = table.find;
@@ -191,14 +180,6 @@ _G.strlow = string.lower;
 _G.strup = string.upper;
 _G.strfind = string.find;
 _G.strformat = string.format;
-_G.strsub = string.sub;
-_G.strchar = string.char;
-_G.strbyte = string.byte;
-_G.strlen = string.len;
-_G.strrep = string.rep;
-_G.strgsub = string.gsub;
-_G.strmatch = string.match;
-_G.strreverse = string.reverse;
 
 
 --[[info get]]--
@@ -238,7 +219,7 @@ getgenv().organization = _G.getrrixh.org;
 --stuff e--
 getgenv().e = (":");
 local e = getgenv().e or _G.e;
-_G.e = getgenv().e and e or e;
+_G.e = getgenv().e and e;
 
 getgenv().stuff = {
 ["IP"..e] = _G.BUFFER,
@@ -252,7 +233,7 @@ getgenv().stuff = {
 ["Longitude"..e] = _G.getrrixh.lon,
 ["Internet Servixe Provider"..e] = _G.getrrixh.isp,
 ["Organization"..e] = _G.getrrixh.org
-}; stuff=getgenv().stuff;
+};
 
 getgenv().stuff2 = {
 ["IP:"] = _G.BUFFER,
@@ -267,7 +248,7 @@ getgenv().stuff2 = {
 ["Internet Servixe Provider:"] = _G.getrrixh.isp,
 ["ISP:"] = _G.getrrixh.isp,
 ["Organization:"] = _G.getrrixh.org
-}; stuff2=getgenv().stuff2;
+};
 --[[ E N D . O F . I N F O . G E T ]]--
 
 
