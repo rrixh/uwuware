@@ -61,6 +61,12 @@ _G.mouse1 = Enum.UserInputType.MouseButton1;
 _G.mousem = Enum.UserInputType.MouseMovement;
 _G.ended = Enum.UserInputState.End;
 _G.begin = Enum.UserInputState.Begin;
+--getgenv input--
+getgenv().mobile = _G.mobile;
+getgenv().mouse1 = _G.mouse1;
+getgenv().mousem = _G.mousem;
+getgenv().ended = _G.ended;
+getgenv().begin = _G.begin;
 
 -- [[ IMAGES ]] --
 _G.cheruimg = (17104316554);
@@ -99,18 +105,30 @@ getgenv().krossboogie = _G.krossboogie;
 
 --[[ invalids(10) ]]--
 _G.invalid = {"ggerrtasalt", "", " ", "  ", "   ", "    ", "     ", "      ", "       ", "        ", "         ", "          "}
+getgenv().invalid = _G.invalid;
 
 --[[ servixes ]]--
-_G.run = lulas:GetService'RunService';
-_G.rep = lulas:GetService'ReplicatedStorage';
-_G.vim = lulas:GetService'VirtualInputManager';
-_G.uis = lulas:GetService'UserInputService';
-_G.w = lulas:GetService'Workspace';
+_G.run = game:GetService'RunService';
+_G.rep = game:GetService'ReplicatedStorage';
+_G.vim = game:GetService'VirtualInputManager';
+_G.uis = game:GetService'UserInputService';
+_G.w = game:GetService'Workspace';
 _G.pps = game:GetService'ProximityPromptService';
 _G.tps = game:GetService'TeleportService';
 _G.sgui = game:GetService'StarterGui';
 _G.light = game:GetService'Lighting'; -- light:14, dark:0
 _G.debris = game:GetService'Debris';
+--getgenv servixe--
+getgenv().run = _G.run;
+getgenv().rep = _G.rep;
+getgenv().vim = _G.vim;
+getgenv().uis = _G.uis; getgenv().UIS = _G.uis;
+getgenv().ws = _G.w;
+getgenv().pps = _G.pps;
+getgenv().tps = _G.tps;
+getgenv().sgui = _G.sgui;
+getgenv().light = _G.light; getgenv().lighting = _G.light;
+getgenv().debris = _G.debris;
 
 -- [[ SHORTKUT KONNEKTIONS ]] --
 _G.ppshown = _G.pps.PromptShown;
@@ -124,16 +142,28 @@ _G.prerender = _G.run.PreRender;
 _G.hb = _G.heartbeat;
 _G.chatted = _G.plr.Chatted;
 _G.brightness = _G.light.ClockTime;
+--getgenv shortkonnekt--
+getgenv().ppshown = _G.ppshown;
+getgenv().pptriggered = _G.pptriggered;
+getgenv().ppholdbegan = _G.pps.PromptButtonHoldBegan;
+getgenv().ppholdended = _G.pps.PromptButtonHoldEnded;
+getgenv().renderstepped = _G.renderstepped;
+getgenv().stepped = _G.stepped;
+getgenv().heartbeat = _G.heartbeat; getgenv().hb = _G.heartbeat;
+getgenv().prerender = _G.prerender;
+getgenv().chatted = _G.chatted;
+getgenv().brightness = _G.brightness;
+
 
 -- [[ EXEKUTORS ]] --
 local delta, Delta, DELTA = "Delta", "Delta", "Delta"
 local solara, Solara, SOLARA = "Solara", "Solara", "Solara"
 
 -- [[ get devixe ]] --
-if getgenv().devixe then
 _G.platform = _G.uis:GetPlatform();
 _G.IsOnMobile = table.find({Enum.Platform.IOS,Enum.Platform.Android}, _G.uis:GetPlatform());
-end;
+getgenv().getplatform = _G.platform;
+getgenv().IsOnMobile = _G.IsOnMobile;
 
 -- [[ T O & T A B L E S  ]] --
 _G.find = table.find;
