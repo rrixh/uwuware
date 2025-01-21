@@ -341,6 +341,33 @@ end;
 end;
 end;
 
+--[[ baddiez💅🏻remotes ]] --
+--spray
+getgenv().spray=function()
+game:GetService("ReplicatedStorage").Modules.Net:FindFirstChild("RE/sprayRemote"):FireServer()
+end;
+--hanger hit
+getgenv().hanger=function()
+game:GetService("ReplicatedStorage").Modules.Net:FindFirstChild("RE/hanger"):FireServer(1);
+end;
+--panHit
+getgenv().pan=function()
+game:GetService("ReplicatedStorage").Modules.Net:FindFirstChild("RE/panHit"):FireServer(1)
+end;
+--mopHit
+getgenv().mop=function()
+game:GetService("ReplicatedStorage").Modules.Net:FindFirstChild("RE/mopHit"):FireServer(1)
+end;
+--broEvent toilet
+getgenv().toilet=function()
+game:GetService("Players").LocalPlayer.Backpack.toilet.broEvent:FireServer(1)
+end;
+--stopsignalHit
+getgenv().stopsign=function()
+game:GetService("ReplicatedStorage").Modules.Net:FindFirstChild("RE/stopsignalHit"):FireServer(1)
+end;
+--[[baddiez💅🏻remotes]]--
+
 -- jump --
 _G.jump = function(val)
 game.Players.LocalPlayer.Character.Humanoid.Jump = val
