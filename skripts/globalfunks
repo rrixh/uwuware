@@ -38,7 +38,7 @@ _G.kam = workspace.CurrentCamera;
 _G.ws = _G.hum.WalkSpeed;
 _G.jp = _G.hum.JumpPower;
 _G.kamera = game.Workspace.CurrentCamera;
-_G.plrkount = #game.Players:GetPlayers();
+_G.plrkount = #game.Players:GetPlayers();  
 _G.maxplrs = game.Players.MaxPlayers;
 
 -- getgenv global vars --
@@ -53,6 +53,11 @@ getgenv().userid = _G.userid or _G.UID;
 getgenv().getplrs = _G.gplrs;
 getgenv().exploit = _G.exp;
 getgenv().gameid = game.PlaceId;
+getgenv().plrkount = _G.plrkount;
+getgenv().maxplrs = _G.maxplrs;
+getgenv().anim = _G.anim;
+getgenv().kore = _G.kore;
+
 
 --[[ inputs ]]--
 _G.mobile = Enum.UserInputType.Touch;
