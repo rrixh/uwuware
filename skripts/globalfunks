@@ -102,11 +102,12 @@ nekogirlsfull = 129450989114634,
 animekatgirl = 18817519330,
 turkey = 124622552375747,
 xmastree = 83624080780174,
+xmas = 83624080780174,
 halloween = 111324508198120,
 valentines = 99511253993554,
 newyears = 140472834812860,
 stpatrixks = 110841053352535,
-sgx = 92354585685421,
+sgx = 92354585685421, 
 }
 
 -- [[ ANIMATION IDS ]] --
@@ -509,7 +510,7 @@ _G.note = function(txt, dur)
 _G.RRixh = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/skripts/AkaliNotif", true))();
 _G.Notify = _G.RRixh.Notify; _G.Notify({Description = ("Lollypop Hub 🍭\n")..txt, Duration = dur or 7}); 
 end;
-
+ 
 _G.rnote = function(txt, dur)
 _G.RRixh = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/skripts/AkaliNotif", true))();
 _G.Notify = _G.RRixh.Notify; _G.Notify({Description = txt, Duration = dur or 7}); 
