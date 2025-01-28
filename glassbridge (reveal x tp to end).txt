@@ -1,0 +1,52 @@
+getgenv().rnote = function(txt, dur)
+_G.RRixh = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/skripts/AkaliNotif", true))();
+_G.Notify = _G.RRixh.Notify; _G.Notify({Description = txt, Duration = dur or 10}); 
+end;
+if getgenv().glassbridge then rnote("already loaded dumbass", 3)
+return end;
+
+if Workspace:WaitForChild("obby"):GetChildren()[1] == nil then
+rnote"waiting for game to load 👺..."
+end;
+
+repeat task.wait() until Workspace:WaitForChild("obby"):GetChildren()[1] ~= nil;
+
+getgenv().glassbridge=true;
+local uwuRRIXH = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/mobileware", true))();
+local uwu = uwuRRIXH:CreateWindow("Glass Bridge")
+local material = ("Wood")
+local finish, tile, glassParts, finisharea;
+
+uwu:AddButton({text = "Reveal Korrect Path", callback = function()
+for i = 1, 30 do
+tile = workspace:WaitForChild("obby"):GetChildren()[i];
+glassParts = tile:WaitForChild("glassParts"):GetChildren();
+--mark tiles
+    for _, part in ipairs(glassParts) do
+part.Transparency = 0;
+part.Material = Enum.Material[material]
+        if part.Name == "leftFakeGlass" or part.Name == "rightFakeGlass" then
+ part.BrickColor = BrickColor.new("Really red")
+else
+part.BrickColor = BrickColor.new("Lime green")
+        end
+    end
+   end;
+end})
+
+local player = game.Players.LocalPlayer;
+
+local function teleportToEnd()
+    local finish = game:GetService("Workspace"):WaitForChild("finish"):FindFirstChild("finishLineArea")
+    if finish and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then        player.Character.HumanoidRootPart.CFrame = finish.CFrame
+    end
+end
+
+uwu:AddButton({text = "Tp to end",
+callback = teleportToEnd})
+
+player.CharacterAdded:connect(teleportToEnd)
+
+uwu:AddLabel({text ="RBX @lulaslollipop 🍭"})
+uwu:AddLabel({text ="Diskord: @bommunity"})
+uwuRRIXH:Init();
