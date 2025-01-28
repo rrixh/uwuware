@@ -1,3 +1,7 @@
+loadstring(game:HttpGet('https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/skripts/globaLS', true))();
+local uwuRRIXH = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/mobileware", true))();
+local uwu = uwuRRIXH:CreateWindow("list")
+
 local finish, tile, glassParts;
 
 uwu:AddButton({text = "Reveal Korrect Path", callback = function()
