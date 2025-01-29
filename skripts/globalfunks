@@ -30,7 +30,7 @@ _G.display = _G.plr.DisplayName;
 _G.displayname = _G.plr.DisplayName;
 _G.gplrs = _G.plrs:GetPlayers();
 _G.char = _G.plr.Character
-_G.hum = _G.char:FindFirstChild'Humanoid';
+_G.hum = _G.char:FindFirstChildOfClass'Humanoid';
 _G.hrp = _G.char:FindFirstChild'HumanoidRootPart';
 _G.health = _G.hum.Health;
 _G.anim = game.Players.LocalPlayer.Character.Animate;
@@ -45,7 +45,7 @@ _G.maxplrs = game.Players.MaxPlayers;
 getgenv().plr = _G.plr;
 getgenv().plrs = _G.plrs;
 getgenv().char = _G.char;
-getgenv().hum = _G.char:FindFirstChild'Humanoid';
+getgenv().hum = _G.char:FindFirstChildOfClass'Humanoid';
 getgenv().hrp = _G.char:FindFirstChild'HumanoidRootPart';
 getgenv().user = _G.user;
 getgenv().display = _G.display;
@@ -267,13 +267,6 @@ end;
 getgenv().rigtype = _G.rigtype;
 
 --[[ FOR HOOKING TIngs ]]--
-if getgenv().hook and _G.exp ~= SOLARA then
-_G.rawmt = getrawmetatable(game);
-_G.method = getnamecallmethod();
-_G.server, _G.klient, _G.invoke = ("FireServer"), ("FireClient"), ("InvokeServer");
-else 
-print("Globals: getgenv().hook = false")
-end; -- if getgenv().hook true (no solara)
 
 -- [[ M O D I F Y WORKSPAXE ]] --
 _G.modify = function(property, funk)
@@ -585,19 +578,6 @@ _G.button2("Title Here", "Text Here", 15, "Button1Text", "Button2Text", function
 ]]--
 --[[end button2 funk]]--
 
-
-
--- [[ perform aktion on player ]] --
-_G.doPlr = function(playerName, kallbaxk)
-spawn(function()
-local player = game.Players:FindFirstChild(playerName);
-if player then
-kallbaxk(player)
-else
-_G.rnote("kant seem to find this nigga '" ..playerName.. "'")
-end;
-end); -- spawn the funk faster
-end;
 
 --[[ GET NEAREST BODY PART ]]--
 if getgenv().nearestbodypart and _G.exp ~= SOLARA then
