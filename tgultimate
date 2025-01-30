@@ -1,0 +1,44 @@
+local uwuRRIXH = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/mobileware", true))();
+loadstring(game:HttpGet('https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/skripts/globaLS', true))();
+local uwu = uwuRRIXH:CreateWindow("Tile Game Ultimate")
+
+uwu:AddButton({text = "Reveal Korrect Path", callback = function()
+for i = 1, 68 do
+    local pane = workspace.Panes:GetChildren()[i]
+    if pane and pane:FindFirstChild("Panel") and pane.Panel:FindFirstChild("HitPart") then
+        local hitPart = pane.Panel.HitPart
+        hitPart.Transparency = 0.3
+hitPart.Material = Enum.Material.Wood
+        if hitPart:FindFirstChild("TouchInterest") then
+hitPart.BrickColor = BrickColor.new("Really red")
+        else
+            hitPart.BrickColor = BrickColor.new("Lime green")
+        end
+    end
+end
+end})
+
+local godmode = false
+
+uwu:AddToggle({text = "Godmode",
+callback = function()
+        godmode = not godmode
+        for i = 1, 68 do
+            local pane = workspace.Panes:GetChildren()[i]
+            if pane and pane:FindFirstChild("Panel") and pane.Panel:FindFirstChild("HitPart") then
+     local hitPart = (pane.Panel.HitPart);
+             if hitPart:FindFirstChild("TouchInterest") then
+        hitPart.CanTouch = not godmode
+                end
+            end
+        end
+end})
+
+
+plr.CharacterAdded:connect(function()
+task.wait()
+end)
+
+uwu:AddLabel({text ="RBX @lulaslollipop 🍭"})
+uwu:AddLabel({text ="Diskord: @bommunity"})
+uwuRRIXH:Init();
