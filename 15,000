@@ -2,6 +2,7 @@ loadstring(game:HttpGet('https://raw.githubusercontent.com/rrixh/uwuware/refs/he
 local uwuRRIXH = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/mobileware", true))();
 local uwu = uwuRRIXH:CreateWindow("$15,000 Glass Bridge")
 
+local farmTilesSpeed = .35
 local autogift = false;
 local autofarm = false;
 
@@ -14,7 +15,7 @@ local red = Workspace:WaitForChild("Bridge").RedParts[tostring(i)]
 --green.BrickColor = BrickColor.new("Lime green");
 --red.BrickColor = BrickColor.new("Really red");
 hrp.CFrame=CFrame.new(green.Position) * CFrame.new(0,3,0)
-task.wait(.4)
+task.wait(farmTilesSpeed)
 end;
 task.wait()
 local finish = workspace.Chest.CashDropper
@@ -39,8 +40,17 @@ game:GetService("ReplicatedStorage").ClaimGift:InvokeServer(game:GetService("Pla
      end;
 end;
 
+local revealpath=function()
+for i=1,55 do
+local green = Workspace:WaitForChild("Bridge").GreenParts[tostring(i)]
+local red = Workspace:WaitForChild("Bridge").RedParts[tostring(i)]
+green.BrickColor = BrickColor.new("Lime green");
+red.BrickColor = BrickColor.new("Really red");
+   end;
+end;
+
 uwu:AddToggle({text = "Auto Klaim Gifts", callback = function()
-autogift = not autogift;
+autogift=not autogift;
 if(autogift)then
 farmGifts()
 else
@@ -49,7 +59,7 @@ end;
 end})
 
 uwu:AddToggle({text="Autofarm", callback=function()
-autofarm =not autofarm;
+autofarm=not autofarm;
 if(autofarm)then
 farmTiles()
    else
@@ -57,14 +67,7 @@ return
       end;
 end})
 
-uwu:AddButton({text="Reveal Korrect Path", callback=function()
-for i=1,55 do
-local green = Workspace:WaitForChild("Bridge").GreenParts[tostring(i)]
-local red = Workspace:WaitForChild("Bridge").RedParts[tostring(i)]
-green.BrickColor = BrickColor.new("Lime green");
-red.BrickColor = BrickColor.new("Really red");
-   end;
-end})
+uwu:AddButton({text="Reveal Korrect Path", callback = revealpath})
 
 plr.CharacterAdded:connect(function()
 task.wait(1.11)
