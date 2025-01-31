@@ -1,0 +1,13 @@
+-- The Glass Bridge
+loadstring(game:HttpGet('https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/skripts/globaLS', true))();
+
+--instantwin
+_G.touxh(Workspace.GameLogicHandler.FinishArea)
+
+--revealpath
+local glass = Workspace.GlassBridges.CorrectGlass:GetChildren();
+for i,v in ipairs(glass) do
+v.Transparency = .5
+v.BrickColor=BrickColor.new("Lime green")
+hrp.CFrame=CFrame.new(v.Position)
+end;
