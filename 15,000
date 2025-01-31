@@ -1,0 +1,68 @@
+loadstring(game:HttpGet('https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/skripts/globaLS', true))();
+local uwuRRIXH = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/mobileware", true))();
+local uwu = uwuRRIXH:CreateWindow("$15,000 GlassBridge")
+
+local autogift = false;
+local autofarm = false;
+
+local farmTiles=function()
+while(autofarm)do wait()
+for i = 1,55 do
+if not autofarm then return end;
+local green = Workspace:WaitForChild("Bridge").GreenParts[tostring(i)]
+local red = Workspace:WaitForChild("Bridge").RedParts[tostring(i)]
+green.BrickColor = BrickColor.new("Lime green");
+red.BrickColor = BrickColor.new("Really red");
+hrp.CFrame=CFrame.new(green.Position) * CFrame.new(0,3,0)
+task.wait(.4)
+end;
+task.wait()
+local finish = workspace.Chest.CashDropper
+hrp.CFrame = CFrame.new(finish.Position);
+task.wait(2.33)
+for i,v in workspace:GetDescendants() do
+if v:IsA"ProximityPrompt" then
+if v.ActionText=="Return" then
+fireproximityprompt(v)
+            end
+        end
+        end
+        end
+end;
+
+local farmGifts = function()
+while(autogift)do task.wait(.5)
+for gift=1,10 do
+if not autogift then return end;
+game:GetService("ReplicatedStorage").ClaimGift:InvokeServer(game:GetService("Players").LocalPlayer.PlayerGui.Popups.GiftPopup.GiftsContainer:FindFirstChild(tostring(gift)))
+     end;
+     end;
+end;
+
+uwu:AddToggle({text = "Auto Klaim Gifts", callback = function()
+autogift = not autogift;
+if(autogift)then
+farmGifts()
+else
+return
+end;
+end})
+
+uwu:AddToggle({text="Autofarm", callback=function()
+autofarm =not autofarm;
+if(autofarm)then
+farmTiles()
+   else
+return
+      end;
+end})
+
+plr.CharacterAdded:connect(function()
+task.wait(1.11)
+if autofarm then farmTiles(); end;
+if autogift then farmGifts(); end;
+end)
+
+uwu:AddLabel({text ="RBX @lulaslollipop 🍭"})
+uwu:AddLabel({text ="Diskord: @bommunity"})
+uwuRRIXH:Init();
