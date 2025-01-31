@@ -1,6 +1,6 @@
 loadstring(game:HttpGet('https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/skripts/globaLS', true))();
 local uwuRRIXH = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/mobileware", true))();
-local uwu = uwuRRIXH:CreateWindow("$15,000 GlassBridge")
+local uwu = uwuRRIXH:CreateWindow("$15,000 Glass Bridge")
 
 local autogift = false;
 local autofarm = false;
@@ -11,8 +11,8 @@ for i = 1,55 do
 if not autofarm then return end;
 local green = Workspace:WaitForChild("Bridge").GreenParts[tostring(i)]
 local red = Workspace:WaitForChild("Bridge").RedParts[tostring(i)]
-green.BrickColor = BrickColor.new("Lime green");
-red.BrickColor = BrickColor.new("Really red");
+--green.BrickColor = BrickColor.new("Lime green");
+--red.BrickColor = BrickColor.new("Really red");
 hrp.CFrame=CFrame.new(green.Position) * CFrame.new(0,3,0)
 task.wait(.4)
 end;
@@ -55,6 +55,15 @@ farmTiles()
    else
 return
       end;
+end})
+
+uwu:AddButton({text="Reveal Korrect Path", callback=function()
+for i=1,55 do
+local green = Workspace:WaitForChild("Bridge").GreenParts[tostring(i)]
+local red = Workspace:WaitForChild("Bridge").RedParts[tostring(i)]
+green.BrickColor = BrickColor.new("Lime green");
+red.BrickColor = BrickColor.new("Really red");
+   end;
 end})
 
 plr.CharacterAdded:connect(function()
