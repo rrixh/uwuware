@@ -494,7 +494,7 @@ task.wait(); targetPlayer = nil;
 end;
 end;
 return nil;
-end;
+end; getgenv().findTargetPlr = _G.findTargetPlr
 
 --[[ AKALI NOTIF ]]--
 _G.note = function(txt, dur)
@@ -544,6 +544,7 @@ elseif answer == B2text then
 if func2 then func2() else _G.rnote("No funktion set for:\n'"..B2text.."'"); end;
 end;
 end;
+getgenv().button2=_G.button2;
 
 local troll = (7635712200);
 local lollypop = (17767487755);
@@ -664,6 +665,10 @@ getgenv().tpto = function(id)
 game:GetService("TeleportService"):Teleport(id,game:GetService("Players").LocalPlayer)
 end;
 
+--do nothing--
+getgenv().nothing=function()end;
+getgenv().none=function()end;
+
 _G.bezier = function(t, p0, p1, p2)
 local l1 = p0:Lerp(p1, t)
 local l2 = p1:Lerp(p2, t)
@@ -696,6 +701,7 @@ firetouchinterest(_G.hrp, part, 0)
 if duration then task.wait(duration) else task.wait(.1) end;
 firetouchinterest(_G.hrp, part, 1)
 end;
+getgenv().touxh=_G.touxh;
 
 --tp
 _G.tp = function(part, duration)
