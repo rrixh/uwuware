@@ -1,4 +1,14 @@
 loadstring(game:HttpGet('https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/skripts/globaLS', true))();
+local tpgame=function()
+tpto(117912363638950)
+end;
+
+if(gameid~=117912363638950)then
+_G.button2("DAMN! wrong game", "Want to teleport to '$15,000 Glass Bridge (Squid Game)'?", 9e9, "Go", "No thanks", tpgame, none)
+return
+end;
+
+
 local uwuRRIXH = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/mobileware", true))();
 local uwu = uwuRRIXH:CreateWindow("$15,000 Glass Bridge")
 
