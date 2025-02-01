@@ -1,13 +1,28 @@
--- The Glass Bridge
 loadstring(game:HttpGet('https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/skripts/globaLS', true))();
+local tpgame=function()
+tpto(8032701413)
+end;
 
---instantwin
+if(gameid~=8032701413)then
+_G.button2("DAMN! wrong game", "Want to teleport to 'The Glass Bridge'?", 9e9, "Go", "No thanks", tpgame, none)
+return
+end;
+
+local uwuRRIXH = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/mobileware", true))();
+local uwu = uwuRRIXH:CreateWindow("The Glass Bridge")
+
+uwu:AddButton({text = "Instant Win", callback=function()
 _G.touxh(Workspace.GameLogicHandler.FinishArea)
+end})
 
---revealpath
-local glass = Workspace.GlassBridges.CorrectGlass:GetChildren();
+uwu:AddButton({text = "Reveal Korrect Path", callback=function()
+glass = Workspace.GlassBridges.CorrectGlass:GetChildren();
 for i,v in ipairs(glass) do
 v.Transparency = .5
 v.BrickColor=BrickColor.new("Lime green")
-hrp.CFrame=CFrame.new(v.Position)
-end;
+    end;
+end})
+
+uwu:AddLabel({text ="RBX @lulaslollipop 🍭"})
+uwu:AddLabel({text ="Diskord: @bommunity"})
+uwuRRIXH:Init();
