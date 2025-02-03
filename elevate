@@ -1,0 +1,66 @@
+loadstring(game:HttpGet('https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/skripts/globaLS', true))();
+wait()
+local uwuRRIXH = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/mobileware", true))(); 
+local uwu = uwuRRIXH:CreateWindow("The Obby Elevator")
+local workspace = game:GetService("Workspace");
+
+local function tpChest()
+    local hrp = game.Players.LocalPlayer.Character:WaitForChild("HumanoidRootPart")
+    local treasure = game.Workspace:FindFirstChild("treasure")
+    if treasure and hrp then
+        hrp.CFrame = CFrame.new(treasure.Position) * CFrame.new(0, 1.5, 0)
+    else 
+        return -- no chest found or claimed
+    end
+end
+
+local tpChest2 = function()
+    local hrp = game.Players.LocalPlayer.Character:WaitForChild("HumanoidRootPart")
+    if workspace:FindFirstChild("treasure") then
+        local ogpos = hrp.CFrame;
+        hrp.CFrame = CFrame.new(workspace.treasure.Position) * CFrame.new(0, 1, 0);
+        task.wait(.6)
+        hrp.CFrame = ogpos;
+    else
+        wait() _G.rnote("chest not found", 1.4)
+    end
+end;
+
+uwu:AddButton({text = "Instant Win", callback = tpChest2})
+
+local autowin = false;
+
+uwu:AddToggle({text = "Auto Win Rounds", callback = function(value)
+    autowin = value
+    while autowin do 
+        wait(.45)
+        tpChest();
+    end
+end})
+
+uwu:AddButton({text = "Reveal Path (glass bridge)", callback = function()
+if not workspace:FindFirstChild("map20") then _G.rnote("u are not on this map yet",1.3); return end
+    for i = 1, 95 do
+        local glass1 = workspace.map20:GetChildren()[i].Glass1
+        local glass2 = workspace.map20:GetChildren()[i].Glass2
+        if glass1 or glass2 then
+            if glass1:FindFirstChild("TouchInterest") or glass2:FindFirstChild("TouchInterest") then
+                glass1.BrickColor = BrickColor.new("Really red")
+                glass1.Transparency = 0;
+                glass2.BrickColor = BrickColor.new("Really red")
+                glass2.Transparency = 0
+            else
+                glass1.BrickColor = BrickColor.new("Lime green")
+                glass1.Transparency = 0
+                glass2.BrickColor = BrickColor.new("Lime green")
+                glass2.Transparency = 0
+            end
+        else
+  _G.rnote("map20 not found yet", 3)
+        end
+    end
+end})
+
+uwu:AddLabel({text ="RBX @lulaslollipop 🍭"}) 
+uwu:AddLabel({text ="Diskord: @bommunity"}) 
+uwuRRIXH:Init();
