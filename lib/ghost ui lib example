@@ -1,4 +1,7 @@
 ---Ghost Gui UI Library [SETUP]---
+-- kredits; made by GhostPlayer 
+-- similar to wizard ui but better
+
 loadstring(game:HttpGet('https://raw.githubusercontent.com/GhostPlayer352/UI-Library/refs/heads/main/Ghost%20Gui'))() game.CoreGui.GhostGui.MainFrame.Title.Text = ("gui title")
 
 local button, toggle, txtbox, switxh, label, switch = "TextButton", "Toogle", "TextBox", "Switch", "TextLabel", "Switch";
