@@ -1,8 +1,14 @@
+--  obby elevator (ghostui)
 loadstring(game:HttpGet('https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/skripts/globaLS', true))();
 wait()
-local uwuRRIXH = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/mobileware", true))(); 
-local uwu = uwuRRIXH:CreateWindow("The Obby Elevator")
+---Ghost Gui UI Library
+loadstring(game:HttpGet('https://raw.githubusercontent.com/GhostPlayer352/UI-Library/refs/heads/main/Ghost%20Gui'))(); game.CoreGui.GhostGui.MainFrame.Title.Text = ("The Obby Elevator")
+
 local workspace = game:GetService("Workspace");
+
+getgenv().gpcs=function(x)
+return x:GetPropertyChangedSignal("Text")
+end;
 
 local function tpChest()
     local hrp = game.Players.LocalPlayer.Character:WaitForChild("HumanoidRootPart")
@@ -10,11 +16,11 @@ local function tpChest()
     if treasure and hrp then
         hrp.CFrame = CFrame.new(treasure.Position) * CFrame.new(0, 1.5, 0)
     else 
-        return -- no chest found or claimed
+        return -- no xhest found or klaimed
     end
 end
 
-local tpChest2 = function()
+local tpChestAndBk = function()
     local hrp = game.Players.LocalPlayer.Character:WaitForChild("HumanoidRootPart")
     if workspace:FindFirstChild("treasure") then
         local ogpos = hrp.CFrame;
@@ -26,19 +32,30 @@ local tpChest2 = function()
     end
 end;
 
-uwu:AddButton({text = "Instant Win", callback = tpChest2})
-
-local autowin = false;
-
-uwu:AddToggle({text = "Auto Win Rounds", callback = function(value)
-    autowin = value
-    while autowin do 
-        wait(.45)
-        tpChest();
+AddContent("TextButton", "Instant Win", [[
+    local hrp = game.Players.LocalPlayer.Character:WaitForChild("HumanoidRootPart")
+    if workspace:FindFirstChild("treasure") then
+        local ogpos = hrp.CFrame;
+        hrp.CFrame = CFrame.new(workspace.treasure.Position) * CFrame.new(0, 1, 0);
+        task.wait(.6)
+        hrp.CFrame = ogpos;
+    else
+  wait() _G.rnote("game not started", 1.3)
     end
-end})
+]])
 
-uwu:AddButton({text = "Reveal Path (glass bridge)", callback = function()
+AddContent("Toogle", "Auto Win Rounds",[[
+wait(.45)
+    local hrp = game.Players.LocalPlayer.Character:WaitForChild("HumanoidRootPart")
+    local treasure = game.Workspace:FindFirstChild("treasure")
+    if treasure and hrp then
+        hrp.CFrame = CFrame.new(treasure.Position) * CFrame.new(0, 1.5, 0)
+    else 
+        return -- no xhest found
+    end;
+]])
+
+AddContent("TextButton", "Glass Bridge", [[
 if not workspace:FindFirstChild("map20") then _G.rnote("u are not on this map yet",1.3); return end
     for i = 1, 95 do
         local glass1 = workspace.map20:GetChildren()[i].Glass1
@@ -56,11 +73,15 @@ if not workspace:FindFirstChild("map20") then _G.rnote("u are not on this map ye
                 glass2.Transparency = 0
             end
         else
-  _G.rnote("map20 not found yet", 3)
+  _G.rnote("not in Glass Bridge yet", 1.3)
         end
-    end
-end})
+    end;
+]])
 
-uwu:AddLabel({text ="RBX @lulaslollipop 🍭"}) 
-uwu:AddLabel({text ="Diskord: @bommunity"}) 
-uwuRRIXH:Init();
+
+author = AddContent("TextLabel");
+author2 = AddContent("TextLabel");
+author.Text = "lulaslollipop 🍭"
+author2.Text = "Diskord @bommunity 🤖"
+
+x = Workspace.map20.Model.Glass1
