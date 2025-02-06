@@ -1,0 +1,42 @@
+---Ghost Gui UI Library [SETUP]---
+loadstring(game:HttpGet('https://raw.githubusercontent.com/GhostPlayer352/UI-Library/refs/heads/main/Ghost%20Gui'))() game.CoreGui.GhostGui.MainFrame.Title.Text = ("gui title")
+
+local button, toggle, txtbox, switxh, label, switch = "TextButton", "Toogle", "TextBox", "Switch", "TextLabel", "Switch";
+-----------
+getgenv().gpcs=function(x)
+return x:GetPropertyChangedSignal("Text")
+end;
+
+AddContent(button, "jump", [[
+game.Players.LocalPlayer.Character.Humanoid.Jump = true;
+]])
+
+WS = AddContent(txtbox, "speed");
+
+gpcs(WS):connect(function()
+game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = WS.Text;
+print(WS.Text);
+end)
+
+
+AddContent(toggle, "loop jumping",
+[[
+game.Players.LocalPlayer.Character.Humanoid.Jump = true
+]])
+
+AddContent(button, "dev konsole",
+[[
+game:GetService"StarterGui":SetCore("DevConsoleVisible",true)
+]])
+
+AddContent(switxh, "on/off switxh",
+[[
+print"on"
+]],
+[[
+print"off"
+]])
+
+
+owner = AddContent(label)
+owner.Text = "RBX: @lulaslollipop🍭"
