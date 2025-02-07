@@ -2,9 +2,7 @@
 -- kredits; made by GhostPlayer 
 -- similar to wizard ui but better
 
-loadstring(game:HttpGet('https://raw.githubusercontent.com/GhostPlayer352/UI-Library/refs/heads/main/Ghost%20Gui'))() game.CoreGui.GhostGui.MainFrame.Title.Text = ("gui title")
-
-local button, toggle, txtbox, switxh, label, switch = "TextButton", "Toogle", "TextBox", "Switch", "TextLabel", "Switch";
+loadstring(game:HttpGet('https://raw.githubusercontent.com/GhostPlayer352/UI-Library/refs/heads/main/Ghost%20Gui'))(); game.CoreGui.GhostGui.MainFrame.Title.Text = ("GhostUi"); local button, toggle, txtbox, switxh, label, switch, loop, Loop, textbox = ("TextButton"), ("Toogle"), ("TextBox"), ("Switch"), ("TextLabel"), ("Switch"), ("Toogle"), ("Toogle"), ("TextBox");
 -----------
 getgenv().gpcs=function(x)
 return x:GetPropertyChangedSignal("Text")
@@ -21,7 +19,7 @@ game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = WS.Text;
 print(WS.Text);
 end)
 
-
+-- "toggle", or "Loop" or "loop"
 AddContent(toggle, "loop jumping",
 [[
 game.Players.LocalPlayer.Character.Humanoid.Jump = true
