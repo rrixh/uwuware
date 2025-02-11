@@ -1,0 +1,34 @@
+--- Ghost Gui UI Library [SETUP] ---
+loadstring(game:HttpGet('https://raw.githubusercontent.com/GhostPlayer352/UI-Library/refs/heads/main/Ghost%20Gui'))(); 
+game.CoreGui.GhostGui.MainFrame.Title.Text = getgenv().title or ("GHOST 🍭");
+---> elements <---
+getgenv().vars = {
+button = ("TextButton");
+Button = ("TextButton");
+btn = ("TextButton");
+BTN = ("TextButton");
+Btn = ("TextButton");
+toggle = ("Toogle");
+Toggle = ("Toogle");
+loop = ("Toogle");
+Loop = ("Toogle");
+txt = ("TextBox");
+txtbox = ("TextBox");
+textbox = ("TextBox");
+switxh = ("Switch");
+Switxh = ("Switch");
+switch = ("Switch");
+Switch = ("Switch");
+label = ("TextLabel");
+Label = ("TextLabel");
+};
+-----------
+getgenv().gpcs=function(x)
+return x:GetPropertyChangedSignal("Text")
+end;
+-- use AddTitle("TitleHere") to set title --
+getgenv().AddTitle = function(st)
+spawn(function()
+getgenv().title = tostring(st)
+end)
+end;
