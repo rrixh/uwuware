@@ -1,4 +1,6 @@
--- Ghost Gui UI Library [SETUP] ---
+-- Ghost Gui UI Library [SETUP] edited by me (rrixh) for easier variables + labels ---
+-- kredits to ghostplayer for making the ui 
+
 loadstring(game:HttpGet('https://raw.githubusercontent.com/GhostPlayer352/UI-Library/refs/heads/main/Ghost%20Gui'))();
 
 --- use AddTitle("TitleHere") to add your own title ---
@@ -22,11 +24,18 @@ getgenv().vars = {
     txt = ("TextBox");
     txtbox = ("TextBox");
     textbox = ("TextBox");
+    Textbox = ("TextBox");
     switch = ("Switch");
     Switch = ("Switch");
     label = ("TextLabel");
     Label = ("TextLabel");
+    lbl = ("TextLabel");
 };
+
+--> use AddLabel("LabelHere") to add labels <--
+getgenv().AddLabel = function(lbl)
+AddContent(vars.label).Text = lbl
+end;
 
 getgenv().gpcs = function(x)
     return x:GetPropertyChangedSignal("Text")
