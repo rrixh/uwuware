@@ -1,36 +1,33 @@
---- Ghost Gui UI Library [SETUP] ---
+-- Ghost Gui UI Library [SETUP] ---
 loadstring(game:HttpGet('https://raw.githubusercontent.com/GhostPlayer352/UI-Library/refs/heads/main/Ghost%20Gui'))();
 
----> elements <---
-getgenv().vars = {
-button = ("TextButton");
-Button = ("TextButton");
-btn = ("TextButton");
-BTN = ("TextButton");
-Btn = ("TextButton");
-toggle = ("Toogle");
-Toggle = ("Toogle");
-loop = ("Toogle");
-Loop = ("Toogle");
-txt = ("TextBox");
-txtbox = ("TextBox");
-textbox = ("TextBox");
-switxh = ("Switch");
-Switxh = ("Switch");
-switch = ("Switch");
-Switch = ("Switch");
-label = ("TextLabel");
-Label = ("TextLabel");
-};
------------
-getgenv().gpcs=function(x)
-return x:GetPropertyChangedSignal("Text")
-end;
--- use AddTitle("TitleHere") to set title --
-spawn(function()
+-- Function to add titles
 getgenv().AddTitle = function(st)
-spawn(function()
-game.CoreGui:WaitForChild("GhostGui").MainFrame.Title.Text = st
-end)
+    spawn(function()
+        game.CoreGui:WaitForChild("GhostGui").MainFrame.Title.Text = st
+    end)
+end
+
+-- Elements setup
+getgenv().vars = {
+    button = ("TextButton");
+    Button = ("TextButton");
+    btn = ("TextButton");
+    BTN = ("TextButton");
+    Btn = ("TextButton");
+    toggle = ("Toggle");
+    Toggle = ("Toggle");
+    loop = ("Toggle");
+    Loop = ("Toggle");
+    txt = ("TextBox");
+    txtbox = ("TextBox");
+    textbox = ("TextBox");
+    switch = ("Switch");
+    Switch = ("Switch");
+    label = ("TextLabel");
+    Label = ("TextLabel");
+};
+
+getgenv().gpcs = function(x)
+    return x:GetPropertyChangedSignal("Text")
 end;
-end);
