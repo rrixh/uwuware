@@ -1,6 +1,8 @@
 --- Ghost Gui UI Library [SETUP] ---
 loadstring(game:HttpGet('https://raw.githubusercontent.com/GhostPlayer352/UI-Library/refs/heads/main/Ghost%20Gui'))(); 
+for deeznuts = 1,2 do
 game.CoreGui.GhostGui.MainFrame.Title.Text = getgenv().title or ("GHOST 🍭");
+end;
 ---> elements <---
 getgenv().vars = {
 button = ("TextButton");
