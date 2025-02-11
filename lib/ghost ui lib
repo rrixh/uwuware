@@ -1,8 +1,6 @@
 --- Ghost Gui UI Library [SETUP] ---
-for i=1,2 do wait(.1)
 loadstring(game:HttpGet('https://raw.githubusercontent.com/GhostPlayer352/UI-Library/refs/heads/main/Ghost%20Gui'))();
-game.CoreGui.GhostGui.MainFrame.Title.Text = getgenv().title or ("GHOST 🍭");
-end;
+
 ---> elements <---
 getgenv().vars = {
 button = ("TextButton");
@@ -32,7 +30,7 @@ end;
 spawn(function()
 getgenv().AddTitle = function(st)
 spawn(function()
-getgenv().title = tostring(st)
+game.CoreGui:WaitForChild("GhostGui").MainFrame.Title.Text = st
 end)
 end;
 end);
