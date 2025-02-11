@@ -27,8 +27,10 @@ getgenv().gpcs=function(x)
 return x:GetPropertyChangedSignal("Text")
 end;
 -- use AddTitle("TitleHere") to set title --
+spawn(function()
 getgenv().AddTitle = function(st)
 spawn(function()
 getgenv().title = tostring(st)
 end)
 end;
+end);
