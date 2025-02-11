@@ -1,14 +1,14 @@
 -- Ghost Gui UI Library [SETUP] ---
 loadstring(game:HttpGet('https://raw.githubusercontent.com/GhostPlayer352/UI-Library/refs/heads/main/Ghost%20Gui'))();
 
--- Function to add titles
+--- use AddTitle("TitleHere") to add your own title ---
 getgenv().AddTitle = function(st)
     spawn(function()
         game.CoreGui:WaitForChild("GhostGui").MainFrame.Title.Text = st
     end)
 end
 
--- Elements setup
+--> elements table: use vars.button for example to make a button <--
 getgenv().vars = {
     button = ("TextButton");
     Button = ("TextButton");
