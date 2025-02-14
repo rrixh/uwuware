@@ -1,0 +1,92 @@
+---SGX ghost uii
+loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/lib/ghost%20ui%20lib",true))();
+AddTitle("squid game x")
+--------
+loadstring(game:HttpGet('https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/skripts/globaLS', true))();
+wait()
+------
+
+getgenv().gpcs=function(x)
+return x:GetPropertyChangedSignal("Text")
+end;
+
+getgenv().hrp = game.Players.LocalPlayer.Character.HumanoidRootPart;
+getgenv().ogpos = hrp.CFrame;
+
+AddLabel("glass gaaaammeee")
+
+AddContent(vars.btn, "reveal + godmode", [[
+repeat task.wait() until game:GetService("Workspace").Map:FindFirstChild("Glass")
+-- get all tiles
+local glasses = game:GetService("Workspace").Map.Glass.Glasses:GetChildren();
+for _, revealed in pairs(glasses) do
+    if revealed.BrickColor == BrickColor.new("Pink") then
+        return
+    end
+end
+-- reveal tiles
+for _, glass in pairs(glasses) do
+glass.Transparency = 0;
+    if glass.CanCollide then
+        glass.BrickColor = BrickColor.new("Pink")
+    else
+        glass.BrickColor = BrickColor.new("Really red")
+        glass.CanCollide = true
+        glass.CanTouch = false
+    end
+end;
+]])
+
+AddContent(vars.loop, "jump", [[
+game.Players.LocalPlayer.Character.Humanoid.Jump=true
+]])
+
+AddContent(vars.switch, "inf jump", 
+[[
+_G.infjump = jumpreq:connect(function()
+game:GetService"Players".LocalPlayer.Character:FindFirstChildOfClass'Humanoid':ChangeState("Jumping")
+    end)
+]],
+[[
+_G.infjump:Disconnect()
+]])
+
+AddContent(vars.switch, "noklip", 
+[[
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+-- switch on
+_G.klip = false
+wait(0.1)
+local function loopnoklip()
+    local char = Players.LocalPlayer.Character or Players.LocalPlayer.CharacterAdded:Wait()
+    
+    while not _G.klip do wait(.01)
+        for i, v in pairs(char:GetDescendants()) do
+            if v:IsA("BasePart") and v.CanCollide == true then
+                v.CanCollide = false
+            end
+        end
+        RunService.Heartbeat:Wait()
+    end
+end
+
+_G.noklipping = RunService.Heartbeat:Connect(loopnoklip)
+
+_G.respawned = Players.LocalPlayer.CharacterAdded:Connect(function()
+task.wait()
+    if not _G.klip then
+        spawn(loopnoklip)
+    end
+end)
+]], 
+[[
+-- switch off
+_G.klip = true
+wait()
+    _G.noklipping:Disconnect()
+_G.respawned:Disconnect()
+]])
+
+AddLabel("lulaslollipop 🍭 hey sabasabs wyaaa toooo")
