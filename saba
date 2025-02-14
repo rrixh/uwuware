@@ -20,7 +20,7 @@ repeat task.wait() until game:GetService("Workspace").Map:FindFirstChild("Glass"
 -- get all tiles
 local glasses = game:GetService("Workspace").Map.Glass.Glasses:GetChildren();
 for _, revealed in pairs(glasses) do
-    if revealed.BrickColor == BrickColor.new("Pink") then
+    if revealed.BrickColor == BrickColor.new("Really red") then
         return
     end
 end
@@ -28,9 +28,9 @@ end
 for _, glass in pairs(glasses) do
 glass.Transparency = 0;
     if glass.CanCollide then
-        glass.BrickColor = BrickColor.new("Pink")
+  glass.BrickColor = BrickColor.new("Pink")
     else
-        glass.BrickColor = BrickColor.new("Really red")
+glass.BrickColor = BrickColor.new("Really red")
         glass.CanCollide = true
         glass.CanTouch = false
     end
@@ -88,5 +88,45 @@ wait()
     _G.noklipping:Disconnect()
 _G.respawned:Disconnect()
 ]])
+
+_G.targetPlayer = nil
+
+getgenv().findPlrName = function(name)
+    for _, target in ipairs(getplrs) do
+        if target.DisplayName:lower():find(name:lower()) or target.Name:lower():find(name:lower()) then
+            _G.targetPlayer = target
+            return target
+        end
+    end
+    return nil
+end
+
+namebox = AddContent(vars.txt, "target player name")
+getgenv().blanks = ("^%s*$")
+
+gpcs(namebox):connect(function()
+if namebox.Text:match(blanks) then return end;
+end)
+
+AddContent(vars.btn, "enter", 
+[[
+if namebox.Text:match(blanks) then 
+_G.rnote("enter a name stupid",1.2) return end;
+_G.targetPlayer = findPlrName(namebox.Text)
+if _G.targetPlayer == game.Players.LocalPlayer then
+_G.rnote("not yourself nigger",1.2) return
+else
+_G.rnote("target: @".._G.targetPlayer.Name.." | ".._G.targetPlayer.DisplayName, 2.2)
+end
+]])
+
+AddContent(vars.loop, "go to player", 
+[[
+local targetPlayer = findPlrName(_G.targetPlayer.Name)
+if targetPlayer ~= game.Players.LocalPlayer then
+hrp.CFrame = CFrame.new(targetPlayer.Character.HumanoidRootPart.Position) * CFrame.new(0, 1, 3.8)
+end
+]])
+
 
 AddLabel("lulaslollipop 🍭 hey sabasabs wyaaa toooo")
