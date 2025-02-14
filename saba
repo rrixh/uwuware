@@ -124,7 +124,7 @@ AddContent(vars.loop, "go to player",
 [[
 local targetPlayer = findPlrName(_G.targetPlayer.Name)
 if targetPlayer ~= game.Players.LocalPlayer then
-hrp.CFrame = CFrame.new(targetPlayer.Character.HumanoidRootPart.Position) * CFrame.new(0, 1, 3.8)
+hrp.CFrame = CFrame.new(targetPlayer.Character.HumanoidRootPart.Position) * CFrame.new(0, 0, 3.8)
 end
 ]])
 
