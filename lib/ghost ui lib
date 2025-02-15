@@ -44,5 +44,9 @@ AddContent(vars.label).Text = lbl
 end;
 
 getgenv().gpcs = function(x)
-    return x:GetPropertyChangedSignal("Text")
+    return x:GetPropertyChangedSignal"Text"
+end;
+
+getgenv().fokus = function(x)
+return x.FocusLost
 end;
