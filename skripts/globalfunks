@@ -183,6 +183,9 @@ getgenv().inputbegan = _G.uis.InputBegan;
 getgenv().jumpreq = game:GetService("UserInputService").JumpRequest;
 getgenv().jumprequest = game:GetService("UserInputService").JumpRequest;
 
+-- string matxh --
+getgenv().Empty = ("^%s*$");-- blank
+getgenv().Blank = ("^%s*$");-- blank
 
 -- [[ EXEKUTORS ]] --
 local delta, Delta, DELTA = "Delta", "Delta", "Delta"
