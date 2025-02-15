@@ -10,20 +10,28 @@ getgenv().gpcs=function(x)
 return x:GetPropertyChangedSignal("Text")
 end;
 
-getgenv().hrp = game.Players.LocalPlayer.Character.HumanoidRootPart;
 getgenv().ogpos = hrp.CFrame;
 
 AddLabel("glass gaaaammeee")
 
-AddContent(vars.btn, "reveal + godmode", [[
-repeat task.wait() until game:GetService("Workspace").Map:FindFirstChild("Glass")
+AddContent(vars.btn, "reveal + godmode", [[ 
+local ws = game:GetService("Workspace")
+repeat task.wait() until ws.Map:FindFirstChild("Glass")
+spawn(function()
+repeat task.wait() until ws.Map.Glass.Map:FindFirstChild("KillSecure")
+local bottomkillpart = ws.Map.Glass.Map.KillSecure;
+if bottomkillpart then 
+bottomkillpart:Destroy(); 
+_G.rnote("destroyed KillSecure part", 5)
+    end;
+end);
 -- get all tiles
 local glasses = game:GetService("Workspace").Map.Glass.Glasses:GetChildren();
 for _, revealed in pairs(glasses) do
     if revealed.BrickColor == BrickColor.new("Really red") then
         return
     end
-end
+end;
 -- reveal tiles
 for _, glass in pairs(glasses) do
 glass.Transparency = 0;
@@ -84,12 +92,13 @@ end)
 [[
 -- switch off
 _G.klip = true
-wait()
     _G.noklipping:Disconnect()
 _G.respawned:Disconnect()
 ]])
 
 _G.targetPlayer = nil
+getgenv().Players = game:GetService("Players")
+getgenv().LocalPlayer = Players.LocalPlayer
 
 getgenv().findPlrName = function(name)
     for _, target in ipairs(getplrs) do
@@ -102,15 +111,16 @@ getgenv().findPlrName = function(name)
 end
 
 namebox = AddContent(vars.txt, "target player name")
-getgenv().blanks = ("^%s*$")
+getgenv().Empty = ("^%s*$")
+getgenv().Blank = ("^%s*$")
 
 gpcs(namebox):connect(function()
-if namebox.Text:match(blanks) then return end;
+if namebox.Text:match(Empty) then return end;
 end)
 
 AddContent(vars.btn, "enter", 
 [[
-if namebox.Text:match(blanks) then 
+if namebox.Text:match(Empty) then 
 _G.rnote("enter a name stupid",1.2) return end;
 _G.targetPlayer = findPlrName(namebox.Text)
 if _G.targetPlayer == game.Players.LocalPlayer then
@@ -120,13 +130,31 @@ _G.rnote("target: @".._G.targetPlayer.Name.." | ".._G.targetPlayer.DisplayName, 
 end
 ]])
 
-AddContent(vars.loop, "go to player", 
+AddContent(vars.loop, "kill this nigga", 
 [[
+if _G.targetPlayer == nil then return end;
 local targetPlayer = findPlrName(_G.targetPlayer.Name)
 if targetPlayer ~= game.Players.LocalPlayer then
-hrp.CFrame = CFrame.new(targetPlayer.Character.HumanoidRootPart.Position) * CFrame.new(0, 0, 3.8)
-end
+_G.going = true;
+hrp.CFrame = CFrame.new(targetPlayer.Character.HumanoidRootPart.Position) * CFrame.new(-1, 0, 3.5)
+table.foreach(game.Players.LocalPlayer.Character:GetChildren(), function(_,tool)
+if tool:IsA("Tool") then 
+tool:Activate()
+else wait()
+end;
+     end);
+end;
 ]])
 
+_G.gotoplr = function()
+    if _G.targetPlayer and _G.going then
+        local targetPlayer = findPlrName(_G.targetPlayer.Name)
+        if targetPlayer ~= Players.LocalPlayer and targetPlayer.Character then
+            hrp.CFrame = CFrame.new(targetPlayer.Character.HumanoidRootPart.Position) * CFrame.new(-1, 0, 3.5)
+        end
+    end
+end;
 
-AddLabel("lulaslollipop 🍭 hey sabasabs wyaaa toooo")
+plr.CharacterAdded:Connect(_G.gotoplr);
+
+AddLabel("lulaslollipop 🍭 hey zuki maker is a haxker and that")
