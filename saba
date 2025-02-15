@@ -128,21 +128,21 @@ end)
 AddContent(vars.loop, "kill this nigga", 
 [[
 if _G.targetPlayer == nil then return end;
+-- wait(-9e9)
 local targetPlayer = findPlrName(_G.targetPlayer.Name)
 if targetPlayer ~= game.Players.LocalPlayer then
-_G.going = true;
 game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(targetPlayer.Character.HumanoidRootPart.Position) * CFrame.new(-0.8, 0, 3.5);
-local xhar = game.Players.LocalPlayer.Character or game.Players.LocalPlayer.CharacterAdded:Wait();
+local xhar = game.Players.LocalPlayer.Character;
 for _,tool in pairs(xhar:GetChildren()) do
 if tool:IsA("Tool") then 
-tool:Activate(); else task.wait()
+tool:Activate(); else return
     end;
 end;
 end;
 ]])
 
 _G.gotoplr = function()
-    if _G.targetPlayer and _G.going then
+    if _G.targetPlayer then
         local targetPlayer = findPlrName(_G.targetPlayer.Name)
         if targetPlayer ~= game.Players.LocalPlayer and targetPlayer.Character then
             hrp.CFrame = CFrame.new(targetPlayer.Character.HumanoidRootPart.Position) * CFrame.new(-1, 0, 3.5)
