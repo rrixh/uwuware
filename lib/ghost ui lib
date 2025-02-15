@@ -5,10 +5,9 @@ loadstring(game:HttpGet('https://raw.githubusercontent.com/GhostPlayer352/UI-Lib
 
 --- use AddTitle("TitleHere") to add your own title ---
 getgenv().AddTitle = function(st)
-    spawn(function()
-        game.CoreGui:WaitForChild("GhostGui").MainFrame.Title.Text = st
+    spawn(function()        game.CoreGui:WaitForChild("GhostGui").MainFrame.Title.Text = st
     end)
-end
+end;
 
 --> elements table: use vars.button for example to make a button <--
 getgenv().vars = {
@@ -19,6 +18,8 @@ getgenv().vars = {
     Btn = ("TextButton");
     toggle = ("Toogle");
     Toggle = ("Toogle");
+    tog = ("Toogle");
+    Tog = ("Toogle");
     loop = ("Toogle");
     Loop = ("Toogle");
     txt = ("TextBox");
@@ -27,6 +28,8 @@ getgenv().vars = {
     Textbox = ("TextBox");
     switch = ("Switch");
     Switch = ("Switch");
+    switxh = ("Switch");
+    Switxh = ("Switch");
     label = ("TextLabel");
     Label = ("TextLabel");
     lbl = ("TextLabel");
