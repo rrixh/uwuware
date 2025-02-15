@@ -70,17 +70,17 @@ wait(0.1)
 local function loopnoklip()
     local char = Players.LocalPlayer.Character or Players.LocalPlayer.CharacterAdded:Wait()
     
-    if not _G.klip then wait(.01)
+    while not _G.klip do wait(.01)
         for i, v in pairs(char:GetDescendants()) do
             if v:IsA("BasePart") and v.CanCollide == true then
                 v.CanCollide = false
             end
         end
-        RunService.Stepped:Wait()
+        RunService.Heartbeat:Wait()
     end
 end
 
-_G.noklipping = RunService.Stepped:Connect(loopnoklip)
+_G.noklipping = RunService.Heartbeat:Connect(loopnoklip)
 
 _G.respawned = Players.LocalPlayer.CharacterAdded:Connect(function()
 task.wait()
@@ -131,20 +131,20 @@ if _G.targetPlayer == nil then return end;
 local targetPlayer = findPlrName(_G.targetPlayer.Name)
 if targetPlayer ~= game.Players.LocalPlayer then
 _G.going = true;
-hrp.CFrame = CFrame.new(targetPlayer.Character.HumanoidRootPart.Position) * CFrame.new(-1, 0, 3.5)
-table.foreach(game.Players.LocalPlayer.Character:GetChildren(), function(_,tool)
+game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(targetPlayer.Character.HumanoidRootPart.Position) * CFrame.new(-0.8, 0, 3.5);
+local xhar = game.Players.LocalPlayer.Character or game.Players.LocalPlayer.CharacterAdded:Wait();
+for _,tool in pairs(xhar:GetChildren()) do
 if tool:IsA("Tool") then 
-tool:Activate()
-else wait()
+tool:Activate(); else task.wait()
+    end;
 end;
-     end);
 end;
 ]])
 
 _G.gotoplr = function()
     if _G.targetPlayer and _G.going then
         local targetPlayer = findPlrName(_G.targetPlayer.Name)
-        if targetPlayer ~= Players.LocalPlayer and targetPlayer.Character then
+        if targetPlayer ~= game.Players.LocalPlayer and targetPlayer.Character then
             hrp.CFrame = CFrame.new(targetPlayer.Character.HumanoidRootPart.Position) * CFrame.new(-1, 0, 3.5)
         end
     end
@@ -152,4 +152,4 @@ end;
 
 plr.CharacterAdded:Connect(_G.gotoplr);
 
-AddLabel("lulaslollipop 🍭 hey zuki maker is a haxker and that")
+AddLabel("lulaslollipop 🍭 zuki...kan we be? pls")
