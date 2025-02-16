@@ -5,16 +5,9 @@ AddTitle("squid game x")
 loadstring(game:HttpGet('https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/skripts/globaLS', true))();
 wait()
 ------
-
-getgenv().gpcs=function(x)
-return x:GetPropertyChangedSignal("Text")
-end;
-
 getgenv().ogpos = hrp.CFrame;
 
-AddLabel("glass gaaaammeee")
-
-AddContent(vars.btn, "reveal + godmode", [[ 
+AddContent(vars.btn, "GLASS GAME", [[ 
 local ws = game:GetService("Workspace")
 repeat task.wait() until ws.Map:FindFirstChild("Glass")
 spawn(function()
@@ -22,7 +15,7 @@ repeat task.wait() until ws.Map.Glass.Map:FindFirstChild("KillSecure")
 local bottomkillpart = ws.Map.Glass.Map.KillSecure;
 if bottomkillpart then 
 bottomkillpart:Destroy(); 
-_G.rnote("destroyed KillSecure part", 5)
+_G.rnote("destroyed bottom kill part", 5)
     end;
 end);
 -- get all tiles
@@ -41,8 +34,47 @@ glass.Transparency = 0;
 glass.BrickColor = BrickColor.new("Really red")
         glass.CanCollide = true
         glass.CanTouch = false
+_G.rnote("godmode enabled", 2)
     end
 end;
+]])
+
+AddContent(vars.btn, "join hidden game", 
+[[
+_G.rnote("searxhing...",.6)
+local Number = 0;
+local SomeSRVS = {};
+local found = 0;
+for _,v in ipairs(game:GetService("HttpService"):JSONDecode(game:HttpGetAsync("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100")).data) do
+    if type(v) == "table" and v.maxPlayers > v.playing and v.id ~= game.JobId then
+        if v.playing > Number then
+            Number = v.playing
+table.insert(SomeSRVS, v.id)
+            found = v.playing
+        end;
+    end;
+end;
+if(#SomeSRVS>0)then
+_G.rnote("serverhopping | player kount: " .. found);
+wait()
+game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId,SomeSRVS[1])
+else
+_G.rnote("none found",1)
+end;
+]])
+
+AddContent(vars.btn, "join hidden game 2",
+[[
+loadstring(game:HttpGet("https://github.com/rrixh/skripts/raw/main/joinsmallestserver",true))();
+]])
+
+AddContent(vars.btn, "server hop",
+[[
+loadstring(game:HttpGet("https://github.com/rrixh/skripts/raw/main/serverhop",true))();
+]])
+
+AddContent(vars.btn,"rejoin", [[
+game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, game.JobId, game:GetService("Players").LocalPlayer)
 ]])
 
 AddContent(vars.loop, "jump", [[
@@ -112,30 +144,29 @@ end
 
 namebox = AddContent(vars.txt, "target player name")
 
-fokus(namebox):connect(function(enterPressed)
-if enterPressed then
+fokus(namebox):connect(function(enter)
+if enter then
 if namebox.Text:match(Empty) then return end;
--- start test
 _G.targetPlayer = findPlrName(namebox.Text)
 if _G.targetPlayer == game.Players.LocalPlayer then
 _G.rnote("not yourself nigger",1.2) return
 else
 _G.rnote("target: @".._G.targetPlayer.Name.." | ".._G.targetPlayer.DisplayName, 2.2)
-end; -- end of test
+end;
 end;
 end)
 
 AddContent(vars.loop, "kill this nigga", 
 [[
 if _G.targetPlayer == nil then return end;
-wait(-9e9)
+
 local targetPlayer = findPlrName(_G.targetPlayer.Name)
 if targetPlayer ~= game.Players.LocalPlayer then
 game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(targetPlayer.Character.HumanoidRootPart.Position) * CFrame.new(-0.8, 0, 3.5);
 local xhar = game.Players.LocalPlayer.Character;
 for _,tool in pairs(xhar:GetChildren()) do
 if tool:IsA("Tool") then 
-tool:Activate(); else local nun; return
+tool:Activate(); else return
     end;
 end;
 end;
@@ -150,6 +181,4 @@ _G.gotoplr = function()
     end
 end;
 
-plr.CharacterAdded:Connect(_G.gotoplr);
-
-AddLabel("lulaslollipop 🍭 zuki....kan we be? plese")
+game:GetService"Players".LocalPlayer.CharacterAdded:Connect(_G.gotoplr);
