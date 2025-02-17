@@ -141,7 +141,7 @@ local lowestHealthPlayer = nil
 local lowestHealth = math.huge
 
 for _, player in pairs(game.Players:GetPlayers()) do
-if player.Character and player.Character:FindFirstChild("Humanoid") then
+if player.Character and player.Character:FindFirstChild("Humanoid") and player ~= game.Players.LocalPlayer then
 local health = player.Character.Humanoid.Health
 if health > 0 and health < lowestHealth then
 lowestHealth = health
@@ -152,7 +152,9 @@ end
 return lowestHealthPlayer
 end;
 
-local targetPlayer = getPlayerWithLowestHealth()
+local targetPlayer = getPlayerWithLowestHealth();
+if not targetPlayer then _G.rnote("no players found\nlooking for faggots....") 
+repeat task.wait(.5) until targetPlayer ~= nil end;
 _G.teleporting = heartbeat:connect(function()
 if targetPlayer.Character and targetPlayer.Character:FindFirstChild("Humanoid") and targetPlayer.Character.Humanoid.Health > 0 then
 game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(targetPlayer.Character.HumanoidRootPart.Position) * CFrame.new(0, 0, 2.2)
