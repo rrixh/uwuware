@@ -226,7 +226,8 @@ local gotoplr = function()
     end
 end;
 
+task.wait()
 game:GetService"Players".LocalPlayer.CharacterAdded:Connect(function()
-task.wait(1)
+repeat task.wait(.2) until game:GetService"Players".LocalPlayer.Character and game:GetService"Players".LocalPlayer.Character:FindFirstChild("Humanoid")
 gotoplr()
 end)
