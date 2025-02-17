@@ -1,10 +1,13 @@
----SGX ghost uii
+---SGX kill all (ghost ui)
 loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/lib/ghost%20ui%20lib",true))();
 AddTitle("squid game x")
 --------
 loadstring(game:HttpGet('https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/skripts/globaLS', true))();
 wait()
 ------
+getgenv().GPCS = function(x, prop)
+return x:GetPropertyChangedSignal(prop)
+end;
 getgenv().ogpos = hrp.CFrame;
 
 AddContent(vars.btn, "GLASS GAME", [[ 
@@ -39,42 +42,13 @@ _G.rnote("godmode enabled", 2)
 end;
 ]])
 
-AddContent(vars.btn, "join hidden game", 
-[[
-_G.rnote("searxhing...",.6)
-local Number = 0;
-local SomeSRVS = {};
-local found = 0;
-for _,v in ipairs(game:GetService("HttpService"):JSONDecode(game:HttpGetAsync("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100")).data) do
-    if type(v) == "table" and v.maxPlayers > v.playing and v.id ~= game.JobId then
-        if v.playing > Number then
-            Number = v.playing
-table.insert(SomeSRVS, v.id)
-            found = v.playing
-        end;
-    end;
-end;
-if(#SomeSRVS>0)then
-_G.rnote("serverhopping | player kount: " .. found);
-wait()
-game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId,SomeSRVS[1])
-else
-_G.rnote("none found",1)
-end;
-]])
-
-AddContent(vars.btn, "join hidden game 2",
-[[
-loadstring(game:HttpGet("https://github.com/rrixh/skripts/raw/main/joinsmallestserver",true))();
-]])
-
-AddContent(vars.btn, "server hop",
-[[
-loadstring(game:HttpGet("https://github.com/rrixh/skripts/raw/main/serverhop",true))();
-]])
-
-AddContent(vars.btn,"rejoin", [[
-game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, game.JobId, game:GetService("Players").LocalPlayer)
+AddContent(vars.btn, "turn on light 💡", [[
+local light = game:GetService("Lighting");
+light.Brightness = 1
+light.ClockTime = 14
+light.FogEnd = 1e5
+light.GlobalShadows = false	
+light.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
 ]])
 
 AddContent(vars.loop, "jump", [[
@@ -142,6 +116,7 @@ getgenv().findPlrName = function(name)
     return nil
 end
 
+--[[
 namebox = AddContent(vars.txt, "target player name")
 
 fokus(namebox):connect(function(enter)
@@ -155,30 +130,101 @@ _G.rnote("target: @".._G.targetPlayer.Name.." | ".._G.targetPlayer.DisplayName, 
 end;
 end;
 end)
+]]--
 
-AddContent(vars.loop, "kill this nigga", 
+AddContent(vars.switch, "kill faggots",
 [[
-if _G.targetPlayer == nil then return end;
+_G.autoKilling = true;
 
-local targetPlayer = findPlrName(_G.targetPlayer.Name)
-if targetPlayer ~= game.Players.LocalPlayer then
-game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(targetPlayer.Character.HumanoidRootPart.Position) * CFrame.new(-0.8, 0, 3.5);
-local xhar = game.Players.LocalPlayer.Character;
-for _,tool in pairs(xhar:GetChildren()) do
-if tool:IsA("Tool") then 
-tool:Activate(); else return
-    end;
+local function getPlayerWithLowestHealth()
+local lowestHealthPlayer = nil
+local lowestHealth = math.huge
+
+for _, player in pairs(game.Players:GetPlayers()) do
+if player.Character and player.Character:FindFirstChild("Humanoid") then
+local health = player.Character.Humanoid.Health
+if health > 0 and health < lowestHealth then
+lowestHealth = health
+lowestHealthPlayer = player
+end
+end
+end
+return lowestHealthPlayer
 end;
+
+local targetPlayer = getPlayerWithLowestHealth()
+_G.teleporting = heartbeat:connect(function()
+if targetPlayer.Character and targetPlayer.Character:FindFirstChild("Humanoid") and targetPlayer.Character.Humanoid.Health > 0 then
+game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(targetPlayer.Character.HumanoidRootPart.Position) * CFrame.new(0, 0, 2.2)
+_G.tap()
+end
+end)
+
+if(_G.autoKilling==true)then
+while(_G.autoKilling==true)do task.wait()
+while targetPlayer.Character and targetPlayer.Character:FindFirstChild("Humanoid") and targetPlayer.Character.Humanoid.Health > 0 do
+wait(.1)
+for _, tool in pairs(game.Players.LocalPlayer.Character:GetChildren()) do
+if tool:IsA("Tool") then
+tool:Activate(); warn(tool.Name)
+_G.tap() else local NoToolFound
+end; -- if tool equipped
+end; -- for loop
+end; -- if target health 0 or below
+targetPlayer = getPlayerWithLowestHealth()
+end
+end; -- if switxh on
+]],
+[[
+if(_G.autoKilling==true)then
+_G.autoKilling = false;
+end;
+if(_G.teleporting)then
+_G.teleporting:Disconnect();
+_G.teleporting=nil;
 end;
 ]])
+-----------------------------------------
+AddContent(vars.btn, "join hidden game", 
+[[
+_G.rnote("searxhing...",.6)
+local Number = 0;
+local SomeSRVS = {};
+local found = 0;
+for _,v in ipairs(game:GetService("HttpService"):JSONDecode(game:HttpGetAsync("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100")).data) do
+    if type(v) == "table" and v.maxPlayers > v.playing and v.id ~= game.JobId then
+        if v.playing > Number then
+            Number = v.playing
+table.insert(SomeSRVS, v.id)
+            found = v.playing
+        end;
+    end;
+end;
+if(#SomeSRVS>0)then
+_G.rnote("serverhopping | player kount: " .. found);
+wait()
+game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId,SomeSRVS[1])
+else
+_G.rnote("none found",1)
+end;
+]])
+-----------------------------------------
+AddContent(vars.btn, "join hidden game 2",
+[[
+loadstring(game:HttpGet("https://github.com/rrixh/skripts/raw/main/joinsmallestserver",true))();
+]])
+-----------------------------------------
 
-_G.gotoplr = function()
+local gotoplr = function()
     if _G.targetPlayer then
         local targetPlayer = findPlrName(_G.targetPlayer.Name)
         if targetPlayer ~= game.Players.LocalPlayer and targetPlayer.Character then
-            hrp.CFrame = CFrame.new(targetPlayer.Character.HumanoidRootPart.Position) * CFrame.new(-1, 0, 3.5)
+            hrp.CFrame = CFrame.new(targetPlayer.Character.HumanoidRootPart.Position) * CFrame.new(0, 0, 2)
         end
     end
 end;
 
-game:GetService"Players".LocalPlayer.CharacterAdded:Connect(_G.gotoplr);
+game:GetService"Players".LocalPlayer.CharacterAdded:Connect(function()
+task.wait(1)
+gotoplr()
+end)
