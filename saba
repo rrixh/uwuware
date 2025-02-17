@@ -42,13 +42,19 @@ _G.rnote("godmode enabled", 2)
 end;
 ]])
 
-AddContent(vars.btn, "turn on light 💡", [[
-local light = game:GetService("Lighting");
+AddContent(vars.switch, "turn on light 💡", [[
+getgenv().light = game:GetService("Lighting");
 light.Brightness = 1
 light.ClockTime = 14
 light.FogEnd = 1e5
 light.GlobalShadows = false	
 light.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
+]],
+[[
+light.Brightness = .5
+light.ClockTime = 10.5
+light.FogEnd = 1e2
+light.GlobalShadows = true
 ]])
 
 AddContent(vars.loop, "jump", [[
@@ -141,7 +147,7 @@ local lowestHealthPlayer = nil
 local lowestHealth = math.huge
 
 for _, player in pairs(game.Players:GetPlayers()) do
-if player.Character and player.Character:FindFirstChild("Humanoid") and player ~= game.Players.LocalPlayer then
+if player.Character and player.Character:FindFirstChild("Humanoid") and player ~= game.Players.LocalPlayer and player ~= workspace[tostring(player.Name)]:FindFirstChild("SquibGuarb") then
 local health = player.Character.Humanoid.Health
 if health > 0 and health < lowestHealth then
 lowestHealth = health
