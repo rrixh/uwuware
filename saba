@@ -19,41 +19,44 @@ local bottomkillpart = ws.Map.Glass.Map.KillSecure;
 if bottomkillpart then 
 bottomkillpart:Destroy(); 
 _G.rnote("destroyed bottom kill part", 5)
-    end;
+end;
 end);
 -- get all tiles
 local glasses = game:GetService("Workspace").Map.Glass.Glasses:GetChildren();
 for _, revealed in pairs(glasses) do
-    if revealed.BrickColor == BrickColor.new("Really red") then
-        return
-    end
+if revealed.BrickColor == BrickColor.new("Really red") then
+return
+end
 end;
 -- reveal tiles
 for _, glass in pairs(glasses) do
 glass.Transparency = 0;
-    if glass.CanCollide then
-  glass.BrickColor = BrickColor.new("Pink")
-    else
+if glass.CanCollide then
+glass.BrickColor = BrickColor.new("Pink")
+else
 glass.BrickColor = BrickColor.new("Really red")
-        glass.CanCollide = true
-        glass.CanTouch = false
+glass.CanCollide = true
+glass.CanTouch = false
 _G.rnote("godmode enabled", 2)
-    end
+end
 end;
 ]])
 
-AddContent(vars.switch, "turn on light 💡", [[
 getgenv().light = game:GetService("Lighting");
+
+AddContent(vars.switch, "turn on light 💡", [[
+local lights = true
+while(lights==true)do task.wait(.5)
 light.Brightness = 1
-light.ClockTime = 14
+light.ClockTime = 13.5
 light.FogEnd = 1e5
-light.GlobalShadows = false	
+light.GlobalShadows = false     
 light.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
+end;
 ]],
 [[
-light.Brightness = .5
-light.ClockTime = 10.5
-light.FogEnd = 1e2
+lights = false
+light.ClockTime = 0
 light.GlobalShadows = true
 ]])
 
@@ -65,7 +68,7 @@ AddContent(vars.switch, "inf jump",
 [[
 _G.infjump = jumpreq:connect(function()
 game:GetService"Players".LocalPlayer.Character:FindFirstChildOfClass'Humanoid':ChangeState("Jumping")
-    end)
+end)
 ]],
 [[
 _G.infjump:Disconnect()
@@ -80,31 +83,31 @@ local RunService = game:GetService("RunService")
 _G.klip = false
 wait(0.1)
 local function loopnoklip()
-    local char = Players.LocalPlayer.Character or Players.LocalPlayer.CharacterAdded:Wait()
-    
-    while not _G.klip do wait(.01)
-        for i, v in pairs(char:GetDescendants()) do
-            if v:IsA("BasePart") and v.CanCollide == true then
-                v.CanCollide = false
-            end
-        end
-        RunService.Heartbeat:Wait()
-    end
+local char = Players.LocalPlayer.Character or Players.LocalPlayer.CharacterAdded:Wait()
+
+while not _G.klip do wait(.01)
+for i, v in pairs(char:GetDescendants()) do
+if v:IsA("BasePart") and v.CanCollide == true then
+v.CanCollide = false
+end
+end
+RunService.Heartbeat:Wait()
+end
 end
 
 _G.noklipping = RunService.Heartbeat:Connect(loopnoklip)
 
 _G.respawned = Players.LocalPlayer.CharacterAdded:Connect(function()
 task.wait()
-    if not _G.klip then
-        spawn(loopnoklip)
-    end
+if not _G.klip then
+spawn(loopnoklip)
+end
 end)
 ]], 
 [[
 -- switch off
 _G.klip = true
-    _G.noklipping:Disconnect()
+_G.noklipping:Disconnect()
 _G.respawned:Disconnect()
 ]])
 
@@ -113,13 +116,13 @@ getgenv().Players = game:GetService("Players")
 getgenv().LocalPlayer = Players.LocalPlayer
 
 getgenv().findPlrName = function(name)
-    for _, target in ipairs(getplrs) do
-        if target.DisplayName:lower():find(name:lower()) or target.Name:lower():find(name:lower()) then
-            _G.targetPlayer = target
-            return target
-        end
-    end
-    return nil
+for _, target in ipairs(_G.gplrs) do
+if target.DisplayName:lower():find(name:lower()) or target.Name:lower():find(name:lower()) then
+_G.targetPlayer = target
+return target
+end
+end
+return nil
 end
 
 --[[
@@ -138,16 +141,17 @@ end;
 end)
 ]]--
 
-AddContent(vars.switch, "kill faggots",
+AddContent(vars.switch, "auto kill low plrs",
 [[
-_G.autoKilling = true;
+getgenv().autoKilling = true;
+getgenv().tapping = true;
 
 local function getPlayerWithLowestHealth()
-local lowestHealthPlayer = nil
-local lowestHealth = math.huge
+local lowestHealthPlayer = nil;
+local lowestHealth = math.huge;
 
 for _, player in pairs(game.Players:GetPlayers()) do
-if player.Character and player.Character:FindFirstChild("Humanoid") and player ~= game.Players.LocalPlayer and player ~= workspace[tostring(player.Name)]:FindFirstChild("SquibGuarb") then
+if player.Character and player.Character:FindFirstChild("Humanoid") and player ~= game.Players.LocalPlayer then
 local health = player.Character.Humanoid.Health
 if health > 0 and health < lowestHealth then
 lowestHealth = health
@@ -159,17 +163,17 @@ return lowestHealthPlayer
 end;
 
 local targetPlayer = getPlayerWithLowestHealth();
-if not targetPlayer then _G.rnote("no players found\nlooking for faggots....") 
+if not targetPlayer then _G.rnote("no players found\nlooking for faggots....", 3)
 repeat task.wait(.5) until targetPlayer ~= nil end;
-_G.teleporting = heartbeat:connect(function()
+_G.teleporting = getgenv().heartbeat:connect(function()
 if targetPlayer.Character and targetPlayer.Character:FindFirstChild("Humanoid") and targetPlayer.Character.Humanoid.Health > 0 then
-game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(targetPlayer.Character.HumanoidRootPart.Position) * CFrame.new(0, 0, 2.2)
-_G.tap()
+game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(targetPlayer.Character.HumanoidRootPart.Position) * CFrame.new(0, 0, 2.33)
+if(getgenv().tapping)then _G.tap() end;
 end
 end)
 
-if(_G.autoKilling==true)then
-while(_G.autoKilling==true)do task.wait()
+if(getgenv().autoKilling==true)then
+while(getgenv().autoKilling==true)do task.wait()
 while targetPlayer.Character and targetPlayer.Character:FindFirstChild("Humanoid") and targetPlayer.Character.Humanoid.Health > 0 do
 wait(.1)
 for _, tool in pairs(game.Players.LocalPlayer.Character:GetChildren()) do
@@ -184,14 +188,74 @@ end
 end; -- if switxh on
 ]],
 [[
-if(_G.autoKilling==true)then
-_G.autoKilling = false;
+if(getgenv().autoKilling==true)then
+getgenv().autoKilling = false;
 end;
 if(_G.teleporting)then
 _G.teleporting:Disconnect();
 _G.teleporting=nil;
 end;
+if(getgenv().tapping)then
+getgenv().tapping = false;
+end;
 ]])
+
+AddContent(vars.switch, "mark guards",
+[[
+local size = (6)
+local maxStuds = (math.huge)
+for _, guard in pairs(game.Players:GetPlayers()) do
+if workspace:FindFirstChild(guard.Name) and workspace[guard.Name]:FindFirstChild("SquibGuarb") then
+local billboard = Instance.new("BillboardGui")
+billboard.Adornee = workspace[guard.Name].Head
+billboard.Size=UDim2.new(size, 0, size, 0)
+billboard.StudsOffset = Vector3.new(0, 2.5, 0)
+billboard.AlwaysOnTop = true;
+billboard.MaxDistance = maxStuds
+
+local label = Instance.new("TextLabel")
+label.Text = "(Guard) @"..guard.Name.." | "..guard.DisplayName
+label.Size = UDim2.new(1, 0, 1, 0)
+label.BackgroundTransparency = 1
+label.TextColor3 = Color3.new(0, 1, 0) 
+label.TextScaled = true;
+label.Parent = billboard
+billboard.Parent = workspace[guard.Name]
+print("Guard:", guard.Name)
+end
+end
+]],
+[[
+for _, guard in pairs(game.Players:GetPlayers()) do
+if workspace:FindFirstChild(guard.Name) and workspace[guard.Name]:FindFirstChild("SquibGuarb") then
+local billboard = workspace[guard.Name]:FindFirstChildOfClass("BillboardGui")
+if billboard then
+billboard:Destroy()
+end
+end
+end
+]])
+
+local teleportFunction;
+
+AddContent(vars.btn, "TP to random player",
+[[
+local players = game.Players:GetPlayers()
+
+if not teleportFunction then
+    teleportFunction = function()
+        local randomPlayer = players[math.random(1, #players)]
+        
+        if randomPlayer and randomPlayer.Character and randomPlayer.Character:FindFirstChild("HumanoidRootPart") and randomPlayer ~= game.Players.LocalPlayer then game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = randomPlayer.Character.HumanoidRootPart.CFrame
+        end
+    end;
+game.Players.LocalPlayer.CharacterAdded:Connect(function()
+        teleportFunction()
+    end)
+end
+teleportFunction()
+]])
+
 -----------------------------------------
 AddContent(vars.btn, "join hidden game", 
 [[
@@ -200,40 +264,41 @@ local Number = 0;
 local SomeSRVS = {};
 local found = 0;
 for _,v in ipairs(game:GetService("HttpService"):JSONDecode(game:HttpGetAsync("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100")).data) do
-    if type(v) == "table" and v.maxPlayers > v.playing and v.id ~= game.JobId then
-        if v.playing > Number then
-            Number = v.playing
+if type(v) == "table" and v.maxPlayers > v.playing and v.id ~= game.JobId then
+if v.playing > Number then
+Number = v.playing
 table.insert(SomeSRVS, v.id)
-            found = v.playing
-        end;
-    end;
+found = v.playing
+end;
+end;
 end;
 if(#SomeSRVS>0)then
+local yea = true
 _G.rnote("serverhopping | player kount: " .. found);
-wait()
+task.wait(1)
 game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId,SomeSRVS[1])
 else
-_G.rnote("none found",1)
+if not yea or not SomeSRVS>0 then
+_G.rnote("none found...teleporting to small server")
+task.wait(1.2)
+loadstring(game:HttpGet("https://github.com/rrixh/skripts/raw/main/joinsmallestserver",true))();
+else
+_G.rnote("none found",.5)
+end
 end;
 ]])
 -----------------------------------------
-AddContent(vars.btn, "join hidden game 2",
-[[
-loadstring(game:HttpGet("https://github.com/rrixh/skripts/raw/main/joinsmallestserver",true))();
-]])
------------------------------------------
-
 local gotoplr = function()
-    if _G.targetPlayer then
-        local targetPlayer = findPlrName(_G.targetPlayer.Name)
-        if targetPlayer ~= game.Players.LocalPlayer and targetPlayer.Character then
-            hrp.CFrame = CFrame.new(targetPlayer.Character.HumanoidRootPart.Position) * CFrame.new(0, 0, 2)
-        end
-    end
+if _G.targetPlayer then
+local targetPlayer = findPlrName(_G.targetPlayer.Name)
+if targetPlayer ~= game.Players.LocalPlayer and targetPlayer.Character then
+hrp.CFrame = CFrame.new(targetPlayer.Character.HumanoidRootPart.Position) * CFrame.new(0, 0, 2.33)
+end
+end
 end;
 
 task.wait()
 game:GetService"Players".LocalPlayer.CharacterAdded:Connect(function()
 repeat task.wait(.2) until game:GetService"Players".LocalPlayer.Character and game:GetService"Players".LocalPlayer.Character:FindFirstChild("Humanoid")
 gotoplr()
-end)
+end);
