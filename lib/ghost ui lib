@@ -43,8 +43,14 @@ getgenv().AddLabel = function(lbl)
 AddContent(vars.label).Text = lbl
 end;
 
+-- "Text" property only
 getgenv().gpcs = function(x)
     return x:GetPropertyChangedSignal"Text"
+end;
+
+-- xhoose a property
+getgenv().GPCS = function(x, prop)
+return x:GetPropertyChangedSignal(prop)
 end;
 
 getgenv().fokus = function(x)
