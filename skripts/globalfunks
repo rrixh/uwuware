@@ -49,6 +49,7 @@ getgenv().hum = _G.char:FindFirstChildOfClass'Humanoid';
 getgenv().hrp = _G.char:FindFirstChild'HumanoidRootPart';
 getgenv().user = _G.user;
 getgenv().display = _G.display;
+getgenv().displayname = _G.display;
 getgenv().userid = _G.userid or _G.UID;
 getgenv().getplrs = _G.gplrs;
 getgenv().exploit = _G.exp;
