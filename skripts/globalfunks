@@ -290,6 +290,28 @@ end;
 end;
 modify = getgenv().modify;
 
+
+--[[ MAKE A LIST Easily ]]--
+getgenv().makeList = function(tableOf, isa, useDisplayName)
+    local List = {}
+    if isa then
+        for i, v in pairs(tableOf) do
+            if v:IsA(isa) then
+                table.insert(List, v.Name)
+            end
+        end
+    else
+        for i, v in pairs(tableOf) do
+            if useDisplayName then
+                table.insert(List, v.DisplayName)
+            else
+                table.insert(List, v.Name)
+            end
+        end
+    end
+    return List
+end;
+
 --[[find part do funk]]--
 _G.findpart = function(part, kall, m1, m2)
 if m1 and m2 then
