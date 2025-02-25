@@ -26,11 +26,12 @@ function SaveSettings()    writefile("Executioner/"..tostring(game.PlaceId) .."S
 end;
 
 function Ui:SaveKonfig(save)
+getgenv().Hub.saves.SaveSkript = save;
 if (save==true) then
 SaveSettings()
-warn("Konfig Saved:", savedVal)
+warn("Konfig Saved: ✅")
 elseif (save==false) then
-warn("Konfig Saved:", savedVal)
+warn("Konfig Saved: ❌")
      end
 end;
 
@@ -44,7 +45,9 @@ function Ui:Set(bool,i,name1)
     else        game:GetService("TweenService"):Create(i,TweenInfo.new(0.25),{BackgroundColor3 = Color3.fromRGB(0, 186, 21)}):Play()
     end
     Settings[name1] = bool
-    -- SaveSettings()
+if getgenv().Hub.saves.SaveSkript==true then
+   SaveSettings()
+     end;
 end
 
 local ScreenGui = Instance.new("ScreenGui")
