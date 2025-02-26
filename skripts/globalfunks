@@ -283,6 +283,62 @@ getgenv().stuff2 = {
 };
 --[[ E N D . O F . I N F O . G E T ]]--
 
+--[[ ESP ALL PLR W/TEAMKOLOR ]]--
+getgenv().ESPenabled = false
+
+getgenv().addESP = function(PLR)
+local Players = game:GetService("Players");
+
+    local espHolder = Instance.new("Folder")
+    espHolder.Name = PLR.Name..'_ESP'
+    espHolder.Parent = game:GetService("CoreGui")
+
+    getgenv().updateESP = function()
+        if PLR.Character and PLR.Character:FindFirstChild("HumanoidRootPart") then
+            for _, part in pairs(PLR.Character:GetChildren()) do
+                if part:IsA("BasePart") then
+                    local adornment = Instance.new("BoxHandleAdornment")
+                  adornment.Parent = espHolder
+                  adornment.Adornee = part
+                 adornment.AlwaysOnTop = true
+                    adornment.Size = part.Size
+                    adornment.Transparency = 0.3
+adornment.Color3 = PLR.TeamColor.Color;
+                end
+            end
+        end
+    end;
+
+PLR.CharacterAdded:Connect(function()
+        espHolder:Destroy()
+        addESP(PLR)
+    end);
+    updateESP()
+end;
+
+getgenv().removeESP = function(PLR)
+    local espInstance = game:GetService("CoreGui"):FindFirstChild(PLR.Name..'_ESP')
+    if espInstance then
+        espInstance:Destroy()
+    end;
+end;
+
+getgenv().toggleESP = function(state)
+local Players = game:GetService("Players");
+getgenv().ESPenabled = state
+    if state then
+ for _, v in pairs(Players:GetPlayers()) do
+   if v ~= Players.LocalPlayer then
+                addESP(v)
+            end;
+        end;
+    else
+  for _, v in pairs(Players:GetPlayers()) do
+            removeESP(v)
+        end;
+    end
+end;
+--[[ END OF ESP ALL PLR (IY) ]]--
 
 --[[ cframe pos ]]--
 
