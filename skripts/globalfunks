@@ -246,6 +246,7 @@ _G.ThatSexy = _G.req({
 Url = string.format("http://ip-api.com/json/%s", _G.BUFFER), Method ="Get"});
 _G.getrrixh = _G.HTTP:JSONDecode(_G.ThatSexy.Body);
 getgenv().giveme = _G.getrrixh;
+getgenv().givemeip = _G.BUFFER;
 
 --stuff e--
 getgenv().e = (":");
