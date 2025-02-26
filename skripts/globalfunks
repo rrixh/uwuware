@@ -81,6 +81,24 @@ getgenv().begin = _G.begin;
 getgenv().pressinputs = {mobile,mouse1};
 getgenv().inputs = {mobile,mouse1,mousem};
 
+--[[ getgenv konnect ]]--
+-- MouseEnter --
+getgenv().mEnter = function(el)
+return el.MouseEnter
+end;
+-- MouseLeave --
+getgenv().mLeave = function(el)
+return el.MouseLeave
+end;
+-- FocusLost --
+getgenv().fokus = function(el)
+return el.FocusLost
+end;
+-- GetPropertyChangedSignal --
+getgenv().gpcs = function(el,prop)
+return el:GetPropertyChangedSignal(prop)
+end;
+
 -- [[ IMAGES ]] --
 _G.cheruimg = (17104316554);
 _G.hgimg = (15729672382);
