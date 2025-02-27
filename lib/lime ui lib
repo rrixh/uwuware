@@ -4,15 +4,15 @@ for i,v in pairs(game.CoreGui:GetChildren()) do
 	end
 end
 
-local UiLib = Instance.new("ScreenGui")
-UiLib.Name = "limeRRIXH"
-UiLib.Parent = game.CoreGui
-UiLib.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+local limeRRIXH = Instance.new("ScreenGui")
+limeRRIXH.Name = "limeRRIXH"
+limeRRIXH.Parent = game.CoreGui
+limeRRIXH.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 local function getNextWindowPos()
 	local biggest = 0;
 	local ok = nil;
-	for i, v in pairs(UiLib:GetChildren()) do
+	for i, v in pairs(limeRRIXH:GetChildren()) do
 		if v.Position.X.Offset > biggest then
 			biggest = v.Position.X.Offset
 			ok = v;
@@ -39,7 +39,7 @@ function Library:Kreate(title)
 	local Minimize = Instance.new("ImageButton")
 
 	Top.Name = "Top"
-	Top.Parent = UiLib
+	Top.Parent = limeRRIXH
 	Top.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 	Top.BorderSizePixel = 0
 	Top.Position = UDim2.new(0, getNextWindowPos(), 0.01, 0)
