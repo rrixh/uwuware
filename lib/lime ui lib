@@ -1,11 +1,11 @@
 for i,v in pairs(game.CoreGui:GetChildren()) do
-	if v.Name == "UiLib" then
+	if v.Name == "limeRRIXH" then
 		v:Destroy()
 	end
 end
 
 local UiLib = Instance.new("ScreenGui")
-UiLib.Name = "UiLib"
+UiLib.Name = "limeRRIXH"
 UiLib.Parent = game.CoreGui
 UiLib.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
