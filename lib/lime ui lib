@@ -29,7 +29,7 @@ end
 
 local Library = {}
 
-function Library:Window(title)
+function Library:Kreate(title)
 	local Top = Instance.new("Frame")
 	local UICorner = Instance.new("UICorner")
 	local Container = Instance.new("Frame")
@@ -117,7 +117,7 @@ function Library:Window(title)
 	
 	local Lib = {}
 	
-	function Lib:Button(name, callback)
+	function Lib:button(name, callback)
 		local ButtonContainer = Instance.new("Frame")
 		local Button = Instance.new("TextButton")
 		local ButtonAni = Instance.new("Frame")
@@ -183,7 +183,7 @@ function Library:Window(title)
 		coroutine.wrap(ZNVYM_fake_script)()
 	end
 	
-	function Lib:Toggle(name, callback)
+	function Lib:toggle(name, callback)
 		local ToggleContainer = Instance.new("Frame")
 		local ToggleName = Instance.new("TextLabel")
 		local Toggle = Instance.new("TextButton")
