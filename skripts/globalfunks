@@ -18,7 +18,7 @@ getgenv().telegramlink = _G.telegramlink;
 getgenv().iglink = _G.iglink;
 
 -- [[ setting/global vars ]] --
-local rrixh = loadstring;
+local RRIXH = loadstring;
 local lulas = game;
 _G.kore = game:GetService'CoreGui';
 _G.rbx = game;
@@ -371,6 +371,13 @@ end;
 end;
 end;
 modify = getgenv().modify;
+
+--[[ DHWARNING NOTIF ]] --
+getgenv().dhwarn = function(tit,txt,d)
+loadstring((game.HttpGet(game, "https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/lib/dh_warning%20ui%20lib")))():rrixh("warning title 👺" or tit,
+"this a warning ‼️" or txt, 
+7 or d)
+end;
 
 
 --[[ MAKE A LIST Easily ]]--
