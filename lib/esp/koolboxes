@@ -1,8 +1,4 @@
---Dendro ESP
---Nahida#5000
---Ver 2.0
-
---#region Setup
+--#region Setup v2
 --//Services\\--
 local UserInputService = game:GetService("UserInputService");
 local RunService = game:GetService("RunService");
