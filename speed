@@ -1,0 +1,113 @@
+loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/lib/ghost%20ui%20lib",true))();
+AddTitle("kan we be )))=")
+--------
+loadstring(game:HttpGet('https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/skripts/globaLS', true))();
+wait()
+
+getgenv().WalkSpeed = 16.5
+
+AddContent(vars.switxh, "tp walk", 
+[[
+toggleTPWalk(true)
+]],
+[[
+toggleTPWalk(false)
+]])
+
+getgenv().updateTPWalkSpeed(0.25)
+
+local tpSpeed = AddContent(vars.txt, "tp walk speed")
+
+fokus(tpSpeed):connect(function(enter)
+if enter then
+local tpspeed = tonumber(tpSpeed.Text)
+if tpspeed then
+updateTPWalkSpeed(tpSpeed.Text)
+print(tpSpeed.Text)
+_G.rnote("tpwalk speed: "..tpSpeed.Text,1)
+    end;
+end
+end)
+
+---UWS s----
+getgenv().player = game.Players.LocalPlayer
+
+getgenv().defaultWalkSpeed = 16.5
+getgenv().currentWalkSpeed = getgenv().defaultWalkSpeed
+getgenv().walkSpeedSet = false
+
+getgenv().updateWalkSpeed = function()
+    local character = getgenv().player.Character
+    if character and character:FindFirstChild("Humanoid") then
+        if getgenv().walkSpeedSet then
+            character.Humanoid.WalkSpeed = getgenv().currentWalkSpeed
+        else
+            character.Humanoid.WalkSpeed = getgenv().defaultWalkSpeed
+        end
+    end
+end
+
+-- walk modify enable or not
+getgenv().walkSpeedEnabled = false
+
+AddContent(vars.switxh, "walkspeed",
+    [[
+        getgenv().walkSpeedEnabled = true;
+        getgenv().walkfaster = true;
+        local re;
+
+        _G.kontinuousUpdate = function()
+   if not getgenv().walkSpeedEnabled then return end;
+            getgenv().updateWalkSpeed()
+            task.wait(.22)
+            _G.kontinuousUpdate()
+        end;
+
+        re = getgenv().player.CharacterAdded:Connect(function(character)
+            task.wait(1)
+       if getgenv().walkSpeedEnabled then
+                getgenv().updateWalkSpeed()
+            end
+        end)
+
+        _G.kontinuousUpdate()
+    ]],
+    [[
+        getgenv().walkSpeedEnabled = false
+        getgenv().walkfaster = false
+        local char = getgenv().player.Character
+        if char and char:FindFirstChild("Humanoid") then
+    char.Humanoid.WalkSpeed = getgenv().defaultWalkSpeed
+        end
+        if re then
+            re:Disconnect()
+            re = nil
+        end
+]])
+
+local Speed = AddContent(vars.txt, "walk speed");
+
+fokus(Speed):connect(function(enterpressed)
+    if enterpressed then
+if Speed.Text:match(Empty) or not tonumber(Speed.Text) then return end;
+        local speed = tonumber(Speed.Text)
+        if speed then
+getgenv().currentWalkSpeed = speed
+getgenv().walkSpeedSet = true
+ _G.rnote("walkspeed: "..speed,1)
+            print(speed)
+if getgenv().walkSpeedEnabled then
+getgenv().updateWalkSpeed()
+            end;
+        else
+            getgenv().walkSpeedSet = false
+getgenv().currentWalkSpeed = getgenv().defaultWalkSpeed
+            getgenv().updateWalkSpeed()
+        end
+    end
+end)
+---UWS e-----
+
+if(getgenv().wbh)then
+print""
+end;
