@@ -283,6 +283,63 @@ getgenv().stuff2 = {
 };
 --[[ E N D . O F . I N F O . G E T ]]--
 
+-- [[ WINDOWS 10 NOTIF FUNKS ]] --
+getgenv().windowNotif = function(txt, desk, ikon)
+loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/lib/notifikation/windows10ui"))().show({
+        MessageBoxButtons = "OK", 
+        Description = tostring(desk), 
+        Text = tostring(txt),
+MessageBoxIcon = "Warning" or ikon
+    })
+end
+
+getgenv().windowError = function(txt, desk, result)
+loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/lib/notifikation/windows10ui"))().show({
+        Position = UDim2.new(0.5, 0, 0.5, 0), 
+        Text = tostring(txt), 
+        Description = tostring(desk), 
+        MessageBoxIcon = "Error", 
+        MessageBoxButtons = "YesNo", 
+        Result = function(res)
+        result(res)
+        end})
+end;
+
+getgenv().windowErrorOk = function(txt, desk)
+loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/lib/notifikation/windows10ui"))().show({
+        Position = UDim2.new(0.5, 0, 0.5, 0), 
+        Text = tostring(txt), 
+        Description = tostring(desk), 
+        MessageBoxIcon = "Error", 
+        MessageBoxButtons = "OK", 
+        })
+end;
+
+getgenv().windowWarning = function(txt, desk, result)
+loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/lib/notifikation/windows10ui"))().show({
+        Position = UDim2.new(0.5, 0, 0.5, 0), 
+        Text = tostring(txt), 
+        Description = tostring(desk), 
+        MessageBoxIcon = "Warning", 
+        MessageBoxButtons = "OKCancel", 
+        Result = function(res)
+        result(res)
+        end})
+end;
+
+getgenv().windowQuestion = function(txt, desk, result)
+loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/lib/notifikation/windows10ui"))().show({
+        Position = UDim2.new(0.5, 0, 0.5, 0), 
+        Text = tostring(txt), 
+        Description = tostring(desk), 
+        MessageBoxIcon = "Question", 
+        MessageBoxButtons = "YesNo", 
+        Result = function(res)
+        result(res)
+        end})
+end;
+-- [[ END OF WINDOWS 10 notifs ]] --
+
 --[[ ESP ALL PLR W/TEAMKOLOR ]]--
 getgenv().ESPenabled = false
 
