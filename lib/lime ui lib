@@ -146,13 +146,13 @@ function Lib:textbox(name, callback)
 
     Textbox.Name = "Textbox"
     Textbox.Parent = TextboxContainer
-    Textbox.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    Textbox.BackgroundColor3 = Color3.fromRGB(39, 39, 39) -- Same color as other elements
     Textbox.BorderSizePixel = 0
     Textbox.Position = UDim2.new(0.0245098043, 0, 0.5, -12)
     Textbox.Size = UDim2.new(0, 176, 0, 24)
     Textbox.Font = Enum.Font.SourceSans
     Textbox.Text = ""
-    Textbox.TextColor3 = Color3.fromRGB(0, 0, 0)
+    Textbox.TextColor3 = Color3.fromRGB(255, 255, 255) -- Text color
     Textbox.TextSize = 14.000
 
     UICorner_4.CornerRadius = UDim.new(0, 4)
