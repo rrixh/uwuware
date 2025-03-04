@@ -145,13 +145,13 @@ function Lib:textbox(name, callback)
     TextboxName.TextXAlignment = Enum.TextXAlignment.Left
 
     Textbox.Name = "Textbox"
-    Textbox.Parent = TextboxContainer
-    Textbox.BackgroundColor3 = Color3.fromRGB(29, 29, 29);
+    Textbox.Parent = TextboxContainer;
+    Textbox.BackgroundColor3 = Color3.fromRGB(24, 24, 24);
     Textbox.BorderSizePixel = 0
     Textbox.Position = UDim2.new(0.0245098043, 0.4, 0.5, -12);
     Textbox.Size = UDim2.new(0, 200, 0, 24) -- longer in width
     Textbox.Font = Enum.Font.GothamSemibold
-    Textbox.PlaceholderText = name -- Set the placeholder text
+    Textbox.PlaceholderText = name
     Textbox.PlaceholderColor3 = Color3.fromRGB(200, 200, 200)
     Textbox.Text = ""
     Textbox.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -163,7 +163,7 @@ function Lib:textbox(name, callback)
     Textbox.FocusLost:Connect(function(enterPressed)
         if enterPressed then
             callback(Textbox.Text)
-        end
+        end;
     end)
 end
 --end textbox test--
