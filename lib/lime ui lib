@@ -148,7 +148,7 @@ function Lib:textbox(name, callback)
     Textbox.Parent = TextboxContainer
     Textbox.BackgroundColor3 = Color3.fromRGB(25, 25, 25) -- Same color as other elements
     Textbox.BorderSizePixel = 0
-    Textbox.Position = UDim2.new(0.0245098043, 0, 0.5, -12) -- Местоположение слегка сдвинуто влево
+    Textbox.Position = UDim2.new(0.0245098043, 0.6, 0.5, -12) -- Местоположение слегка сдвинуто влево
     Textbox.Size = UDim2.new(0, 200, 0, 24) -- Slightly longer in width
     Textbox.Font = Enum.Font.GothamSemibold
     Textbox.PlaceholderText = name -- Set the placeholder text
