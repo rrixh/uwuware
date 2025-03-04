@@ -128,13 +128,13 @@ function Lib:textbox(name, callback)
     TextboxContainer.Parent = Container
     TextboxContainer.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     TextboxContainer.BorderSizePixel = 0
-    TextboxContainer.Size = UDim2.new(0, 204, 0, 50)
+    TextboxContainer.Size = UDim2.new(0, 204, 0, 40) -- Adjusted height for closer spacing
 
     TextboxName.Name = "TextboxName"
     TextboxName.Parent = TextboxContainer
     TextboxName.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     TextboxName.BackgroundTransparency = 1.000
-    TextboxName.Position = UDim2.new(0.0245098043, 0, 0.142857105, 0)
+    TextboxName.Position = UDim2.new(0.0245098043, 0, 0.1, 0) -- Adjusted position for closer spacing
     TextboxName.Size = UDim2.new(0, 169, 0, 20)
     TextboxName.Font = Enum.Font.GothamSemibold
     TextboxName.Text = ""
@@ -148,7 +148,7 @@ function Lib:textbox(name, callback)
     Textbox.Parent = TextboxContainer
     Textbox.BackgroundColor3 = Color3.fromRGB(24, 24, 24)
     Textbox.BorderSizePixel = 0
-    Textbox.Position = UDim2.new(0.0245098043, 0, 0.5, -12) -- Adjusted positioning
+    Textbox.Position = UDim2.new(0.0245098043, 0, 0.5, -6) -- Adjusted position for closer spacing
     Textbox.Size = UDim2.new(0, 200, 0, 24) -- Longer in width
     Textbox.Font = Enum.Font.GothamSemibold
     Textbox.PlaceholderText = name
@@ -165,7 +165,7 @@ function Lib:textbox(name, callback)
             callback(Textbox.Text)
         end
     end)
-end;
+end
 
 --end textbox test--
 	
