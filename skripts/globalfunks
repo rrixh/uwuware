@@ -431,9 +431,8 @@ modify = getgenv().modify;
 
 --[[ DHWARNING NOTIF ]] --
 getgenv().dhwarn = function(tit,txt,d)
-loadstring((game.HttpGet(game, "https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/lib/dh_warning%20ui%20lib")))():rrixh("warning title 👺" or tit,
-"this a warning ‼️" or txt, 
-7 or d)
+loadstring((game.HttpGet(game,"https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/lib/dh_warning%20ui%20lib")))():rrixh(
+tit or "warning title 👺", txt or "this a warning ‼️", d or 7) 
 end;
 
 
