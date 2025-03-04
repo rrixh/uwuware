@@ -148,7 +148,7 @@ function Lib:textbox(name, callback)
     Textbox.Parent = TextboxContainer
     Textbox.BackgroundColor3 = Color3.fromRGB(24, 24, 24)
     Textbox.BorderSizePixel = 0
-    Textbox.Position = UDim2.new(0.0245098043, -1, 0.5, -2) -- Adjusted position for closer spacing
+    Textbox.Position = UDim2.new(0.0245098043, -1.5, 0.5, 0.2) -- Adjusted position for closer spacing
     Textbox.Size = UDim2.new(0, 200, 0, 24) -- Longer in width
     Textbox.Font = Enum.Font.GothamSemibold
     Textbox.PlaceholderText = name
