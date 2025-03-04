@@ -146,15 +146,15 @@ function Lib:textbox(name, callback)
 
     Textbox.Name = "Textbox"
     Textbox.Parent = TextboxContainer
-    Textbox.BackgroundColor3 = Color3.fromRGB(25, 25, 25) -- Same color as other elements
+    Textbox.BackgroundColor3 = Color3.fromRGB(29, 29, 29);
     Textbox.BorderSizePixel = 0
-    Textbox.Position = UDim2.new(0.0245098043, 0.6, 0.5, -12) -- Местоположение слегка сдвинуто влево
-    Textbox.Size = UDim2.new(0, 200, 0, 24) -- Slightly longer in width
+    Textbox.Position = UDim2.new(0.0245098043, 0.4, 0.5, -12);
+    Textbox.Size = UDim2.new(0, 200, 0, 24) -- longer in width
     Textbox.Font = Enum.Font.GothamSemibold
     Textbox.PlaceholderText = name -- Set the placeholder text
-    Textbox.PlaceholderColor3 = Color3.fromRGB(200, 200, 200) -- Placeholder text color
+    Textbox.PlaceholderColor3 = Color3.fromRGB(200, 200, 200)
     Textbox.Text = ""
-    Textbox.TextColor3 = Color3.fromRGB(255, 255, 255) -- Text color
+    Textbox.TextColor3 = Color3.fromRGB(255, 255, 255)
     Textbox.TextSize = 14.000
 
     UICorner_4.CornerRadius = UDim.new(0, 6)
