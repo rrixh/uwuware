@@ -352,6 +352,21 @@ windowErrorOk("Whoops! Something went wrong [Lollypop Hub]", err)
   end;
 end;
 
+getgenv().alert = function(msg,sekonds)
+local notifikation = Instance.new("Message");
+notifikation.Text = msg or "lulaslollipop 🍭"
+notifikation.Parent = game:GetService("Workspace");
+wait(sekonds or 5);
+notifikation:Destroy();
+end; say=alert; adminmsg=alert;
+
+--[[add ui korner to guiframe easily]]--
+getgenv().addKorners=function(F,KR)
+local k = Instance.new("UICorner");
+k.CornerRadius = UDim.new(0, KR or 10)
+k.Parent = F
+end;
+
 --[[ ESP ALL PLR W/TEAMKOLOR ]]--
 getgenv().ESPenabled = false
 
