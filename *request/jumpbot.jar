@@ -1,0 +1,103 @@
+loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/lib/ghost%20ui%20lib",true))()
+AddTitle("Jump Bot")
+-----------
+loadstring(game:HttpGet('https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/skripts/globaLS', true))();
+wait()
+------------
+getgenv().range = 7.5
+getgenv().konnections = {};
+getgenv().died = false;
+getgenv().jumping = false;
+local player = game.Players.LocalPlayer;
+getgenv().p = player;
+local character;
+local humanoid;
+
+getgenv().isPlayerNear = function()
+    if not character or not character:FindFirstChild("HumanoidRootPart") then return false end
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local otherHumanoidRootPart = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if otherHumanoidRootPart then
+                local distance = (character.HumanoidRootPart.Position - otherHumanoidRootPart.Position).Magnitude
+                if distance <= getgenv().range then
+                    return true
+                end
+            end
+        end
+    end
+    return false
+end
+
+getgenv().jump = function()
+    if not character or not humanoid then return end
+    if getgenv().isPlayerNear() and not getgenv().jumping then
+        getgenv().jumping = true
+        humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+    end
+end
+
+getgenv().startJumpBot = function()
+    if not player.Character then
+        player.CharacterAdded:Wait()
+    end
+    character = player.Character
+    humanoid = character:WaitForChild("Humanoid")
+    if not humanoid then
+        warn("Humanoid not found")
+        return
+    end
+    humanoid.StateChanged:Connect(function(oldState, newState)
+        if newState == Enum.HumanoidStateType.Landed then
+            getgenv().jumping = false
+        end
+    end)
+    getgenv().konnections.heartbeat = game:GetService("RunService").Heartbeat:Connect(getgenv().jump)
+end
+
+getgenv().stopJumpBot = function()
+    if getgenv().konnections.heartbeat then     getgenv().konnections.heartbeat:Disconnect()
+        getgenv().konnections.heartbeat = nil
+    end
+end
+
+AddContent(vars.switch, "Jump Bot",
+[[
+startJumpBot()
+print("JumpBot On")
+getgenv().JumpBot = true
+]],
+[[
+stopJumpBot()
+print("JumpBot Off")
+getgenv().JumpBot = false
+]])
+
+local Range = AddContent(vars.textbox, "range (default: " .. getgenv().range .. ")")
+
+fokus(Range):connect(function(entered)
+    if entered then
+        getgenv().range = tonumber(Range.Text)
+ _G.rnote("Set range: "..range, 1.2)
+    end;
+end)
+
+hum.Died:connect(function()
+for i=1,2 do hum.Jump = true; end;
+task.wait()
+    if(getgenv().JumpBot==true)then
+        getgenv().stopJumpBot()
+        getgenv().startJumpBot()
+    end;
+end)
+
+p.CharacterAdded:connect(function()
+for i=1,2 do hum.Jump = true; end;
+task.wait()
+    if(getgenv().JumpBot==true)then
+        getgenv().stopJumpBot()
+        getgenv().startJumpBot()
+    end;
+end)
+
+AddLabel("RBX: lulaslollipop 🍭 Diskord: @bommunity 🤖")
