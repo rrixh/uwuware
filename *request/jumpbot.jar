@@ -1,10 +1,24 @@
+--jumpbot ghost
 loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/lib/ghost%20ui%20lib",true))()
 AddTitle("Jump Bot")
+local ghost = [[
+game:GetService("CoreGui").GhostGui
+]];
 -----------
 loadstring(game:HttpGet('https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/skripts/globaLS', true))();
 wait()
 ------------
-getgenv().range = getgenv().SetRange or 7.5
+getgenv().ButtonSettings = {
+Funktion = function()
+local ghost = game:GetService("CoreGui").GhostGui;
+ghost.Enabled = not ghost.Enabled
+end,
+Asset_ID = getgenv().imageID or 17767487755,
+ButtonSize = getgenv().buttonsize or 73
+}
+loadstring(game:HttpGet("https://github.com/rrixh/uwuware/raw/refs/heads/main/kustomskript/KustomImageButton",true))()
+
+getgenv().range = 7.5
 getgenv().konnections = {};
 getgenv().died = false;
 getgenv().jumping = false;
@@ -59,7 +73,7 @@ getgenv().stopJumpBot = function()
     if getgenv().konnections.heartbeat then     getgenv().konnections.heartbeat:Disconnect()
         getgenv().konnections.heartbeat = nil
     end
-end
+end;
 
 AddContent(vars.switch, "Jump Bot",
 [[
@@ -83,16 +97,12 @@ fokus(Range):connect(function(entered)
 end)
 
 hum.Died:connect(function()
-for i=1,2 do hum.Jump = true; end;
-task.wait()
-    if(getgenv().JumpBot==true)then
-        getgenv().stopJumpBot()
-        getgenv().startJumpBot()
-    end;
+repeat wait() until hum:GetState() == Enum.HumanoidStateType.Landed;
 end)
 
 p.CharacterAdded:connect(function()
-for i=1,2 do hum.Jump = true; end;
+repeat wait() until hum:GetState() == Enum.HumanoidStateType.Landed;
+ hum.Jump = true;
 task.wait()
     if(getgenv().JumpBot==true)then
         getgenv().stopJumpBot()
@@ -100,4 +110,4 @@ task.wait()
     end;
 end)
 
-AddLabel("RBX: lulaslollipop 🍭 Diskord: @bommunity 🤖")
+AddLabel("RBX: lulaslollipop 🍭 Diskord: @bommunity 🤖");
