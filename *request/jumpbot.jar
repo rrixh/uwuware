@@ -4,7 +4,7 @@ AddTitle("Jump Bot")
 loadstring(game:HttpGet('https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/skripts/globaLS', true))();
 wait()
 ------------
-getgenv().range = 7.5
+getgenv().range = getgenv().SetRange or 7.5
 getgenv().konnections = {};
 getgenv().died = false;
 getgenv().jumping = false;
