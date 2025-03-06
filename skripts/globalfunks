@@ -340,6 +340,18 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/refs/he
 end;
 -- [[ END OF WINDOWS 10 notifs ]] --
 
+
+-- [[ PROTEKTED KALLS ]] --
+if(getgenv().kall==nil)then
+getgenv().kall=function(funk)
+local yes,no = pcall(funk)
+if not yes then
+windowErrorOk("Whoops! Something went wrong [Lollypop Hub]", err)
+    end;
+    return yes,no
+  end;
+end;
+
 --[[ ESP ALL PLR W/TEAMKOLOR ]]--
 getgenv().ESPenabled = false
 
