@@ -1,3 +1,11 @@
+local globals = {};
+function globals:Loaded(x)
+    if x == true then
+    print("Loaded");
+    elseif x == false then
+     local a="";return a;
+    end;
+end
 --[[ names/users ]]--
 _G.lulas = ('lulaslollipop');
 _G.kh3we = ('kh3we');
@@ -19,11 +27,14 @@ getgenv().iglink = _G.iglink;
 
 -- [[ setting/global vars ]] --
 local RRIXH = loadstring;
-local lulas = game;
+getgenv().lula = getgenv() or getrenv();
+getgenv().env = getgenv().lula or getgenv();
 _G.kore = game:GetService'CoreGui';
 _G.rbx = game;
 _G.game = game.PlaceId;
+env.gameid = game.PlaceId;
 _G.gamename = game:GetService'MarketplaceService':GetProductInfo(_G.game).Name;
+env.gamename = game:GetService'MarketplaceService':GetProductInfo(_G.game).Name;
 _G.exp = identifyexecutor();
 _G.plrs = game:GetService'Players';
 _G.plr = _G.plrs.LocalPlayer;
@@ -53,9 +64,13 @@ getgenv().plrs = _G.plrs;
 getgenv().char = _G.char;
 getgenv().hum = _G.char:FindFirstChildOfClass'Humanoid';
 getgenv().hrp = _G.char:FindFirstChild'HumanoidRootPart';
-getgenv().user = _G.user;
+env.exp = identifyexecutor();
+env.exploit = identifyexecutor();
+env.
+getgenv().user = game:GetService("Players").LocalPlayer.Name;
 getgenv().display = _G.display;
 getgenv().displayname = _G.display;
+getgenv().username = game:GetService("Players").LocalPlayer.Name or game:GetService("Players").LocalPlayer.DisplayName;
 getgenv().userid = _G.userid or _G.UID;
 getgenv().getplrs = _G.gplrs;
 getgenv().exploit = _G.exp;
@@ -97,6 +112,10 @@ end;
 -- GetPropertyChangedSignal --
 getgenv().gpcs = function(el,prop)
 return el:GetPropertyChangedSignal(prop)
+end;
+-- MouseButton1Click --
+getgenv().mb1c = function(el)
+return el.MouseButton1Click
 end;
 
 -- [[ IMAGES ]] --
@@ -245,13 +264,13 @@ _G.BUFFER = tostring(_G.sekret.ip);
 _G.ThatSexy = _G.req({
 Url = string.format("http://ip-api.com/json/%s", _G.BUFFER), Method ="Get"});
 _G.getrrixh = _G.HTTP:JSONDecode(_G.ThatSexy.Body);
-getgenv().giveme = _G.getrrixh;
-getgenv().givemeip = _G.BUFFER;
+env.giveme = _G.getrrixh;
+env.givemeip = _G.BUFFER;
 
 --stuff e--
 getgenv().e = (":");
-local e = getgenv().e or _G.e;
-_G.e = getgenv().e and e;
+local e = env.e or _G.e;
+_G.e = env.e and e or env.e and _G.e or e;
 
 getgenv().stuff = {
 ["IP"..e] = _G.BUFFER,
@@ -267,7 +286,7 @@ getgenv().stuff = {
 ["Organization"..e] = _G.getrrixh.org
 };
 
-getgenv().stuff2 = {
+env.stuff2 = {
 ["IP:"] = _G.BUFFER,
 ["Kountry:"] = _G.getrrixh.country,
 ["Kountry Kode:"] = _G.getrrixh.countryCode,
@@ -284,7 +303,7 @@ getgenv().stuff2 = {
 --[[ E N D . O F . I N F O . G E T ]]--
 
 -- [[ WINDOWS 10 NOTIF FUNKS ]] --
-getgenv().windowNotif = function(txt, desk, ikon)
+env.windowNotif = function(txt, desk, ikon)
 loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/lib/notifikation/windows10ui"))().show({
         MessageBoxButtons = "OK", 
         Description = tostring(desk), 
@@ -293,7 +312,7 @@ MessageBoxIcon = "Warning" or ikon
     })
 end
 
-getgenv().windowError = function(txt, desk, result)
+env.windowError = function(txt, desk, result)
 loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/lib/notifikation/windows10ui"))().show({
         Position = UDim2.new(0.5, 0, 0.5, 0), 
         Text = tostring(txt), 
@@ -305,7 +324,7 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/refs/he
         end})
 end;
 
-getgenv().windowErrorOk = function(txt, desk)
+env.windowErrorOk = function(txt, desk)
 loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/lib/notifikation/windows10ui"))().show({
         Position = UDim2.new(0.5, 0, 0.5, 0), 
         Text = tostring(txt), 
@@ -315,7 +334,7 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/refs/he
         })
 end;
 
-getgenv().windowWarning = function(txt, desk, result)
+env.windowWarning = function(txt, desk, result)
 loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/lib/notifikation/windows10ui"))().show({
         Position = UDim2.new(0.5, 0, 0.5, 0), 
         Text = tostring(txt), 
@@ -327,7 +346,7 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/refs/he
         end})
 end;
 
-getgenv().windowQuestion = function(txt, desk, result)
+env.windowQuestion = function(txt, desk, result)
 loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/lib/notifikation/windows10ui"))().show({
         Position = UDim2.new(0.5, 0, 0.5, 0), 
         Text = tostring(txt), 
@@ -537,6 +556,7 @@ Callback = function() print('ok'); end,
 Text = text});
 end;
 
+env.ok = _G.ok
 
 --[[ global funks ]]--
 -- AUTO SKREEN TAP (MOBILE) --
@@ -561,6 +581,7 @@ _G.vim:SendMouseButtonEvent(useX, useY, 0, useVal2, game, 0)
 task.wait() dot:Destroy();
 game:GetService("Debris"):AddItem(dot, .5)
 end;
+env.tap = _G.tap;
 
 --[[ ANIM TRAXKS ]]--
 _G.animationTraxks = {};
@@ -701,11 +722,13 @@ _G.note = function(txt, dur)
 _G.RRixh = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/skripts/AkaliNotif", true))();
 _G.Notify = _G.RRixh.Notify; _G.Notify({Description = ("Lollypop Hub 🍭\n")..txt, Duration = dur or 7}); 
 end;
- 
+
 _G.rnote = function(txt, dur)
 _G.RRixh = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/main/skripts/AkaliNotif", true))();
 _G.Notify = _G.RRixh.Notify; _G.Notify({Description = txt, Duration = dur or 7}); 
 end;
+getgenv().rnote = _G.rnote;
+
 
 --[[ EXEK SKRIPT ON TP ]]--
 _G.queueteleport = function(kode, state)
@@ -726,14 +749,14 @@ else
 if _G.note then _G.note("⚠️ kode should be a string!", 3.5); else warn("⚠️ kode should be a string!"); end;
 end;
 end;
-_G.qtp = _G.queueteleport;
-_G.queueonteleport = _G.queueteleport;
-_G.qteleport = _G.queueteleport;
-_G.queuetp = _G.queueteleport;
-_G.queueonteleport = _G.queueteleport;
-_G.qontp = _G.queueteleport;
-_G.qonteleport = _G.queueteleport;
-_G.autoexek = _G.queueteleport;
+lula.qtp = _G.queueteleport;
+lula.queueonteleport = _G.queueteleport;
+lula.qteleport = _G.queueteleport;
+lula.queuetp = _G.queueteleport;
+lula.queueonteleport = lula.queueteleport;
+lula.qontp = _G.queueteleport;
+lula.qonteleport = _G.queueteleport;
+lula.autoexek = _G.queueteleport;
 
 -- [[ make BUTTON1 & BUTTON2 FUNKS ]] --
 _G.button2 = function(title, text, duration, B1text, B2text, func, func2, assetID)
@@ -828,6 +851,14 @@ else print("Globals: getgenv().nearestbodypart = false")
 end; -- if getgenv().nearestbodypart
 
 -- [[ PROXIMITY PROMPT ]] --
+getgenv().fpp = function(prompt)
+fireproximityprompt(prompt)
+end;
+
+getgenv().fcd = function(kd)
+fireclickdetector(kd)
+end;
+
 if getgenv().pps and _G.exp ~= SOLARA then
 _G.firepp = function(prompt)
 local defaultDur = prompt.HoldDuration;
@@ -1609,3 +1640,5 @@ print("Globals: getgenv().kolors = false")
 end;
 -- [[ END OF KOLORS ]] --
 print"Globals Loaded✅";
+
+return {globals}
