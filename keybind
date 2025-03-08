@@ -7,13 +7,13 @@ end;
 
 getgenv().ButtonSettings = {
     Funktion = function()
-press(getgenv().Keybind)
+press(getgenv().Keybind or "Space")
     end,
 Asset_ID = getgenv().imageID or 17767487755, -- asset ID
     ButtonSize = getgenv().buttonsize or 80,
     Properties = {
    Draggable = getgenv().Draggable or true,
-        AllowKustomPosition = true,
+        AllowKustomPosition = getgenv().AllowKustomPosition or true,
     Position = getgenv().Position or UDim2.new(1, -110, 0, 25)
     }
 }
