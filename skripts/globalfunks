@@ -1641,4 +1641,4 @@ end;
 -- [[ END OF KOLORS ]] --
 print"Globals Loaded✅";
 
-return {globals}
+return globals;
