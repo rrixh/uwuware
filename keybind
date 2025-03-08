@@ -1,0 +1,15 @@
+getgenv().press = function(key, dur)
+local vim = game:GetService("VirtualInputManager");
+vim:SendKeyEvent(true, Enum.KeyCode[key], false, game)
+wait(dur or .0000001)
+vim:SendKeyEvent(false, Enum.KeyCode[key], false, game)
+end;
+
+getgenv().ButtonSettings = {
+Funktion = function()
+press(getgenv().Keybind or "Space")
+end,
+Asset_ID = getgenv().imageID or 17767487755,
+ButtonSize = getgenv().buttonsize or 75
+}
+loadstring(game:HttpGet("https://github.com/rrixh/uwuware/raw/refs/heads/main/kustomskript/KustomImageButton",true))()
