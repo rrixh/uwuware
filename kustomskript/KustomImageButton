@@ -1,8 +1,26 @@
+--[[ 
+what to put above the loadstring:
+
+getgenv().ButtonSettings = {
+    Funktion = function()
+        print("skript here")
+    end,
+Asset_ID = getgenv().imageID or 111324508198120, -- asset ID
+    ButtonSize = getgenv().buttonsize or 80,
+    Properties = {
+        Draggable = false,
+        AllowKustomPosition = true,
+        Position = UDim2.new(1, -110, 0, 25)
+    }
+}
+
+]]--
+
 local StrToNumber = tonumber;
 local Byte = string.byte;  
 local Char = string.char;
 local Sub = string.sub;
-local Subg = string.gsub;
+local Subg = string.gsub;  
 local Rep = string.rep;
 local Concat = table.concat;
 local Insert = table.insert;
