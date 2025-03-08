@@ -3,7 +3,7 @@ function globals:loaded(x)
     if x == true then
     print("Loaded");
     elseif x == false then
-     local a="";return a;
+     wait(.000001101010010101)
     end;
 end
 --[[ names/users ]]--
