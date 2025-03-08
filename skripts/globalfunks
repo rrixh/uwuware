@@ -1,5 +1,5 @@
 local globals = {};
-function globals:Loaded(x)
+function globals:loaded(x)
     if x == true then
     print("Loaded");
     elseif x == false then
