@@ -6,10 +6,15 @@ vim:SendKeyEvent(false, Enum.KeyCode[key], false, game)
 end;
 
 getgenv().ButtonSettings = {
-Funktion = function()
-press(getgenv().Keybind or "Space")
-end,
-Asset_ID = getgenv().imageID or 17767487755,
-ButtonSize = getgenv().buttonsize or 75
+    Funktion = function()
+press(getgenv().Keybind)
+    end,
+Asset_ID = getgenv().imageID or 17767487755, -- asset ID
+    ButtonSize = getgenv().buttonsize or 80,
+    Properties = {
+   Draggable = getgenv().Draggable or true,
+        AllowKustomPosition = true,
+    Position = getgenv().Position or UDim2.new(1, -110, 0, 25)
+    }
 }
-loadstring(game:HttpGet("https://github.com/rrixh/uwuware/raw/refs/heads/main/kustomskript/KustomImageButton",true))()
+loadstring(game:HttpGet("https://github.com/rrixh/uwuware/raw/refs/heads/main/kustomskript/KustomImageButton", true))();
