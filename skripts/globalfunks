@@ -1,11 +1,12 @@
 local globals = {};
-function globals:loaded(x)
-    if x == true then
+function globals:ass(loadedVal)
+    if loadedVal == true then
     print("Loaded");
-    elseif x == false then
+    end;
+    if loadedVal == false then
      wait(.000001101010010101)
     end;
-end
+end;
 --[[ names/users ]]--
 _G.lulas = ('lulaslollipop');
 _G.kh3we = ('kh3we');
