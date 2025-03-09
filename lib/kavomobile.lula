@@ -1,4 +1,7 @@
-local Kavo = {}
+-- Kavo ui 
+-- (edited by @lulaslollipop 🍭on RBX // @bommunity on discord) to fully support mobile for slider and kolor picker
+
+local LULA = {};
 local Indigo = Color3.fromRGB(128,0,128)
 local LP = Color3.fromRGB(166, 71, 214)
 local thanksgivingred = Color3.fromRGB(181, 71, 48)
@@ -19,20 +22,23 @@ local PINKY = Color3.fromRGB(255,192,203)
 local tween = game:GetService("TweenService")
 local tweeninfo = TweenInfo.new
 local input = game:GetService("UserInputService")
-local run = game:GetService("RunService")
+local run = game:GetService("RunService");
+---
+getgenv().mobile = Enum.UserInputType.Touch;
+getgenv().PC_mb1 = Enum.UserInputType.MouseButton1;
+getgenv().PC_mm = Enum.UserInputType.MouseMovement;
 
 local Utility = {}
 local Objects = {}
-function Kavo:DraggingEnabled(frame, parent)
+function LULA:DraggingEnabled(frame, parent)
 
     parent = parent or frame
-    local mobile = Enum.UserInputType.Touch
     -- stolen from wally or kiriot, kek
     local dragging = false
     local dragInput, mousePos, framePos
 
     frame.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == mobile then
+        if input.UserInputType == PC_mb1 or input.UserInputType == mobile then
             dragging = true
             mousePos = input.Position
             framePos = parent.Position
@@ -46,7 +52,7 @@ function Kavo:DraggingEnabled(frame, parent)
     end)
 
     frame.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == mobile then
+        if input.UserInputType == PC_mm or input.UserInputType == mobile then
             dragInput = input
         end
     end)
@@ -154,7 +160,7 @@ end)
 
 local LibName = tostring(math.random(1, 100))..tostring(math.random(1,50))..tostring(math.random(1, 100))
 
-function Kavo:ToggleUI()
+function LULA:ToggleUI()
     if game.CoreGui[LibName].Enabled then
         game.CoreGui[LibName].Enabled = false
     else
@@ -162,7 +168,7 @@ function Kavo:ToggleUI()
     end
 end
 
-function Kavo.CreateLib(kavName, themeList)
+function LULA.CreateLib(kavName, themeList)
     if not themeList then
         themeList = themes
     end
@@ -201,7 +207,7 @@ function Kavo.CreateLib(kavName, themeList)
     themeList = themeList or {}
     local selectedTab 
     kavName = kavName or "Library"
-    table.insert(Kavo, kavName)
+    table.insert(LULA, kavName)
     for i,v in pairs(game.CoreGui:GetChildren()) do
         if v:IsA("ScreenGui") and v.Name == kavName then
             v:Destroy()
@@ -226,7 +232,7 @@ function Kavo.CreateLib(kavName, themeList)
 
     local blurFrame = Instance.new("Frame")
 
-    Kavo:DraggingEnabled(MainHeader, Main)
+    LULA:DraggingEnabled(MainHeader, Main)
 
     blurFrame.Name = "blurFrame"
     blurFrame.Parent = pages
@@ -367,7 +373,7 @@ function Kavo.CreateLib(kavName, themeList)
         end
     end)()
 
-    function Kavo:ChangeColor(prope,color)
+    function LULA:ChangeColor(prope,color)
         if prope == "Background" then
             themeList.Background = color
         elseif prope == "SchemeColor" then
@@ -791,7 +797,7 @@ function Kavo.CreateLib(kavName, themeList)
                 return ButtonFunction
             end
 
-            function Elements:NewTextBox(tname, tTip, callback)
+            function Elements:NewTextBox(tname, tTip, callback, plaxeholderText)
                 tname = tname or "Textbox"
                 tTip = tTip or "Gets a value of Textbox"
                 callback = callback or function() end
@@ -847,11 +853,11 @@ function Kavo.CreateLib(kavName, themeList)
                 TextBox.ClipsDescendants = true
                 TextBox.Position = UDim2.new(0.488749921, 0, 0.212121218, 0)
                 TextBox.Size = UDim2.new(0, 150, 0, 18)
-                TextBox.ZIndex = 99
-                TextBox.ClearTextOnFocus = false
+TextBox.ZIndex = 99
+TextBox.ClearTextOnFocus = false
                 TextBox.Font = Enum.Font.PatrickHand --Gotham
                 TextBox.PlaceholderColor3 = Color3.fromRGB(themeList.SchemeColor.r * 255 - 19, themeList.SchemeColor.g * 255 - 26, themeList.SchemeColor.b * 255 - 35)
-           TextBox.PlaceholderText = "Type here! 🍭"
+TextBox.PlaceholderText = plaxeholderText or ("Type here! 🍭")
                 TextBox.Text = ""
                 TextBox.TextColor3 = themeList.SchemeColor
                 TextBox.TextSize = getgenv().txtboxtxtsize
@@ -1435,8 +1441,8 @@ function Kavo.CreateLib(kavName, themeList)
                             end)
                             sliderDrag:TweenSize(UDim2.new(0, math.clamp(mouse.X - sliderDrag.AbsolutePosition.X, 0, 149), 0, 6), "InOut", "Linear", 0.05, true)
                         end)
-                        releaseconnection = uis.InputEnded:Connect(function(Mouse)
-                            if Mouse.UserInputType == Enum.UserInputType.MouseButton1 then
+                        releaseconnection = uis.InputEnded:Connect(function(input)
+if input.UserInputType == PC_mb1 or input.UserInputType == mobile then
                                 Value = math.floor((((tonumber(maxvalue) - tonumber(minvalue)) / 149) * sliderDrag.AbsoluteSize.X) + tonumber(minvalue))
                                 pcall(function()
                                     callback(Value)
@@ -2601,10 +2607,10 @@ function Kavo.CreateLib(kavName, themeList)
                 rgb.MouseButton1Down:connect(function()colorpicker=true end)
                 dark.MouseButton1Down:connect(function()darknesss=true end)
                 uis.InputEnded:Connect(function(input)
-                    if input.UserInputType.Name == 'MouseButton1' or input.UserInputType.Name == 'Touch' then
-                        if darknesss then darknesss = false end
-                        if colorpicker then colorpicker = false end
-                    end
+if input.UserInputType.Name == 'MouseButton1' or input.UserInputType.Name == 'Touch' then
+if darknesss then darknesss = false end;
+if colorpicker then colorpicker = false end;
+                    end;
                 end)
                 setcolor({h,s,v})
             end
@@ -2639,9 +2645,9 @@ function Kavo.CreateLib(kavName, themeList)
               end 
 
             coroutine.wrap(function()
-                while wait() do
-                    label.BackgroundColor3 = themeList.SchemeColor
-                    label.TextColor3 = themeList.TextColor
+                while wait(.8) do
+label.BackgroundColor3 = themeList.SchemeColor
+label.TextColor3 = themeList.TextColor
                 end
             end)()
                 updateSectionFrame()
@@ -2659,4 +2665,5 @@ function Kavo.CreateLib(kavName, themeList)
     end  
     return Tabs
 end
-return Kavo
+return LULA
+-- fully supports mobile --
