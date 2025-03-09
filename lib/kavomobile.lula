@@ -1,6 +1,9 @@
 -- Kavo ui 
 -- (edited by @lulaslollipop 🍭on RBX // @bommunity on discord) to fully support mobile for slider and kolor picker
 
+-- Kavo ui 
+-- (edited by @lulaslollipop 🍭on RBX // @bommunity on discord) to fully support mobile for slider and kolor picker
+
 local LULA = {};
 local Indigo = Color3.fromRGB(128,0,128)
 local LP = Color3.fromRGB(166, 71, 214)
@@ -1242,7 +1245,7 @@ TextBox.PlaceholderText = plaxeholderText or ("Type here! 🍭")
                     return TogFunction
             end
 
-            function Elements:NewSlider(slidInf, slidTip, maxvalue, minvalue, callback)
+function Elements:NewSlider(slidInf, slidTip, minvalue, maxvalue, callback)
                 slidInf = slidInf or "Slider"
                 slidTip = slidTip or "Slider tip here"
                 maxvalue = maxvalue or 500
@@ -2666,4 +2669,4 @@ label.TextColor3 = themeList.TextColor
     return Tabs
 end
 return LULA
--- fully supports mobile --
+-- fully support mobile --
