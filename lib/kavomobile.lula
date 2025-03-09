@@ -1,9 +1,6 @@
 -- Kavo ui 
 -- (edited by @lulaslollipop 🍭on RBX // @bommunity on discord) to fully support mobile for slider and kolor picker
 
--- Kavo ui 
--- (edited by @lulaslollipop 🍭on RBX // @bommunity on discord) to fully support mobile for slider and kolor picker
-
 local LULA = {};
 local Indigo = Color3.fromRGB(128,0,128)
 local LP = Color3.fromRGB(166, 71, 214)
