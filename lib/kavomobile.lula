@@ -13,7 +13,7 @@ getgenv().sektiontextsize = (18.5)
 getgenv().labeltextsize = (17.7)
 getgenv().txtboxtxtsize = (16)
 getgenv().buttontextsize = (27.3)
-getgenv().RAINBOW = (26)
+getgenv().RAINBOW = (23)
 getgenv().togtextsize = (17)
 getgenv().tognametextsize = (17)
 
