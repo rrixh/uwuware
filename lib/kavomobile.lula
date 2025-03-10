@@ -1,22 +1,21 @@
 -- Kavo ui 
---[[ (edited by @lulaslollipop 🍭on RBX // @bommunity on discord) to fully support mobile for slider and kolor picker
-]]--
+-- (edited by @lulaslollipop 🍭on RBX // @bommunity on discord) to fully support mobile for slider and kolor picker
 
 local LULA = {};
 local Indigo = Color3.fromRGB(128,0,128)
 local LP = Color3.fromRGB(166, 71, 214)
 local thanksgivingred = Color3.fromRGB(181, 71, 48)
 local thanksgivingbrown = Color3.fromRGB(158, 104, 42)
-local uiKolor = getgenv().LollypopTheme or Color3.new(0.38, 0.25, 0.32) -- eggplant
-getgenv().titlesize = getgenv().TitleSize or (16.5)
-getgenv().tabtextsize = getgenv().TabsTextSize (16)
-getgenv().sektiontextsize = getgenv().SektionTextSize or (18.5)
-getgenv().labeltextsize = getgenv().LabelTextSize or (17.7)
-getgenv().txtboxtxtsize = getgenv().TextBoxTextSize or (16)
-getgenv().buttontextsize = getgenv().ButtonTextSize or (27.3)
-getgenv().RAINBOW = getgenv().RainbowTextSize or (26)
-getgenv().togtextsize = getgenv().ToggleTextSize or (17)
-getgenv().tognametextsize = getgenv().togtextsize or (17)
+local uiKolor = getgenv().LollypopTheme
+getgenv().titlesize = (16.5)
+getgenv().tabtextsize = (16)
+getgenv().sektiontextsize = (18.5)
+getgenv().labeltextsize = (17.7)
+getgenv().txtboxtxtsize = (16)
+getgenv().buttontextsize = (27.3)
+getgenv().RAINBOW = (26)
+getgenv().togtextsize = (17)
+getgenv().tognametextsize = (17)
 
 local KustomTheme = uiKolor
 local PINKY = Color3.fromRGB(255,192,203)
@@ -1243,7 +1242,7 @@ TextBox.PlaceholderText = plaxeholderText or ("Type here! 🍭")
                     return TogFunction
             end
 
-            function Elements:NewSlider(slidInf, slidTip, maxvalue, minvalue, callback)
+function Elements:NewSlider(slidInf, slidTip, minvalue, maxvalue, callback)
                 slidInf = slidInf or "Slider"
                 slidTip = slidTip or "Slider tip here"
                 maxvalue = maxvalue or 500
@@ -2666,4 +2665,4 @@ label.TextColor3 = themeList.TextColor
     end  
     return Tabs
 end
-return LULA;
+return LULA
