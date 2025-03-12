@@ -360,6 +360,39 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/refs/he
 end;
 -- [[ END OF WINDOWS 10 notifs ]] --
 
+-- [[ do funktion on target or all plrs ]] --
+getgenv().doPlayer = function(target, func, showerror)
+  local players = game:GetService("Players")
+local alltable = {"All", "all", "ALL", "ALl", "AlL", "aLl", "alL", "aLL"}
+
+  if table.find(alltable, target) then
+    for _, player in pairs(players:GetPlayers()) do
+      func(player)
+    end
+  elseif type(target) == "string" then
+    local foundPlayer = nil
+    for _, player in pairs(players:GetPlayers()) do
+      if player.Name == target or player.DisplayName == target then
+        foundPlayer = player
+        break
+      end;
+    end
+
+    if foundPlayer then
+      func(foundPlayer)
+    else
+   warn("Player not found: " .. target)
+if showerror==true then
+game.StarterGui:SetCore("DevConsoleVisible",true)
+end;
+    end
+  else
+ warn("Invalid target specified. Use 'All' or a player name (string).")
+if showerror==true then
+game:service("StarterGui"):SetCore("DevConsoleVisible",true)
+end;
+  end;
+end;
 
 -- [[ PROTEKTED KALLS ]] --
 if(getgenv().kall==nil)then
