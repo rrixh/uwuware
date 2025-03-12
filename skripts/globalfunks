@@ -380,7 +380,33 @@ wait(sekonds or 5);
 notifikation:Destroy();
 end; say=alert; adminmsg=alert;
 
---[[add ui korner to guiframe easily]]--
+-- [[ add uistroke to element easily ]] --
+getgenv().addStroke = function(args)
+    local parent = args.Parent;
+    if not parent or not parent:IsA("GuiObject") then
+warn("addStroke Error:\ninvalid or missing Parent. must be a GuiObjekt.")
+game.StarterGui:SetCore("DevConsoleVisible",true)
+         return nil
+    end;
+local kolor = args.Color or Color3.new(1,1,0)
+local thixkness = args.Thickness or 2
+local strokeMode = args.ApplyStrokeMode or Enum.ApplyStrokeMode.Border
+-- at least 1 thixkness
+thixkness = math.max(1, thixkness)
+--add the uistroke
+local uiStroke = Instance.new("UIStroke")
+uiStroke.ApplyStrokeMode = strokeMode;
+    uiStroke.Color = kolor;
+    uiStroke.Thickness = thixkness;
+    uiStroke.Parent = parent;
+    return uiStroke
+end;
+
+--[[ usages:
+Parent, ApplyStrokeMode, Color, Thixkness
+]]--
+
+-- [[ add ui korner to guiframe easily ]] --
 getgenv().addKorners=function(F,KR)
 local k = Instance.new("UICorner");
 k.CornerRadius = UDim.new(0, KR or 10)
