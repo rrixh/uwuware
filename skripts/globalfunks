@@ -225,6 +225,9 @@ getgenv().heartbeat = _G.heartbeat; getgenv().hb = _G.heartbeat;
 getgenv().prerender = _G.prerender;
 getgenv().chatted = _G.chatted;
 getgenv().inputbegan = _G.uis.InputBegan;
+getgenv().inputended = _G.uis.InputEnded;
+getgenv().inputxhanged = _G.uis.InputChanged;
+getgenv().inputchanged = _G.uis.InputChanged;
 getgenv().jumpreq = game:GetService("UserInputService").JumpRequest;
 getgenv().jumprequest = game:GetService("UserInputService").JumpRequest;
 
