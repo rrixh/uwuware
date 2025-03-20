@@ -914,12 +914,16 @@ else print("Globals: getgenv().nearestbodypart = false")
 end; -- if getgenv().nearestbodypart
 
 -- [[ PROXIMITY PROMPT ]] --
-getgenv().fpp = function(prompt)
-fireproximityprompt(prompt)
+getgenv().fpp = function(v)
+fireproximityprompt(v)
 end;
-
-getgenv().fcd = function(kd)
-fireclickdetector(kd)
+-- [[ KLIXK DETEKTOR ]] --
+getgenv().fcd = function(v)
+fireclickdetector(v)
+end;
+-- [[ TOUXH INTEREST ]] --
+getgenv().fti = function(v)
+firetouchinterest(v)
 end;
 
 if getgenv().pps and _G.exp ~= SOLARA then
