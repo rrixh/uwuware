@@ -1,0 +1,37 @@
+local vim = game:GetService("VirtualInputManager");
+getgenv().press = function(key,time)
+key = key:upper();
+vim:SendKeyEvent(true, Enum.KeyCode[key], false, game, 0)
+    task.wait(time or .00000001)
+vim:SendKeyEvent(false, Enum.KeyCode[key], false, game, 0)
+end;
+
+getgenv().ButtonSetup = {
+  Kustomization = {
+    Owner = "lulaslollipop 🍭",
+    ButtonName = getgenv().ButtonName or "Right Klick",
+LoopScript = getgenv().Loop or false, -- true/false
+ TurboLoop = false, -- true/false
+  Loop_WaitTime = 0.000001,
+ ButtonType = getgenv().ButtonType or  "default", -- "Default" or "Image"
+ImageID = getgenv().ImageID or 124622552375747,
+ImageButtonSize = getgenv().ButtonSize or 65,
+DisabledKolor = Color3.new(1, 0, 0), --  red
+    EnabledKolor = Color3.new(0, 1, 0), --  green
+    DisabledText = "❌",
+    EnabledText = "✅",
+  },
+  Properties = {
+    Draggable = getgenv().Draggable or true, -- true or false
+    Position = UDim2.new(0.5, 0, 0.5, 0), -- where the button starts
+    KornerRoundness = 12,
+    ButtonOutline = true,
+ OutlineKolor = Color3.new(1, 1, 1), -- white
+    OutlineThickness = 1,
+  TextColor = Color3.new(1, 1, 1) -- white
+  },
+  Skript = function()
+press(getgenv().KeyToPress or "q")
+end}
+-- loads the button (required)
+loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/kustomskript/KustomizableButton-V3"))();
