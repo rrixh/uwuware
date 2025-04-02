@@ -7,6 +7,14 @@ function globals:ass(loadedVal)
      wait(.000001101010010101)
     end;
 end;
+function globals:pkall(funk)
+local yes,no = pcall(funk)
+if not yes then
+warn("Something went wrong:", no)
+game.StarterGui:SetCore("DevConsoleVisible",true)
+    end;
+    return yes,no
+ end;
 --[[ names/users ]]--
 _G.lulas = ('lulaslollipop');
 _G.kh3we = ('kh3we');
@@ -35,7 +43,7 @@ _G.rbx = game;
 _G.game = game.PlaceId;
 env.gameid = game.PlaceId;
 _G.gamename = game:GetService'MarketplaceService':GetProductInfo(_G.game).Name;
-env.gamename = game:GetService'MarketplaceService':GetProductInfo(_G.game).Name;
+getgenv().gamename = game:GetService'MarketplaceService':GetProductInfo(_G.game).Name;
 _G.exp = identifyexecutor();
 _G.plrs = game:GetService'Players';
 _G.plr = _G.plrs.LocalPlayer;
@@ -46,25 +54,34 @@ _G.user = _G.plr.Name;
 _G.username = _G.plr.Name;
 _G.display = _G.plr.DisplayName;
 _G.displayname = _G.plr.DisplayName;
-_G.gplrs = _G.plrs:GetPlayers();
-_G.char = _G.plr.Character
-_G.hum = _G.char:FindFirstChildWhichIsA('Humanoid');
-_G.hrp = _G.char:FindFirstChild'HumanoidRootPart';
+_G.gplrs = game:GetService("Players"):GetPlayers();
+_G.char = _G.plr.Character;
+_G.hum = _G.char.Humanoid;
+_G.hrp = _G.char.HumanoidRootPart;
 _G.health = _G.hum.Health;
-_G.anim = game.Players.LocalPlayer.Character.Animate;
-_G.kam = workspace.CurrentCamera;
+_G.anim = game:GetService("Players").LocalPlayer.Character.Animate;
+_G.kam = game:GetService("Workspace").CurrentCamera;
 _G.ws = _G.hum.WalkSpeed;
 _G.jp = _G.hum.JumpPower;
-_G.kamera = game.Workspace.CurrentCamera;
-_G.plrkount = #game.Players:GetPlayers();  
-_G.maxplrs = game.Players.MaxPlayers;
+_G.kamera = game:GetService("Workspace").CurrentCamera;
+_G.plrkount = #game:GetService("Players"):GetPlayers();  
+_G.maxplrs = game:GetService("Players").MaxPlayers;
 
 -- getgenv global vars --
 getgenv().plr = _G.plr;
 getgenv().plrs = _G.plrs;
 getgenv().char = _G.char;
-getgenv().hum = _G.char:FindFirstChildOfClass'Humanoid';
-getgenv().hrp = _G.char:FindFirstChild'HumanoidRootPart';
+getgenv().hum = _G.char.Humanoid;
+getgenv().hrp = _G.char.HumanoidRootPart
+getgenv().rootpart = _G.char.Humanoid.RootPart;
+
+local headvalid,headinvalid = pcall(function()
+getgenv().head = getgenv().hum.Head or getgenv().hum:FindFirstChild("Head");
+end); 
+if not headvalid then warn("Globals:", headinvalid) end;
+
+getgenv().Walkspeed = _G.ws;
+getgenv().Jumppower = _G.jp;
 env.exp = identifyexecutor();
 env.exploit = identifyexecutor();
 env.
@@ -230,6 +247,9 @@ getgenv().inputxhanged = _G.uis.InputChanged;
 getgenv().inputchanged = _G.uis.InputChanged;
 getgenv().jumpreq = game:GetService("UserInputService").JumpRequest;
 getgenv().jumprequest = game:GetService("UserInputService").JumpRequest;
+getgenv().plrAdded = game:GetService("Players").PlayerAdded;
+getgenv().plrRemoving = game:GetService("Players").PlayerRemoving;
+
 
 -- string matxh --
 getgenv().Empty = ("^%s*$");-- blank
@@ -255,6 +275,16 @@ _G.strlow = string.lower;
 _G.strup = string.upper;
 _G.strfind = string.find;
 _G.strformat = string.format;
+--globalenv--
+env.tf = table.find;
+env.foreach = table.foreach;
+env.insert = table.insert;
+env.num = tonumber;
+env.str = tostring;
+env.strlow = string.lower;
+env.strup = string.upper;
+env.strfind = string.find;
+env.strformat = string.format;
 
 
 --[[info get]]--
@@ -362,6 +392,19 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/refs/he
         end})
 end;
 -- [[ END OF WINDOWS 10 notifs ]] --
+
+--[[ DEV KONSOLE ]]--
+getgenv().konsole = function(v)
+ if(v=="visible")then 
+game.StarterGui:SetCore("DevConsoleVisible",true)
+  elseif(v=="notvisible")then
+game.StarterGui:SetCore("DevConsoleVisible",false)
+    elseif(v==nil)then
+game.StarterGui:SetCore("DevConsoleVisible",true)
+    else
+game.StarterGui:SetCore("DevConsoleVisible",v)
+    end;
+end;
 
 -- [[ do funktion on target or all plrs ]] --
 getgenv().doPlayer = function(target, func, showerror)
