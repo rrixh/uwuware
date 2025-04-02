@@ -74,12 +74,6 @@ getgenv().char = _G.char;
 getgenv().hum = _G.char.Humanoid;
 getgenv().hrp = _G.char.HumanoidRootPart
 getgenv().rootpart = _G.char.Humanoid.RootPart;
-
-local headvalid,headinvalid = pcall(function()
-getgenv().head = getgenv().hum.Head or getgenv().hum:FindFirstChild("Head");
-end); 
-if not headvalid then warn("Globals:", headinvalid) end;
-
 getgenv().Walkspeed = _G.ws;
 getgenv().Jumppower = _G.jp;
 env.exp = identifyexecutor();
