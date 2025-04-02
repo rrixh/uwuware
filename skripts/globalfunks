@@ -7,10 +7,10 @@ function globals:ass(loadedVal)
      wait(.000001101010010101)
     end;
 end;
-function globals:pkall(funk)
+getgenv().pkall = function(funk,msg)
 local yes,no = pcall(funk)
 if not yes then
-warn("Something went wrong:", no)
+warn(msg or "Something went wrong:", no)
 game.StarterGui:SetCore("DevConsoleVisible",true)
     end;
     return yes,no
