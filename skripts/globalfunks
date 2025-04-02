@@ -440,6 +440,53 @@ end;
   end;
 end;
 
+-- [[ PRESS KEYBINDS ]] --
+getgenv().press = function(key,time)
+local v = game:GetService"VirtualInputManager"
+v:SendKeyEvent(true,Enum.KeyCode[key],false,game)
+wait(time or 0.00000001)
+v:SendKeyEvent(false,Enum.KeyCode[key],false,game)
+end;
+
+--[[ MAKE NEW KUSTOM TOOL ]]--
+getgenv().newtool = function(params)
+    local toolName = params.name or ("kustomtool");
+    local toolAktivated = params.activated or function() end;
+    local toolEquipped = params.equipped or function() end;
+    local toolImage = "rbxassetid://"..(params.image or "00000000");
+    local requiresHandle = params.requireshandle or false;
+    local handleSize = params.handlesize or Vector3.new(1, 1, 1);
+
+local bakpak = game.Players.LocalPlayer.Backpack or game.Players.LocalPlayer:WaitForChild("Backpack")
+
+    local tool = Instance.new("Tool")
+    tool.Name = toolName
+
+    if toolImage then
+        local imageLabel = Instance.new("ImageLabel")
+        imageLabel.Size = UDim2.new(1, 0, 1, 0)
+        imageLabel.Image = toolImage
+        imageLabel.Parent = tool
+    end
+
+    if requiresHandle then
+        local handle = Instance.new("Part")
+        handle.Name = "Handle"
+        handle.Size = handleSize
+        handle.Anchored = true
+        handle.CanCollide = false
+        handle.Parent = tool
+    end
+
+    if toolAktivated then
+   tool.Activated:connect(toolAktivated)
+    end;
+    if toolEquipped then
+   tool.Equipped:connect(toolEquipped)
+    end;
+  tool.Parent = bakpak
+end;
+
 -- [[ PROTEKTED KALLS ]] --
 if(getgenv().kall==nil)then
 getgenv().kall=function(funk)
