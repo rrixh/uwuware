@@ -21,6 +21,11 @@ _G.kh3we = ('kh3we');
 _G.xheru = ('cherussii');
 _G.hg = ('smileszbaby');
 _G.kookie = ('sii_uuu7');
+getgenv().lulas = _G.lulas;
+getgenv().kh3we = _G.kh3we;
+getgenv().xheru = _G.xheru;
+getgenv().hg = _G.hg;
+getgenv().kookie = _G.kookie;
 -- [[ my soxials ]] --
 _G.rbxlink = ("https://www.roblox.com/users/3001347724/profile")
 _G.diskordlink = ("https://discordapp.com/users/1284685023630458963")
@@ -35,7 +40,7 @@ getgenv().telegramlink = _G.telegramlink;
 getgenv().iglink = _G.iglink;
 
 -- [[ setting/global vars ]] --
-local RRIXH = loadstring;
+getgenv().RRIXH = loadstring;
 getgenv().lula = getgenv() or getrenv();
 getgenv().env = getgenv().lula or getgenv();
 _G.kore = game:GetService'CoreGui';
@@ -56,8 +61,8 @@ _G.display = _G.plr.DisplayName;
 _G.displayname = _G.plr.DisplayName;
 _G.gplrs = game:GetService("Players"):GetPlayers();
 _G.char = _G.plr.Character;
-_G.hum = _G.char.Humanoid;
-_G.hrp = _G.char.HumanoidRootPart;
+_G.hum = _G.char.Humanoid or _G.char:FindFirstChild("Humanoid")
+_G.hrp = _G.char.HumanoidRootPart or _G.char:FindFirstChild("HumanoidRootPart");
 _G.health = _G.hum.Health;
 _G.anim = game:GetService("Players").LocalPlayer.Character.Animate;
 _G.kam = game:GetService("Workspace").CurrentCamera;
@@ -76,6 +81,7 @@ getgenv().hrp = _G.char.HumanoidRootPart
 getgenv().rootpart = _G.char.Humanoid.RootPart;
 getgenv().Walkspeed = _G.ws;
 getgenv().Jumppower = _G.jp;
+env.kam = _G.kam;
 env.exp = identifyexecutor();
 env.exploit = identifyexecutor();
 env.
@@ -449,7 +455,7 @@ getgenv().newtool = function(params)
     local toolEquipped = params.equipped or function() end;
     local toolImage = "rbxassetid://"..(params.image or "00000000");
     local requiresHandle = params.requireshandle or false;
-    local handleSize = params.handlesize or Vector3.new(1, 1, 1);
+    local handleSize = params.toolsize or Vector3.new(1, 1, 1);
 
 local bakpak = game.Players.LocalPlayer.Backpack or game.Players.LocalPlayer:WaitForChild("Backpack")
 
@@ -1792,4 +1798,4 @@ end;
 -- [[ END OF KOLORS ]] --
 print"Globals Loaded✅";
 
-return globals;
+return {globals};
