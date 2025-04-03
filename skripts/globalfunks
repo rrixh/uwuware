@@ -631,7 +631,7 @@ modify = getgenv().modify;
 --[[ DHWARNING NOTIF ]] --
 getgenv().dhwarn = function(tit,txt,d)
 loadstring((game.HttpGet(game,"https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/lib/dh_warning%20ui%20lib")))():rrixh(
-tit or "warning title 👺", txt or "this a warning ‼️", d or 7) 
+tit or "warning title 👺", txt or "this a warning ‼️", d or 4.5) 
 end;
 
 
@@ -695,9 +695,10 @@ if typingtime then wait(typingtime); else wait(.06) end;
 end;
 end;
 typeMessage();
-if destroytime then wait(destroytime); else wait(3.3) end;
+ wait(destroytime or 3.3)
 h:Destroy(); end)
-end;
+end; 
+getgenv().write = _G.write;
 
 -- [[ LOLLYPOP HUB NOTIF ]] --
 _G.ok = function(text,dur)
@@ -708,7 +709,6 @@ Button1 = "okay",
 Callback = function() print('ok'); end,
 Text = text});
 end;
-
 env.ok = _G.ok
 
 --[[ global funks ]]--
@@ -808,12 +808,14 @@ stomp,slay=getgenv().stomp;
 
 -- jump --
 _G.jump = function(val)
-game.Players.LocalPlayer.Character.Humanoid.Jump = val
+getgenv().hum.Jump = val
 end;
+env.jump = _G.jump;
 -- sit --
 _G.sit = function(val)
 game.Players.LocalPlayer.Character.Humanoid.Sit = val
 end;
+env.sit = _G.sit;
 -- TP WALK --
 _G.toggleTPWalk = function(value)
 tpwalk = value
