@@ -214,6 +214,7 @@ getgenv().ws = _G.w;
 getgenv().pps = _G.pps;
 getgenv().tps = _G.tps;
 getgenv().sgui = _G.sgui;
+getgenv().GS = game:GetService'GuiService';
 getgenv().light = _G.light; getgenv().lighting = _G.light;
 getgenv().debris = _G.debris;
 
@@ -393,6 +394,29 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/refs/he
 end;
 -- [[ END OF WINDOWS 10 notifs ]] --
 
+-- [[ INSPEKT PLAYERS BY PARTIAL NAME ]] --
+getgenv().examine = function(playerName)
+getgenv().GS = game:GetService"GuiService";
+    local foundPlr = nil
+    for _, player in ipairs(game.Players:GetPlayers()) do
+        if string.find(string.lower(player.Name), string.lower(playerName)) or string.find(string.lower(player.DisplayName), string.lower(playerName)) then
+            foundPlr = player
+            break
+        end;
+    end;
+    if foundPlr then 
+-- GS:CloseInspectMenu()
+GS:InspectPlayerFromUserId(foundPlr.UserId)
+    else
+warn("Player", playerName, "not found")
+    end
+end;
+
+-- [[ TOGGLE TOUXH KONTROLS ]] --
+getgenv().touxhKontrolsEnabled = function(...)
+game:GetService("GuiService").TouchControlsEnabled = (...)
+end;
+
 --[[ DEV KONSOLE ]]--
 getgenv().konsole = function(v)
  if(v=="visible")then 
@@ -512,7 +536,7 @@ getgenv().addStroke = function(args)
     if not parent or not parent:IsA("GuiObject") then
 warn("addStroke Error:\ninvalid or missing Parent. must be a GuiObjekt.")
 game.StarterGui:SetCore("DevConsoleVisible",true)
-         return nil
+         return
     end;
 local kolor = args.Color or Color3.new(1,1,0)
 local thixkness = args.Thickness or 2
