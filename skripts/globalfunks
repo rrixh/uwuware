@@ -400,13 +400,14 @@ getgenv().GS = game:GetService"GuiService";
     local foundPlr = nil
     for _, player in ipairs(game.Players:GetPlayers()) do
         if string.find(string.lower(player.Name), string.lower(playerName)) or string.find(string.lower(player.DisplayName), string.lower(playerName)) then
-            foundPlr = player
+            foundPlr = player; 
+            fp = foundPlr;
             break
         end;
     end;
     if foundPlr then 
--- GS:CloseInspectMenu()
-GS:InspectPlayerFromUserId(foundPlr.UserId)
+GS:CloseInspectMenu()
+GS:InspectPlayerFromUserId(fp.UserId)
     else
 warn("Player", playerName, "not found")
     end
