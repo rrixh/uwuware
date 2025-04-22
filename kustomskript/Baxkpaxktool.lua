@@ -104,6 +104,8 @@ end)
 CloseButton.MouseButton1Click:Connect(function()
 warn("destroying", ScreenGui.Name)
     ScreenGui:Destroy()
+toggle = game:GetService("CoreGui"):FindFirstChild("Toggle Baxkpaxk Tool_kustombtn")
+if toggle then toggle:Destroy() end
   end)
 
 local function UpdateBackpackList()
@@ -167,12 +169,11 @@ task.spawn(function()
 end)
 
 ----
-
 if(getgenv().ToggleButton)then
 getgenv().ButtonSetup = {
   Kustomization = {
     Owner = "lulaslollipop 🍭",
-    ButtonName = "Toggle Baxkpaxk GUI",
+    ButtonName = "Toggle Baxkpaxk Tool",
 LoopScript = false, -- true/false
  TurboLoop = false, -- true/false
   Loop_WaitTime = 0.000001,
