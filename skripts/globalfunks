@@ -1031,16 +1031,25 @@ else print("Globals: getgenv().nearestbodypart = false")
 end; -- if getgenv().nearestbodypart
 
 -- [[ PROXIMITY PROMPT ]] --
-getgenv().fpp = function(v)
-fireproximityprompt(v)
+getgenv().fpp = function(v,t)
+fireproximityprompt(game.Players.LocalPlayer.Character.HumanoidRootPart, partpath, 0)
+task.wait(t or 0.3)
+fireproximityprompt(game.Players.LocalPlayer.Character.HumanoidRootPart, partpath, 1)
 end;
 -- [[ KLIXK DETEKTOR ]] --
 getgenv().fcd = function(v)
 fireclickdetector(v)
 end;
 -- [[ TOUXH INTEREST ]] --
-getgenv().fti = function(v)
-firetouchinterest(v)
+getgenv().fti = function(v,t,name)
+if not hrp then local hrp = game.Players.LocalPlayer.Character.HumanoidRootPart; end;
+firetouchinterest(hrp, partpath, 0)
+task.wait(t or 0.3)
+firetouchinterest(hrp, partpath, 1)
+if name then warn(partpath:GetFullName()) 
+    else 
+local nothing
+    end;
 end;
 
 if getgenv().pps and _G.exp ~= SOLARA then
