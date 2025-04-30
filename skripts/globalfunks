@@ -194,6 +194,11 @@ getgenv().krossboogie = _G.krossboogie;
 _G.invalid = {"ggerrtasalt", "", " ", "  ", "   ", "    ", "     ", "      ", "       ", "        ", "         ", "          "}
 getgenv().invalid = _G.invalid;
 
+-- [[ E X T R A S ]] --
+getgenv().year = os.date("%Y")
+getgenv().nextyear = (year + 1);
+getgenv().lastyear = (year - 1);
+
 --[[ servixes ]]--
 _G.run = game:GetService'RunService';
 _G.rep = game:GetService'ReplicatedStorage';
@@ -255,6 +260,14 @@ getgenv().plrRemoving = game:GetService("Players").PlayerRemoving;
 -- string matxh --
 getgenv().Empty = ("^%s*$");-- blank
 getgenv().Blank = ("^%s*$");-- blank
+
+getgenv().isblank = function(value)
+    return value:match("^%s*$") ~= nil
+end;
+
+getgenv().trim = function(value)
+    return value:match("^%s*(.-)%s*$")
+end;
 
 -- [[ EXEKUTORS ]] --
 local delta, Delta, DELTA = "Delta", "Delta", "Delta"
@@ -629,7 +642,7 @@ end;
 
 -- [[ XHEXK RIGTYPE ]] --
 _G.rigtype = function(rig)
-return game.Players.LocalPlayer.Character:FindFirstChildOfClass('Humanoid').RigType == Enum.HumanoidRigType[rig]
+return game.Players.LocalPlayer.Character:FindFirstChildOfClass('Humanoid').RigType == Enum.HumanoidRigType[rig:upper()]
 end;
 getgenv().rigtype = _G.rigtype;
 
@@ -783,6 +796,7 @@ _G.animationTraxks[animId] = nil;
 end;
 end;
 end;
+getgenv().anim = _G.anim;
 
 --[[ baddiez💅🏻remotes ]] --
 --spray
@@ -832,13 +846,13 @@ stomp,slay=getgenv().stomp;
 --[[baddiez💅🏻remotes]]--
 
 -- jump --
-_G.jump = function(val)
-getgenv().hum.Jump = val
+_G.jump = function(...)
+game.Players.LocalPlayer.Character.Humanoid.Jump = ...
 end;
 env.jump = _G.jump;
 -- sit --
-_G.sit = function(val)
-game.Players.LocalPlayer.Character.Humanoid.Sit = val
+_G.sit = function(...)
+game.Players.LocalPlayer.Character.Humanoid.Sit = ...
 end;
 env.sit = _G.sit;
 -- TP WALK --
@@ -1079,11 +1093,13 @@ end;
 end;
 else 
 print("Globals: getgenv().pps = false");
-end; -- if getgenv().pps (proximityprompts) is enabled
+end; 
+-- if getgenv().pps (proximityprompts) is enabled
 
 _G.kopy = function(uh)
 setclipboard(uh)
 end;
+getgenv().kopy = _G.kopy;
 
 getgenv().tpto = function(id)
 game:GetService("TeleportService"):Teleport(id,game:GetService("Players").LocalPlayer)
@@ -1137,6 +1153,7 @@ if duration then
 task.wait(duration)
 end;
 end;
+getgenv().tp = _G.tp;
 
 _G.bring = function(part, duration)
 _G.player = game.Players.LocalPlayer
@@ -1147,6 +1164,7 @@ if duration then
     task.wait(duration)
 end;
 end;
+getgenv().bring = _G.bring;
 
 -- moveto
 _G.walkTo = function(part, speed)
@@ -1167,7 +1185,7 @@ end
 local originalSpeed = humanoid.WalkSpeed
 
 if type(speed) == "number" then
-humanoid.WalkSpeed = speed
+humanoid.WalkSpeed = tonumber(speed)
 end
 
 local PathfindingService = game:GetService("PathfindingService")
@@ -1191,6 +1209,7 @@ end
 -- Restore original walk speed after reaching the target
 humanoid.WalkSpeed = originalSpeed
 end;
+getgenv().walkTo = _G.walkTo;
 
 --tpwalk to
 _G.tpwalkTo = function(part, tpWalkDistanxe)
@@ -1221,6 +1240,7 @@ task.wait(0.01)
 end;
 moveToStep(endPos)
 end;
+getgenv().tpwalkTo = _G.tpwalkTo;
 
 --i pairs
 _G.iPairs = function(part, funk, dur)
@@ -1229,6 +1249,7 @@ funk(ipair)
 if dur then wait(dur) end;
 end
 end
+getgenv().iPairs = _G.iPairs;
 
 -- pairs
 _G.Pairs = function(part, funk, dur)
@@ -1237,45 +1258,29 @@ funk(pair)
 if dur then wait(dur) end;
 end
 end;
+getgenv().Pairs = _G.Pairs;
 
 --[[🖍PREDEFINED KOLORS🖍]]--
-red = "red"
-green = "green"
-blue = "blue"
-yellow = "yellow"
-pink = "pink"
-orange = "orange"
-cyan = "cyan"
-purple = "purple"
-white = "white"
-black = "black"
-gray = "gray"
-brown = "brown"
-lime = "lime"
-magenta = "magenta"
-salmon = "salmon"
-teal = "teal"
-
--- highlight part
-local colorVariables = {
-red = "red",
-green = "green",
-blue = "blue",
-yellow = "yellow",
-pink = "pink",
-orange = "orange",
-cyan = "cyan",
-purple = "purple",
-white = "white",
-black = "black",
-gray = "gray",
-brown = "brown",
-lime = "lime",
-magenta = "magenta",
-salmon = "salmon",
-teal = "teal"
+getgenv().kolors2 = {
+    red = Color3.new(0.6, 0.2, 0.2),
+    green = Color3.new(0.2, 0.6, 0.2),
+    blue = Color3.new(0.2, 0.2, 0.6),
+    yellow = Color3.new(0.6, 0.6, 0.2),
+    pink = Color3.new(0.7, 0.4, 0.5),
+    orange = Color3.new(0.7, 0.4, 0.2),
+    cyan = Color3.new(0.3, 0.6, 0.6),
+    purple = Color3.new(0.5, 0.2, 0.5),
+    white = Color3.new(0.8, 0.8, 0.8),
+    black = Color3.new(0.05, 0.05, 0.05),
+    gray = Color3.new(0.2, 0.2, 0.2),
+    brown = Color3.new(0.4, 0.3, 0.2),
+    lime = Color3.new(0.4, 0.6, 0.2),
+    magenta = Color3.new(0.6, 0.2, 0.6),
+    salmon = Color3.new(0.7, 0.4, 0.4),
+    teal = Color3.new(0.2, 0.5, 0.5)
 }
 
+-- highlight part
 local colorVariables = {
 red = "red",
 green = "green",
@@ -1656,7 +1661,7 @@ else print("Globals: getgenv().topart = false")
 end; -- if getgenv().topart is true
 
 -- [[ KOLORS ]] --
-if getgenv().kolors then
+if(getgenv().kolors)then
 _G.green = Color3.new(0, 1, 0) -- bright
 _G.red = Color3.new(1, 0, 0) -- bright
 _G.blue = Color3.new(0, 0, 1)
