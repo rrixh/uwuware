@@ -3,7 +3,7 @@
 local keybind = getgenv().Keybind;
 
 getgenv().press = function(key)
-key = key or getgenv().Keybind;
+key = getgenv().Keybind~=nil and getgenv().Keybind~="" or key;
 vim = game:service"VirtualInputManager"
 vim:SendKeyEvent(true, Enum.KeyCode[key], false, game)
 task.wait(.000000001)
