@@ -1,6 +1,6 @@
 -- getgenv().Keybind = "q" -- replace the letter "q" with the keybind u need
 
-local keybind = getgenv().Keybind:upper();
+local keybind = getgenv().Keybind;
 
 getgenv().press = function(key)
 key = key or getgenv().Keybind;
