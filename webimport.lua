@@ -1,3 +1,8 @@
+if(getgenv().globals)then
+loadstring(game:HttpGet('https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/skripts/globaLS'))();
+else x99888888888887x=[[1]]
+end;
+
 getgenv().folders = {"", " ", "f", "+", "folder", "#bypass", "bypass", "kustomskript", "Kustom", "*request", "UNIVERSAL", "dahood", "exekutor", "draggable-mobile-button", "games", "images", "lib", "mobilefly", "rbxevent", "simulators", "skripts", "test", "ugc"}
 getgenv().owner=owner;
 getgenv().repo=repo;
