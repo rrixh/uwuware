@@ -6,7 +6,7 @@ getgenv().folder=folder;
 
 getgenv().webimport = function(file,isfolder,arg3)
 if(owner==nil)then owner="rrixh" end;
-if(repo==nil)then warn("MUST ASSIGN VARIABLE --> Example:\n repo = \"repo name\"") 
+if(repo==nil)then warn("MUST ASSIGN VARIABLE --> Example:\n local repo = \"RepositoryNameHere\"") 
 return end;
 if(branch==nil)or(branch~="main")or(branch~="refs/heads/main")then
 branch = "main" 
@@ -29,7 +29,3 @@ finalFolder = folder.."/"
    skript=(game:HttpGet(url))
     return (loadstring(skript,file)());
 end;
-getgenv().git=getgenv().webimport;
-getgenv().github=getgenv().webimport;
-getgenv().exekute=getgenv().webimport;
-getgenv().skript=getgenv().webimport;
