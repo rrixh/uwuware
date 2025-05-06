@@ -1,4 +1,4 @@
-getgenv().folders = {"#bypass", "bypass", "kustomskript", "Kustom", "*request", "UNIVERSAL", "dahood", "exekutor", "draggable-mobile-button", "games", "images", "lib", "mobilefly", "rbxevent", "simulators", "skripts", "test", "ugc"}
+getgenv().folders = {"", " ", "f", "+", "folder", "#bypass", "bypass", "kustomskript", "Kustom", "*request", "UNIVERSAL", "dahood", "exekutor", "draggable-mobile-button", "games", "images", "lib", "mobilefly", "rbxevent", "simulators", "skripts", "test", "ugc"}
 getgenv().owner=owner;
 getgenv().repo=repo;
 getgenv().branch=branch;
@@ -18,10 +18,11 @@ if(isfolder==nil)or(isfolder=="")then isfolder=false;end;
 elseif(arg3=="#bypass")then
 finalFolder="%23"..folder
 elseif(table.find(getgenv().folders, arg3))then
-finalFolder = folder.."/"
+finalFolder = (folder.."/")
     end;
 
     if(isfolder)then
+finalFolder = (folder.."/")
         url=string.format("https://raw.githubusercontent.com/%s/%s/%s/%s/%s", owner, repo, "refs/heads/"..branch, finalFolder, file)
     else
   url = string.format("https://raw.githubusercontent.com/%s/%s/%s/%s", owner, repo, "refs/heads/"..branch, file)
