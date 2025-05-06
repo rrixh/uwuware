@@ -13,7 +13,7 @@ getgenv().webimport = function(file,isfolder,arg3)
 if(owner==nil)then owner="rrixh" end;
 if(file==file..".uwuware")then repo = "uwuware" end;
 if(repo==nil)then warn("MUST ASSIGN VARIABLE --> Example:\n local repo = \"RepositoryNameHere\"") 
-return end;
+repo="uwuware" return end;
 if(branch==nil)or(branch~="main")or(branch~="refs/heads/main")then
 branch = "main" 
  end;
