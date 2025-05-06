@@ -1,9 +1,8 @@
--- getgenv().Keybind = "q" -- replace the letter "q" with the keybind u need
+-- getgenv().Keybind = "MouseRightButton"
 
-local keybind = getgenv().Keybind;
+keybind = getgenv().Keybind or "Space"
 
 getgenv().press = function(key)
-key = getgenv().Keybind~=nil and getgenv().Keybind~="" or key;
 vim = game:service"VirtualInputManager"
 vim:SendKeyEvent(true, Enum.KeyCode[key], false, game)
 task.wait(.000000001)
@@ -14,7 +13,7 @@ end
 getgenv().ButtonSetup = {
   Kustomization = {
     Owner = "lulaslollipop 🍭",
-    ButtonName = getgenv().ButtonName or keybind.." Tool",
+    ButtonName = getgenv().ButtonName or keybind.."",
 LoopScript = false, -- true/false
  TurboLoop = false, -- true/false
   Loop_WaitTime = 0.000001,
@@ -36,7 +35,7 @@ DisabledKolor = Color3.new(1, 0, 0), --  red
   TextColor = Color3.new(1, 1, 1) -- white
   },
   Skript = function()
-press(keybind or "Space")
+press(keybind)
 end}
 -- loads the button (required)
 loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/kustomskript/KustomizableButton-V3"))();
