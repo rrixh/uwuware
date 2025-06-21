@@ -426,6 +426,17 @@ warn("Player", playerName, "not found")
     end
 end;
 
+--[[ set klipboard baxk to lollypophub ]]--
+getgenv().klip = function(text, dur)
+    if(type(text) == "string")then
+        setclipboard(tostring(text))
+        task.wait(dur or 1)
+setclipboard("loadstring(game:HttpGet('https://raw.githubusercontent.com/rrixh/lulaslollipopmobile/main/lollypophubmobilev2'))();")
+       else
+warn("ARGUMENT 1 must be a string\nExample --> klip(‘text here’, 1)") return
+    end
+end;
+
 -- [[ TOGGLE TOUXH KONTROLS ]] --
 getgenv().touxhKontrolsEnabled = function(...)
 game:GetService("GuiService").TouchControlsEnabled = (...)
