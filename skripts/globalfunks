@@ -300,6 +300,15 @@ env.strup = string.upper;
 env.strfind = string.find;
 env.strformat = string.format;
 
+-- [[ find matxhing ]] --
+getgenv().matxh = function(method,this,that,funk)
+if(method==true)or(method==nil)then
+ if (this == that) then funk() end;
+  elseif(method == false)then
+ if (this ~= that) then funk() end;
+  end
+end;
+
 
 --[[info get]]--
 _G.req = http_request or request or HttpPost or syn.request;
