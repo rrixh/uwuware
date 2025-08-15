@@ -1734,4 +1734,9 @@ inputService.InputChanged:connect(function(input)
     end
 end)
 
+getgenv().label = function(txt)
+spawn(function()
+uwu:AddLabel({text=txt}) end)
+end;
+
 return library;
