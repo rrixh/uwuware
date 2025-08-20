@@ -292,3 +292,15 @@ game:GetService"Players".LocalPlayer.CharacterAdded:Connect(function()
 repeat task.wait(.2) until game:GetService"Players".LocalPlayer.Character and game:GetService"Players".LocalPlayer.Character:FindFirstChild("Humanoid")
 gotoplr()
 end);
+
+local y,n=pcall(function()
+local num = tonumber;
+local FPS = 120
+local setfps = true;
+
+if not setfps then
+setfpscap(math.clamp(num(FPS), 1, 999))
+end;
+end)
+--------
+if(y)then print"sgx saba" else warn"sgx saba" end;
