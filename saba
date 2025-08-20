@@ -5,9 +5,6 @@ AddTitle("squid game x")
 loadstring(game:HttpGet('https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/skripts/globaLS', true))();
 wait()
 ------
-getgenv().GPCS = function(x, prop)
-return x:GetPropertyChangedSignal(prop)
-end;
 getgenv().ogpos = hrp.CFrame;
 
 AddContent(vars.btn, "GLASS GAME", [[ 
