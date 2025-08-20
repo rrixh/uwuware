@@ -50,7 +50,7 @@ while(lights==true)do task.wait(.5)
 light.Brightness = 1
 light.ClockTime = 13.5
 light.FogEnd = 1e5
-light.GlobalShadows = false     
+light.GlobalShadows = false     
 light.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
 end;
 ]],
@@ -125,79 +125,72 @@ end
 return nil
 end
 
---[[
-namebox = AddContent(vars.txt, "target player name")
-
-fokus(namebox):connect(function(enter)
-if enter then
-if namebox.Text:match(Empty) then return end;
-_G.targetPlayer = findPlrName(namebox.Text)
-if _G.targetPlayer == game.Players.LocalPlayer then
-_G.rnote("not yourself nigger",1.2) return
-else
-_G.rnote("target: @".._G.targetPlayer.Name.." | ".._G.targetPlayer.DisplayName, 2.2)
-end;
-end;
-end)
-]]--
-
+-- AUTO KILL LOW PLAYERS (skip guards + auto equip tool)
 AddContent(vars.switch, "auto kill low plrs",
 [[
-getgenv().autoKilling = true;
-getgenv().tapping = true;
+getgenv().autoKilling = true
+getgenv().tapping = true
 
-local function getPlayerWithLowestHealth()
-local lowestHealthPlayer = nil;
-local lowestHealth = math.huge;
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local HRP = function(plr) return plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") end
 
-for _, player in pairs(game.Players:GetPlayers()) do
-if player.Character and player.Character:FindFirstChild("Humanoid") and player ~= game.Players.LocalPlayer then
-local health = player.Character.Humanoid.Health
-if health > 0 and health < lowestHealth then
-lowestHealth = health
-lowestHealthPlayer = player
+local function isGuard(player)
+    return player.Character and player.Character:FindFirstChild("SquibGuarb")
 end
-end
-end
-return lowestHealthPlayer
-end;
 
-local targetPlayer = getPlayerWithLowestHealth();
-if not targetPlayer then _G.rnote("no players found\nlooking for faggots....", 3)
-repeat task.wait(.5) until targetPlayer ~= nil end;
-_G.teleporting = getgenv().heartbeat:connect(function()
-if targetPlayer.Character and targetPlayer.Character:FindFirstChild("Humanoid") and targetPlayer.Character.Humanoid.Health > 0 then
-game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(targetPlayer.Character.HumanoidRootPart.Position) * CFrame.new(0, 0, 2.33)
-if(getgenv().tapping)then _G.tap() end;
+local function getLowestHealthPlayer()
+    local lowestPlr, lowestHealth = nil, math.huge
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and not isGuard(player) then
+            local hum = player.Character:FindFirstChildOfClass("Humanoid")
+            if hum and hum.Health > 0 and hum.Health < lowestHealth then
+                lowestHealth = hum.Health
+                lowestPlr = player
+            end
+        end
+    end
+    return lowestPlr
 end
+
+task.spawn(function()
+    while getgenv().autoKilling do
+        local target = getLowestHealthPlayer()
+        if target and HRP(target) then
+            _G.rnote("killing @"..target.Name.." | "..target.DisplayName.."\nHP "..target.Character.Humanoid.Health, 2.2)
+            while getgenv().autoKilling and target.Character and target.Character:FindFirstChildOfClass("Humanoid") and target.Character.Humanoid.Health > 0 do
+                local myChar = LocalPlayer.Character
+                if myChar and myChar:FindFirstChild("HumanoidRootPart") and HRP(target) then
+                    -- teleport klose                    myChar.HumanoidRootPart.CFrame = HRP(target).CFrame * CFrame.new(0, 0, 2.33)
+
+  -- auto equip tool if none equipped
+                    local hasTool = false
+                    for _, tool in ipairs(myChar:GetChildren()) do
+                        if tool:IsA("Tool") then hasTool = true break end
+                    end
+                    if not hasTool and LocalPlayer.Backpack:FindFirstChildOfClass("Tool") then
+                        LocalPlayer.Backpack:FindFirstChildOfClass("Tool").Parent = myChar
+                    end;
+                    -- atk with tool
+ if getgenv().tapping then 
+tap() wait() tap() 
+end
+                    for _, tool in pairs(myChar:GetChildren()) do
+                        if tool:IsA("Tool") then tool:Activate() end
+                    end
+                end
+                task.wait(0.1)
+            end
+        else
+            _G.rnote("no valid players found...", 1.5)
+            task.wait(0.5)
+        end
+    end
 end)
-
-if(getgenv().autoKilling==true)then
-while(getgenv().autoKilling==true)do task.wait()
-while targetPlayer.Character and targetPlayer.Character:FindFirstChild("Humanoid") and targetPlayer.Character.Humanoid.Health > 0 do
-wait(.1)
-for _, tool in pairs(game.Players.LocalPlayer.Character:GetChildren()) do
-if tool:IsA("Tool") then
-tool:Activate(); warn(tool.Name)
-_G.tap() else local NoToolFound
-end; -- if tool equipped
-end; -- for loop
-end; -- if target health 0 or below
-targetPlayer = getPlayerWithLowestHealth()
-end
-end; -- if switxh on
 ]],
 [[
-if(getgenv().autoKilling==true)then
-getgenv().autoKilling = false;
-end;
-if(_G.teleporting)then
-_G.teleporting:Disconnect();
-_G.teleporting=nil;
-end;
-if(getgenv().tapping)then
-getgenv().tapping = false;
-end;
+getgenv().autoKilling = false
+getgenv().tapping = false
 ]])
 
 AddContent(vars.switch, "mark guards",
