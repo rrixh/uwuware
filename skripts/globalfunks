@@ -189,6 +189,14 @@ getgenv().viktoryboogie = _G.viktoryboogie;
 getgenv().slomoboogie = _G.slomoboogie;
 getgenv().krossboogie = _G.krossboogie;
 
+-- xhangestate --
+getgenv().xhangestate = function(x)
+if type(x) ~= "string" then 
+x = tostring(x)
+elseif type(x) == "number" then tonumber(x)
+end;
+game:GetService"Players".LocalPlayer.Character:FindFirstChildOfClass'Humanoid':ChangeState(x)
+end;
 
 --[[ invalids(10) ]]--
 _G.invalid = {"ggerrtasalt", "", " ", "  ", "   ", "    ", "     ", "      ", "       ", "        ", "         ", "          "}
