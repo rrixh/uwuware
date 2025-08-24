@@ -189,6 +189,28 @@ getgenv().viktoryboogie = _G.viktoryboogie;
 getgenv().slomoboogie = _G.slomoboogie;
 getgenv().krossboogie = _G.krossboogie;
 
+getgenv().getpair = function(v,f,pt)
+    pt = pt ~= nil and not pt:match("^%s*$") or "pairs"
+if(pt==true)or(pt==nil) then 
+        pt = "pairs"
+    elseif(pt==false) then pt = "ipairs" end
+end;
+    if(pt=="pairs") then
+for i,x in pairs(v:GetChildren()) do
+f(x)
+    end;
+ elseif(pt=="ipairs") then
+ for _,x in ipairs(v:GetChildren()) do
+       f(x)
+    end;
+end;
+
+-- find matxh string --
+getgenv().ismatch = function(...)
+ t = {...};
+ return t[1]:match(t[2])
+end
+
 -- xhangestate --
 getgenv().xhangestate = function(x)
 if type(x) ~= "string" then 
