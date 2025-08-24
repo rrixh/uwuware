@@ -189,6 +189,25 @@ getgenv().viktoryboogie = _G.viktoryboogie;
 getgenv().slomoboogie = _G.slomoboogie;
 getgenv().krossboogie = _G.krossboogie;
 
+-- getchar --
+getgenv().getchar = function()
+	return game.Players.LocalPlayer.Character or game.Players.LocalPlayer.CharacterAdded:Wait()
+end
+
+-- set density, friktion, elastixity --
+getgenv().setDensity = function(density, f, e)
+	local character = getgenv().getchar;
+	if character then
+		for _, child in pairs(character:GetDescendants()) do
+if child:IsA("BasePart") then
+				child.CustomPhysicalProperties = PhysicalProperties.new(density, f or child.CustomPhysicalProperties.Friction, e or child.CustomPhysicalProperties.Elasticity)
+			end
+		end 
+	else
+		warn("Character not found!")
+	end
+end
+
 -- :getchildren() ipair/pair -- 
 getgenv().getpair = function(o,f,pt)
 if(pt==nil)or(pt==true)or (pt:match("^%s*$"))or (pt=="pairs")then
