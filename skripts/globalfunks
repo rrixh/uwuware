@@ -307,8 +307,11 @@ getgenv().plrRemoving = game:GetService("Players").PlayerRemoving;
 getgenv().Empty = ("^%s*$");-- blank
 getgenv().Blank = ("^%s*$");-- blank
 
-getgenv().isblank = function(value)
-    return value:match("^%s*$") ~= nil
+getgenv().isblank = function(v)
+ if v:match("^%s*$") then 
+    return true 
+   end;
+ return false
 end;
 
 getgenv().trim = function(value)
