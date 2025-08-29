@@ -2,6 +2,11 @@
 local rsg, RSG = {},{};
 getgenv().env = getgenv() or getrenv();
 
+rsg.waitforgame = function()
+  if not game:IsLoaded() then 
+   game.Loaded:Wait();
+      end
+end;
 rsg.ass = function(loadedVal)
     if loadedVal == true then
     warn("🏁");
