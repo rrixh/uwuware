@@ -1,3 +1,4 @@
+-- globals
 local globals = {};
 function globals:ass(loadedVal)
     if loadedVal == true then
@@ -189,9 +190,20 @@ getgenv().viktoryboogie = _G.viktoryboogie;
 getgenv().slomoboogie = _G.slomoboogie;
 getgenv().krossboogie = _G.krossboogie;
 
--- getchar --
+-- get Character --
 getgenv().getchar = function()
 	return game.Players.LocalPlayer.Character or game.Players.LocalPlayer.CharacterAdded:Wait()
+end;
+
+-- get Humanoid --
+getgenv().gethum = function()
+    local player = game:service("Players").LocalPlayer
+  return player.Character:FindFirstChildOfClass("Humanoid")
+end;
+
+-- get HumanoidRootPart --
+getgenv().gethrp = function(x)
+    return x and x:FindFirstChild("HumanoidRootPart")
 end
 
 -- set density, friktion, elastixity --
@@ -204,9 +216,11 @@ if child:IsA("BasePart") then
 			end
 		end 
 	else
-		warn("Character not found!")
+		warn("char not found!")
 	end
-end
+end;
+getgenv().setdensity = getgenv().setDensity;
+getgenv().density = getgenv().setDensity;
 
 -- :getchildren() ipair/pair -- 
 getgenv().getpair = function(o,f,pt)
@@ -234,6 +248,16 @@ x = tostring(x)
 elseif type(x) == "number" then tonumber(x)
 end;
 game:GetService"Players".LocalPlayer.Character:FindFirstChildOfClass'Humanoid':ChangeState(x)
+end;
+
+-- get bodypart by name --
+getgenv().bodypart = function(partName)
+    local player = game.Players.LocalPlayer
+    if player and player.Character then
+        local bodyPart = player.Character:FindFirstChild(partName)
+        return bodyPart or "'"..partName.."' not found"
+    end
+    return "character not found."
 end;
 
 --[[ invalids(10) ]]--
@@ -307,11 +331,8 @@ getgenv().plrRemoving = game:GetService("Players").PlayerRemoving;
 getgenv().Empty = ("^%s*$");-- blank
 getgenv().Blank = ("^%s*$");-- blank
 
-getgenv().isblank = function(v)
- if v:match("^%s*$") then 
-    return true 
-   end;
- return false
+getgenv().isblank = function(value)
+    return value:match("^%s*$") ~= nil
 end;
 
 getgenv().trim = function(value)
