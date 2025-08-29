@@ -1,5 +1,5 @@
 -- globals
-local rsg, RSG = {},{};
+getgenv().rsg = {}; getgenv().RSG = {};
 getgenv().env = getgenv() or getrenv();
 
 rsg.waitforgame = function()
