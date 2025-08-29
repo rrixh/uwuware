@@ -1,5 +1,6 @@
 -- globals
 local rsg, RSG = {},{};
+getgenv().env = getgenv() or getrenv();
 
 rsg.ass = function(loadedVal)
     if loadedVal == true then
@@ -17,17 +18,13 @@ game.StarterGui:SetCore("DevConsoleVisible",true)
     end;
     return yes,no
  end;
+
 --[[ names/users ]]--
-_G.lulas = ('lulaslollipop');
-_G.kh3we = ('kh3we');
-_G.xheru = ('cherussii');
-_G.hg = ('smileszbaby');
-_G.kookie = ('sii_uuu7');
-getgenv().lulas = _G.lulas;
-getgenv().kh3we = _G.kh3we;
-getgenv().xheru = _G.xheru;
-getgenv().hg = _G.hg;
-getgenv().kookie = _G.kookie;
+getgenv().lulas = ('lulaslollipop');
+getgenv().kh3we = ('kh3we');
+getgenv().xheru = ('cherussii');
+getgenv().hg = ('smileszbaby');
+getgenv().kookie = ('sii_uuu7');
 -- [[ my soxials ]] --
 _G.rbxlink = ("https://www.roblox.com/users/3001347724/profile")
 _G.diskordlink = ("https://discordapp.com/users/1284685023630458963")
@@ -41,10 +38,13 @@ getgenv().ytlink = _G.ytlink;
 getgenv().telegramlink = _G.telegramlink;
 getgenv().iglink = _G.iglink;
 
+-- [[ extra ]] --
+env.SPAXE = " ";
+env.spaxe = env.SPAXE;
+
 -- [[ setting/global vars ]] --
 getgenv().RRIXH = loadstring;
 getgenv().lula = getgenv() or getrenv();
-getgenv().env = getgenv().lula or getgenv();
 _G.kore = game:GetService'CoreGui';
 _G.rbx = game;
 _G.game = game.PlaceId;
