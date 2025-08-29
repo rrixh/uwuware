@@ -2,7 +2,7 @@
 getgenv().rsg = {}; getgenv().RSG = {};
 getgenv().env = getgenv() or getrenv();
 
-function rsg:waitforgame()
+getgenv().waitforgame = function()
   if not game:IsLoaded() then 
    game.Loaded:Wait();
       end
