@@ -2,9 +2,9 @@
 getgenv().rsg = {}; getgenv().RSG = {};
 getgenv().env = getgenv() or getrenv();
 
-getgenv().waitforgame = function()
-  if not game:IsLoaded() then 
-   game.Loaded:Wait();
+getgenv().waitfor = function(x)
+  if not x:IsLoaded() then 
+   x.Loaded:Wait();
       end
 end;
 rsg.ass = function(loadedVal)
