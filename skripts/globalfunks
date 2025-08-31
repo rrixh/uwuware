@@ -3,26 +3,26 @@ getgenv().rsg = {}; getgenv().RSG = {};
 getgenv().env = getgenv() or getrenv();
 
 getgenv().waitfor = function(x)
-  if not x:IsLoaded() then 
-   x.Loaded:Wait();
-      end
+if not x:IsLoaded() then 
+x.Loaded:Wait();
+end
 end;
 rsg.ass = function(loadedVal)
-    if loadedVal == true then
-    warn("🏁");
-    end;
-    if loadedVal == false then
-     wait()
-    end;
+if loadedVal == true then
+warn("🏁");
+end;
+if loadedVal == false then
+wait()
+end;
 end;
 getgenv().pkall = function(funk,msg)
 local yes,no = pcall(funk)
 if not yes then
 warn(msg or "Something went wrong:", no)
 game.StarterGui:SetCore("DevConsoleVisible",true)
-    end;
-    return yes,no
- end;
+end;
+return yes,no
+end;
 
 --[[ names/users ]]--
 getgenv().lulas = ('lulaslollipop');
@@ -207,32 +207,32 @@ env.health = env.Health;
 
 -- get Character --
 getgenv().getchar = function()
-	return game.Players.LocalPlayer.Character or game.Players.LocalPlayer.CharacterAdded:Wait()
+return game.Players.LocalPlayer.Character or game.Players.LocalPlayer.CharacterAdded:Wait()
 end;
 
 -- get Humanoid --
 getgenv().gethum = function()
-    local player = game:service("Players").LocalPlayer
-  return player.Character:FindFirstChildOfClass("Humanoid")
+local player = game:service("Players").LocalPlayer
+return player.Character:FindFirstChildOfClass("Humanoid")
 end;
 
 -- get HumanoidRootPart --
 getgenv().gethrp = function(x)
-    return x and x:FindFirstChild("HumanoidRootPart")
+return x and x:FindFirstChild("HumanoidRootPart")
 end
 
 -- set density, friktion, elastixity --
 getgenv().setDensity = function(density, f, e)
-	local character = getgenv().getchar;
-	if character then
-		for _, child in pairs(character:GetDescendants()) do
+local character = getgenv().getchar;
+if character then
+for _, child in pairs(character:GetDescendants()) do
 if child:IsA("BasePart") then
-				child.CustomPhysicalProperties = PhysicalProperties.new(density, f or child.CustomPhysicalProperties.Friction, e or child.CustomPhysicalProperties.Elasticity)
-			end
-		end 
-	else
-		warn("char not found!")
-	end
+    child.CustomPhysicalProperties = PhysicalProperties.new(density, f or child.CustomPhysicalProperties.Friction, e or child.CustomPhysicalProperties.Elasticity)
+end
+end 
+else
+warn("char not found!")
+end
 end;
 getgenv().setdensity = getgenv().setDensity;
 getgenv().density = getgenv().setDensity;
@@ -240,58 +240,57 @@ getgenv().density = getgenv().setDensity;
 -- :getchildren() ipair/pair -- 
 getgenv().getpair = function(o,f,pt)
 if(pt==nil)or(pt==true)or (pt:match("^%s*$"))or (pt=="pairs")then
- for _,v in pairs(o:GetChildren()) do
-  f(v)
-    end;
+for _,v in pairs(o:GetChildren()) do
+f(v)
+end;
 elseif(pt=="ipairs")or(pt==false) then
- for _,v in ipairs(o:GetChildren()) do
-  f(v)
-    end
-   end;
+for _,v in ipairs(o:GetChildren()) do
+f(v)
+end
+end;
 end;
 
 -- [[ tweento koords & part ]]--
 getgenv().tweento = function(target, duration, waitForTween)
 TweenService = game:service"TweenService"
-    local player = game.Players.LocalPlayer
-    local character = player.Character or player.CharacterAdded:Wait()
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
 repeat wait() until character;
 
 repeat wait() until character:FindFirstChild"HumanoidRootPart";
 
-    local targetCFrame;
+local targetCFrame;
 
-   if typeof(target) == "Vector3" then
-        targetCFrame = CFrame.new(target)
-    elseif target:IsA'BasePart' then
-        targetCFrame = target.CFrame
-    else
+if typeof(target) == "Vector3" then
+targetCFrame = CFrame.new(target)
+elseif target:IsA'BasePart' then
+targetCFrame = target.CFrame
+else
 warn("invalid target specified: '"..target.."'")
-        return
-    end
+return
+end
 
-    local tt = (duration or 3.33)
-    local tweenInfo = TweenInfo.new(tt, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+local tt = (duration or 3.33)
+local tweenInfo = TweenInfo.new(tt, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
 local goal = {
 CFrame = targetCFrame
 }
-    
-    local tw = TweenService:Create(humanoidRootPart, tweenInfo, goal)
-    tw:Play();
-    if waitForTween then
-   tw.Completed:Wait()
-    end;
-end; -- [[ example: 
-#1 
+
+local tw = TweenService:Create(humanoidRootPart, tweenInfo, goal)
+tw:Play();
+if waitForTween then
+tw.Completed:Wait()
+end;
+end;
+--[[
 tweento(Vector3.new(100, 200, 300), 5, true)
-#2
 tweento(workspace.Part, 5, false)
 ]]--
 
 -- find matxh string --
 getgenv().ismatch = function(...)
- t = {...};
- return t[1]:match(t[2])
+t = {...};
+return t[1]:match(t[2])
 end
 
 -- xhangestate --
@@ -305,12 +304,12 @@ end;
 
 -- get bodypart by name --
 getgenv().bodypart = function(partName)
-    local player = game.Players.LocalPlayer
-    if player and player.Character then
-        local bodyPart = player.Character:FindFirstChild(partName)
-        return bodyPart or "'"..partName.."' not found"
-    end
-    return "character not found."
+local player = game.Players.LocalPlayer
+if player and player.Character then
+local bodyPart = player.Character:FindFirstChild(partName)
+return bodyPart or "'"..partName.."' not found"
+end
+return "character not found."
 end;
 
 --[[ invalids(10) ]]--
@@ -385,11 +384,11 @@ getgenv().Empty = ("^%s*$");-- blank
 getgenv().Blank = ("^%s*$");-- blank
 
 getgenv().isblank = function(value)
-    return value:match("^%s*$") ~= nil
+return value:match("^%s*$") ~= nil
 end;
 
 getgenv().trim = function(value)
-    return value:match("^%s*(.-)%s*$")
+return value:match("^%s*(.-)%s*$")
 end;
 
 -- [[ EXEKUTORS ]] --
@@ -426,10 +425,10 @@ env.strformat = string.format;
 -- [[ find matxhing ]] --
 getgenv().matxh = function(method,this,that,funk)
 if(method==true)or(method==nil)then
- if (this == that) then funk() end;
-  elseif(method == false)then
- if (this ~= that) then funk() end;
-  end
+if (this == that) then funk() end;
+elseif(method == false)then
+if (this ~= that) then funk() end;
+end
 end;
 
 
@@ -485,88 +484,88 @@ env.stuff2 = {
 -- [[ WINDOWS 10 NOTIF FUNKS ]] --
 env.windowNotif = function(txt, desk, ikon)
 loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/lib/notifikation/windows10ui"))().show({
-        MessageBoxButtons = "OK", 
-        Description = tostring(desk), 
-        Text = tostring(txt),
+MessageBoxButtons = "OK", 
+Description = tostring(desk), 
+Text = tostring(txt),
 MessageBoxIcon = "Warning" or ikon
-    })
+})
 end
 
 env.windowError = function(txt, desk, result)
 loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/lib/notifikation/windows10ui"))().show({
-        Position = UDim2.new(0.5, 0, 0.5, 0), 
-        Text = tostring(txt), 
-        Description = tostring(desk), 
-        MessageBoxIcon = "Error", 
-        MessageBoxButtons = "YesNo", 
-        Result = function(res)
-        result(res)
-        end})
+Position = UDim2.new(0.5, 0, 0.5, 0), 
+Text = tostring(txt), 
+Description = tostring(desk), 
+MessageBoxIcon = "Error", 
+MessageBoxButtons = "YesNo", 
+Result = function(res)
+result(res)
+end})
 end;
 
 env.windowErrorOk = function(txt, desk)
 loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/lib/notifikation/windows10ui"))().show({
-        Position = UDim2.new(0.5, 0, 0.5, 0), 
-        Text = tostring(txt), 
-        Description = tostring(desk), 
-        MessageBoxIcon = "Error", 
-        MessageBoxButtons = "OK", 
-        })
+Position = UDim2.new(0.5, 0, 0.5, 0), 
+Text = tostring(txt), 
+Description = tostring(desk), 
+MessageBoxIcon = "Error", 
+MessageBoxButtons = "OK", 
+})
 end;
 
 env.windowWarning = function(txt, desk, result)
 loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/lib/notifikation/windows10ui"))().show({
-        Position = UDim2.new(0.5, 0, 0.5, 0), 
-        Text = tostring(txt), 
-        Description = tostring(desk), 
-        MessageBoxIcon = "Warning", 
-        MessageBoxButtons = "OKCancel", 
-        Result = function(res)
-        result(res)
-        end})
+Position = UDim2.new(0.5, 0, 0.5, 0), 
+Text = tostring(txt), 
+Description = tostring(desk), 
+MessageBoxIcon = "Warning", 
+MessageBoxButtons = "OKCancel", 
+Result = function(res)
+result(res)
+end})
 end;
 
 env.windowQuestion = function(txt, desk, result)
 loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/lib/notifikation/windows10ui"))().show({
-        Position = UDim2.new(0.5, 0, 0.5, 0), 
-        Text = tostring(txt), 
-        Description = tostring(desk), 
-        MessageBoxIcon = "Question", 
-        MessageBoxButtons = "YesNo", 
-        Result = function(res)
-        result(res)
-        end})
+Position = UDim2.new(0.5, 0, 0.5, 0), 
+Text = tostring(txt), 
+Description = tostring(desk), 
+MessageBoxIcon = "Question", 
+MessageBoxButtons = "YesNo", 
+Result = function(res)
+result(res)
+end})
 end;
 -- [[ END OF WINDOWS 10 notifs ]] --
 
 -- [[ INSPEKT PLAYERS BY PARTIAL NAME ]] --
 getgenv().examine = function(playerName)
 getgenv().GS = game:GetService"GuiService";
-    local foundPlr = nil
-    for _, player in ipairs(game.Players:GetPlayers()) do
-        if string.find(string.lower(player.Name), string.lower(playerName)) or string.find(string.lower(player.DisplayName), string.lower(playerName)) then
-            foundPlr = player; 
-            fp = foundPlr;
-            break
-        end;
-    end;
-    if foundPlr then 
+local foundPlr = nil
+for _, player in ipairs(game.Players:GetPlayers()) do
+if string.find(string.lower(player.Name), string.lower(playerName)) or string.find(string.lower(player.DisplayName), string.lower(playerName)) then
+foundPlr = player; 
+fp = foundPlr;
+break
+end;
+end;
+if foundPlr then 
 GS:CloseInspectMenu()
 GS:InspectPlayerFromUserId(fp.UserId)
-    else
+else
 warn("Player", playerName, "not found")
-    end
+end
 end;
 
 --[[ set klipboard baxk to lollypophub ]]--
 getgenv().klip = function(text, dur)
-    if(type(text) == "string")then
-        setclipboard(tostring(text))
-        task.wait(dur or 1)
+if(type(text) == "string")then
+setclipboard(tostring(text))
+task.wait(dur or 1)
 setclipboard("loadstring(game:HttpGet('https://raw.githubusercontent.com/rrixh/lulaslollipopmobile/main/lollypophubmobilev2'))();")
-       else
+else
 warn("ARGUMENT 1 must be a string\nExample --> klip(‘text here’, 1)") return
-    end
+end
 end;
 
 -- [[ TOGGLE TOUXH KONTROLS ]] --
@@ -576,49 +575,49 @@ end;
 
 --[[ DEV KONSOLE ]]--
 getgenv().konsole = function(v)
- if(v=="visible")then 
+if(v=="visible")then 
 game.StarterGui:SetCore("DevConsoleVisible",true)
-  elseif(v=="notvisible")then
+elseif(v=="notvisible")then
 game.StarterGui:SetCore("DevConsoleVisible",false)
-    elseif(v==nil)then
+elseif(v==nil)then
 game.StarterGui:SetCore("DevConsoleVisible",true)
-    else
+else
 game.StarterGui:SetCore("DevConsoleVisible",v)
-    end;
+end;
 end;
 
 -- [[ do funktion on target or all plrs ]] --
 getgenv().doPlayer = function(target, func, showerror)
-  local players = game:GetService("Players")
+local players = game:GetService("Players")
 local alltable = {"All", "all", "ALL", "ALl", "AlL", "aLl", "alL", "aLL"}
 
-  if table.find(alltable, target) then
-    for _, player in pairs(players:GetPlayers()) do
-      func(player)
-    end
-  elseif type(target) == "string" then
-    local foundPlayer = nil
-    for _, player in pairs(players:GetPlayers()) do
-      if player.Name == target or player.DisplayName == target then
-        foundPlayer = player
-        break
-      end;
-    end
+if table.find(alltable, target) then
+for _, player in pairs(players:GetPlayers()) do
+func(player)
+end
+elseif type(target) == "string" then
+local foundPlayer = nil
+for _, player in pairs(players:GetPlayers()) do
+if player.Name == target or player.DisplayName == target then
+foundPlayer = player
+break
+end;
+end
 
-    if foundPlayer then
-      func(foundPlayer)
-    else
-   warn("Player not found: " .. target)
+if foundPlayer then
+func(foundPlayer)
+else
+warn("Player not found: " .. target)
 if showerror==true then
 game.StarterGui:SetCore("DevConsoleVisible",true)
 end;
-    end
-  else
- warn("Invalid target specified. Use 'All' or a player name (string).")
+end
+else
+warn("Invalid target specified. Use 'All' or a player name (string).")
 if showerror==true then
 game:service("StarterGui"):SetCore("DevConsoleVisible",true)
 end;
-  end;
+end;
 end;
 
 -- [[ PRESS KEYBINDS ]] --
@@ -631,41 +630,41 @@ end;
 
 --[[ MAKE NEW KUSTOM TOOL ]]--
 getgenv().newtool = function(params)
-    local toolName = params.name or ("kustomtool");
-    local toolAktivated = params.activated or function() end;
-    local toolEquipped = params.equipped or function() end;
-    local toolImage = "rbxassetid://"..(params.image or "00000000");
-    local requiresHandle = params.requireshandle or false;
-    local handleSize = params.toolsize or Vector3.new(1, 1, 1);
+local toolName = params.name or ("kustomtool");
+local toolAktivated = params.activated or function() end;
+local toolEquipped = params.equipped or function() end;
+local toolImage = "rbxassetid://"..(params.image or "00000000");
+local requiresHandle = params.requireshandle or false;
+local handleSize = params.toolsize or Vector3.new(1, 1, 1);
 
 local bakpak = game.Players.LocalPlayer.Backpack or game.Players.LocalPlayer:WaitForChild("Backpack")
 
-    local tool = Instance.new("Tool")
-    tool.Name = toolName
+local tool = Instance.new("Tool")
+tool.Name = toolName
 
-    if toolImage then
-        local imageLabel = Instance.new("ImageLabel")
-        imageLabel.Size = UDim2.new(1, 0, 1, 0)
-        imageLabel.Image = toolImage
-        imageLabel.Parent = tool
-    end
+if toolImage then
+local imageLabel = Instance.new("ImageLabel")
+imageLabel.Size = UDim2.new(1, 0, 1, 0)
+imageLabel.Image = toolImage
+imageLabel.Parent = tool
+end
 
-    if requiresHandle then
-        local handle = Instance.new("Part")
-        handle.Name = "Handle"
-        handle.Size = handleSize
-        handle.Anchored = true
-        handle.CanCollide = false
-        handle.Parent = tool
-    end
+if requiresHandle then
+local handle = Instance.new("Part")
+handle.Name = "Handle"
+handle.Size = handleSize
+handle.Anchored = true
+handle.CanCollide = false
+handle.Parent = tool
+end
 
-    if toolAktivated then
-   tool.Activated:connect(toolAktivated)
-    end;
-    if toolEquipped then
-   tool.Equipped:connect(toolEquipped)
-    end;
-  tool.Parent = bakpak
+if toolAktivated then
+tool.Activated:connect(toolAktivated)
+end;
+if toolEquipped then
+tool.Equipped:connect(toolEquipped)
+end;
+tool.Parent = bakpak
 end;
 
 -- [[ PROTEKTED KALLS ]] --
@@ -674,9 +673,9 @@ getgenv().kall=function(funk)
 local yes,no = pcall(funk)
 if not yes then
 windowErrorOk("Whoops! Something went wrong [Lollypop Hub]", err)
-    end;
-    return yes,no
-  end;
+end;
+return yes,no
+end;
 end;
 
 getgenv().alert = function(msg,sekonds)
@@ -689,12 +688,12 @@ end; say=alert; adminmsg=alert;
 
 -- [[ add uistroke to element easily ]] --
 getgenv().addStroke = function(args)
-    local parent = args.Parent;
-    if not parent or not parent:IsA("GuiObject") then
+local parent = args.Parent;
+if not parent or not parent:IsA("GuiObject") then
 warn("addStroke Error:\ninvalid or missing Parent. must be a GuiObjekt.")
 game.StarterGui:SetCore("DevConsoleVisible",true)
-         return
-    end;
+return
+end;
 local kolor = args.Color or Color3.new(1,1,0)
 local thixkness = args.Thickness or 2
 local strokeMode = args.ApplyStrokeMode or Enum.ApplyStrokeMode.Border
@@ -703,10 +702,10 @@ thixkness = math.max(1, thixkness)
 --add the uistroke
 local uiStroke = Instance.new("UIStroke")
 uiStroke.ApplyStrokeMode = strokeMode;
-    uiStroke.Color = kolor;
-    uiStroke.Thickness = thixkness;
-    uiStroke.Parent = parent;
-    return uiStroke
+uiStroke.Color = kolor;
+uiStroke.Thickness = thixkness;
+uiStroke.Parent = parent;
+return uiStroke
 end;
 
 --[[ usages:
@@ -726,54 +725,54 @@ getgenv().ESPenabled = false
 getgenv().addESP = function(PLR)
 local Players = game:GetService("Players");
 
-    local espHolder = Instance.new("Folder")
-    espHolder.Name = PLR.Name..'_ESP'
-    espHolder.Parent = game:GetService("CoreGui")
+local espHolder = Instance.new("Folder")
+espHolder.Name = PLR.Name..'_ESP'
+espHolder.Parent = game:GetService("CoreGui")
 
-    getgenv().updateESP = function()
-        if PLR.Character and PLR.Character:FindFirstChild("HumanoidRootPart") then
-            for _, part in pairs(PLR.Character:GetChildren()) do
-                if part:IsA("BasePart") then
-                    local adornment = Instance.new("BoxHandleAdornment")
-                  adornment.Parent = espHolder
-                  adornment.Adornee = part
-                 adornment.AlwaysOnTop = true
-                    adornment.Size = part.Size
-                    adornment.Transparency = 0.3
+getgenv().updateESP = function()
+if PLR.Character and PLR.Character:FindFirstChild("HumanoidRootPart") then
+for _, part in pairs(PLR.Character:GetChildren()) do
+    if part:IsA("BasePart") then
+        local adornment = Instance.new("BoxHandleAdornment")
+      adornment.Parent = espHolder
+      adornment.Adornee = part
+     adornment.AlwaysOnTop = true
+        adornment.Size = part.Size
+        adornment.Transparency = 0.3
 adornment.Color3 = PLR.TeamColor.Color;
-                end
-            end
-        end
-    end;
+    end
+end
+end
+end;
 
 PLR.CharacterAdded:Connect(function()
-        espHolder:Destroy()
-        addESP(PLR)
-    end);
-    updateESP()
+espHolder:Destroy()
+addESP(PLR)
+end);
+updateESP()
 end;
 
 getgenv().removeESP = function(PLR)
-    local espInstance = game:GetService("CoreGui"):FindFirstChild(PLR.Name..'_ESP')
-    if espInstance then
-        espInstance:Destroy()
-    end;
+local espInstance = game:GetService("CoreGui"):FindFirstChild(PLR.Name..'_ESP')
+if espInstance then
+espInstance:Destroy()
+end;
 end;
 
 getgenv().toggleESP = function(state)
 local Players = game:GetService("Players");
 getgenv().ESPenabled = state
-    if state then
- for _, v in pairs(Players:GetPlayers()) do
-   if v ~= Players.LocalPlayer then
-                addESP(v)
-            end;
-        end;
-    else
-  for _, v in pairs(Players:GetPlayers()) do
-            removeESP(v)
-        end;
-    end
+if state then
+for _, v in pairs(Players:GetPlayers()) do
+if v ~= Players.LocalPlayer then
+    addESP(v)
+end;
+end;
+else
+for _, v in pairs(Players:GetPlayers()) do
+removeESP(v)
+end;
+end
 end;
 --[[ END OF ESP ALL PLR (IY) ]]--
 
@@ -818,23 +817,23 @@ end;
 
 --[[ MAKE A LIST Easily ]]--
 getgenv().makeList = function(tableOf, isa, useDisplayName)
-    local List = {}
-    if isa then
-        for i, v in pairs(tableOf) do
-            if v:IsA(isa) then
-                table.insert(List, v.Name)
-            end
-        end
-    else
-        for i, v in pairs(tableOf) do
-            if useDisplayName then
-                table.insert(List, v.DisplayName)
-            else
-                table.insert(List, v.Name)
-            end
-        end
-    end
-    return List
+local List = {}
+if isa then
+for i, v in pairs(tableOf) do
+if v:IsA(isa) then
+    table.insert(List, v.Name)
+end
+end
+else
+for i, v in pairs(tableOf) do
+if useDisplayName then
+    table.insert(List, v.DisplayName)
+else
+    table.insert(List, v.Name)
+end
+end
+end
+return List
 end;
 
 --[[find part do funk]]--
@@ -842,24 +841,24 @@ _G.findpart = function(part, kall, m1, m2)
 if m1 and m2 then
 if (m1 == "child" or m1 == "children") and (m2 == "ipairs") then
 for i, v in ipairs(part:GetChildren()) do
-    kall(v)
+kall(v)
 end;
 elseif (m1 == "child" or m1 == "children") and (m2 == "pairs") then
 for i, v in pairs(part:GetChildren()) do
-        kall(v)
-    end;
+kall(v)
+end;
 elseif (m1 == "desc" or m1 == "descendants") and (m2 == "ipairs") then
 for i, v in ipairs(part:GetDescendants()) do
-        kall(v)
-    end;
+kall(v)
+end;
 elseif (m1 == "desc" or m1 == "descendants") and (m2 == "pairs") then
 for i, v in pairs(part:GetDescendants()) do
-        kall(v)
-    end;
+kall(v)
+end;
 end
 else
 for i,v in pairs(part:GetChildren()) do
-    kall(v)
+kall(v)
 end;
 end
 end;
@@ -876,7 +875,7 @@ if typingtime then wait(typingtime); else wait(.06) end;
 end;
 end;
 typeMessage();
- wait(destroytime or 3.3)
+wait(destroytime or 3.3)
 h:Destroy(); end)
 end; 
 getgenv().write = _G.write;
@@ -925,16 +924,16 @@ if not humanoid then warn("no humanoid") return end;
 local traxk = _G.animationTraxks[animId];
 if arg then
 if not traxk then
-    local animation = Instance.new("Animation")
-    animation.AnimationId = "rbxassetid://" ..animId
-    traxk = humanoid:LoadAnimation(animation)
+local animation = Instance.new("Animation")
+animation.AnimationId = "rbxassetid://" ..animId
+traxk = humanoid:LoadAnimation(animation)
 _G.animationTraxks[animId] = traxk;
 end
 traxk:Play()
 else
 if traxk then
-    traxk:Stop()
-    traxk:Destroy()
+traxk:Stop()
+traxk:Destroy()
 _G.animationTraxks[animId] = nil;
 end;
 end;
@@ -1045,10 +1044,10 @@ for _, player in ipairs(players:GetPlayers()) do
 if player.DisplayName:lower():find(name:lower()) or player.Name:lower():find(name:lower()) then
 if _G.find(_G.immune, player.Name) then
 task.wait(); targetPlayer = nil; 
-     return nil;
- else
-     return player;
- end
+return nil;
+else
+return player;
+end
 end;
 end;
 return nil;
@@ -1163,22 +1162,22 @@ return nil
 end;
 for _, player in pairs(players:GetPlayers()) do
 if player ~= localPlayer then
-    local character = player.Character
-    if character and character:FindFirstChild(correctCaseBodyPart) then
-        local targetPart = character:FindFirstChild(correctCaseBodyPart)
-        local distance = (localPlayer.Character.HumanoidRootPart.Position - targetPart.Position).magnitude
-        if distance < nearestDistance then
-            nearestPlayer = player
-            nearestDistance = distance
-        end
-    end
+local character = player.Character
+if character and character:FindFirstChild(correctCaseBodyPart) then
+local targetPart = character:FindFirstChild(correctCaseBodyPart)
+local distance = (localPlayer.Character.HumanoidRootPart.Position - targetPart.Position).magnitude
+if distance < nearestDistance then
+nearestPlayer = player
+nearestDistance = distance
+end
+end
 end
 end;
 if nearestPlayer and nearestPlayer.Character then
 local nearestPart = nearestPlayer.Character:FindFirstChild(correctCaseBodyPart)
 if nearestPart then
 print("Nearest player: "..nearestPlayer.Name..", Body Part: "..nearestPart.Name)
-    return nearestPart
+return nearestPart
 end
 end;
 return nil;
@@ -1204,9 +1203,9 @@ firetouchinterest(hrp, partpath, 0)
 task.wait(t or 0.3)
 firetouchinterest(hrp, partpath, 1)
 if name then warn(partpath:GetFullName()) 
-    else 
+else 
 local nothing
-    end;
+end;
 end;
 
 if getgenv().pps and _G.exp ~= SOLARA then
@@ -1304,7 +1303,7 @@ _G.hrp = _G.player.Character and _G.player.Character:FindFirstChild("HumanoidRoo
 if not _G.hrp then return end;
 part.CFrame = _G.hrp.CFrame;
 if duration then
-    task.wait(duration)
+task.wait(duration)
 end;
 end;
 getgenv().bring = _G.bring;
@@ -1405,22 +1404,22 @@ getgenv().Pairs = _G.Pairs;
 
 --[[🖍PREDEFINED KOLORS🖍]]--
 getgenv().kolors2 = {
-    red = Color3.new(0.6, 0.2, 0.2),
-    green = Color3.new(0.2, 0.6, 0.2),
-    blue = Color3.new(0.2, 0.2, 0.6),
-    yellow = Color3.new(0.6, 0.6, 0.2),
-    pink = Color3.new(0.7, 0.4, 0.5),
-    orange = Color3.new(0.7, 0.4, 0.2),
-    cyan = Color3.new(0.3, 0.6, 0.6),
-    purple = Color3.new(0.5, 0.2, 0.5),
-    white = Color3.new(0.8, 0.8, 0.8),
-    black = Color3.new(0.05, 0.05, 0.05),
-    gray = Color3.new(0.2, 0.2, 0.2),
-    brown = Color3.new(0.4, 0.3, 0.2),
-    lime = Color3.new(0.4, 0.6, 0.2),
-    magenta = Color3.new(0.6, 0.2, 0.6),
-    salmon = Color3.new(0.7, 0.4, 0.4),
-    teal = Color3.new(0.2, 0.5, 0.5)
+red = Color3.new(0.6, 0.2, 0.2),
+green = Color3.new(0.2, 0.6, 0.2),
+blue = Color3.new(0.2, 0.2, 0.6),
+yellow = Color3.new(0.6, 0.6, 0.2),
+pink = Color3.new(0.7, 0.4, 0.5),
+orange = Color3.new(0.7, 0.4, 0.2),
+cyan = Color3.new(0.3, 0.6, 0.6),
+purple = Color3.new(0.5, 0.2, 0.5),
+white = Color3.new(0.8, 0.8, 0.8),
+black = Color3.new(0.05, 0.05, 0.05),
+gray = Color3.new(0.2, 0.2, 0.2),
+brown = Color3.new(0.4, 0.3, 0.2),
+lime = Color3.new(0.4, 0.6, 0.2),
+magenta = Color3.new(0.6, 0.2, 0.6),
+salmon = Color3.new(0.7, 0.4, 0.4),
+teal = Color3.new(0.2, 0.5, 0.5)
 }
 
 -- highlight part
@@ -1596,9 +1595,9 @@ if part:IsA("BasePart") then
 table.insert(partsToModify, part)
 elseif part:IsA("Model") then
 for _, p in pairs(part:GetChildren()) do
-    if p:IsA("BasePart") then
-        table.insert(partsToModify, p)
-    end
+if p:IsA("BasePart") then
+table.insert(partsToModify, p)
+end
 end
 else
 warn("Invalid part type provided to _G.part. Use a BasePart or Model.")
@@ -1608,47 +1607,47 @@ end
 local success = false
 for _, p in pairs(partsToModify) do
 if argument == "studs" then
-    local billboardGui = Instance.new("BillboardGui")
-    billboardGui.Parent = p  -- Correctly parent to the BasePart
-    billboardGui.Adornee = p
-    billboardGui.Size = UDim2.new(0, 100, 0, 40)
-    billboardGui.StudsOffset = Vector3.new(0, 3, 0)
-    billboardGui.AlwaysOnTop = true
+local billboardGui = Instance.new("BillboardGui")
+billboardGui.Parent = p  -- Correctly parent to the BasePart
+billboardGui.Adornee = p
+billboardGui.Size = UDim2.new(0, 100, 0, 40)
+billboardGui.StudsOffset = Vector3.new(0, 3, 0)
+billboardGui.AlwaysOnTop = true
 
-    local textLabel = Instance.new("TextLabel")
-    textLabel.Parent = billboardGui
-    textLabel.Size = UDim2.new(1, 0, 1, 0)
-    textLabel.TextScaled = true
-    textLabel.BackgroundTransparency = 1
-    textLabel.TextColor3 = color or Color3.new(1, 1, 1)
-    textLabel.Font = Enum.Font.SourceSansBold
-    textLabel.Text = "Calculating..."
-    textLabel.TextSize = 14
+local textLabel = Instance.new("TextLabel")
+textLabel.Parent = billboardGui
+textLabel.Size = UDim2.new(1, 0, 1, 0)
+textLabel.TextScaled = true
+textLabel.BackgroundTransparency = 1
+textLabel.TextColor3 = color or Color3.new(1, 1, 1)
+textLabel.Font = Enum.Font.SourceSansBold
+textLabel.Text = "Calculating..."
+textLabel.TextSize = 14
 
-    -- p.TextLabel = textLabel -- This line is unnecessary and was causing issues.
-    success = true
+-- p.TextLabel = textLabel -- This line is unnecessary and was causing issues.
+success = true
 elseif argument == "esp" then
-    local highlightColor = color or Color3.new(1, 0, 0)
-    local highlight = Instance.new("Highlight")
-    highlight.Parent = p
-    highlight.FillColor = highlightColor
-    highlight.OutlineColor = highlightColor
-    success = true
+local highlightColor = color or Color3.new(1, 0, 0)
+local highlight = Instance.new("Highlight")
+highlight.Parent = p
+highlight.FillColor = highlightColor
+highlight.OutlineColor = highlightColor
+success = true
 end
 end
 
 if success and not heartbeatConnected then
 local function updateDistances()
-    local player = game.Players.LocalPlayer
-    local character = player.Character
-    if character and character:FindFirstChild("HumanoidRootPart") then
-        for _, p in pairs(workspace:GetDescendants()) do
-            if p:IsA("BasePart") and p:FindFirstChild("BillboardGui") then -- Check for BillboardGui instead of TextLabel
-                local distance = (character.HumanoidRootPart.Position - p.Position).Magnitude
-                p.BillboardGui.TextLabel.Text = string.format("Distance: %.2f studs", distance)
-            end
-        end
-    end
+local player = game.Players.LocalPlayer
+local character = player.Character
+if character and character:FindFirstChild("HumanoidRootPart") then
+for _, p in pairs(workspace:GetDescendants()) do
+if p:IsA("BasePart") and p:FindFirstChild("BillboardGui") then -- Check for BillboardGui instead of TextLabel
+    local distance = (character.HumanoidRootPart.Position - p.Position).Magnitude
+    p.BillboardGui.TextLabel.Text = string.format("Distance: %.2f studs", distance)
+end
+end
+end
 end
 game:GetService("RunService").Heartbeat:Connect(updateDistances)
 heartbeatConnected = true
@@ -1674,39 +1673,39 @@ local dragThreshold = 1
 local notClicked = false;
 guiElement.InputBegan:Connect(function(input)
 if table.find(devixes, input.UserInputType) then
-    dragging = true
-    mousePos = input.Position
-    framePos = guiElement.Position
-    notClicked = false
+dragging = true
+mousePos = input.Position
+framePos = guiElement.Position
+notClicked = false
 
-    input.Changed:Connect(function()
+input.Changed:Connect(function()
 if input.UserInputState == Ended then
-            dragging = false
-        end
-    end)
+dragging = false
+end
+end)
 end
 end)
 
 guiElement.InputChanged:Connect(function(input)
 if __(devixes, input.UserInputType) then
-    dragInput = input
+dragInput = input
 end
 end)
 UIS.InputChanged:Connect(function(input)
 if input == dragInput and dragging then
-    local delta = input.Position - mousePos
-    if math.abs(delta.X) >= dragThreshold or math.abs(delta.Y) >= dragThreshold then
-        notClicked = true
-    end
+local delta = input.Position - mousePos
+if math.abs(delta.X) >= dragThreshold or math.abs(delta.Y) >= dragThreshold then
+notClicked = true
+end
 
-    if notClicked then
-        guiElement.Position = UDim2.new(
-            framePos.X.Scale,
-            framePos.X.Offset + delta.X,
-            framePos.Y.Scale,
-            framePos.Y.Offset + delta.Y
-        )
-    end
+if notClicked then
+guiElement.Position = UDim2.new(
+framePos.X.Scale,
+framePos.X.Offset + delta.X,
+framePos.Y.Scale,
+framePos.Y.Offset + delta.Y
+)
+end
 end
 end); return function() return not dragging and notClicked == false end
 end;
@@ -1762,7 +1761,7 @@ if _G.highlightEnabled then
 _G.ESP(player)
 else
 _G.removeESP(player)
-  end
+end
 end
 end
 end;
@@ -1797,8 +1796,8 @@ elseif arg == "above" then
 hrp.CFrame = part.CFrame * CFrame.new(0, distance, 0);
 elseif arg == "below" then
 hrp.CFrame = part.CFrame * CFrame.new(0, -distance, 0);
-  end;
-  end;
+end;
+end;
 end;
 else print("Globals: getgenv().topart = false")
 end; -- if getgenv().topart is true
