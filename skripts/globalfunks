@@ -250,6 +250,44 @@ elseif(pt=="ipairs")or(pt==false) then
    end;
 end;
 
+-- [[ tweento koords & part ]]--
+getgenv().tweento = function(target, duration, waitForTween)
+TweenService = game:service"TweenService"
+    local player = game.Players.LocalPlayer
+    local character = player.Character or player.CharacterAdded:Wait()
+repeat wait() until character;
+
+repeat wait() until character:FindFirstChild"HumanoidRootPart";
+
+    local targetCFrame;
+
+   if typeof(target) == "Vector3" then
+        targetCFrame = CFrame.new(target)
+    elseif target:IsA'BasePart' then
+        targetCFrame = target.CFrame
+    else
+warn("invalid target specified: '"..target.."'")
+        return
+    end
+
+    local tt = (duration or 3.33)
+    local tweenInfo = TweenInfo.new(tt, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+local goal = {
+CFrame = targetCFrame
+}
+    
+    local tw = TweenService:Create(humanoidRootPart, tweenInfo, goal)
+    tw:Play();
+    if waitForTween then
+   tw.Completed:Wait()
+    end;
+end; -- [[ example: 
+#1 
+tweento(Vector3.new(100, 200, 300), 5, true)
+#2
+tweento(workspace.Part, 5, false)
+]]--
+
 -- find matxh string --
 getgenv().ismatch = function(...)
  t = {...};
