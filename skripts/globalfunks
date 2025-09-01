@@ -1,12 +1,22 @@
 -- globals
-getgenv().rsg = {}; getgenv().RSG = {};
-getgenv().env = getgenv() or getrenv();
+getgenv().rsg = {}; getgenv().RSG = {}
 
-getgenv().waitfor = function(x)
-if not x:IsLoaded() then 
-x.Loaded:Wait();
+-- wait til instanxe loads --
+function rsg:waitfor(v)
+    if not v:IsLoaded() then
+        v.Loaded:Wait()
+    end;
+end;
+
+getgenv().env = getgenv() or getrenv();
+ -- wait til game loads --
+getgenv().waitforgame = function()
+if not game:IsLoaded() then 
+game.Loaded:Wait();
 end
 end;
+
+-- game loaded --
 rsg.ass = function(loadedVal)
 if loadedVal == true then
 warn("🏁");
@@ -2005,6 +2015,6 @@ print"Globals Loaded✅";
 rsg.ass(true)
 
 return {
-RSG,
-rsg
+getgenv().rsg, 
+getgenv().RSG
 }
