@@ -1,17 +1,18 @@
 -- globals
 getgenv().rsg = {}; getgenv().RSG = {}
+rsg=rsg; RSG=RSG;
 
 -- wait til instanxe loads --
 function rsg:waitfor(v)
-    if not v:IsLoaded() then
-        v.Loaded:Wait()
-    end;
+if not v:IsLoaded() then
+v.Loaded:Wait()
+end;
 end;
 
 getgenv().env = getgenv() or getrenv();
- -- wait til game loads --
+-- wait til game loads --
 getgenv().waitforgame = function()
-if not game:IsLoaded() then 
+if not game:IsLoaded() then
 game.Loaded:Wait();
 end
 end;
@@ -207,13 +208,14 @@ getgenv().slomoboogie = _G.slomoboogie;
 getgenv().krossboogie = _G.krossboogie;
 
 -- find name of an objekt --
-getgenv().findchild(lokation, name, funk)
+getgenv().findchild = function(lokation, name, funk)
 name = tostring(name);
 for i,v in pairs(lokation:GetChildren()) do
-	if v.Name == name then
-		funk(v)
-	end
-end
+if v.Name == name then
+funk(v)
+     end
+  end
+end;
 
 -- if a konnektion is konnekted d/c it --
 env.iskonnekted = function(x)
@@ -236,7 +238,7 @@ end;
 env.getHealth = function(plr)
 if not plr or plr:match("^%s*$") then
 plr = game.Players.LocalPlayer.Name;
-   end;
+end;
 return game.Players[plr].Character:WaitForChild("Humanoid").Health
 end;
 
@@ -268,7 +270,7 @@ local character = getgenv().getchar;
 if character then
 for _, child in pairs(character:GetDescendants()) do
 if child:IsA("BasePart") then
-    child.CustomPhysicalProperties = PhysicalProperties.new(density, f or child.CustomPhysicalProperties.Friction, e or child.CustomPhysicalProperties.Elasticity)
+child.CustomPhysicalProperties = PhysicalProperties.new(density, f or child.CustomPhysicalProperties.Friction, e or child.CustomPhysicalProperties.Elasticity)
 end
 end 
 else
@@ -773,15 +775,15 @@ espHolder.Parent = game:GetService("CoreGui")
 getgenv().updateESP = function()
 if PLR.Character and PLR.Character:FindFirstChild("HumanoidRootPart") then
 for _, part in pairs(PLR.Character:GetChildren()) do
-    if part:IsA("BasePart") then
-        local adornment = Instance.new("BoxHandleAdornment")
-      adornment.Parent = espHolder
-      adornment.Adornee = part
-     adornment.AlwaysOnTop = true
-        adornment.Size = part.Size
-        adornment.Transparency = 0.3
+if part:IsA("BasePart") then
+local adornment = Instance.new("BoxHandleAdornment")
+adornment.Parent = espHolder
+adornment.Adornee = part
+adornment.AlwaysOnTop = true
+adornment.Size = part.Size
+adornment.Transparency = 0.3
 adornment.Color3 = PLR.TeamColor.Color;
-    end
+end
 end
 end
 end;
@@ -806,7 +808,7 @@ getgenv().ESPenabled = state
 if state then
 for _, v in pairs(Players:GetPlayers()) do
 if v ~= Players.LocalPlayer then
-    addESP(v)
+addESP(v)
 end;
 end;
 else
@@ -862,15 +864,15 @@ local List = {}
 if isa then
 for i, v in pairs(tableOf) do
 if v:IsA(isa) then
-    table.insert(List, v.Name)
+table.insert(List, v.Name)
 end
 end
 else
 for i, v in pairs(tableOf) do
 if useDisplayName then
-    table.insert(List, v.DisplayName)
+table.insert(List, v.DisplayName)
 else
-    table.insert(List, v.Name)
+table.insert(List, v.Name)
 end
 end
 end
@@ -1684,8 +1686,8 @@ local character = player.Character
 if character and character:FindFirstChild("HumanoidRootPart") then
 for _, p in pairs(workspace:GetDescendants()) do
 if p:IsA("BasePart") and p:FindFirstChild("BillboardGui") then -- Check for BillboardGui instead of TextLabel
-    local distance = (character.HumanoidRootPart.Position - p.Position).Magnitude
-    p.BillboardGui.TextLabel.Text = string.format("Distance: %.2f studs", distance)
+local distance = (character.HumanoidRootPart.Position - p.Position).Magnitude
+p.BillboardGui.TextLabel.Text = string.format("Distance: %.2f studs", distance)
 end
 end
 end
