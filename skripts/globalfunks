@@ -1,6 +1,8 @@
 -- globals
+getgenv = getgenv() and getgenv;
+getrenv = getrenv() and getrenv;
+wait=wait; identifyexecutor=identifyexecutor;
 getgenv().rsg = {}; getgenv().RSG = {}
-rsg=rsg; RSG=RSG;
 
 -- wait til instanxe loads --
 function rsg:waitfor(v)
@@ -9,7 +11,7 @@ v.Loaded:Wait()
 end;
 end;
 
-getgenv().env = getgenv() or getrenv();
+getgenv().env = getgenv() or getrenv(); env=env;
 -- wait til game loads --
 getgenv().waitforgame = function()
 if not game:IsLoaded() then
@@ -87,7 +89,7 @@ _G.kam = game:GetService("Workspace").CurrentCamera;
 _G.ws = _G.hum.WalkSpeed;
 _G.jp = _G.hum.JumpPower;
 _G.kamera = game:GetService("Workspace").CurrentCamera;
-_G.plrkount = #game:GetService("Players"):GetPlayers();  
+_G.plrkount = #game:GetService("Players"):GetPlayers();
 _G.maxplrs = game:GetService("Players").MaxPlayers;
 
 -- getgenv global vars --
@@ -170,7 +172,7 @@ _G.valentines = (99511253993554);
 _G.newyears = (140472834812860);
 _G.stpatrixks = (110841053352535);
 _G.sgx = (92354585685421);
-getgenv().imgs = { 
+getgenv().imgs = {
 xbtn = 3926305904,
 cheruimg = 17104316554,
 hgimg = 15729672382,
@@ -187,7 +189,7 @@ halloween = 111324508198120,
 valentines = 99511253993554,
 newyears = 140472834812860,
 stpatrixks = 110841053352535,
-sgx = 92354585685421, 
+sgx = 92354585685421,
 }
 
 -- [[ ANIMATION IDS ]] --
@@ -211,9 +213,7 @@ getgenv().krossboogie = _G.krossboogie;
 getgenv().findchild = function(lokation, name, funk)
 name = tostring(name);
 for i,v in pairs(lokation:GetChildren()) do
-if v.Name == name then
-funk(v)
-     end
+if(v.Name == name)then funk(v) end;
   end
 end;
 
@@ -221,6 +221,8 @@ end;
 env.iskonnekted = function(x)
 if(x)then x:Disconnect() end
 end;
+
+local args;
 
 --[[ matxh type() ]]--
 getgenv().istype = function(...)
