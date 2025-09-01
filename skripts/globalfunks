@@ -206,6 +206,15 @@ getgenv().viktoryboogie = _G.viktoryboogie;
 getgenv().slomoboogie = _G.slomoboogie;
 getgenv().krossboogie = _G.krossboogie;
 
+-- find name of an objekt --
+getgenv().findchild(lokation, name, funk)
+name = tostring(name);
+for i,v in pairs(lokation:GetChildren()) do
+	if v.Name == name then
+		funk(v)
+	end
+end
+
 -- if a konnektion is konnekted d/c it --
 env.iskonnekted = function(x)
 if(x)then x:Disconnect() end
