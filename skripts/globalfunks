@@ -295,6 +295,59 @@ end
 end;
 end;
 
+--[[ TWEEN() FUNK ]]--
+getgenv().Tween = function (arg1, arg2, reps, revs, delay)
+    local tweenService = game:GetService("TweenService")
+    local player = game.Players.LocalPlayer
+    local character = player.Character or player.CharacterAdded:Wait()
+
+    repeat wait() until character;
+
+    local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+    
+    local targetPosition = humanoidRootPart.Position
+    local tt = arg2 or 2.5
+
+    if typeof(arg1) == "number" then
+        -- Treat the arguments as coordinate inputs
+        targetPosition = Vector3.new(arg1, arg2, reps) -- Here reps and revs act as y and z
+        tt = revs or 3 
+        reps = delay or 0 
+        revs = false
+        delay = 0 -- Delay unless specified
+    elseif typeof(arg1) == "string" then
+        local targetPlayer = game.Players:FindFirstChild(arg1) or 
+                             game.Players:GetPlayersWithDisplayName(arg1)[1]
+        if targetPlayer and targetPlayer.Character then
+    local targetHumanoidRootPart = targetPlayer.Character:WaitForChild("HumanoidRootPart")
+            targetPosition = targetHumanoidRootPart.Position
+        end
+    elseif typeof(arg1) == "Instance" and arg1:IsA("BasePart") then
+        targetPosition = arg1.Position
+    end
+
+    local tweenInfo = TweenInfo.new(
+        tt, -- time
+        Enum.EasingStyle.Quad,
+        Enum.EasingDirection.Out,
+        reps or 0, -- # of repeats
+        revs or false, -- reverse
+        delay or 0 -- delay before start
+    )
+    local tween = tweenService:Create(humanoidRootPart, tweenInfo, {CFrame = CFrame.new(targetPosition)})
+    tween:Play()
+end
+
+-- example 1: (posX, posY, posZ, duration, repeats, reverse(bool), delay)
+--Tween(100, 309, 298, 3, 0, false, 0)
+
+-- example 2: (playername, duration)
+-- Tween("lulaslollipop", 3)
+
+-- example 3: (partName, duration)
+-- Tween(workspace.Baseplate, 3)
+-- [[ END OF TWEEN() ]] --
+
 -- [[ tweento koords & part ]]--
 getgenv().tweento = function(target, duration, waitForTween)
 TweenService = game:service"TweenService"
