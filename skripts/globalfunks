@@ -348,6 +348,24 @@ end
 -- Tween(workspace.Baseplate, 3)
 -- [[ END OF TWEEN() ]] --
 
+-- [[ TWEEN TELEPORT ]] --
+getgenv().tween = function(...)
+local plr = game:service"Players".LocalPlayer;
+local tweenserv = game:service"TweenService";
+   local tic_k = tick(5);
+   local params = {...};
+   local tween,err = pcall(function()
+       local tween = tweenserv:Create(plr.Character["HumanoidRootPart"], TweenInfo.new(params[4] or 11, Enum.EasingStyle.Quad),
+{CFrame = CFrame.new(params[1],params[2],params[3])
+});
+       tween:Play();
+   end)
+   if not tween then return err end
+end;
+--[[ example:
+tween(x, y, z) ... 4th arg is optional for duration
+]]--
+
 -- [[ tweento koords & part ]]--
 getgenv().tweento = function(target, duration, waitForTween)
 TweenService = game:service"TweenService"
