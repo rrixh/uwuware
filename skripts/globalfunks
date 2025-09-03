@@ -2,7 +2,7 @@
 getgenv = getgenv() and getgenv;
 getrenv = getrenv() and getrenv;
 wait=wait;game=game;identifyexecutor=identifyexecutor;
-Instance=Instance;UDim2=UDim2;=UDim=UDim;
+Instance=Instance;UDim2=UDim2;UDim=UDim;
 getgenv().rsg = {}; getgenv().RSG = {}
 
 -- wait til instanxe loads --
