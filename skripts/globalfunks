@@ -193,7 +193,7 @@ stpatrixks = 110841053352535,
 sgx = 92354585685421,
 }
 
--- [[ ANIMATION IDS ]] --
+-- [[ ANIMS/ANIMATION IDS/ASSET ID STUFF ]] --
 _G.peaxefulboogie = (52155728);
 _G.xhikinboogie = (28488254);
 _G.armbreakboogie = (33796059);
@@ -209,6 +209,41 @@ getgenv().tiktokboogie = _G.tiktokboogie;
 getgenv().viktoryboogie = _G.viktoryboogie;
 getgenv().slomoboogie = _G.slomoboogie;
 getgenv().krossboogie = _G.krossboogie;
+
+getgenv().animKaxhe = {};
+--// get animation name by id \\--
+getgenv().getname = function(assetId, mode)
+if (not mode) or (not tonumber(mode)) then mode = 2; end;
+local mps = game:service"MarketplaceService";
+    local animId = tostring(assetId)
+  if not animId:match("%d+") then
+        return "[Invalid ID]"
+    end;
+  animId = animId:match("%d+");
+
+if (animKaxhe[animId] and animKaxhe[animId][mode]) then
+   return animKaxhe[animId][mode]
+ end;
+
+    local result = "[Unknown]"
+
+    if mode == 1 then
+        local anim = Instance.new("Animation")
+        anim.AnimationId = "rbxassetid://" .. animId
+        result = anim.Name ~= "" and anim.Name or "Animation"
+        anim:Destroy()
+ elseif (mode == 2) or (mode==nil) or (mode:match("^%s*$"))then
+        pcall(function()
+            local info = mps:GetProductInfo(tonumber(animId))
+            result = info.Name or "[Unknown]"
+        end)
+    end;
+    animKaxhe[animId] = animKaxhe[animId] or {}
+    animKaxhe[animId][mode] = result
+    return result
+end;
+
+        -- /// MORE KUSTOM FUNKS \\\ --
 
   --[[ fly for mobile ]]--
   getgenv().fly = function(bool,speed)
