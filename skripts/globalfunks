@@ -210,6 +210,72 @@ getgenv().viktoryboogie = _G.viktoryboogie;
 getgenv().slomoboogie = _G.slomoboogie;
 getgenv().krossboogie = _G.krossboogie;
 
+  --[[ fly for mobile ]]--
+  getgenv().fly = function(bool,speed)
+      local plr = game:GetService("Players").LocalPlayer
+      local rs = game:GetService("RunService")
+      local camera = game:service("Workspace").CurrentCamera;
+      local controlModule = require(plr.PlayerScripts:WaitForChild("PlayerModule"):WaitForChild("ControlModule"))
+
+     getgenv().speed = tonumber(speed) or 50
+      local HRP = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
+      local hum = plr.Character and plr.Character:FindFirstChildOfClass("Humanoid")
+      if not (HRP and hum) then return end;
+
+      if not HRP:FindFirstChild("VelocityHandler") then
+          local bv = Instance.new("BodyVelocity")
+          bv.Name = "VelocityHandler"
+          bv.Parent = HRP
+          bv.MaxForce = Vector3.new(0, 0, 0)
+          bv.Velocity = Vector3.zero
+      end;
+      if not HRP:FindFirstChild("GyroHandler") then
+          local bg = Instance.new("BodyGyro")
+          bg.Name = "GyroHandler"
+          bg.Parent = HRP
+          bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+          bg.P = 1000
+          bg.D = 50
+      end;
+
+      local bv = HRP:FindFirstChild("VelocityHandler");
+      local bg = HRP:FindFirstChild("GyroHandler");
+
+      if(bool)then
+          bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+          bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+          hum.PlatformStand = true
+
+          if(getgenv().flyK)then
+              getgenv().flyK:Disconnect()
+          end;
+
+          getgenv().flyK = rs.RenderStepped:Connect(function()
+              if not plr.Character or not plr.Character:FindFirstChild("HumanoidRootPart") then return end;
+              local HRP = plr.Character.HumanoidRootPart
+              local hum = plr.Character:FindFirstChildOfClass("Humanoid")
+              if not (HRP and hum and HRP:FindFirstChild("VelocityHandler") and HRP:FindFirstChild("GyroHandler")) then return end;
+
+   HRP.GyroHandler.CFrame = camera.CFrame;
+
+        local dir = controlModule:GetMoveVector();
+              local vel = Vector3.zero;
+              if dir.Magnitude > 0 then
+                  vel = (camera.CFrame.RightVector * dir.X + camera.CFrame.LookVector * -dir.Z) * speed;
+              end
+     HRP.VelocityHandler.Velocity = vel;
+          end)
+      else
+   if getgenv().flyK then
+    getgenv().flyK:Disconnect()
+         getgenv().flyK = nil
+          end;
+          bv.MaxForce = Vector3.zero
+          bg.MaxTorque = Vector3.zero
+          hum.PlatformStand = false
+      end
+  end;
+
 --// get servixes --\\
 getgenv().rbx = function(name)
      local srv = (game.GetService);
