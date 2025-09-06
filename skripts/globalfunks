@@ -210,8 +210,8 @@ getgenv().viktoryboogie = _G.viktoryboogie;
 getgenv().slomoboogie = _G.slomoboogie;
 getgenv().krossboogie = _G.krossboogie;
 
-getgenv().animKaxhe = {};
 --// get animation name by id \\--
+getgenv().animKaxhe = {};
 getgenv().getname = function(assetId, mode)
 if (not mode) or (not tonumber(mode)) then mode = 2; end;
 local mps = game:service"MarketplaceService";
