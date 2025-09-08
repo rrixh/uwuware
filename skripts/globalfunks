@@ -310,6 +310,8 @@ end;
           hum.PlatformStand = false
       end
   end;
+getgenv().lollypopfly = getgenv().fly;
+
 
 --// get servixes --\\
 getgenv().rbx = function(name)
@@ -317,6 +319,25 @@ getgenv().rbx = function(name)
  local ref = (cloneref) or function(r) return r end;
  return ref(srv(game, name));
 end;
+
+--// find numbers only \\--
+getgenv().isnumber = function(...)
+args = {...}
+return args[1]:match("%d+")
+end;
+-- isnum() aliases--
+getgenv().isnum = getgenv().isnumber;
+
+--// find 1st seq of digits in string \\--
+getgenv().makenum = function(v)
+v = v:match("%d+")
+return v
+end;
+-- makenum() aliases-- 
+getgenv().getnums = getgenv().makenum;
+getgenv().getnumbers = getgenv().makenum;
+getgenv().getdigits = getgenv().makenum;
+
 
 -- find name of an objekt --
 getgenv().findchild = function(lokation, name, funk)
@@ -607,6 +628,9 @@ getgenv().plrRemoving = game:GetService("Players").PlayerRemoving;
 -- string matxh --
 getgenv().Empty = ("^%s*$");-- blank
 getgenv().Blank = ("^%s*$");-- blank
+getgenv().Whitespace = Blank ~= nil and Empty ~= nil and Blank and Empty or Blank;
+getgenv().Number = ("%d+");-- number
+
 
 getgenv().isblank = function(value)
 return value:match("^%s*$") ~= nil
