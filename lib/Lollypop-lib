@@ -1,0 +1,927 @@
+-- LulaUi 🍭 (PC+Mobile UI lib)
+-- v1.6 — fixes: no input freeze after loader, stronger popup auto-hide watchdog, dropdown safety, smaller lollipop, arg1 {text="..."} for LoadingAnimation, vertical-only scroll.
+local Players = game:GetService("Players")
+local UIS     = game:GetService("UserInputService")
+local TS      = game:GetService("TweenService")
+local HS      = game:GetService("HttpService")
+local VIM     = game:GetService("VirtualInputManager")
+local LP      = Players.LocalPlayer
+local UserService = game:GetService("UserService")
+
+
+local fonts = getgenv().fonts or {
+    titleFont   = "GothamBold",
+    buttonsFont = "Gotham",
+    rowFont     = "GothamSemibold",
+    badgeFont   = "FredokaOne"
+}
+local function F(n) return Enum.Font[n] or Enum.Font.Gotham end
+local function rounded(i, px) local c=Instance.new("UICorner"); c.CornerRadius=UDim.new(0,px or 6); c.Parent=i; return c end
+local function glow(i, col, thick)
+    local s=Instance.new("UIStroke"); s.ApplyStrokeMode=Enum.ApplyStrokeMode.Border
+    s.Color=col or Color3.fromRGB(255,40,40); s.Thickness=thick or 1; s.Transparency=0.2; s.Parent=i
+    TS:Create(s, TweenInfo.new(0.9, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+        Thickness=(thick or 1)+1, Transparency=0.05
+    }):Play(); return s
+end
+
+local ColorMap = {
+    red=Color3.fromRGB(255,60,60), blue=Color3.fromRGB(70,170,255), green=Color3.fromRGB(60,200,90),
+    yellow=Color3.fromRGB(255,220,90), purple=Color3.fromRGB(190,90,255), orange=Color3.fromRGB(255,150,60),
+    pink=Color3.fromRGB(255,120,200), gray=Color3.fromRGB(150,150,150), white=Color3.new(1,1,1), black=Color3.new(0,0,0),
+    cyan=Color3.fromRGB(0,200,200), turquoise=Color3.fromRGB(64,224,208), burgundy=Color3.fromRGB(128,0,32),
+    hotpink=Color3.fromRGB(255,105,180), lime=Color3.fromRGB(170,255,60)
+}
+local function colorFrom(v) if typeof(v)=="string" then return ColorMap[string.lower(v)] or Color3.fromRGB(255,40,40) end; if typeof(v)=="Color3" then return v end; return Color3.fromRGB(255,40,40) end
+
+local function AutoCanvas(sc)
+    local l=Instance.new("UIListLayout", sc); l.SortOrder=Enum.SortOrder.LayoutOrder; l.Padding=UDim.new(0,6)
+    l:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        sc.CanvasSize=UDim2.new(0,0,0,l.AbsoluteContentSize.Y+8)
+    end); return l
+end
+
+local function toKey(k)
+    if typeof(k)=="EnumItem" and k.EnumType==Enum.KeyCode then return k end
+    if typeof(k)=="string" then return Enum.KeyCode[k] or Enum.KeyCode[string.gsub(k," ","")] or Enum.KeyCode.Space end
+    return Enum.KeyCode.Space
+end
+
+local function simulateKey(kc)
+    if typeof(kc)~= "EnumItem" or kc.EnumType~=Enum.KeyCode then return end
+    local ok=pcall(function() VIM:SendKeyEvent(true, kc, false, game) end)
+    task.wait(0.05)
+    pcall(function() VIM:SendKeyEvent(false, kc, false, game) end)
+    if not ok and keypress then
+        pcall(function() keypress(kc.Value) end); task.wait(0.05); pcall(function() keyrelease(kc.Value) end)
+    end
+end
+
+-- ////////////////////// core //////////////////////
+local LulasUi = {}
+LulasUi.__index = LulasUi
+local Window = {}
+Window.__index = Window
+
+local function _realPageCount(self)
+    local n = 0
+    for _,id in ipairs(self.PageOrder) do
+        if id ~= self._kreditsId then n = n + 1 end
+    end
+    return n
+end
+
+local function resolvePage(self, pageArg)
+    if typeof(pageArg)=="table" and pageArg.Frame and pageArg.Title then return pageArg end
+    if typeof(pageArg)=="string" then for _,id in ipairs(self.PageOrder) do local p=self.Pages[id]; if p and p.Title==pageArg then return p end end end
+    return self.Current
+end
+
+function LulasUi:KreateWindow(title, opts)
+    opts=opts or {}
+    local self=setmetatable({}, Window)
+    self.MaxPages=tonumber(opts.MaxPages) or 10
+    self.Pages,self.PageOrder={},{}
+    self.Current=nil
+    self.SaveFile="LulasHub.txt"; self.Config={}; self.AutoSave=false
+    pcall(function() if isfile and isfile(self.SaveFile) then self.Config=HS:JSONDecode(readfile(self.SaveFile)) end end)
+
+    local HeaderSize=30; local X,Y,W,H=60,60,420,230
+    self.Geometry={HeaderSize=HeaderSize,X=X,Y=Y,W=W,H=H}
+
+    local gui=Instance.new("ScreenGui")
+    gui.Name="LulaHub"; gui.ResetOnSpawn=false; gui.ZIndexBehavior=Enum.ZIndexBehavior.Sibling; gui.IgnoreGuiInset=true
+    gui.Parent=LP:WaitForChild("PlayerGui"); self.Gui=gui
+
+    -- Popup layer (auto-visible only when it has children + watchdog)
+    local pop=Instance.new("Frame", gui)
+    pop.Name="PopupLayer"
+    pop.Size=UDim2.new(1,0,1,0)
+    pop.BackgroundTransparency=1 -- FIX: keep fully invisible so no grey overlay
+    pop.ZIndex=60
+    pop.Visible=false
+    pop.ClipsDescendants=false
+    pop.Active=false
+    self.PopupLayer=pop
+
+    local function refreshPopupVis()
+        pop.Visible = #pop:GetChildren()>0
+        pop.Active  = pop.Visible
+        pop.BackgroundTransparency = 1 -- FIX: never drop to 0.001
+    end
+    pop.ChildAdded:Connect(refreshPopupVis)
+    pop.ChildRemoved:Connect(refreshPopupVis)
+    task.spawn(function()
+        while pop.Parent do
+            task.wait(0.5)
+            refreshPopupVis()
+        end
+    end)
+
+    -- BG + header
+    local bg=Instance.new("Frame", gui)
+    bg.Name="PageBG"; bg.Size=UDim2.new(0,W,0,H); bg.Position=UDim2.new(0,X,0,Y)
+    bg.BackgroundColor3=Color3.fromRGB(48,48,48); bg.BorderSizePixel=0; rounded(bg,8); glow(bg, Color3.fromRGB(255,40,40),1)
+    self.BG=bg
+
+    local header=Instance.new("TextButton", gui)
+    header.Name="Header"; header.Size=UDim2.new(0,W,0,HeaderSize); header.Position=UDim2.new(0,X,0,Y-HeaderSize)
+    header.BackgroundColor3=Color3.fromRGB(30,30,30); header.AutoButtonColor=false; header.Text=""; header.ZIndex=3
+    rounded(header,8); glow(header, Color3.fromRGB(255,40,40),1); self.Header=header
+
+    local Prev=Instance.new("TextButton", header)
+    Prev.Size=UDim2.new(0,34,0,HeaderSize-6); Prev.Position=UDim2.new(0,6,0,3); Prev.Text="<"
+    Prev.Font=F(fonts.buttonsFont); Prev.TextScaled=true; Prev.BackgroundColor3=Color3.fromRGB(60,60,60); rounded(Prev,6)
+
+    local Next=Prev:Clone(); Next.Text=">"; Next.Position=UDim2.new(0,46,0,3); Next.Parent=header
+
+    local BTN_W,PAD=34,6; local RightW=BTN_W*2+PAD
+    local Right=Instance.new("Frame", header)
+    Right.Size=UDim2.new(0,RightW,1,-6); Right.Position=UDim2.new(1,-RightW-6,0,3); Right.BackgroundTransparency=1
+    local rb=Instance.new("UIListLayout", Right); rb.FillDirection=Enum.FillDirection.Horizontal; rb.Padding=UDim.new(0,PAD)
+    rb.HorizontalAlignment=Enum.HorizontalAlignment.Right; rb.VerticalAlignment=Enum.VerticalAlignment.Center
+
+    local Min=Instance.new("TextButton", Right); Min.Size=UDim2.new(0,BTN_W,1,0); Min.Text="—"
+    Min.Font=F(fonts.buttonsFont); Min.TextScaled=true; Min.BackgroundColor3=Color3.fromRGB(60,60,60); rounded(Min,6)
+    local Close=Min:Clone(); Close.Text="ⓧ"; Close.BackgroundColor3=Color3.fromRGB(230,0,0); Close.Parent=Right
+
+    local Badge=Instance.new("TextLabel", header)
+    Badge.Size=UDim2.new(0,88,0,HeaderSize-6); Badge.Position=UDim2.new(1,-(RightW+PAD+88+6),0,3)
+    Badge.BackgroundColor3=Color3.fromRGB(48,48,48); Badge.TextColor3=Color3.new(1,1,1); Badge.TextScaled=true
+    Badge.Font=F(fonts.badgeFont); Badge.Text="Page: 1"; Badge.ZIndex=3; rounded(Badge,6); self.Badge=Badge
+
+    local LEFT_START=92; local rightReserved=RightW+PAD+88+12
+    local Title=Instance.new("TextLabel", header)
+    Title.BackgroundTransparency=1; Title.TextColor3=Color3.new(1,1,1); Title.TextScaled=true
+    Title.Font=F(fonts.titleFont); Title.Text="🍭 "..(title or "Lula Hub"); Title.ZIndex=3
+    Title.Position=UDim2.new(0,LEFT_START,0,0); Title.Size=UDim2.new(1,-(LEFT_START+rightReserved),0,HeaderSize)
+    Instance.new("UIStroke", Title); self.TitleLabel=Title
+
+    -- minimize/close/drag
+    local minimized=false
+    local function clearPopups() for _,c in ipairs(pop:GetChildren()) do c:Destroy() end; refreshPopupVis() end
+    local function applyVis()
+        if minimized then
+            for _,p in pairs(self.Pages) do p.Frame.Visible=false; p.Overlay.Visible=false end
+            bg.Visible=false; clearPopups()
+        else
+            for _,p in pairs(self.Pages) do local on=(p==self.Current); p.Frame.Visible=on; p.Overlay.Visible=on end
+            bg.Visible=true
+        end
+    end
+    self._applyVis=applyVis
+    Min.MouseButton1Click:Connect(function() minimized=not minimized; applyVis() end)
+    Close.MouseButton1Click:Connect(function() clearPopups(); gui:Destroy() end)
+
+    local dragging=false; local anchorOff=Vector2.new()
+    local function movers() local arr={bg,header}; for _,p in pairs(self.Pages) do table.insert(arr,p.Frame); table.insert(arr,p.Overlay) end; return arr end
+    header.InputBegan:Connect(function(i)
+        if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then
+            dragging=true; local b=bg.AbsolutePosition; anchorOff=Vector2.new(i.Position.X-b.X,i.Position.Y-b.Y); clearPopups()
+        end
+    end)
+    header.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then dragging=false end end)
+    UIS.InputChanged:Connect(function(i)
+        if not dragging then return end
+        if i.UserInputType~=Enum.UserInputType.MouseMovement and i.UserInputType~=Enum.UserInputType.Touch then return end
+        local b=bg.AbsolutePosition; local nx=i.Position.X-anchorOff.X; local ny=i.Position.Y-anchorOff.Y
+        local dx,dy=nx-b.X, ny-b.Y
+        for _,m in ipairs(movers()) do m.Position = m.Position + UDim2.new(0,dx,0,dy) end
+        clearPopups()
+    end)
+
+    local function idxOf(id) for i,v in ipairs(self.PageOrder) do if v==id then return i end end end
+    local function setByOffset(off)
+        if #self.PageOrder==0 then return end
+        local idx = idxOf(self.Current and self.Current.Id or self.PageOrder[1]) or 1
+        idx = math.clamp(idx+off,1,#self.PageOrder)
+        self.Current=self.Pages[self.PageOrder[idx]]
+        Badge.Text=("Page: %d"):format(idx); clearPopups(); applyVis()
+    end
+    Prev.MouseButton1Click:Connect(function() setByOffset(-1) end)
+    Next.MouseButton1Click:Connect(function() setByOffset(1) end)
+
+    return self
+end;
+
+-- config + alerts
+function Window:_save() if not self.AutoSave then return end; local ok,j=pcall(function() return HS:JSONEncode(self.Config) end); if ok and writefile then pcall(writefile, self.SaveFile, j) end end
+function Window:SaveKonfig(b) self.AutoSave=b and true or false; if b then self:_save() end end
+
+function Window:sendAlert(text, dur, accent)
+    local col=colorFrom(accent)
+    local holder=self.Gui:FindFirstChild("LulaAlerts") or Instance.new("Frame", self.Gui)
+    holder.Name="LulaAlerts"; holder.BackgroundTransparency=1; holder.Size=UDim2.new(1,0,1,0); holder.ZIndex=99
+
+    local card=Instance.new("Frame", holder)
+    card.AnchorPoint=Vector2.new(1,1); card.Position=UDim2.new(1,-10,1,-10)
+    card.Size=UDim2.new(0,180,0,34)
+    card.BackgroundColor3=Color3.fromRGB(12,12,14); card.BackgroundTransparency=0.18; card.ZIndex=100
+    rounded(card,8); glow(card,col,1)
+
+    local tag=Instance.new("Frame", card); tag.Size=UDim2.new(0,3,1,0); tag.BackgroundColor3=col; tag.BorderSizePixel=0; rounded(tag,8)
+    local lb=Instance.new("TextLabel", card)
+    lb.BackgroundTransparency=1; lb.Size=UDim2.new(1,-18,1,0); lb.Position=UDim2.new(0,9,0,0)
+    lb.TextColor3=Color3.new(1,1,1); lb.Font=F(fonts.buttonsFont); lb.TextSize=13; lb.TextScaled=false; lb.TextXAlignment=Enum.TextXAlignment.Left
+    lb.Text=tostring(text)
+
+    task.spawn(function()
+        task.wait(tonumber(dur) or 1.6)
+        TS:Create(card, TweenInfo.new(0.16), {BackgroundTransparency=1}):Play()
+        TS:Create(lb,   TweenInfo.new(0.16), {TextTransparency=1}):Play()
+        task.wait(0.18); card:Destroy()
+    end)
+end
+Window.popAlert = Window.sendAlert
+
+-- pages
+function Window:KreatePage(title, index, hasSearch)
+    -- Enforce MaxPages against *real* pages only (exclude Kredits)
+    if _realPageCount(self) >= self.MaxPages and not self.Pages[index or -1] then
+        error("Max pages ("..tostring(self.MaxPages)..") reached")
+    end
+
+    local G=self.Geometry
+    local page={}
+    page.Id = tonumber(index) or (#self.PageOrder + 1)
+    page.Title = tostring(title or ("Page "..page.Id))
+    page.HasSearch = hasSearch and true or false
+
+    -- overlay
+    local overlay=Instance.new("Frame", self.Gui)
+    overlay.Size=UDim2.new(0,G.W,0,G.H); overlay.Position=UDim2.new(0,G.X,0,G.Y)
+    overlay.BackgroundTransparency=1; overlay.Visible=false; overlay.ZIndex=4
+
+    local t=Instance.new("TextLabel", overlay)
+    t.Size=UDim2.new(1,-12,0,24); t.Position=UDim2.new(0,6,0,6); t.BackgroundTransparency=1
+    t.TextColor3=Color3.new(1,1,1); t.TextScaled=true; t.Font=F(fonts.titleFont); t.Text=page.Title
+
+    local u=Instance.new("Frame", overlay); u.BackgroundColor3=Color3.fromRGB(255,40,40); u.BorderSizePixel=0
+    u.Position=UDim2.new(0,6,0,30); u.Size=UDim2.new(1,-12,0,2)
+
+
+    local searchBox; local topPad=36+12
+    if page.HasSearch then
+        local row=Instance.new("Frame", overlay); row.Size=UDim2.new(1,-12,0,36); row.Position=UDim2.new(0,6,0,36+6); row.BackgroundTransparency=1
+        local box=Instance.new("TextBox", row)
+        box.Size=UDim2.new(1,-34,1,0); box.BackgroundColor3=Color3.fromRGB(60,60,60); box.TextColor3=Color3.new(1,1,1)
+        box.PlaceholderText="Search "..page.Title.."…"; box.ClearTextOnFocus=false; box.Text=""; box.Font=F(fonts.buttonsFont); box.TextScaled=true; rounded(box,6)
+        local clear=Instance.new("TextButton", row); clear.Size=UDim2.new(0,28,1,0); clear.BackgroundColor3=Color3.fromRGB(70,70,70); clear.Text="❌"; clear.Font=F(fonts.buttonsFont); clear.TextScaled=true; rounded(clear,6)
+        clear.MouseButton1Click:Connect(function() box.Text=""; box:ReleaseFocus() end)
+        searchBox=box; topPad=36+6+36+6
+    end
+
+    -- scrolling page frame
+    local sc=Instance.new("ScrollingFrame", self.Gui)
+    sc.Name="Page"..tostring(page.Id); sc.Size=UDim2.new(0,G.W,0,G.H-topPad); sc.Position=UDim2.new(0,G.X,0,G.Y+topPad)
+    sc.BackgroundTransparency=1; sc.BorderSizePixel=0; sc.ScrollBarThickness=6; sc.ZIndex=1; sc.Visible=false
+    sc.ScrollingDirection=Enum.ScrollingDirection.Y; sc.CanvasSize=UDim2.new(0,0,0,0)
+    sc.HorizontalScrollBarInset = Enum.ScrollBarInset.None
+    AutoCanvas(sc)
+
+    local function filter(q)
+        local ql=string.lower(q or "")
+        for _,child in ipairs(sc:GetChildren()) do
+            if child:IsA("Frame") and child:GetAttribute("__tag") then
+                local tag=string.lower(child:GetAttribute("__tag"))
+                child.Visible=(ql=="") or (string.find(tag, ql, 1, true) ~= nil)
+            end
+        end
+    end
+    if searchBox then searchBox:GetPropertyChangedSignal("Text"):Connect(function() filter(searchBox.Text) end) end
+
+    page.Overlay=overlay
+    page.Frame=sc
+    page.Filter=filter
+
+    -- register
+    self.Pages[page.Id]=page
+    if not table.find(self.PageOrder, page.Id) then table.insert(self.PageOrder, page.Id) end
+
+    -- First page ever? make it current (then build Kredits right after)
+    if not self.Current then
+        self.Current=page
+        self.Badge.Text="Page: 1"
+        sc.Visible=true
+        overlay.Visible=true
+        -- 🔥 Auto-create Kredits AS SOON AS PAGE 1 EXISTS
+        self:_ensureKredits(true)
+    else
+        -- Any subsequent real page: keep Kredits pinned to the end
+        self:_ensureKredits()
+    end
+
+    return page
+end;
+
+-- Always-last Kredits page (avatar left + join/last-online/status on right)
+function Window:_ensureKredits(forceRebuild)
+    if self.__buildingKredits then return end
+    self.__buildingKredits = true
+
+    -- nuke old kredits if rebuilding
+    if forceRebuild and self._kreditsId and self.Pages[self._kreditsId] then
+        local old = self.Pages[self._kreditsId]
+        pcall(function() if old.Frame   then old.Frame:Destroy()   end end)
+        pcall(function() if old.Overlay then old.Overlay:Destroy() end end)
+        self.Pages[self._kreditsId] = nil
+        for i,id in ipairs(self.PageOrder) do if id == self._kreditsId then table.remove(self.PageOrder, i) break end end
+        self._kreditsId = nil
+    end
+
+    -- if kredits exists, shove it to the end
+    if self._kreditsId and self.Pages[self._kreditsId] then
+        local ix; for i,id in ipairs(self.PageOrder) do if id == self._kreditsId then ix = i break end end
+        if ix and ix ~= #self.PageOrder then table.remove(self.PageOrder, ix); table.insert(self.PageOrder, self._kreditsId) end
+        self.__buildingKredits = false
+        return
+    end
+
+    local G = self.Geometry
+    local page = { Id = -9999, Title = "Kredits", HasSearch = false }
+
+    -- overlay
+    local overlay = Instance.new("Frame", self.Gui)
+    overlay.Size = UDim2.new(0, G.W, 0, G.H)
+    overlay.Position = UDim2.new(0, G.X, 0, G.Y)
+    overlay.BackgroundTransparency = 1
+    overlay.Visible = false
+    overlay.ZIndex = 4
+
+    local title = Instance.new("TextLabel", overlay)
+    title.Size = UDim2.new(1, -12, 0, 24)
+    title.Position = UDim2.new(0, 6, 0, 6)
+    title.BackgroundTransparency = 1
+    title.TextColor3 = Color3.new(1,1,1)
+    title.TextScaled = true
+    title.Font = F(fonts.titleFont)
+    title.Text = page.Title
+
+    local underline = Instance.new("Frame", overlay)
+    underline.BackgroundColor3 = Color3.fromRGB(255,40,40)
+    underline.BorderSizePixel = 0
+    underline.Position = UDim2.new(0, 6, 0, 30)
+    underline.Size = UDim2.new(1, -12, 0, 2)
+
+    -- info card (avatar left, stats right)
+    local CARD_H = 110
+    local card = Instance.new("Frame", overlay)
+    card.Size = UDim2.new(1, -24, 0, CARD_H)
+    card.Position = UDim2.new(0, 12, 0, 40)
+    card.BackgroundColor3 = Color3.fromRGB(45,45,45)
+    card.BackgroundTransparency = 0.15
+    rounded(card, 10); glow(card, Color3.fromRGB(255,40,40), 1)
+
+    -- avatar (LEFT, inside the card)
+    local avatar = Instance.new("ImageLabel", card)
+    avatar.BackgroundTransparency = 1
+    avatar.Size = UDim2.new(0, 96, 0, 96)
+    avatar.Position = UDim2.new(0, 10, 0, 7)
+    avatar.ZIndex = 5
+    local avCorner = Instance.new("UICorner", avatar); avCorner.CornerRadius = UDim.new(1, 0)
+    local avStroke = Instance.new("UIStroke", avatar); avStroke.Color = Color3.fromRGB(255,40,40); avStroke.Thickness = 1
+
+    -- stats (RIGHT side)
+    local stats = Instance.new("Frame", card)
+    stats.BackgroundTransparency = 1
+    stats.Size = UDim2.new(1, -(10 + 96 + 16 + 10), 1, -14) -- leave space for avatar & margins
+    stats.Position = UDim2.new(0, 10 + 96 + 16, 0, 7)
+
+    local function makeLabel(y, text)
+        local L = Instance.new("TextLabel", stats)
+        L.BackgroundTransparency = 1
+        L.Position = UDim2.new(0, 0, 0, y)
+        L.Size = UDim2.new(1, 0, 0, 28)
+        L.TextXAlignment = Enum.TextXAlignment.Left
+        L.TextScaled = true
+        L.Font = F(fonts.buttonsFont)
+        L.TextColor3 = Color3.new(1,1,1)
+        L.Text = text
+        return L
+    end
+
+    local joinLabel   = makeLabel( 0, "Join Date:  —")
+    local lastLabel   = makeLabel(34, "Last Online: Today")
+    -- status line has a dot + text
+    local statusDot   = Instance.new("Frame", stats)
+    statusDot.Size = UDim2.new(0, 10, 0, 10)
+    statusDot.Position = UDim2.new(0, 0, 0, 70)
+    statusDot.BackgroundColor3 = Color3.fromRGB(180, 60, 60) -- default red
+    rounded(statusDot, 6)
+    local statusLabel = Instance.new("TextLabel", stats)
+    statusLabel.BackgroundTransparency = 1
+    statusLabel.Position = UDim2.new(0, 16, 0, 64)
+    statusLabel.Size = UDim2.new(1, -16, 0, 24)
+    statusLabel.TextXAlignment = Enum.TextXAlignment.Left
+    statusLabel.TextScaled = true
+    statusLabel.Font = F(fonts.buttonsFont)
+    statusLabel.TextColor3 = Color3.new(1,1,1)
+    statusLabel.Text = "Status: Offline"
+
+    -- resolve whose profile to display
+    local function _resolveUserId()
+        local cfg = rawget(getgenv(), "kreditsAvatar") or {}
+        local id = tonumber(cfg.userId)
+        if not id and typeof(cfg.profileUrl) == "string" then
+            local m = string.match(cfg.profileUrl, "/users/(%d+)/profile")
+            if m then id = tonumber(m) end
+        end
+        if not id and typeof(cfg.username) == "string" and cfg.username ~= "" then
+            pcall(function() id = Players:GetUserIdFromNameAsync(cfg.username) end)
+        end
+        return id or Players.LocalPlayer.UserId
+    end
+
+    -- best-effort HTTP getter (works in most executors; falls back to HttpService)
+    local function http_get(url)
+        local ok, res
+        if syn and syn.request then
+            ok, res = pcall(function() return syn.request({Url = url, Method = "GET"}) end)
+            if ok and res and res.StatusCode == 200 then return res.Body end
+        end
+        if http_request then
+            ok, res = pcall(function() return http_request({Url = url, Method = "GET"}) end)
+            if ok and res and res.StatusCode == 200 then return res.Body end
+        end
+        if request then
+            ok, res = pcall(function() return request({Url = url, Method = "GET"}) end)
+            if ok and res and res.StatusCode == 200 then return res.Body end
+        end
+        ok, res = pcall(function() return game:HttpGet(url) end)
+        if ok and type(res) == "string" then return res end
+        ok, res = pcall(function() return HS:GetAsync(url) end)
+        if ok then return res end
+        return nil
+    end
+
+    -- helpers for date parsing/printing
+    local MONTHS = {"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"}
+    local function parse_iso(iso)
+        if type(iso) ~= "string" then return nil end
+        local y, m, d, hh, mm, ss = iso:match("(%d+)%-(%d+)%-(%d+)T?(%d*):?(%d*):?(%d*)")
+        y, m, d = tonumber(y), tonumber(m), tonumber(d)
+        hh, mm, ss = tonumber(hh) or 0, tonumber(mm) or 0, tonumber(ss) or 0
+        if not (y and m and d) then return nil end
+        return os.time{year=y, month=m, day=d, hour=hh, min=mm, sec=ss}
+    end
+    local function fmt_date(ts)
+        if not ts then return "—" end
+        local t = os.date("*t", ts)
+        return string.format("%s %d, %d", MONTHS[t.month], t.day, t.year)
+    end
+    local function fmt_last_online(ts)
+        if not ts then return "—" end
+        local now = os.time()
+        local function day_start(t)
+            local dt = os.date("*t", t)
+            return os.time{year=dt.year, month=dt.month, day=dt.day, hour=0, min=0, sec=0}
+        end
+        local diffDays = math.floor( (day_start(now) - day_start(ts)) / 86400 + 0.5 )
+        if diffDays == 0 then return "Today" end
+        if diffDays == 1 then return "Yesterday" end
+        return fmt_date(ts)
+    end
+
+    task.spawn(function()
+        local userId = _resolveUserId()
+
+        -- avatar thumbnail
+        local okThumb, thumb = pcall(function()
+            return Players:GetUserThumbnailAsync(userId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100)
+        end)
+        if okThumb and thumb then avatar.Image = thumb end
+
+        -- Join Date (public)
+        local ujson = http_get("https://users.roblox.com/v1/users/"..tostring(userId))
+        if ujson then
+            local ok, data = pcall(HS.JSONDecode, HS, ujson)
+            if ok and data and data.created then
+                local when = parse_iso(data.created)
+                joinLabel.Text = "Join Date:  "..fmt_date(when)
+            end
+        end
+
+        -- Presence + Last Online (legacy public endpoint)
+        local pjson = http_get("https://api.roblox.com/users/"..tostring(userId).."/onlinestatus")
+        if pjson then
+            local ok, data = pcall(HS.JSONDecode, HS, pjson)
+            if ok and data then
+           local isOnline = data.IsOnline == true
+                statusLabel.Text = "Status: "..(isOnline and "Online" or "Offline")
+                statusDot.BackgroundColor3 = isOnline and Color3.fromRGB(60,200,90) or Color3.fromRGB(200,70,70)
+
+                -- LastOnline is an ISO-like string
+                local lastTs = parse_iso(data.LastOnline)
+                lastLabel.Text = "Last Online: Today" -- ..fmt_last_online(lastTs)
+            end
+        end
+    end)
+
+    -- scrolling body (buttons below card)
+    local topPad = 36 + 12 + CARD_H + 12
+    local sc = Instance.new("ScrollingFrame", self.Gui)
+    sc.Name = "Page"..tostring(page.Id)
+    sc.Size = UDim2.new(0, G.W, 0, G.H - topPad)
+    sc.Position = UDim2.new(0, G.X, 0, G.Y + topPad)
+    sc.BackgroundTransparency = 1
+    sc.BorderSizePixel = 0
+    sc.ScrollBarThickness = 6
+    sc.ZIndex = 1
+    sc.Visible = false
+    sc.ScrollingDirection = Enum.ScrollingDirection.Y
+    sc.CanvasSize = UDim2.new(0,0,0,0)
+    AutoCanvas(sc)
+
+    page.Overlay = overlay
+    page.Frame   = sc
+    page.Filter  = function() end
+
+    self.Pages[page.Id] = page
+    self._kreditsId = page.Id
+    table.insert(self.PageOrder, page.Id)
+
+    -- clipboard helper
+    local function copy(str)
+        local ok = pcall(function() if setclipboard then setclipboard(tostring(str)) end end)
+        if ok then self:sendAlert("Copied to clipboard", 1.4, "lime")
+        else self:sendAlert("Clipboard unsupported", 1.8, "yellow"); print("[Kredits Copy] -> "..tostring(str)) end
+    end
+
+    -- buttons under the card
+    self:button(page, "RBX: @lulaslollipop🍭", function()
+        copy("https://www.roblox.com/users/3001347724/profile")
+    end)
+    self:button(page, "Discord: @bommunity 🤖", function()
+        copy("bommunity")
+    end)
+    self:button(page, "Telegram: @sIipped 💬", function()
+        copy("https://t.me/sIipped")
+    end)
+
+    -- obey current page visibility
+    if self.Current then
+        local on = (self.Current == page)
+        sc.Visible = on
+        overlay.Visible = on
+    end
+
+    -- pin Kredits to end
+    for i,id in ipairs(self.PageOrder) do
+        if id == self._kreditsId and i ~= #self.PageOrder then
+            table.remove(self.PageOrder, i)
+            table.insert(self.PageOrder, self._kreditsId)
+            break
+        end
+    end
+
+    self.__buildingKredits = false
+end;
+--END OF ENSURE KREDITS 🍭🍭🍭🍭--
+
+-- element helpers
+local function newRow(parent,h) local r=Instance.new("Frame", parent); r.Size=UDim2.new(1,0,0,h or 36); r.BackgroundTransparency=1; return r end
+local function tagRow(r,tag) r:SetAttribute("__tag", tostring(tag or "")) end
+
+-- elements
+function Window:label(page,text)
+    local p=resolvePage(self,page); local r=newRow(p.Frame,28); tagRow(r,text)
+    local L=Instance.new("TextLabel", r); L.Size=UDim2.new(1,-6,1,0); L.Position=UDim2.new(0,6,0,0); L.BackgroundTransparency=1
+    L.TextColor3=Color3.fromRGB(230,230,230); L.Font=F(fonts.buttonsFont); L.TextScaled=true; L.TextXAlignment=Enum.TextXAlignment.Left; L.Text=tostring(text)
+    return r
+end
+
+function Window:button(page,label,cb)
+    local p=resolvePage(self,page); local r=newRow(p.Frame,36); tagRow(r,label)
+    local b=Instance.new("TextButton", r)
+    b.Size=UDim2.new(1,0,1,0); b.BackgroundColor3=Color3.fromRGB(60,60,60); b.TextColor3=Color3.new(1,1,1)
+    b.Font=F(fonts.rowFont); b.TextScaled=true; b.TextXAlignment=Enum.TextXAlignment.Left; b.Text=tostring(label); rounded(b,6)
+    b.MouseButton1Click:Connect(function() if cb then task.spawn(cb) end end); return r
+end
+
+function Window:toggle(page,label,default,cb)
+    local p=resolvePage(self,page); local r=newRow(p.Frame,36); tagRow(r,label)
+    local txt=Instance.new("TextLabel", r); txt.Size=UDim2.new(.68,-4,1,0); txt.BackgroundTransparency=1; txt.TextColor3=Color3.new(1,1,1); txt.Font=F(fonts.rowFont); txt.TextScaled=true; txt.TextXAlignment=Enum.TextXAlignment.Left; txt.Text=label
+    local SW_W=66
+    local sw=Instance.new("Frame", r); sw.Size=UDim2.new(0,SW_W,1,-4); sw.Position=UDim2.new(1,-SW_W,0,2); sw.BackgroundColor3=Color3.fromRGB(70,70,70); rounded(sw,18); glow(sw, Color3.fromRGB(255,40,40),1)
+    local knob=Instance.new("Frame", sw); knob.Size=UDim2.new(0,28,0,28); knob.Position=UDim2.new(0,3,0,.5); knob.AnchorPoint=Vector2.new(0,.5); knob.BackgroundColor3=Color3.fromRGB(210,210,210); rounded(knob,18)
+    local hit=Instance.new("TextButton", sw); hit.BackgroundTransparency=1; hit.Text=""; hit.Size=UDim2.new(1,0,1,0)
+    self.Config[p.Title]=self.Config[p.Title] or {}; local state=(typeof(self.Config[p.Title][label])=="boolean") and self.Config[p.Title][label] or (default and true or false)
+    local function vis() TS:Create(sw, TweenInfo.new(.15), {BackgroundColor3= state and Color3.fromRGB(60,200,90) or Color3.fromRGB(70,70,70)}):Play(); TS:Create(knob, TweenInfo.new(.15), {Position= state and UDim2.new(0,SW_W-28-3,.5,0) or UDim2.new(0,3,.5,0)}):Play() end
+    vis()
+    hit.MouseButton1Click:Connect(function() state=not state; self.Config[p.Title][label]=state; self:_save(); vis(); if cb then task.spawn(cb,state) end end)
+    return r
+end
+
+function Window:textbox(page,label,defaultText,cb)
+    local p=resolvePage(self,page); local r=newRow(p.Frame,36); tagRow(r,label.." "..tostring(defaultText or ""))
+    local name=Instance.new("TextLabel", r); name.Size=UDim2.new(.38,-4,1,0); name.BackgroundTransparency=1; name.TextColor3=Color3.new(1,1,1); name.Font=F(fonts.rowFont); name.TextScaled=true; name.TextXAlignment=Enum.TextXAlignment.Left; name.Text=label
+    self.Config[p.Title]=self.Config[p.Title] or {}; local val=self.Config[p.Title][label] or defaultText or ""
+    local box=Instance.new("TextBox", r); box.Size=UDim2.new(.62,0,1,0); box.Position=UDim2.new(.38,4,0,0)
+    box.BackgroundColor3=Color3.fromRGB(60,60,60); box.TextColor3=Color3.new(1,1,1); box.Text=tostring(val); box.ClearTextOnFocus=false; box.Font=F(fonts.buttonsFont); box.TextScaled=true; rounded(box,6)
+    box.FocusLost:Connect(function(enter) self.Config[p.Title][label]=box.Text; self:_save(); if cb then task.spawn(cb,box.Text,enter) end end); return r
+end
+
+function Window:slider(page,label,defaultValue,min,max,cb)
+    local p=resolvePage(self,page); min=tonumber(min) or 0; max=tonumber(max) or 100
+    self.Config[p.Title]=self.Config[p.Title] or {}; local v=math.clamp( tonumber(self.Config[p.Title][label] or defaultValue or min) or min, min, max )
+    local r=newRow(p.Frame,40); tagRow(r,label.." "..tostring(v))
+    local name=Instance.new("TextLabel", r); name.Size=UDim2.new(.38,-4,1,0); name.BackgroundTransparency=1; name.TextColor3=Color3.new(1,1,1); name.Font=F(fonts.rowFont); name.TextScaled=true; name.TextXAlignment=Enum.TextXAlignment.Left; name.Text=label
+    local hold=Instance.new("Frame", r); hold.Size=UDim2.new(.62,0,1,0); hold.Position=UDim2.new(.38,4,0,0); hold.BackgroundTransparency=1
+    local bar=Instance.new("Frame", hold); bar.Size=UDim2.new(1,0,0,8); bar.Position=UDim2.new(0,0,.5,-4); bar.BackgroundColor3=Color3.fromRGB(60,60,60); rounded(bar,6)
+    local fill=Instance.new("Frame", bar); fill.Size=UDim2.new(0,0,1,0); fill.BackgroundColor3=Color3.fromRGB(70,170,255); rounded(fill,6)
+    local knob=Instance.new("Frame", hold); knob.Size=UDim2.new(0,14,0,14); knob.AnchorPoint=Vector2.new(.5,.5); knob.Position=UDim2.new(0,0,.5,0); knob.BackgroundColor3=Color3.fromRGB(210,210,210); rounded(knob,8)
+    local out=Instance.new("TextLabel", hold); out.BackgroundTransparency=1; out.Size=UDim2.new(0,60,1,0); out.Position=UDim2.new(1,4,0,0); out.TextColor3=Color3.new(1,1,1); out.Font=F(fonts.buttonsFont); out.TextScaled=true
+    local function setVal(val) v=math.clamp(val,min,max); local a=(v-min)/(max-min); fill.Size=UDim2.new(a,0,1,0); knob.Position=UDim2.new(a,0,.5,0); out.Text=tostring(math.floor(v+0.5)) end
+    setVal(v)
+    local function updateFromX(x) local left=bar.AbsolutePosition.X; local width=math.max(1,bar.AbsoluteSize.X); local a=math.clamp((x-left)/width,0,1); setVal(min+a*(max-min)); self.Config[p.Title][label]=v; self:_save(); if cb then task.spawn(cb,v) end end
+    local sliding=false
+    bar.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then sliding=true; updateFromX(i.Position.X) end end)
+    bar.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then sliding=false end end)
+    UIS.InputChanged:Connect(function(i) if sliding and (i.UserInputType==Enum.UserInputType.MouseMovement or i.UserInputType==Enum.UserInputType.Touch) then updateFromX(i.Position.X) end end)
+    return r
+end
+
+-- dropdown (safe popup, no reparent warnings, closes on click-away)
+function Window:list(page,label,values,defaultItem,cb)
+    local p=resolvePage(self,page); values=values or {}
+    self.Config[p.Title]=self.Config[p.Title] or {}; local val=self.Config[p.Title][label] or defaultItem or values[1] or ""
+    local r=newRow(p.Frame,36); tagRow(r,label.." "..tostring(val))
+    local text=Instance.new("TextLabel", r); text.Size=UDim2.new(.38,-4,1,0); text.BackgroundTransparency=1; text.TextColor3=Color3.new(1,1,1); text.Font=F(fonts.rowFont); text.TextScaled=true; text.TextXAlignment=Enum.TextXAlignment.Left; text.Text=label
+    local cur=Instance.new("TextButton", r); cur.Size=UDim2.new(.62,0,1,0); cur.Position=UDim2.new(.38,4,0,0); cur.BackgroundColor3=Color3.fromRGB(60,60,60); cur.TextColor3=Color3.new(1,1,1); cur.TextScaled=true; cur.Font=F(fonts.buttonsFont); cur.Text=tostring(val); rounded(cur,6)
+
+    local function setV(v) val=v; cur.Text=tostring(v); self.Config[p.Title][label]=v; self:_save(); if cb then task.spawn(cb,v) end end
+    local function openPop()
+        if not cur or not cur.Parent then return end
+        local pop=Instance.new("Frame"); pop.Name="Dropdown"; pop.BackgroundColor3=Color3.fromRGB(40,40,40); pop.Visible=false; pop.ZIndex=65; pop.ClipsDescendants=true; rounded(pop,6); glow(pop, Color3.fromRGB(255,40,40),1); pop.Parent=self.PopupLayer
+        local lay=Instance.new("UIListLayout", pop); lay.Padding=UDim.new(0,4)
+        for _,opt in ipairs(values) do
+            local b=Instance.new("TextButton", pop); b.Size=UDim2.new(1,-8,0,28); b.Position=UDim2.new(0,4,0,0); b.BackgroundColor3=Color3.fromRGB(60,60,60); b.TextColor3=Color3.new(1,1,1); b.TextScaled=true; b.Font=F(fonts.buttonsFont); b.Text=tostring(opt); rounded(b,6)
+            b.MouseButton1Click:Connect(function() setV(opt); if pop then pop:Destroy() end end)
+        end
+        local function place()
+            if not pop or not pop.Parent or not cur or not cur.Parent then return end
+            local ap=cur.AbsolutePosition; local as=cur.AbsoluteSize
+            pop.Size=UDim2.new(0, as.X, 0, math.min(#values*28+8, 220))
+            pop.Position=UDim2.new(0, ap.X, 0, ap.Y + as.Y + 2)
+        end
+        place(); pop.Visible=true
+        local conns={}
+        table.insert(conns, UIS.InputBegan:Connect(function(i,gp)
+            if gp then return end
+            if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then
+                if not pop or not pop.Parent then return end
+                local pos=i.Position; local p0=pop.AbsolutePosition; local p1=p0+pop.AbsoluteSize
+                local inside=(pos.X>=p0.X and pos.X<=p1.X and pos.Y>=p0.Y and pos.Y<=p1.Y)
+                if not inside then if pop then pop:Destroy() end end
+            end
+        end))
+        table.insert(conns, p.Frame:GetPropertyChangedSignal("CanvasPosition"):Connect(place))
+        table.insert(conns, self.Header:GetPropertyChangedSignal("Position"):Connect(place))
+        table.insert(conns, self.BG:GetPropertyChangedSignal("Position"):Connect(place))
+        pop.AncestryChanged:Connect(function(_,parent)
+            if parent==nil then
+                for _,c in ipairs(conns) do if typeof(c)=="RBXScriptConnection" then c:Disconnect() end end
+            end
+        end)
+    end
+    cur.MouseButton1Click:Connect(openPop); return r
+end
+
+-- color presets
+function Window:color(page,label,defaultColor,cb)
+    local p=resolvePage(self,page); local r=newRow(p.Frame,36); tagRow(r,label)
+    local name=Instance.new("TextLabel", r); name.Size=UDim2.new(.38,-4,1,0); name.BackgroundTransparency=1; name.TextColor3=Color3.new(1,1,1); name.Font=F(fonts.rowFont); name.TextScaled=true; name.TextXAlignment=Enum.TextXAlignment.Left; name.Text=label
+    self.Config[p.Title]=self.Config[p.Title] or {}; local c=self.Config[p.Title][label]; local val=c and Color3.fromRGB(c.r,c.g,c.b) or defaultColor or Color3.fromRGB(255,40,40)
+    local btn=Instance.new("TextButton", r); btn.Size=UDim2.new(.62,0,1,0); btn.Position=UDim2.new(.38,4,0,0); btn.BackgroundColor3=val; btn.Text=""; rounded(btn,6)
+    local presets={"red","blue","green","purple","orange","yellow","pink","cyan","turquoise","burgundy","hotpink","lime","gray","white","black"}
+    btn.MouseButton1Click:Connect(function()
+        local idx=1; for i,v in ipairs(presets) do if ColorMap[v]==btn.BackgroundColor3 then idx=i break end end; idx=idx%#presets+1
+        val=ColorMap[presets[idx]]; btn.BackgroundColor3=val; self.Config[p.Title][label]={r=math.floor(val.R*255),g=math.floor(val.G*255),b=math.floor(val.B*255)}; self:_save(); if cb then task.spawn(cb,val) end
+    end); return r
+end
+
+-- bind
+function Window:bind(page,label,defaultKey,cb)
+    local p=resolvePage(self,page); local r=newRow(p.Frame,36); tagRow(r,label)
+    local txt=Instance.new("TextLabel", r); txt.Size=UDim2.new(.38,-4,1,0); txt.BackgroundTransparency=1; txt.TextColor3=Color3.new(1,1,1); txt.Font=F(fonts.rowFont); txt.TextScaled=true; txt.TextXAlignment=Enum.TextXAlignment.Left; txt.Text=label
+    local btn=Instance.new("TextButton", r); btn.Size=UDim2.new(.62,0,1,0); btn.Position=UDim2.new(.38,4,0,0); btn.BackgroundColor3=Color3.fromRGB(60,60,60); btn.TextColor3=Color3.new(1,1,1); btn.TextScaled=true; btn.Font=F(fonts.buttonsFont); rounded(btn,6)
+    local gear=Instance.new("TextButton", btn); gear.AnchorPoint=Vector2.new(1,0.5); gear.Position=UDim2.new(1,-6,0.5,0); gear.Size=UDim2.new(0,22,0,22); gear.Text="⚙"; gear.TextScaled=true; gear.BackgroundColor3=Color3.fromRGB(45,45,45); gear.TextColor3=Color3.new(1,1,1); rounded(gear,6)
+    self.Config[p.Title]=self.Config[p.Title] or {}; local key=self.Config[p.Title][label] and Enum.KeyCode[self.Config[p.Title][label]] or toKey(defaultKey or "Space")
+    local function setText() btn.Text="Key: "..(key and key.Name or "None") end; setText()
+    local function startRebind()
+        btn.Text="Press a key…"
+        local conn; conn=UIS.InputBegan:Connect(function(i,gp)
+            if gp then return end
+            if i.KeyCode ~= Enum.KeyCode.Unknown then key=i.KeyCode; setText(); if conn then conn:Disconnect() end; self.Config[p.Title][label]=key.Name; self:_save() end
+        end)
+    end
+    btn.MouseButton1Click:Connect(function() simulateKey(key); if cb then task.spawn(cb) end end)
+    btn.MouseButton2Click:Connect(startRebind); gear.MouseButton1Click:Connect(startRebind)
+    UIS.InputBegan:Connect(function(i,gp) if gp then return end; if key and i.KeyCode==key then if cb then task.spawn(cb) end end end)
+    return r
+end
+
+-- ===== Loading animations (arg1 string OR {text="..."}). Intro/Outro list:
+-- Intro: pacman, fadein, slidein, bouncein, spin, zoomin, pulse, dots, bar, orbit, ring, wave, typein, grid, lollipop
+-- Outro: fadeout, slideout, bounceout, spinout, zoomout
+local function tween(i,t,props,...) local tw=TS:Create(i, TweenInfo.new(t,...), props); tw:Play(); return tw end
+
+function Window:LoadingAnimation(arg1, introName, arg3, arg4)
+    local msgText="Loading…"
+    if typeof(arg1)=="string" then msgText=arg1 elseif typeof(arg1)=="table" then msgText=tostring(arg1.text or "Loading…") end
+    local name = tostring(introName or "fadein"):lower()
+    local duration, outro = 4, "fadeout"
+    if typeof(arg3)=="number" then duration=arg3 elseif typeof(arg3)=="string" then outro=string.lower(arg3) end
+    if typeof(arg4)=="string" then outro=string.lower(arg4) end
+
+    -- kill any existing loader
+    if self._loaderLayer and self._loaderLayer.Parent then self._loaderLayer:Destroy() end
+
+    local layer=Instance.new("Frame", self.PopupLayer)
+    layer.Name="LoaderLayer"; layer.Size=UDim2.new(1,0,1,0); layer.BackgroundColor3=Color3.fromRGB(0,0,0)
+    layer.BackgroundTransparency=0.35; layer.ZIndex=80; layer.Active=true; self._loaderLayer=layer
+
+    local center=Instance.new("Frame", layer)
+    center.AnchorPoint=Vector2.new(.5,.5); center.Position=UDim2.new(.5,0,.5,0); center.Size=UDim2.new(0, 220, 0, 120)
+    center.BackgroundColor3=Color3.fromRGB(20,20,22); rounded(center,10); glow(center, Color3.fromRGB(255,40,40),1); center.ZIndex=81
+
+    local title=Instance.new("TextLabel", center)
+    title.BackgroundTransparency=1; title.Size=UDim2.new(1,-12,0,22); title.Position=UDim2.new(0,6,0,6)
+    title.Font=F(fonts.titleFont); title.TextScaled=true; title.TextColor3=Color3.new(1,1,1); title.Text=msgText
+
+    -- helpers
+    local function fadeIn() layer.BackgroundTransparency=1; center.BackgroundTransparency=1; tween(layer,.25,{BackgroundTransparency=.35}); tween(center,.25,{BackgroundTransparency=0.0}) end
+    local function fadeOut(cb) local tw=tween(center,.22,{BackgroundTransparency=1}); tween(layer,.22,{BackgroundTransparency=1}); tw.Completed:Connect(function() if cb then cb() end end) end
+    local function slideIn() center.Position=UDim2.new(.5,0,1,140); tween(center,.4,{Position=UDim2.new(.5,0,.5,0)}, Enum.EasingStyle.Back, Enum.EasingDirection.Out) end
+    local function slideOut(cb) local tw=tween(center,.3,{Position=UDim2.new(.5,0,1,140)}, Enum.EasingStyle.Quad, Enum.EasingDirection.In); tw.Completed:Connect(function() if cb then cb() end end) end
+    local function scaleIn() center.Size=UDim2.new(0,20,0,12); tween(center,.35,{Size=UDim2.new(0,220,0,120)}, Enum.EasingStyle.Back, Enum.EasingDirection.Out) end
+    local function scaleOut(cb) local tw=tween(center,.25,{Size=UDim2.new(0,10,0,6)}, Enum.EasingStyle.Quad, Enum.EasingDirection.In); tw.Completed:Connect(function() if cb then cb() end end) end
+    local function spinIn() center.Rotation=-180; tween(center,.5,{Rotation=0}, Enum.EasingStyle.Quad, Enum.EasingDirection.Out) end
+    local function spinOut(cb) local tw=tween(center,.4,{Rotation=180}, Enum.EasingStyle.Quad, Enum.EasingDirection.In); tw.Completed:Connect(function() if cb then cb() end end) end
+    local function pulse() local s=Instance.new("UIStroke", center); s.Color=Color3.fromRGB(255,40,40); s.Thickness=1; TS:Create(s, TweenInfo.new(.9, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {Thickness=3,Transparency=0.05}):Play() end
+
+    local function makeDots()
+        local row=Instance.new("Frame", center); row.BackgroundTransparency=1; row.Position=UDim2.new(0,0,0,52); row.Size=UDim2.new(1,0,0,30); row.ZIndex=82
+        for i=1,3 do local d=Instance.new("Frame", row); d.Size=UDim2.new(0,10,0,10); d.Position=UDim2.new(.4+(i-1)*.08,0,.5,-5); d.BackgroundColor3=Color3.new(1,1,1); rounded(d,8)
+            task.spawn(function() while row.Parent do d.Size=UDim2.new(0,10,0,10); task.wait(0.12*i); tween(d,.2,{Size=UDim2.new(0,10,0,2)}); task.wait(.15); tween(d,.2,{Size=UDim2.new(0,10,0,10)}); task.wait(.25) end end)
+        end
+    end
+    local function makeBar()
+        local bar=Instance.new("Frame", center); bar.Size=UDim2.new(1,-20,0,10); bar.Position=UDim2.new(0,10,1,-22)
+        bar.BackgroundColor3=Color3.fromRGB(60,60,60); rounded(bar,6)
+        local fill=Instance.new("Frame", bar); fill.Size=UDim2.new(0,0,1,0); fill.BackgroundColor3=Color3.fromRGB(70,170,255); rounded(fill,6)
+        task.spawn(function() local t=0; while bar.Parent do t=(t+0.02)%1; tween(fill,.18,{Size=UDim2.new(t,0,1,0)}); task.wait(.18) end end)
+    end
+    local function makeSpin() local sq=Instance.new("Frame", center); sq.AnchorPoint=Vector2.new(.5,.5); sq.Position=UDim2.new(.5,0,.62,0); sq.Size=UDim2.new(0,20,0,20); sq.BackgroundColor3=Color3.fromRGB(255,40,40); rounded(sq,6); task.spawn(function() while sq.Parent do tween(sq,.4,{Rotation=sq.Rotation+180}); task.wait(.36) end end) end
+    local function makeOrbit()
+        local grp=Instance.new("Frame", center); grp.BackgroundTransparency=1; grp.Size=UDim2.new(0,80,0,80); grp.AnchorPoint=Vector2.new(.5,.5); grp.Position=UDim2.new(.5,0,.62,0)
+        local dots={}; local n=6; local R=30
+        for i=1,n do local d=Instance.new("Frame", grp); d.Size=UDim2.new(0,8,0,8); d.BackgroundColor3=Color3.new(1,1,1); rounded(d,6); dots[i]=d end
+        task.spawn(function() local t=0; while grp.Parent do t+=.06; for i=1,n do local a=t+(i/n)*math.pi*2; dots[i].Position=UDim2.new(.5,math.cos(a)*R,.5,math.sin(a)*R) end; task.wait(.03) end end)
+    end
+    local function makeRing()
+        local grp=Instance.new("Frame", center); grp.BackgroundTransparency=1; grp.Size=UDim2.new(0,44,0,44); grp.AnchorPoint=Vector2.new(.5,.5); grp.Position=UDim2.new(.5,0,.62,0)
+        for i=1,12 do local p=Instance.new("Frame", grp); p.Size=UDim2.new(0,5,0,8); p.AnchorPoint=Vector2.new(.5,1); p.Position=UDim2.new(.5,0,.5,0); p.BackgroundColor3=Color3.fromRGB(255,255,255); p.Rotation=(i-1)*30; rounded(p,3)
+            task.spawn(function() while p.Parent do tween(p,.6,{BackgroundTransparency=.7}); task.wait(.05); tween(p,.6,{BackgroundTransparency=0.0}); task.wait(.05) end end)
+        end; task.spawn(function() while grp.Parent do tween(grp,.4,{Rotation=grp.Rotation+90}); task.wait(.36) end end)
+    end
+    local function makeWave()
+        local grp=Instance.new("Frame", center); grp.BackgroundTransparency=1; grp.Size=UDim2.new(1,-20,0,24); grp.Position=UDim2.new(0,10,0,52)
+        for i=1,6 do local b=Instance.new("Frame", grp); b.Size=UDim2.new(0,16,0,6); b.Position=UDim2.new(0,(i-1)*20,1,-6); b.BackgroundColor3=Color3.new(1,1,1); rounded(b,4)
+            task.spawn(function() while b.Parent do tween(b,.2,{Size=UDim2.new(0,16,0,16), Position=UDim2.new(0,(i-1)*20,1,-16)}); task.wait(.06); tween(b,.2,{Size=UDim2.new(0,16,0,6), Position=UDim2.new(0,(i-1)*20,1,-6)}); task.wait(.12) end end)
+        end
+    end
+    local function makeType()
+        title.Text=""; local full=msgText
+        task.spawn(function() for i=1,#full do if not title.Parent then return end title.Text=string.sub(full,1,i).."▌"; task.wait(0.04) end
+            while title.Parent do title.Text=full.." "; task.wait(.35); title.Text=full.."▌"; task.wait(.35) end
+        end); makeDots()
+    end
+    local function makeGrid()
+        local grp=Instance.new("Frame", center); grp.BackgroundTransparency=1; grp.Size=UDim2.new(0,86,0,54); grp.Position=UDim2.new(.5,-43,.62,-27)
+        for y=0,2 do for x=0,4 do local c=Instance.new("Frame", grp); c.Size=UDim2.new(0,14,0,14); c.Position=UDim2.new(0,x*18,0,y*18); c.BackgroundColor3=Color3.fromRGB(255,40,40); rounded(c,4)
+            task.spawn(function() while c.Parent do tween(c,.2,{BackgroundTransparency=.5}); task.wait(math.random(10,25)/100); tween(c,.2,{BackgroundTransparency=0}); task.wait(math.random(10,25)/100) end end)
+        end end
+    end;
+    local function makePacman()
+        local track=Instance.new("Frame", center); track.BackgroundTransparency=1; track.Position=UDim2.new(0,20,0,50); track.Size=UDim2.new(1,-40,0,26); track.ZIndex=82
+        local pac=Instance.new("Frame", track); pac.Size=UDim2.new(0,14,0,14); pac.Position=UDim2.new(0,0,.5,-7); pac.BackgroundColor3=Color3.fromRGB(255,225,0); rounded(pac,7)
+        local mouth=Instance.new("Frame", pac); mouth.Size=UDim2.new(0,0,0,0); mouth.AnchorPoint=Vector2.new(0.5,0.5); mouth.Position=UDim2.new(0.5,7,0.5,0); mouth.BackgroundColor3=center.BackgroundColor3; rounded(mouth,14)
+        local dots={}; for i=1,3 do local d=Instance.new("Frame", track); d.Size=UDim2.new(0,5,0,5); d.Position=UDim2.new(.45+(i-1)*.12,0,.5,-2); d.BackgroundColor3=Color3.new(1,1,1); rounded(d,5); dots[i]=d end
+        task.spawn(function() local dir=1; while track.Parent do local w=(dir==1) and 7 or 2; tween(mouth,.08,{Size=UDim2.new(0,w,0,w)})
+            local px=(pac.Position.X.Scale+.02); if px>1 then px=0; for _,d in ipairs(dots) do d.Visible=true end end; pac.Position=UDim2.new(px,0,.5,-7)
+            for _,d in ipairs(dots) do local p0=pac.AbsolutePosition.X+pac.AbsoluteSize.X; local p1=d.AbsolutePosition.X+d.AbsoluteSize.X/2; if d.Visible and math.abs(p0-p1)<6 then d.Visible=false end end
+            dir=1-dir; task.wait(.08) end end)
+    end;
+local function makePacmanLollipop()
+    local track = Instance.new("Frame", center)
+    track.BackgroundTransparency = 1
+    track.Position = UDim2.new(0, 20, 0, 50)
+    track.Size = UDim2.new(1, -40, 0, 26)
+    track.ZIndex = 82
+
+    local pac = Instance.new("Frame", track)
+    pac.Size = UDim2.new(0, 14, 0, 14)
+    pac.Position = UDim2.new(0, 0, .5, -7)
+    pac.BackgroundColor3 = Color3.fromRGB(255, 225, 0)
+    rounded(pac, 7)
+
+    local mouth = Instance.new("Frame", pac)
+    mouth.Size = UDim2.new(0, 0, 0, 0)
+    mouth.AnchorPoint = Vector2.new(0.5, 0.5)
+    mouth.Position = UDim2.new(0.5, 7, 0.5, 0)
+    mouth.BackgroundColor3 = center.BackgroundColor3
+    rounded(mouth, 14)
+
+    -- three MINI LOLLIPOPS 🍭
+    local lollies = {}
+    for i = 1, 3 do
+        local slot = Instance.new("Frame", track)
+        slot.Size = UDim2.new(0, 14, 0, 14)
+        slot.Position = UDim2.new(.45 + (i - 1) * .12, 0, .5, -7)
+        slot.BackgroundTransparency = 1
+
+        local emoji = Instance.new("TextLabel", slot) -- tiny 🍭
+        emoji.BackgroundTransparency = 1
+        emoji.Size = UDim2.new(1, 0, 1, 0)
+        emoji.Text = "🍭"
+        emoji.TextScaled = true
+        emoji.Font = F(fonts.buttonsFont)
+
+        table.insert(lollies, slot)
+    end
+
+    task.spawn(function()
+        local dir = 1
+        while track.Parent do
+            local w = (dir == 1) and 7 or 2
+            tween(mouth, .08, { Size = UDim2.new(0, w, 0, w) })
+            local px = (pac.Position.X.Scale + .02)
+            if px > 1 then
+                px = 0
+                for _, d in ipairs(lollies) do d.Visible = true end
+            end
+            pac.Position = UDim2.new(px, 0, .5, -7)
+
+            for _, d in ipairs(lollies) do
+                local p0 = pac.AbsolutePosition.X + pac.AbsoluteSize.X
+                local p1 = d.AbsolutePosition.X + d.AbsoluteSize.X / 2
+                if d.Visible and math.abs(p0 - p1) < 8 then
+                    d.Visible = false
+                end
+            end
+
+            dir = 1 - dir
+            task.wait(.08)
+        end
+    end)
+end;
+    local function makeLollipop()
+        local holder=Instance.new("Frame", center); holder.BackgroundTransparency=1; holder.AnchorPoint=Vector2.new(.5,.5); holder.Position=UDim2.new(.5,0,.62,0); holder.Size=UDim2.new(0,54,0,70)
+        local stick=Instance.new("Frame", holder); stick.Size=UDim2.new(0,5,0,40); stick.Position=UDim2.new(.5,-2,1,-40); stick.BackgroundColor3=Color3.fromRGB(230,230,230); rounded(stick,4)
+        local disk=Instance.new("Frame", holder); disk.Size=UDim2.new(0,38,0,38); disk.Position=UDim2.new(.5,-19,0,2); disk.BackgroundColor3=Color3.fromRGB(255,255,255); rounded(disk,19); glow(disk, Color3.fromRGB(255,40,120),1)
+        local cols={Color3.fromRGB(255,60,60), Color3.fromRGB(255,150,60), Color3.fromRGB(255,220,90), Color3.fromRGB(60,200,90),
+                    Color3.fromRGB(70,170,255), Color3.fromRGB(190,90,255), Color3.fromRGB(255,120,200), Color3.fromRGB(64,224,208)}
+        for i=1,8 do local seg=Instance.new("Frame", disk); seg.BackgroundColor3=cols[i]; seg.Size=UDim2.new(0,16,0,6); seg.AnchorPoint=Vector2.new(0,0.5); seg.Position=UDim2.new(0.5,0,0.5,0); seg.Rotation=(i-1)*45; rounded(seg,3) end
+        task.spawn(function() while holder.Parent do tween(disk,.4,{Rotation=disk.Rotation+90}); task.wait(.36) end end)
+    end;
+
+    -- intro choose
+    if     name=="pacman"   then fadeIn(); makePacman(); makeBar();
+elseif name=="lollipop pacman" or name == "pacman lollipop" or name == "lollipopman" then fadeIn() makePacmanLollipop() makeBar();
+    elseif name=="fadein"   then fadeIn(); makeDots()
+    elseif name=="slidein"  then slideIn(); makeDots()
+    elseif name=="bouncein" then scaleIn(); makeDots()
+    elseif name=="spin" or name=="spinin" then fadeIn(); makeSpin()
+    elseif name=="zoomin"   then scaleIn(); makeDots()
+    elseif name=="pulse"    then fadeIn(); pulse(); makeDots()
+    elseif name=="dots"     then fadeIn(); makeDots()
+    elseif name=="bar"      then fadeIn(); makeBar()
+    elseif name=="orbit"    then fadeIn(); makeOrbit()
+    elseif name=="ring"     then fadeIn(); makeRing()
+    elseif name=="wave"     then fadeIn(); makeWave()
+    elseif name=="typein"   then fadeIn(); makeType()
+    elseif name=="grid"     then fadeIn(); makeGrid()
+    elseif name=="lollipop" then fadeIn(); makeLollipop()
+    else fadeIn(); makeDots()
+    end
+
+    -- outro + cleanup + **hard failsafe** so nothing blocks input
+    local function killAll()
+        if self._loaderLayer then pcall(function() self._loaderLayer:Destroy() end); self._loaderLayer=nil end
+        if self.PopupLayer then self.PopupLayer.Visible=false; self.PopupLayer.Active=false end
+    end
+    task.spawn(function()
+        local out=tostring(outro or "fadeout"):lower()
+        task.wait(duration)
+        if out=="fadeout" then fadeOut(killAll)
+        elseif out=="slideout" then slideOut(killAll)
+        elseif out=="bounceout" then scaleOut(killAll)
+        elseif out=="spinout" then spinOut(killAll)
+        elseif out=="zoomout" then scaleOut(killAll)
+        else fadeOut(killAll) end
+        task.delay(0.6, killAll) -- belt + suspenders
+    end)
+end
+
+return {LulasUi};
