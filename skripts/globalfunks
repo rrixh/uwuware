@@ -274,7 +274,9 @@ end;
         -- /// MORE KUSTOM FUNKS \\\ --
 
   --[[ fly for mobile ]]--
+env.flyspeed = 100;
   getgenv().fly = function(bool,speed)
+speed = (speed == nil and 100) or (not speed and getgenv().flyspeed) or 100;
       local plr = game:GetService("Players").LocalPlayer
       local rs = game:GetService("RunService")
       local camera = game:service("Workspace").CurrentCamera;
@@ -340,6 +342,197 @@ end;
   end;
 getgenv().lollypopfly = getgenv().fly;
 
+--== ESP Highlight Script (Rainbow Speed Adjustable) ==--
+
+getgenv().Players = game:GetService("Players")
+getgenv().RunService = game:GetService("RunService")
+getgenv().LocalPlayer = Players.LocalPlayer
+
+local highlights = {}
+local rainbowConnection
+getgenv().currentColor = Color3.fromRGB(255, 0, 0)
+local activeTarget;
+getgenv().rainbowSpeed = 3.5
+
+--== COLOR MAP ==--
+local kolorMap = {
+    ["red"]        = Color3.fromRGB(255,0,0),
+    ["green"]      = Color3.fromRGB(0,255,0),
+    ["blue"]       = Color3.fromRGB(0,0,255),
+    ["yellow"]     = Color3.fromRGB(255,255,0),
+    ["pink"]       = Color3.fromRGB(255,192,203),
+    ["hot pink"]   = Color3.fromRGB(255,105,180),
+    ["purple"]     = Color3.fromRGB(128,0,128),
+    ["grey"]       = Color3.fromRGB(128,128,128),
+    ["gray"]       = Color3.fromRGB(128,128,128),
+    ["white"]      = Color3.fromRGB(255,255,255),
+    ["black"]      = Color3.fromRGB(0,0,0),
+    ["gold"]       = Color3.fromRGB(255,215,0),
+    ["orange"]     = Color3.fromRGB(255,165,0),
+    ["cyan"]       = Color3.fromRGB(0,255,255),
+    ["turquoise"]  = Color3.fromRGB(64,224,208),
+}
+
+--== FUZZY MATCH (Levenshtein) ==--
+local function stringDistance(a, b)
+    a, b = a:lower(), b:lower()
+    local m, n = #a, #b
+    if m == 0 then return n end
+    if n == 0 then return m end
+    local matrix = {}
+    for i = 0, m do matrix[i] = {[0] = i} end
+    for j = 0, n do matrix[0][j] = j end
+    for i = 1, m do
+        for j = 1, n do
+            local cost = (a:sub(i,i) == b:sub(j,j)) and 0 or 1
+            matrix[i][j] = math.min(
+                matrix[i-1][j] + 1,
+                matrix[i][j-1] + 1,
+                matrix[i-1][j-1] + cost
+            )
+        end
+    end
+    return matrix[m][n]
+end
+
+local function autocorrectColor(name)
+    local lowered = name:lower()
+    if kolorMap[lowered] then return lowered end
+    local bestMatch, bestDist = nil, math.huge
+    for cname,_ in pairs(kolorMap) do
+        local dist = stringDistance(lowered, cname)
+        if dist < bestDist then
+            bestDist = dist
+            bestMatch = cname
+        end
+    end
+    return bestMatch
+end
+
+--== HIGHLIGHT HELPERS ==--
+local function findPlayerByPartialName(partial)
+    local lowered = string.lower(partial)
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer then
+            if string.find(string.lower(plr.Name), lowered) or string.find(string.lower(plr.DisplayName), lowered) then
+                return plr
+            end
+        end
+    end
+    return nil
+end
+
+local function createHighlight(plr)
+    if plr.Character and not highlights[plr] then
+        local highlight = Instance.new("Highlight")
+        highlight.FillColor = currentColor
+        highlight.FillTransparency = 0.5
+        highlight.OutlineColor = Color3.new(1,1,1)
+        highlight.OutlineTransparency = 0
+        highlight.Parent = plr.Character
+        highlights[plr] = highlight
+    end
+end
+
+local function removeHighlight(plr)
+    if highlights[plr] then
+        highlights[plr]:Destroy()
+        highlights[plr] = nil
+    end
+end
+
+local function updateAllHighlights(color)
+    for _, highlight in pairs(highlights) do
+        if highlight and highlight.Parent then
+            highlight.FillColor = color
+        end
+    end
+end
+
+--== TRUE RAINBOW EFFECT (HSV rotation) ==--
+local function startRainbow()
+    if rainbowConnection then rainbowConnection:Disconnect() end
+    rainbowConnection = RunService.RenderStepped:Connect(function()
+        local hue = (tick() % rainbowSpeed) / rainbowSpeed
+        local color = Color3.fromHSV(hue, 1, 1)
+        updateAllHighlights(color)
+    end)
+end
+
+local function stopRainbow()
+    if rainbowConnection then
+        rainbowConnection:Disconnect()
+        rainbowConnection = nil
+    end
+end
+
+--== PUBLIC ==--
+getgenv().toggleHighlight = function(state, playerName)
+    if state then
+        if playerName and type(playerName) == "string" then
+            activeTarget = playerName
+            local plr = findPlayerByPartialName(playerName)
+            if plr then
+                createHighlight(plr)
+                plr.CharacterAdded:Connect(function()
+                    task.wait(1)
+                    createHighlight(plr)
+                end)
+            else
+                warn("No player found matching:", playerName)
+            end
+        else
+            activeTarget = nil
+            for _, plr in pairs(Players:GetPlayers()) do
+                if plr ~= LocalPlayer then
+                    createHighlight(plr)
+                    plr.CharacterAdded:Connect(function()
+                        task.wait(1)
+                        createHighlight(plr)
+                    end)
+                end
+            end
+            Players.PlayerAdded:Connect(function(plr)
+                plr.CharacterAdded:Connect(function()
+                    task.wait(1)
+                    createHighlight(plr)
+                end)
+            end)
+        end
+    else
+        for _, plr in pairs(Players:GetPlayers()) do
+            removeHighlight(plr)
+        end
+        activeTarget = nil
+        stopRainbow()
+    end
+end
+
+getgenv().updateHighlightKolor = function(colorName, speed)
+    local lowered = string.lower(colorName)
+    if lowered == "rainbow" then
+        rainbowSpeed = tonumber(speed) or 5 -- default to 5s if not given
+        startRainbow()
+    else
+        stopRainbow()
+        local best = autocorrectColor(lowered)
+        if best then
+  currentColor = kolorMap[best]
+            updateAllHighlights(currentColor)
+            print("Set highlight color to:", best)
+        else
+            warn("No close match found for:", colorName)
+        end
+    end
+end
+
+--[[   == Example Usage ==
+toggleHighlight(true) -- all players,
+toggleHighlight(true, "playerName/DisplayName") -- specific player,
+updateHighlightKolor("red")
+updateHighlightKolor("rainbow", 5) --> rainbow cycle every 5s
+toggleHighlight(false)
+]]--
 
 --// get servixes --\\
 getgenv().rbx = function(name)
