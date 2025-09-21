@@ -739,15 +739,15 @@ function Window:toggle(page,label,default,cb)
     return r
 end
 
-function Window:textbox(page,label,defaultText,cb)
+function Window:textbox(page,label,defaultText,cb,KlearOnFokus)
     local p=resolvePage(self,page); local r=newRow(p.Frame,36); tagRow(r,label.." "..tostring(defaultText or ""))
     local name=Instance.new("TextLabel", r); name.Size=UDim2.new(.38,-4,1,0); name.BackgroundTransparency=1; name.TextColor3=Color3.new(1,1,1); name.Font=F(fonts.rowFont); name.TextScaled=true; name.TextXAlignment=Enum.TextXAlignment.Left; name.Text=label
     self.Config[p.Title]=self.Config[p.Title] or {}; local val=self.Config[p.Title][label] or defaultText or ""
     local box=Instance.new("TextBox", r); box.Size=UDim2.new(.62,0,1,0); box.Position=UDim2.new(.38,4,0,0)
     box.BackgroundColor3=Color3.fromRGB(60,60,60); box.TextColor3=Color3.new(1,1,1);
--- box.Text=tostring(val);
-box.PlaceholderText = tostring(defaultText);
-box.ClearTextOnFocus=false; box.Font=F(fonts.buttonsFont); box.TextScaled=true; rounded(box,6)
+box.Text= "" -- tostring(val)
+box.PlaceholderText = defaultText
+box.ClearTextOnFocus=KlearOnFokus or false; box.Font=F(fonts.buttonsFont); box.TextScaled=true; rounded(box,6)
     box.FocusLost:Connect(function(enter) self.Config[p.Title][label]=box.Text; self:_save(); if cb then task.spawn(cb,box.Text,enter) end end); return r
 end
 
