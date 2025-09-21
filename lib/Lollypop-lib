@@ -1,5 +1,105 @@
--- LulaUi 🍭 (PC+Mobile UI lib)
--- v1.6 — fixes: no input freeze after loader, stronger popup auto-hide watchdog, dropdown safety, smaller lollipop, arg1 {text="..."} for LoadingAnimation, vertical-only scroll.
+-- Lulas Ui Library 🍭 (supports PC+Mobile 💻📲)
+-- v2.0
+
+
+--[[ 
+      EXAMPLE:
+
+  KOPY AND EXECUTE THIS TO SEE THE GUI EXAMPLE
+
+                👇
+
+-- LulasHub lib (required)
+local LulasHub = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/lib/Lollypop-lib"))()[1];
+
+-- (required) make the window for the Gui example / set MaxPages depending how many pages u want
+local hub = LulasHub:KreateWindow("Your Hub Name", {MaxPages = 6})
+
+-- make pages example ("PageName", PageNumber, hasSearchBox) true/false if u want a searchbox for the page or not --
+local home = hub:KreatePage("Home", 1, true)
+local scripts = hub:KreatePage("Scripts", 2, true)
+local sets = hub:KreatePage("Settings", 3, false)
+
+-- if u want a loading animation use this (FX names listed below) 
+-- (intro fx, duration, outro fx)
+hub:LoadingAnimation({text="Waiting for the kandy machine...."}, "lollipop", 4, "fadeout");
+
+-- // --> Intro Animations: ("PacMan", "fadein", "slidein", "bouncein", "spin", "zoomin", "pulse", "dots", "bar", "orbit", "ring", "wave", "typein", "grid", "lollipop", "lollipopman", "pacman lollipop", "lollipop pacman")
+--// --> Outro Animations: ("fadeout", "slideout", "bounceout", "spinout", "zoomout")
+
+task.wait()
+
+-- button example using :sendAlert("Text Here", duration, "kolor")
+hub:button(home, "Press this button", function()
+hub:sendAlert("Button pressed", 1.2, "green")
+end)
+
+-- toggle example
+local toggle;
+hub:toggle(home, "auto jump example", false, function(x)
+toggle = x
+if x then
+while toggle and wait() do
+game.Players.LocalPlayer.Character :FindFirstChildOfClass("Humanoid").Jump = true end;
+ else
+     return 
+   end
+end)
+
+-- textbox example
+hub:textbox(home, "type here...", "30", function(text)
+local humanoid = game.Players.LocalPlayer.Character.Humanoid
+humanoid.WalkSpeed = text
+hub:sendAlert("new speed: "..txt, 3, "orange")
+end)
+
+hub:list(home, "Theme", {"Red","Blue","Green","Purple"}, "Blue", function(choice)
+hub:sendAlert("Theme: "..choice, 1.1, choice) 
+-- accepts cyan/turquoise/burgundy/hotpink/lime/green etc.
+end)
+
+--kolorpicker example
+hub:color(home, "change Accent", Color3.fromRGB(255,40,40), function(kolor) 
+hub:sendAlert("Accent updated", 1.1, kolor)
+end)
+
+hub:bind(home, "press space", "Space", function(...)
+hub:sendAlert("space fired", 2, "blue") 
+-- tap LMB simulates; right-klick or ⚙️ rebinds
+end)
+
+-- label example added on Home page
+hub:label(home, "im A label")
+
+-- button example added to scripts page
+hub:button("Scripts", "Open Konsole", function()
+game.StarterGui:SetCore("DevConsoleVisible", true)
+end)
+
+-- label added to Settings page
+hub:label(sets, "Settings")
+
+-- true/false if u want to auto-save konfig
+hub:SaveKonfig(true)
+
+-- sending notification example , all kolors in rainbow supported
+-- example: ("Notification Text", duration, "kolor")
+hub:sendAlert("Welkome to My Hub ", 5, "green")
+
+               END OF EXAMPLE
+]]--
+
+
+
+
+
+
+
+
+
+
+
+-->> Ui Library kode starts here  <<--
 local Players = game:GetService("Players")
 local UIS     = game:GetService("UserInputService")
 local TS      = game:GetService("TweenService")
@@ -261,15 +361,38 @@ function Window:KreatePage(title, index, hasSearch)
 
 
     local searchBox; local topPad=36+12
-    if page.HasSearch then
+-- NEWLY ADDED
+        if page.HasSearch then
         local row=Instance.new("Frame", overlay); row.Size=UDim2.new(1,-12,0,36); row.Position=UDim2.new(0,6,0,36+6); row.BackgroundTransparency=1
+
+        -- space for two small buttons (clear + top)
+        local BTN_W = 28
         local box=Instance.new("TextBox", row)
-        box.Size=UDim2.new(1,-34,1,0); box.BackgroundColor3=Color3.fromRGB(60,60,60); box.TextColor3=Color3.new(1,1,1)
+        box.Size=UDim2.new(1,-(BTN_W*2 + 6),1,0)
+        box.BackgroundColor3=Color3.fromRGB(60,60,60); box.TextColor3=Color3.new(1,1,1)
         box.PlaceholderText="Search "..page.Title.."…"; box.ClearTextOnFocus=false; box.Text=""; box.Font=F(fonts.buttonsFont); box.TextScaled=true; rounded(box,6)
-        local clear=Instance.new("TextButton", row); clear.Size=UDim2.new(0,28,1,0); clear.BackgroundColor3=Color3.fromRGB(70,70,70); clear.Text="❌"; clear.Font=F(fonts.buttonsFont); clear.TextScaled=true; rounded(clear,6)
+
+        local toTop=Instance.new("TextButton", row)
+        toTop.Size=UDim2.new(0,BTN_W,1,0); toTop.Position=UDim2.new(1,-BTN_W,0,0)
+        toTop.BackgroundColor3=Color3.fromRGB(70,70,70); toTop.Text="^"; toTop.Font=F(fonts.buttonsFont); toTop.TextScaled=true; rounded(toTop,6)
+
+        local clear=Instance.new("TextButton", row)
+        clear.Size=UDim2.new(0,BTN_W,1,0); clear.Position=UDim2.new(1,-(BTN_W*2+6),0,0)
+        clear.BackgroundColor3=Color3.fromRGB(70,70,70); clear.Text="❌"; clear.Font=F(fonts.buttonsFont); clear.TextScaled=true; rounded(clear,6)
         clear.MouseButton1Click:Connect(function() box.Text=""; box:ReleaseFocus() end)
+
         searchBox=box; topPad=36+6+36+6
-    end
+
+        -- we'll bind toTop after the ScrollingFrame 'sc' exists
+        page.__bindTopBtn = function(sc)
+            toTop.MouseButton1Click:Connect(function()
+                pcall(function()
+                    TS:Create(sc, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {CanvasPosition = Vector2.new(0,0)}):Play()
+                end)
+            end)
+        end
+    end;
+-- NEWLY ADDED END --
 
     -- scrolling page frame
     local sc=Instance.new("ScrollingFrame", self.Gui)
@@ -278,6 +401,10 @@ function Window:KreatePage(title, index, hasSearch)
     sc.ScrollingDirection=Enum.ScrollingDirection.Y; sc.CanvasSize=UDim2.new(0,0,0,0)
     sc.HorizontalScrollBarInset = Enum.ScrollBarInset.None
     AutoCanvas(sc)
+
+-- ADDED --
+ if(page.__bindTopBtn)then page.__bindTopBtn(sc) end;
+
 
     local function filter(q)
         local ql=string.lower(q or "")
@@ -802,7 +929,7 @@ function Window:LoadingAnimation(arg1, introName, arg3, arg4)
         for y=0,2 do for x=0,4 do local c=Instance.new("Frame", grp); c.Size=UDim2.new(0,14,0,14); c.Position=UDim2.new(0,x*18,0,y*18); c.BackgroundColor3=Color3.fromRGB(255,40,40); rounded(c,4)
             task.spawn(function() while c.Parent do tween(c,.2,{BackgroundTransparency=.5}); task.wait(math.random(10,25)/100); tween(c,.2,{BackgroundTransparency=0}); task.wait(math.random(10,25)/100) end end)
         end end
-    end;
+    end
     local function makePacman()
         local track=Instance.new("Frame", center); track.BackgroundTransparency=1; track.Position=UDim2.new(0,20,0,50); track.Size=UDim2.new(1,-40,0,26); track.ZIndex=82
         local pac=Instance.new("Frame", track); pac.Size=UDim2.new(0,14,0,14); pac.Position=UDim2.new(0,0,.5,-7); pac.BackgroundColor3=Color3.fromRGB(255,225,0); rounded(pac,7)
@@ -812,70 +939,7 @@ function Window:LoadingAnimation(arg1, introName, arg3, arg4)
             local px=(pac.Position.X.Scale+.02); if px>1 then px=0; for _,d in ipairs(dots) do d.Visible=true end end; pac.Position=UDim2.new(px,0,.5,-7)
             for _,d in ipairs(dots) do local p0=pac.AbsolutePosition.X+pac.AbsoluteSize.X; local p1=d.AbsolutePosition.X+d.AbsoluteSize.X/2; if d.Visible and math.abs(p0-p1)<6 then d.Visible=false end end
             dir=1-dir; task.wait(.08) end end)
-    end;
-local function makePacmanLollipop()
-    local track = Instance.new("Frame", center)
-    track.BackgroundTransparency = 1
-    track.Position = UDim2.new(0, 20, 0, 50)
-    track.Size = UDim2.new(1, -40, 0, 26)
-    track.ZIndex = 82
-
-    local pac = Instance.new("Frame", track)
-    pac.Size = UDim2.new(0, 14, 0, 14)
-    pac.Position = UDim2.new(0, 0, .5, -7)
-    pac.BackgroundColor3 = Color3.fromRGB(255, 225, 0)
-    rounded(pac, 7)
-
-    local mouth = Instance.new("Frame", pac)
-    mouth.Size = UDim2.new(0, 0, 0, 0)
-    mouth.AnchorPoint = Vector2.new(0.5, 0.5)
-    mouth.Position = UDim2.new(0.5, 7, 0.5, 0)
-    mouth.BackgroundColor3 = center.BackgroundColor3
-    rounded(mouth, 14)
-
-    -- three MINI LOLLIPOPS 🍭
-    local lollies = {}
-    for i = 1, 3 do
-        local slot = Instance.new("Frame", track)
-        slot.Size = UDim2.new(0, 14, 0, 14)
-        slot.Position = UDim2.new(.45 + (i - 1) * .12, 0, .5, -7)
-        slot.BackgroundTransparency = 1
-
-        local emoji = Instance.new("TextLabel", slot) -- tiny 🍭
-        emoji.BackgroundTransparency = 1
-        emoji.Size = UDim2.new(1, 0, 1, 0)
-        emoji.Text = "🍭"
-        emoji.TextScaled = true
-        emoji.Font = F(fonts.buttonsFont)
-
-        table.insert(lollies, slot)
     end
-
-    task.spawn(function()
-        local dir = 1
-        while track.Parent do
-            local w = (dir == 1) and 7 or 2
-            tween(mouth, .08, { Size = UDim2.new(0, w, 0, w) })
-            local px = (pac.Position.X.Scale + .02)
-            if px > 1 then
-                px = 0
-                for _, d in ipairs(lollies) do d.Visible = true end
-            end
-            pac.Position = UDim2.new(px, 0, .5, -7)
-
-            for _, d in ipairs(lollies) do
-                local p0 = pac.AbsolutePosition.X + pac.AbsoluteSize.X
-                local p1 = d.AbsolutePosition.X + d.AbsoluteSize.X / 2
-                if d.Visible and math.abs(p0 - p1) < 8 then
-                    d.Visible = false
-                end
-            end
-
-            dir = 1 - dir
-            task.wait(.08)
-        end
-    end)
-end;
     local function makeLollipop()
         local holder=Instance.new("Frame", center); holder.BackgroundTransparency=1; holder.AnchorPoint=Vector2.new(.5,.5); holder.Position=UDim2.new(.5,0,.62,0); holder.Size=UDim2.new(0,54,0,70)
         local stick=Instance.new("Frame", holder); stick.Size=UDim2.new(0,5,0,40); stick.Position=UDim2.new(.5,-2,1,-40); stick.BackgroundColor3=Color3.fromRGB(230,230,230); rounded(stick,4)
@@ -884,11 +948,11 @@ end;
                     Color3.fromRGB(70,170,255), Color3.fromRGB(190,90,255), Color3.fromRGB(255,120,200), Color3.fromRGB(64,224,208)}
         for i=1,8 do local seg=Instance.new("Frame", disk); seg.BackgroundColor3=cols[i]; seg.Size=UDim2.new(0,16,0,6); seg.AnchorPoint=Vector2.new(0,0.5); seg.Position=UDim2.new(0.5,0,0.5,0); seg.Rotation=(i-1)*45; rounded(seg,3) end
         task.spawn(function() while holder.Parent do tween(disk,.4,{Rotation=disk.Rotation+90}); task.wait(.36) end end)
-    end;
+    end
 
     -- intro choose
     if     name=="pacman"   then fadeIn(); makePacman(); makeBar();
-elseif name=="lollipop pacman" or name == "pacman lollipop" or name == "lollipopman" then fadeIn() makePacmanLollipop() makeBar();
+elseif name=="lollipopman" then fadeIn() makePacmanLollipop() makeBar();
     elseif name=="fadein"   then fadeIn(); makeDots()
     elseif name=="slidein"  then slideIn(); makeDots()
     elseif name=="bouncein" then scaleIn(); makeDots()
