@@ -204,13 +204,13 @@ function LulasUi:KreateWindow(title, opts)
     pop.Active=false
     self.PopupLayer=pop
 
-    local function refreshPopupVis()
-        pop.Visible = #pop:GetChildren()>0
-        pop.Active  = pop.Visible
-        pop.BackgroundTransparency = 1 -- FIX: never drop to 0.001
-    end
-    pop.ChildAdded:Connect(refreshPopupVis)
-    pop.ChildRemoved:Connect(refreshPopupVis)
+local function refreshPopupVis()
+ pop.Visible=#pop:GetChildren()>0
+    pop.Active = false 
+    pop.BackgroundTransparency = 1
+end;
+    pop.ChildAdded:connect(refreshPopupVis)
+    pop.ChildRemoved:connect(refreshPopupVis)
     task.spawn(function()
         while pop.Parent do
             task.wait(0.5)
@@ -768,64 +768,122 @@ function Window:slider(page,label,defaultValue,min,max,cb)
     return r
 end
 
--- dropdown (safe popup, no reparent warnings, closes on click-away)
 function Window:list(page,label,values,defaultItem,cb)
-    local p=resolvePage(self,page); values=values or {}
-    self.Config[p.Title]=self.Config[p.Title] or {}; local val=self.Config[p.Title][label] or defaultItem or values[1] or ""
-    local r=newRow(p.Frame,36); tagRow(r,label.." "..tostring(val))
-    local text=Instance.new("TextLabel", r); text.Size=UDim2.new(.38,-4,1,0); text.BackgroundTransparency=1; text.TextColor3=Color3.new(1,1,1); text.Font=F(fonts.rowFont); text.TextScaled=true; text.TextXAlignment=Enum.TextXAlignment.Left; text.Text=label
-    local cur=Instance.new("TextButton", r); cur.Size=UDim2.new(.62,0,1,0); cur.Position=UDim2.new(.38,4,0,0); cur.BackgroundColor3=Color3.fromRGB(60,60,60); cur.TextColor3=Color3.new(1,1,1); cur.TextScaled=true; cur.Font=F(fonts.buttonsFont); cur.Text=tostring(val); rounded(cur,6)
+    local p = resolvePage(self,page); values = values or {}
+    self.Config[p.Title] = self.Config[p.Title] or {}
+    local val = self.Config[p.Title][label] or defaultItem or values[1] or ""
 
-    local function setV(v) val=v; cur.Text=tostring(v); self.Config[p.Title][label]=v; self:_save(); if cb then task.spawn(cb,v) end end
+    local r = Instance.new("Frame", p.Frame)
+    r.Size = UDim2.new(1,0,0,36); r.BackgroundTransparency = 1
+    r:SetAttribute("__tag", label.." "..tostring(val))
+
+    local text = Instance.new("TextLabel", r)
+    text.Size = UDim2.new(.38,-4,1,0); text.BackgroundTransparency = 1
+    text.TextColor3 = Color3.new(1,1,1); text.Font = F(fonts.rowFont)
+    text.TextScaled = true; text.TextXAlignment = Enum.TextXAlignment.Left
+    text.Text = label
+
+    local cur = Instance.new("TextButton", r)
+    cur.Size = UDim2.new(.62,0,1,0); cur.Position = UDim2.new(.38,4,0,0)
+    cur.BackgroundColor3 = Color3.fromRGB(60,60,60); cur.TextColor3 = Color3.new(1,1,1)
+    cur.TextScaled = true; cur.Font = F(fonts.buttonsFont); cur.Text = tostring(val)
+    rounded(cur,6)
+
+    local function setV(v)
+        val = v; cur.Text = tostring(v)
+        self.Config[p.Title][label] = v; self:_save()
+        if cb then task.spawn(cb, v) end
+    end
+
     local function openPop()
         if not cur or not cur.Parent then return end
-        local pop=Instance.new("Frame"); pop.Name="Dropdown"; pop.BackgroundColor3=Color3.fromRGB(40,40,40); pop.Visible=false; pop.ZIndex=65; pop.ClipsDescendants=true; rounded(pop,6); glow(pop, Color3.fromRGB(255,40,40),1); pop.Parent=self.PopupLayer
-        local lay=Instance.new("UIListLayout", pop); lay.Padding=UDim.new(0,4)
+
+        -- SCROLLABLE popup
+        local pop = Instance.new("ScrollingFrame")
+        pop.Name = "Dropdown"; pop.ZIndex = 65; pop.Visible = false
+        pop.ClipsDescendants = true; pop.ScrollBarThickness = 6
+        pop.AutomaticCanvasSize = Enum.AutomaticSize.None
+        pop.BackgroundColor3 = Color3.fromRGB(40,40,40); rounded(pop,6)
+        glow(pop, Color3.fromRGB(255,40,40), 1)
+        pop.Parent = self.PopupLayer   -- lives on the non-active overlay
+
+        local lay = Instance.new("UIListLayout", pop)
+        lay.Padding = UDim.new(0,4); lay.SortOrder = Enum.SortOrder.LayoutOrder
+
         for _,opt in ipairs(values) do
-            local b=Instance.new("TextButton", pop); b.Size=UDim2.new(1,-8,0,28); b.Position=UDim2.new(0,4,0,0); b.BackgroundColor3=Color3.fromRGB(60,60,60); b.TextColor3=Color3.new(1,1,1); b.TextScaled=true; b.Font=F(fonts.buttonsFont); b.Text=tostring(opt); rounded(b,6)
+            local b = Instance.new("TextButton", pop)
+            b.Size = UDim2.new(1,-8,0,28); b.Position = UDim2.new(0,4,0,0)
+            b.BackgroundColor3 = Color3.fromRGB(60,60,60)
+            b.TextColor3 = Color3.new(1,1,1); b.TextScaled = true
+            b.Font = F(fonts.buttonsFont); b.Text = tostring(opt)
+            rounded(b,6)
             b.MouseButton1Click:Connect(function() setV(opt); if pop then pop:Destroy() end end)
         end
+
+        -- size/position (+ canvas) with a safe cap height
         local function place()
             if not pop or not pop.Parent or not cur or not cur.Parent then return end
-            local ap=cur.AbsolutePosition; local as=cur.AbsoluteSize
-            pop.Size=UDim2.new(0, as.X, 0, math.min(#values*28+8, 220))
-            pop.Position=UDim2.new(0, ap.X, 0, ap.Y + as.Y + 2)
+            local ap, as = cur.AbsolutePosition, cur.AbsoluteSize
+            local contentH = lay.AbsoluteContentSize.Y + 8
+            local maxH = 220
+            pop.Size = UDim2.new(0, as.X, 0, math.min(contentH, maxH))
+            pop.CanvasSize = UDim2.new(0,0,0, contentH)
+            pop.Position = UDim2.new(0, ap.X, 0, ap.Y + as.Y + 2)
         end
-        place(); pop.Visible=true
-        local conns={}
-        table.insert(conns, UIS.InputBegan:Connect(function(i,gp)
+        lay:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(place)
+        place(); pop.Visible = true
+
+        -- close helpers (click-away, wheel, key, drag start, any bg/header click)
+        local conns = {}
+        local function close() if pop then pop:Destroy() end end
+
+        -- click-away (anywhere outside the popup rect)
+        table.insert(conns, UIS.InputBegan:Connect(function(i, gp)
             if gp then return end
-            if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then
+            if i.UserInputType == Enum.UserInputType.MouseButton1 or
+               i.UserInputType == Enum.UserInputType.Touch or
+               i.UserInputType == Enum.UserInputType.MouseButton2 then
                 if not pop or not pop.Parent then return end
-                local pos=i.Position; local p0=pop.AbsolutePosition; local p1=p0+pop.AbsoluteSize
-                local inside=(pos.X>=p0.X and pos.X<=p1.X and pos.Y>=p0.Y and pos.Y<=p1.Y)
-                if not inside then if pop then pop:Destroy() end end
+                local pos = i.Position; local p0 = pop.AbsolutePosition; local p1 = p0 + pop.AbsoluteSize
+                local inside = (pos.X>=p0.X and pos.X<=p1.X and pos.Y>=p0.Y and pos.Y<=p1.Y)
+                if not inside then close() end
             end
         end))
+
+        -- scroll wheel (outside) or any key (e.g., Esc) closes
+        table.insert(conns, UIS.InputChanged:Connect(function(i, gp)
+            if gp then return end
+            if i.UserInputType == Enum.UserInputType.MouseWheel then
+                -- If the wheel event happens outside popup bounds, close
+                if not pop or not pop.Parent then return end
+                local pos = UIS:GetMouseLocation()
+                local p0 = pop.AbsolutePosition; local p1 = p0 + pop.AbsoluteSize
+                local inside = (pos.X>=p0.X and pos.X<=p1.X and pos.Y>=p0.Y and pos.Y<=p1.Y)
+                if not inside then close() end
+            end
+        end))
+        table.insert(conns, UIS.InputBegan:Connect(function(i,gp)
+            if gp then return end
+            if i.KeyCode ~= Enum.KeyCode.Unknown then close() end
+        end))
+
+        -- start dragging header / click page bg -> close
+        table.insert(conns, self.Header.InputBegan:Connect(close))
+        table.insert(conns, self.BG.InputBegan:Connect(close))
         table.insert(conns, p.Frame:GetPropertyChangedSignal("CanvasPosition"):Connect(place))
         table.insert(conns, self.Header:GetPropertyChangedSignal("Position"):Connect(place))
         table.insert(conns, self.BG:GetPropertyChangedSignal("Position"):Connect(place))
-        pop.AncestryChanged:Connect(function(_,parent)
-            if parent==nil then
+
+        pop.AncestryChanged:Connect(function(_, parent)
+            if parent == nil then
                 for _,c in ipairs(conns) do if typeof(c)=="RBXScriptConnection" then c:Disconnect() end end
             end
         end)
     end
-    cur.MouseButton1Click:Connect(openPop); return r
-end
 
--- color presets
-function Window:color(page,label,defaultColor,cb)
-    local p=resolvePage(self,page); local r=newRow(p.Frame,36); tagRow(r,label)
-    local name=Instance.new("TextLabel", r); name.Size=UDim2.new(.38,-4,1,0); name.BackgroundTransparency=1; name.TextColor3=Color3.new(1,1,1); name.Font=F(fonts.rowFont); name.TextScaled=true; name.TextXAlignment=Enum.TextXAlignment.Left; name.Text=label
-    self.Config[p.Title]=self.Config[p.Title] or {}; local c=self.Config[p.Title][label]; local val=c and Color3.fromRGB(c.r,c.g,c.b) or defaultColor or Color3.fromRGB(255,40,40)
-    local btn=Instance.new("TextButton", r); btn.Size=UDim2.new(.62,0,1,0); btn.Position=UDim2.new(.38,4,0,0); btn.BackgroundColor3=val; btn.Text=""; rounded(btn,6)
-    local presets={"red","blue","green","purple","orange","yellow","pink","cyan","turquoise","burgundy","hotpink","lime","gray","white","black"}
-    btn.MouseButton1Click:Connect(function()
-        local idx=1; for i,v in ipairs(presets) do if ColorMap[v]==btn.BackgroundColor3 then idx=i break end end; idx=idx%#presets+1
-        val=ColorMap[presets[idx]]; btn.BackgroundColor3=val; self.Config[p.Title][label]={r=math.floor(val.R*255),g=math.floor(val.G*255),b=math.floor(val.B*255)}; self:_save(); if cb then task.spawn(cb,val) end
-    end); return r
-end
+    cur.MouseButton1Click:Connect(openPop)
+    return r
+end;
 
 -- bind
 function Window:bind(page,label,defaultKey,cb)
@@ -986,6 +1044,6 @@ elseif name=="lollipopman" then fadeIn() makePacmanLollipop() makeBar();
         else fadeOut(killAll) end
         task.delay(0.6, killAll) -- belt + suspenders
     end)
-end
+end;
 
 return {LulasUi};
