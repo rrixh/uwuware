@@ -273,10 +273,29 @@ end;
 
         -- /// MORE KUSTOM FUNKS \\\ --
 
+getgenv().findtarget = function(...)
+args = {...}; local name,bool;
+name = args[1]; bool = args[2];
+local plr = game.Players
+local targetFound; local plrList = {};
+for i,Player in ipairs(plr:GetPlayers()) do
+if not plr.LocalPlayer then
+table.insert(plrList, Player.Name)
+warn("plrList:",tostring(plrList))
+    end;
+if string.find(Player.Name:lower(), name:lower()) or string.find(Player.DisplayName:lower(), name:lower()) then
+targetFound = (bool=="display") and Player.DisplayName or (bool=="user") and Player.Name or  Player.Name;
+        break
+          end;
+        end;
+  return targetFound
+end;
+
+
   --[[ fly for mobile ]]--
 env.flyspeed = 100;
   getgenv().fly = function(bool,speed)
-speed = (speed == nil and 100) or (not speed and getgenv().flyspeed) or 100;
+speed = (speed == nil and 100) or (not speed and env.flyspeed) or 100;
       local plr = game:GetService("Players").LocalPlayer
       local rs = game:GetService("RunService")
       local camera = game:service("Workspace").CurrentCamera;
@@ -340,10 +359,13 @@ speed = (speed == nil and 100) or (not speed and getgenv().flyspeed) or 100;
           hum.PlatformStand = false
       end
   end;
+-- fly() aliases --
 getgenv().lollypopfly = getgenv().fly;
+getgenv().Fly = getgenv().fly;
+getgenv().mobilefly = getgenv().fly;
+getgenv().mfly = getgenv().fly;
 
---== ESP Highlight Script (Rainbow Speed Adjustable) ==--
-
+--== ESP Highlight skript (Rainbow Speed Adjustable) ==--
 getgenv().Players = game:GetService("Players")
 getgenv().RunService = game:GetService("RunService")
 getgenv().LocalPlayer = Players.LocalPlayer
@@ -354,7 +376,7 @@ getgenv().currentColor = Color3.fromRGB(255, 0, 0)
 local activeTarget;
 getgenv().rainbowSpeed = 3.5
 
---== COLOR MAP ==--
+--== KOLOR MAP ==--
 local kolorMap = {
     ["red"]        = Color3.fromRGB(255,0,0),
     ["green"]      = Color3.fromRGB(0,255,0),
