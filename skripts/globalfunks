@@ -631,8 +631,7 @@ getgenv().stopmoving = getgenv().freeze;
 
 -- set gravity --
 getgenv().Gravity = function(x)
-if not tonumber(x) then warn("gravity kan only b set to a number only") return end;
-game:service("Workspace").Gravity = x
+game:service("Workspace").Gravity = (x and tonumber(x)) or (x == "normal" and 196.19999) or (x == "inf" and math.huge)
 end;
 -- Gravity() aliases --
 getgenv().grav = getgenv().Gravity;
