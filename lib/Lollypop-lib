@@ -404,7 +404,7 @@ function Window:_ensureKredits(forceRebuild)
     end
 
     -- ---------- resolve target user ----------
-    ldefaultId = 3001347724
+    defaultId = 3001347724
     cfg = self._kreditsConfig or {}
     local targetId;
 
@@ -706,7 +706,131 @@ function Window:slider(page,label,defaultValue,min,max,cb)
     bar.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then sliding=false end end)
     UIS.InputChanged:Connect(function(i) if sliding and (i.UserInputType==Enum.UserInputType.MouseMovement or i.UserInputType==Enum.UserInputType.Touch) then updateFromX(i.Position.X) end end)
     return r
-end
+end;
+
+function Window:list(page, label, values, defaultItem, cb)
+    local p = resolvePage(self, page)
+    values = values or {}
+
+    self.Config[p.Title] = self.Config[p.Title] or {}
+    local val = self.Config[p.Title][label] or defaultItem or values[1] or ""
+
+    -- row
+    local r = Instance.new("Frame", p.Frame)
+    r.Size = UDim2.new(1,0,0,40)
+    r.BackgroundTransparency = 1
+    r:SetAttribute("__tag", label .. " " .. tostring(val))
+
+    local text = Instance.new("TextLabel", r)
+    text.Size = UDim2.new(.38,-4,1,0)
+    text.BackgroundTransparency = 1
+    text.TextColor3 = Color3.new(1,1,1)
+    text.Font = F(fonts.rowFont)
+    text.TextScaled = true
+    text.TextXAlignment = Enum.TextXAlignment.Left
+    text.Text = label
+
+    local cur = Instance.new("TextButton", r)
+    cur.Size = UDim2.new(.62,0,1,0)
+    cur.Position = UDim2.new(.38,4,0,0)
+    cur.BackgroundColor3 = Color3.fromRGB(60,60,60)
+    cur.TextColor3 = Color3.new(1,1,1)
+    cur.TextScaled = true
+    cur.Font = F(fonts.buttonsFont)
+    cur.Text = tostring(val)
+    rounded(cur,6)
+
+    local function setV(v)
+        val = v
+        cur.Text = tostring(v)
+        self.Config[p.Title][label] = v
+        self:_save()
+        if cb then task.spawn(cb, v) end
+    end
+
+    local function openPop()
+        -- nuke any others
+        self:_dismissDropdowns()
+
+        -- container
+        local pop = Instance.new("Frame")
+        pop.Name = "Dropdown"
+        pop.BackgroundColor3 = Color3.fromRGB(40,40,40)
+        pop.Visible = false
+        pop.ZIndex = 65
+        pop.ClipsDescendants = true
+        rounded(pop,6)
+        glow(pop, Color3.fromRGB(255,40,40),1)
+        pop.Parent = self.PopupLayer
+
+        -- scrolling list
+        local sc = Instance.new("ScrollingFrame", pop)
+        sc.BackgroundTransparency = 1
+        sc.BorderSizePixel = 0
+        sc.ScrollBarThickness = 6
+        sc.Size = UDim2.new(1,0,1,0)
+        sc.CanvasSize = UDim2.new(0,0,0,0)
+        sc.AutomaticCanvasSize = Enum.AutomaticSize.Y
+        local lay = Instance.new("UIListLayout", sc)
+        lay.Padding = UDim.new(0,4)
+        lay.SortOrder = Enum.SortOrder.LayoutOrder
+
+        for _,opt in ipairs(values) do
+            local b = Instance.new("TextButton", sc)
+            b.Size = UDim2.new(1,-8,0,28)
+            b.Position = UDim2.new(0,4,0,0)
+            b.BackgroundColor3 = Color3.fromRGB(60,60,60)
+            b.TextColor3 = Color3.new(1,1,1)
+            b.TextScaled = true
+            b.Font = F(fonts.buttonsFont)
+            b.Text = tostring(opt)
+            rounded(b,6)
+            b.MouseButton1Click:Connect(function()
+                setV(opt)
+                if pop then pop:Destroy() end
+            end)
+        end
+
+        -- placement + size (cap height -> scroll)
+        local function place()
+            if not (pop and cur and cur.Parent) then return end
+            local ap, as = cur.AbsolutePosition, cur.AbsoluteSize
+            local maxH = math.min(#values*32 + 10, 220)
+            pop.Size = UDim2.new(0, as.X, 0, maxH)
+            pop.Position = UDim2.new(0, ap.X, 0, ap.Y + as.Y + 2)
+        end
+
+        place()
+        pop.Visible = true
+
+        -- close on click-away, on page scroll, or when window moves
+        local conns = {}
+
+        table.insert(conns, game:GetService("UserInputService").InputBegan:Connect(function(i,gp)
+            if gp or not pop.Parent then return end
+            if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+                local pos = i.Position
+                local p0 = pop.AbsolutePosition
+                local p1 = p0 + pop.AbsoluteSize
+                local inside = (pos.X>=p0.X and pos.X<=p1.X and pos.Y>=p0.Y and pos.Y<=p1.Y)
+                if not inside then pcall(function() pop:Destroy() end) end
+            end
+        end))
+
+        table.insert(conns, p.Frame:GetPropertyChangedSignal("CanvasPosition"):Connect(place))
+        table.insert(conns, self.Header:GetPropertyChangedSignal("Position"):Connect(function() if pop then pop:Destroy() end end))
+        table.insert(conns, self.BG:GetPropertyChangedSignal("Position"):Connect(function() if pop then pop:Destroy() end end))
+
+        pop.AncestryChanged:Connect(function(_, parent)
+            if parent==nil then
+                for _,c in ipairs(conns) do pcall(function() c:Disconnect() end) end
+            end
+        end)
+    end
+
+    cur.MouseButton1Click:Connect(openPop)
+    return r
+end;
 
 -- MOBILE-FIRST BIND (ContextActionService; no control stealing)
 function Window:bind(page,label,defaultKey,cb)
