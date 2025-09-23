@@ -271,7 +271,7 @@ function Window:sendAlert(text, dur, accent)
         task.wait(0.18); card:Destroy()
     end)
 end
-Window.popAlert = Window.sendAlert
+Window.popAlert = Window.sendAlert;
 
 -- pages (search + jump kept)
 function Window:KreatePage(title, index, hasSearch)
@@ -327,7 +327,7 @@ function Window:KreatePage(title, index, hasSearch)
         end
 
         searchBox=box; topPad=36+6+36+6
-    end
+    end;
 
     -- scrolling page frame
     local sc=Instance.new("ScrollingFrame", self.Gui)
@@ -337,84 +337,6 @@ function Window:KreatePage(title, index, hasSearch)
     sc.HorizontalScrollBarInset = Enum.ScrollBarInset.None
     AutoCanvas(sc)
     if jumpBinder then jumpBinder(sc) end;
-
--- Always-last Kredits (minimal, no web calls; safe no-op page)
-function Window:_ensureKredits(forceRebuild)
-    -- if we already have one and not rebuilding, just keep it last
-    if self._kreditsId and self.Pages[self._kreditsId] and not forceRebuild then
-        local ix
-        for i,id in ipairs(self.PageOrder) do if id==self._kreditsId then ix=i break end end
-        if ix and ix ~= #self.PageOrder then
-            table.remove(self.PageOrder, ix)
-            table.insert(self.PageOrder, self._kreditsId)
-        end
-        return
-    end
-
-    -- nuke old kredits if forcing rebuild
-    if forceRebuild and self._kreditsId and self.Pages[self._kreditsId] then
-        local old = self.Pages[self._kreditsId]
-        pcall(function() if old.Frame   then old.Frame:Destroy()   end end)
-        pcall(function() if old.Overlay then old.Overlay:Destroy() end end)
-        self.Pages[self._kreditsId] = nil
-        for i,id in ipairs(self.PageOrder) do
-            if id == self._kreditsId then table.remove(self.PageOrder, i) break end
-        end
-    end
-
-    -- create an empty kredits page and pin it to the end
-    self._kreditsId = self._kreditsId or -9999
-    local G = self.Geometry
-
-    local overlay = Instance.new("Frame", self.Gui)
-    overlay.Size = UDim2.new(0, G.W, 0, G.H)
-    overlay.Position = UDim2.new(0, G.X, 0, G.Y)
-    overlay.BackgroundTransparency = 1
-    overlay.Visible = false
-    overlay.ZIndex = 4
-
-    local title = Instance.new("TextLabel", overlay)
-    title.Size = UDim2.new(1,-12,0,24)
-    title.Position = UDim2.new(0,6,0,6)
-    title.BackgroundTransparency = 1
-    title.TextColor3 = Color3.new(1,1,1)
-    title.TextScaled = true
-    title.Font = F(fonts.titleFont)
-    title.Text = "Kredits"
-
-    local underline = Instance.new("Frame", overlay)
-    underline.BackgroundColor3 = Color3.fromRGB(255,40,40)
-    underline.BorderSizePixel = 0
-    underline.Position = UDim2.new(0,6,0,30)
-    underline.Size = UDim2.new(1,-12,0,2)
-
-    -- scrolling body (empty for now; you can add buttons later)
-    local topPad = 36 + 12
-    local sc = Instance.new("ScrollingFrame", self.Gui)
-    sc.Name = "Page"..tostring(self._kreditsId)
-    sc.Size = UDim2.new(0, G.W, 0, G.H - topPad)
-    sc.Position = UDim2.new(0, G.X, 0, G.Y + topPad)
-    sc.BackgroundTransparency = 1
-    sc.BorderSizePixel = 0
-    sc.ScrollBarThickness = 6
-    sc.ZIndex = 1
-    sc.Visible = false
-    sc.ScrollingDirection = Enum.ScrollingDirection.Y
-    sc.CanvasSize = UDim2.new(0,0,0,0)
-    AutoCanvas(sc)
-
-    local page = {
-        Id = self._kreditsId,
-        Title = "Kredits",
-        HasSearch = false,
-        Overlay = overlay,
-        Frame = sc,
-        Filter = function() end
-    }
-
-    self.Pages[self._kreditsId] = page
-    table.insert(self.PageOrder, self._kreditsId)
-end;
 
     local function filter(q)
         local ql=string.lower(q or "")
@@ -446,11 +368,279 @@ end;
     end
 
     return page
+end;
+
+
+
+function Window:setKredits(cfg)
+    self._kreditsConfig = cfg or {}
+    self:_ensureKredits(true) -- force rebuild with new target
 end
 
--- Always-last Kredits page (kept from previous patch)
--- (…snip… same as before — unchanged for brevity)
---  >>> the complete Kredits implementation from earlier message is kept intact here <<<
+function Window:_ensureKredits(forceRebuild)
+    if self.__buildingKredits then return end
+    self.__buildingKredits = true
+
+    -- remove older build if asked
+    if forceRebuild and self._kreditsId and self.Pages[self._kreditsId] then
+        local old = self.Pages[self._kreditsId]
+        pcall(function() if old.Frame   then old.Frame:Destroy()   end end)
+        pcall(function() if old.Overlay then old.Overlay:Destroy() end end)
+        self.Pages[self._kreditsId] = nil
+        for i,id in ipairs(self.PageOrder) do if id == self._kreditsId then table.remove(self.PageOrder, i) break end end
+        self._kreditsId = nil
+    end
+
+    -- keep Kredits pinned to the end if it already exists
+    if self._kreditsId and self.Pages[self._kreditsId] then
+        local ix
+        for i,id in ipairs(self.PageOrder) do if id == self._kreditsId then ix=i break end end
+        if ix and ix ~= #self.PageOrder then
+            table.remove(self.PageOrder, ix)
+            table.insert(self.PageOrder, self._kreditsId)
+        end
+        self.__buildingKredits = false
+        return
+    end
+
+    -- ---------- resolve target user ----------
+    ldefaultId = 3001347724
+    cfg = self._kreditsConfig or {}
+    local targetId;
+
+    if tonumber(cfg.id) then
+        targetId = tonumber(cfg.id)
+    elseif typeof(cfg.url) == "string" then
+        local m = cfg.url:match("/users/(%d+)/profile")
+        if m then targetId = tonumber(m) end
+    elseif typeof(cfg.user) == "string" and #cfg.user > 0 then
+        pcall(function() targetId = game:GetService("Players"):GetUserIdFromNameAsync(cfg.user) end)
+    end
+    targetId = targetId or defaultId
+
+    local G = self.Geometry
+    local page = { Id = -9999, Title = "Kredits", HasSearch = false }
+
+    -- overlay (title + underline)
+    local overlay = Instance.new("Frame", self.Gui)
+    overlay.Size = UDim2.new(0, G.W, 0, G.H)
+    overlay.Position = UDim2.new(0, G.X, 0, G.Y)
+    overlay.BackgroundTransparency = 1
+    overlay.Visible = false
+    overlay.ZIndex = 4
+
+    local title = Instance.new("TextLabel", overlay)
+    title.Size = UDim2.new(1, -12, 0, 24)
+    title.Position = UDim2.new(0, 6, 0, 6)
+    title.BackgroundTransparency = 1
+    title.TextColor3 = Color3.new(1,1,1)
+    title.TextScaled = true
+    title.Font = F(fonts.titleFont)
+    title.Text = page.Title
+
+    local underline = Instance.new("Frame", overlay)
+    underline.BackgroundColor3 = Color3.fromRGB(255,40,40)
+    underline.BorderSizePixel = 0
+    underline.Position = UDim2.new(0, 6, 0, 30)
+    underline.Size = UDim2.new(1, -12, 0, 2)
+
+    -- info card (avatar left, stats right)
+    local CARD_H = 110
+    local card = Instance.new("Frame", overlay)
+    card.Size = UDim2.new(1, -24, 0, CARD_H)
+    card.Position = UDim2.new(0, 12, 0, 40)
+    card.BackgroundColor3 = Color3.fromRGB(45,45,45)
+    card.BackgroundTransparency = 0.15
+    rounded(card, 10); glow(card, Color3.fromRGB(255,40,40), 1)
+
+    -- avatar (LEFT)
+    local avatar = Instance.new("ImageLabel", card)
+    avatar.BackgroundTransparency = 1
+    avatar.Size = UDim2.new(0, 96, 0, 96)
+    avatar.Position = UDim2.new(0, 10, 0, 7)
+    avatar.ZIndex = 5
+    local avCorner = Instance.new("UICorner", avatar); avCorner.CornerRadius = UDim.new(1, 0)
+    local avStroke = Instance.new("UIStroke", avatar); avStroke.Color = Color3.fromRGB(255,40,40); avStroke.Thickness = 1
+
+    -- stats (RIGHT)
+    local stats = Instance.new("Frame", card)
+    stats.BackgroundTransparency = 1
+    stats.Size = UDim2.new(1, -(10 + 96 + 16 + 10), 1, -14)
+    stats.Position = UDim2.new(0, 10 + 96 + 16, 0, 7)
+
+    local function makeLabel(y, text)
+        local L = Instance.new("TextLabel", stats)
+        L.BackgroundTransparency = 1
+        L.Position = UDim2.new(0, 0, 0, y)
+        L.Size = UDim2.new(1, 0, 0, 28)
+        L.TextXAlignment = Enum.TextXAlignment.Left
+        L.TextScaled = true
+        L.Font = F(fonts.buttonsFont)
+        L.TextColor3 = Color3.new(1,1,1)
+        L.Text = text
+        return L
+    end
+
+    local joinLabel = makeLabel( 0, "Join Date:  —")
+    local lastLabel   = makeLabel(34, "Last Online: Today")
+    local statusDot   = Instance.new("Frame", stats)
+    statusDot.Size = UDim2.new(0, 10, 0, 10)
+    statusDot.Position = UDim2.new(0, 0, 0, 70)
+    statusDot.BackgroundColor3 = Color3.fromRGB(200,70,70) -- default offline red
+    rounded(statusDot, 6)
+    local statusLabel = Instance.new("TextLabel", stats)
+    statusLabel.BackgroundTransparency = 1
+    statusLabel.Position = UDim2.new(0, 16, 0, 64)
+    statusLabel.Size = UDim2.new(1, -16, 0, 24)
+    statusLabel.TextXAlignment = Enum.TextXAlignment.Left
+    statusLabel.TextScaled = true
+    statusLabel.Font = F(fonts.buttonsFont)
+    statusLabel.TextColor3 = Color3.new(1,1,1)
+    statusLabel.Text = "Status: Offline"
+
+    -- helper HTTP (works in most executors; falls back to HttpService)
+    local HS = game:GetService("HttpService")
+    local function http_get(url)
+        local ok, res
+        if syn and syn.request then
+            ok, res = pcall(function() return syn.request({Url=url, Method="GET"}) end)
+            if ok and res and res.StatusCode==200 then return res.Body end
+        end
+        if http_request then
+            ok, res = pcall(function() return http_request({Url=url, Method="GET"}) end)
+            if ok and res and res.StatusCode==200 then return res.Body end
+        end
+        if request then
+            ok, res = pcall(function() return request({Url=url, Method="GET"}) end)
+            if ok and res and res.StatusCode==200 then return res.Body end
+        end
+        ok, res = pcall(function() return game:HttpGet(url) end)
+        if ok and type(res)=="string" then return res end
+        ok, res = pcall(function() return HS:GetAsync(url) end)
+        if ok then return res end
+        return nil
+    end
+
+    -- date helpers
+    local MONTHS = {"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"}
+    local function parse_iso(iso)
+        if type(iso) ~= "string" then return nil end
+        local y,m,d,hh,mm,ss = iso:match("(%d+)%-(%d+)%-(%d+)T?(%d*):?(%d*):?(%d*)")
+        y,m,d = tonumber(y),tonumber(m),tonumber(d)
+        hh,mm,ss = tonumber(hh) or 0, tonumber(mm) or 0, tonumber(ss) or 0
+        if not (y and m and d) then return nil end
+        return os.time{year=y, month=m, day=d, hour=hh, min=mm, sec=ss}
+    end
+    local function fmt_date(ts)
+        if not ts then return "—" end
+        local t = os.date("*t", ts)
+        return string.format("%s %d, %d", MONTHS[t.month], t.day, t.year)
+    end
+    local function fmt_last_online(ts)
+        if not ts then return "—" end
+        local function day_start(t)
+            local dt = os.date("*t", t)
+            return os.time{year=dt.year, month=dt.month, day=dt.day, hour=0, min=0, sec=0}
+        end
+        local today0 = day_start(os.time())
+        local d0 = day_start(ts)
+        local diffDays = math.floor((today0 - d0)/86400 + 0.5)
+        if diffDays==0 then return "Today" end
+        if diffDays==1 then return "Yesterday" end
+        return fmt_date(ts)
+    end
+
+    -- async fill
+    task.spawn(function()
+        -- avatar
+        local okThumb, thumb = pcall(function()
+            return game:GetService("Players"):GetUserThumbnailAsync(targetId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100)
+        end)
+        if okThumb and thumb then avatar.Image = thumb end
+
+        -- join date
+        local ujson = http_get("https://users.roblox.com/v1/users/"..tostring(targetId))
+        if ujson then
+            local ok, data = pcall(HS.JSONDecode, HS, ujson)
+            if ok and data and data.created then
+                joinLabel.Text = "Join Date:  "..fmt_date(parse_iso(data.created))
+            end
+        end
+
+        -- status + last online (legacy public endpoint)
+        local pjson = http_get("https://api.roblox.com/users/"..tostring(targetId).."/onlinestatus")
+        if pjson then
+            local ok, data = pcall(HS.JSONDecode, HS, pjson)
+            if ok and data then
+                local on = (data.IsOnline == true)
+                statusLabel.Text = "Status: "..(on and "Online" or "Offline")
+                statusDot.BackgroundColor3 = on and Color3.fromRGB(60,200,90) or Color3.fromRGB(200,70,70)
+                local lastTs = parse_iso(data.LastOnline)
+                if lastTs then lastLabel.Text = "Last Online: "..fmt_last_online(lastTs) end
+            end
+        end
+    end)
+
+    -- bottom scrolling area (your buttons/links)
+    local topPad = 36 + 12 + CARD_H + 12
+    local sc = Instance.new("ScrollingFrame", self.Gui)
+    sc.Name = "Page"..tostring(page.Id)
+    sc.Size = UDim2.new(0, G.W, 0, G.H - topPad)
+    sc.Position = UDim2.new(0, G.X, 0, G.Y + topPad)
+    sc.BackgroundTransparency = 1
+    sc.BorderSizePixel = 0
+    sc.ScrollBarThickness = 6
+    sc.ZIndex = 1
+    sc.Visible = false
+    sc.ScrollingDirection = Enum.ScrollingDirection.Y
+    sc.CanvasSize = UDim2.new(0,0,0,0)
+    AutoCanvas(sc)
+
+    page.Overlay = overlay
+    page.Frame   = sc
+    page.Filter  = function() end
+
+    self.Pages[page.Id] = page
+    self._kreditsId = page.Id
+    table.insert(self.PageOrder, page.Id)
+
+--kopy n make links
+    local function kopy(str)
+        local ok = pcall(function() if setclipboard then setclipboard(tostring(str)) end end)
+        if ok then self:sendAlert("Kopied to klipboard", 1.2, "lime")
+        else self:sendAlert("Klipboard unsupported", 1.6, "yellow") end
+    end
+
+    self:button(page, "RBX: @lulaslollipop🍭", function()
+        kopy("https://www.roblox.com/users/3001347724/profile")
+    end)
+    self:button(page, "Discord: @bommunity 🤖", function()
+        kopy("bommunity")
+    end)
+    self:button(page, "Telegram: @sIipped 💬", function()
+        kopy("https://t.me/sIipped")
+    end)
+
+    -- obey current page vis
+    if self.Current then
+        local on = (self.Current == page)
+        sc.Visible = on
+        overlay.Visible = on
+    end
+
+    -- pin to end
+    for i,id in ipairs(self.PageOrder) do
+        if id == self._kreditsId and i ~= #self.PageOrder then
+            table.remove(self.PageOrder, i)
+            table.insert(self.PageOrder, self._kreditsId)
+            break
+        end
+    end
+
+    self.__buildingKredits = false
+end;
+
+
 
 -- element helpers
 local function newRow(parent,h) local r=Instance.new("Frame", parent); r.Size=UDim2.new(1,0,0,h or 36); r.BackgroundTransparency=1; return r end
