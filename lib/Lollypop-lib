@@ -75,6 +75,84 @@ LulasUi.__index = LulasUi
 local Window = {}
 Window.__index = Window
 
+-- Always-last Kredits (minimal, no web calls; safe no-op page)
+function Window:_ensureKredits(forceRebuild)
+    -- if we already have one and not rebuilding, just keep it last
+    if self._kreditsId and self.Pages[self._kreditsId] and not forceRebuild then
+        local ix
+        for i,id in ipairs(self.PageOrder) do if id==self._kreditsId then ix=i break end end
+        if ix and ix ~= #self.PageOrder then
+            table.remove(self.PageOrder, ix)
+            table.insert(self.PageOrder, self._kreditsId)
+        end
+        return
+    end
+
+    -- nuke old kredits if forcing rebuild
+    if forceRebuild and self._kreditsId and self.Pages[self._kreditsId] then
+        local old = self.Pages[self._kreditsId]
+        pcall(function() if old.Frame   then old.Frame:Destroy()   end end)
+        pcall(function() if old.Overlay then old.Overlay:Destroy() end end)
+        self.Pages[self._kreditsId] = nil
+        for i,id in ipairs(self.PageOrder) do
+            if id == self._kreditsId then table.remove(self.PageOrder, i) break end
+        end
+    end
+
+    -- create an empty kredits page and pin it to the end
+    self._kreditsId = self._kreditsId or -9999
+    local G = self.Geometry
+
+    local overlay = Instance.new("Frame", self.Gui)
+    overlay.Size = UDim2.new(0, G.W, 0, G.H)
+    overlay.Position = UDim2.new(0, G.X, 0, G.Y)
+    overlay.BackgroundTransparency = 1
+    overlay.Visible = false
+    overlay.ZIndex = 4
+
+    local title = Instance.new("TextLabel", overlay)
+    title.Size = UDim2.new(1,-12,0,24)
+    title.Position = UDim2.new(0,6,0,6)
+    title.BackgroundTransparency = 1
+    title.TextColor3 = Color3.new(1,1,1)
+    title.TextScaled = true
+    title.Font = F(fonts.titleFont)
+    title.Text = "Kredits"
+
+    local underline = Instance.new("Frame", overlay)
+    underline.BackgroundColor3 = Color3.fromRGB(255,40,40)
+    underline.BorderSizePixel = 0
+    underline.Position = UDim2.new(0,6,0,30)
+    underline.Size = UDim2.new(1,-12,0,2)
+
+    -- scrolling body (empty for now; you can add buttons later)
+    local topPad = 36 + 12
+    local sc = Instance.new("ScrollingFrame", self.Gui)
+    sc.Name = "Page"..tostring(self._kreditsId)
+    sc.Size = UDim2.new(0, G.W, 0, G.H - topPad)
+    sc.Position = UDim2.new(0, G.X, 0, G.Y + topPad)
+    sc.BackgroundTransparency = 1
+    sc.BorderSizePixel = 0
+    sc.ScrollBarThickness = 6
+    sc.ZIndex = 1
+    sc.Visible = false
+    sc.ScrollingDirection = Enum.ScrollingDirection.Y
+    sc.CanvasSize = UDim2.new(0,0,0,0)
+    AutoCanvas(sc)
+
+    local page = {
+        Id = self._kreditsId,
+        Title = "Kredits",
+        HasSearch = false,
+        Overlay = overlay,
+        Frame = sc,
+        Filter = function() end
+    }
+
+    self.Pages[self._kreditsId] = page
+    table.insert(self.PageOrder, self._kreditsId)
+end;
+
 -- close any open dropdowns
 function Window:_dismissDropdowns()
     if not self.PopupLayer then return end
