@@ -41,6 +41,7 @@ end;
 
 getgenv().light = game:GetService("Lighting");
 
+if lightson then
 AddContent(vars.switch, "turn on light 💡", [[
 local lights = true
 while(lights==true)do task.wait(.5)
@@ -56,6 +57,8 @@ lights = false
 light.ClockTime = 0
 light.GlobalShadows = true
 ]])
+end;
+
 
 AddContent(vars.loop, "jump", [[
 game.Players.LocalPlayer.Character.Humanoid.Jump=true
@@ -226,7 +229,31 @@ end
 end
 ]])
 
-local teleportFunction;
+local targetbox;
+
+targetbox = AddContent(vars.txt, "target name...")
+
+fokus(targetbox):connect(function(e)
+if e then
+_G.targetPlayer = findPlrName(targetbox.Text)
+_G.rnote("target: ".._G.targetPlayer.Name, 3)
+ end;
+end)
+
+AddContent(vars.loop, "loop tp target", [[
+if _G.targetPlayer then
+getchar().HumanoidRootPart.CFrame = CFrame.new(_G.targetPlayer.Character:WaitForChild("HumanoidRootPart").Position) * CFrame.new(0,0,2.33) or _G.targetPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 2.33)
+end
+]])
+
+AddContent(vars.switch, "HEAVY", [[
+workspace.Gravity = tonumber(math.huge) + 999e999
+]],
+[[
+workspace.Gravity = 196.19999
+]])
+
+getgenv().teleportFunction = nil
 
 AddContent(vars.btn, "TP to random player",
 [[
@@ -235,7 +262,7 @@ local players = game.Players:GetPlayers()
 if not teleportFunction then
     teleportFunction = function()
         local randomPlayer = players[math.random(1, #players)]
-        
+
         if randomPlayer and randomPlayer.Character and randomPlayer.Character:FindFirstChild("HumanoidRootPart") and randomPlayer ~= game.Players.LocalPlayer then game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = randomPlayer.Character.HumanoidRootPart.CFrame
         end
     end;
@@ -246,7 +273,7 @@ end
 teleportFunction()
 ]])
 
------------------------------------------
+--------------------------------------
 AddContent(vars.btn, "join hidden game", 
 [[
 _G.rnote("searxhing...",.6)
@@ -277,8 +304,9 @@ _G.rnote("none found",.5)
 end
 end;
 ]])
------------------------------------------
+--------------------------------------
 local gotoplr = function()
+task.wait(.5)
 if _G.targetPlayer then
 local targetPlayer = findPlrName(_G.targetPlayer.Name)
 if targetPlayer ~= game.Players.LocalPlayer and targetPlayer.Character then
@@ -289,9 +317,12 @@ end;
 
 task.wait()
 game:GetService"Players".LocalPlayer.CharacterAdded:Connect(function()
-repeat task.wait(.2) until game:GetService"Players".LocalPlayer.Character and game:GetService"Players".LocalPlayer.Character:FindFirstChild("Humanoid")
+repeat wait() until _G.targetPlayer;
+repeat task.wait() until game:GetService"Players".LocalPlayer.Character and game:GetService"Players".LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
 gotoplr()
 end);
+
+game:GetService"Players".LocalPlayer.CharacterAdded:Connect(gotoplr)
 
 local y,n=pcall(function()
 local num = tonumber;
