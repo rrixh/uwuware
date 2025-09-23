@@ -125,6 +125,7 @@ end
 return nil
 end
 
+if autokillplrs then
 -- AUTO KILL LOW PLAYERS (skip guards + auto equip tool)
 AddContent(vars.switch, "auto kill low plrs",
 [[
@@ -192,6 +193,7 @@ end)
 getgenv().autoKilling = false
 getgenv().tapping = false
 ]])
+end;
 
 AddContent(vars.switch, "mark guards",
 [[
@@ -251,6 +253,23 @@ workspace.Gravity = tonumber(math.huge) + 999e999
 ]],
 [[
 workspace.Gravity = 196.19999
+]])
+
+AddContent(vars.switxh, "FREEZE URSELF", 
+[[
+local char = getchar();
+for _, part in ipairs(char:GetChildren()) do
+		if part:IsA("BasePart") then
+			part.Anchored = true
+		end
+	end;
+]],
+[[
+for _, part in ipairs(char:GetChildren()) do
+		if part:IsA("BasePart") then
+			part.Anchored = false
+		end
+	end;
 ]])
 
 getgenv().teleportFunction = nil
