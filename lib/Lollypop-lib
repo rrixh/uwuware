@@ -1,4 +1,4 @@
--- Lulas Ui Library 🍭 (supports PC+Mobile 💻📲)
+-- Lollypop Ui Lib kode 🍭 (supports PC+Mobile 💻📲)
 -- v2.1  (mobile bind + PacmanLollipop restored)
 
 --[[  EXAMPLE (unchanged)
@@ -685,9 +685,12 @@ function Window:textbox(page,label,defaultText,cb,KlearOnFokus)
     box.Text=""; box.PlaceholderText = defaultText or tostring(val)
     box.ClearTextOnFocus=KlearOnFokus or false; box.Font=F(fonts.buttonsFont); box.TextScaled=true; rounded(box,6)
     local pad=Instance.new("UIPadding", box); pad.PaddingLeft=UDim.new(0,8); pad.PaddingRight=UDim.new(0,8)
-    box.FocusLost:Connect(function(enter) self.Config[p.Title][label]=box.Text; self:_save(); if cb then task.spawn(cb,box.Text,enter) end end); return r
+    box.FocusLost:connect(function(enter)
+if(not enter)then return end;
+self.Config[p.Title][label]=box.Text; self:_save(); if cb then task.spawn(cb,box.Text,enter) end end); return r
 end
 
+--SLIDER--
 function Window:slider(page,label,defaultValue,min,max,cb)
     local p=resolvePage(self,page); min=tonumber(min) or 0; max=tonumber(max) or 100
     self.Config[p.Title]=self.Config[p.Title] or {}; local v=math.clamp( tonumber(self.Config[p.Title][label] or defaultValue or min) or min, min, max )
@@ -702,9 +705,9 @@ function Window:slider(page,label,defaultValue,min,max,cb)
     setVal(v)
     local function updateFromX(x) local left=bar.AbsolutePosition.X; local width=math.max(1,bar.AbsoluteSize.X); local a=math.clamp((x-left)/width,0,1); setVal(min+a*(max-min)); self.Config[p.Title][label]=v; self:_save(); if cb then task.spawn(cb,v) end end
     local sliding=false
-    bar.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then sliding=true; updateFromX(i.Position.X) end end)
-    bar.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then sliding=false end end)
-    UIS.InputChanged:Connect(function(i) if sliding and (i.UserInputType==Enum.UserInputType.MouseMovement or i.UserInputType==Enum.UserInputType.Touch) then updateFromX(i.Position.X) end end)
+    bar.InputBegan:connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then sliding=true; updateFromX(i.Position.X) end end)
+    bar.InputEnded:connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then sliding=false end end)
+    UIS.InputChanged:connect(function(i) if sliding and (i.UserInputType==Enum.UserInputType.MouseMovement or i.UserInputType==Enum.UserInputType.Touch) then updateFromX(i.Position.X) end end)
     return r
 end;
 
@@ -833,7 +836,7 @@ function Window:list(page, label, values, defaultItem, cb)
     return r
 end;
 
--- color presets
+-- kolor preset
 function Window:color(page,label,defaultColor,cb)
     local p=resolvePage(self,page); local r=newRow(p.Frame,36); tagRow(r,label)
     local name=Instance.new("TextLabel", r); name.Size=UDim2.new(.38,-4,1,0); name.BackgroundTransparency=1; name.TextColor3=Color3.new(1,1,1); name.Font=F(fonts.rowFont); name.TextScaled=true; name.TextXAlignment=Enum.TextXAlignment.Left; name.Text=label
