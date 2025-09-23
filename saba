@@ -248,28 +248,20 @@ getchar().HumanoidRootPart.CFrame = CFrame.new(_G.targetPlayer.Character:WaitFor
 end
 ]])
 
-AddContent(vars.switch, "HEAVY", [[
-workspace.Gravity = tonumber(math.huge) + 999e999
+AddContent(vars.switch, "HEAVY",
+[[
+gravity"inf"
 ]],
 [[
-workspace.Gravity = 196.19999
+gravity"normal"
 ]])
 
 AddContent(vars.switxh, "FREEZE URSELF", 
-[[
-local char = getchar();
-for _, part in ipairs(char:GetChildren()) do
-		if part:IsA("BasePart") then
-			part.Anchored = true
-		end
-	end;
-]],
-[[
-for _, part in ipairs(char:GetChildren()) do
-		if part:IsA("BasePart") then
-			part.Anchored = false
-		end
-	end;
+[[ 
+freeze(true) 
+]], 
+[[ 
+freeze(false) 
 ]])
 
 getgenv().teleportFunction = nil
