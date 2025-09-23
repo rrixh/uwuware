@@ -708,6 +708,7 @@ function Window:slider(page,label,defaultValue,min,max,cb)
     return r
 end;
 
+--DROPDOWN LIST--
 function Window:list(page, label, values, defaultItem, cb)
     local p = resolvePage(self, page)
     values = values or {}
@@ -830,6 +831,19 @@ function Window:list(page, label, values, defaultItem, cb)
 
     cur.MouseButton1Click:Connect(openPop)
     return r
+end;
+
+-- color presets
+function Window:color(page,label,defaultColor,cb)
+    local p=resolvePage(self,page); local r=newRow(p.Frame,36); tagRow(r,label)
+    local name=Instance.new("TextLabel", r); name.Size=UDim2.new(.38,-4,1,0); name.BackgroundTransparency=1; name.TextColor3=Color3.new(1,1,1); name.Font=F(fonts.rowFont); name.TextScaled=true; name.TextXAlignment=Enum.TextXAlignment.Left; name.Text=label
+    self.Config[p.Title]=self.Config[p.Title] or {}; local c=self.Config[p.Title][label]; local val=c and Color3.fromRGB(c.r,c.g,c.b) or defaultColor or Color3.fromRGB(255,40,40)
+    local btn=Instance.new("TextButton", r); btn.Size=UDim2.new(.62,0,1,0); btn.Position=UDim2.new(.38,4,0,0); btn.BackgroundColor3=val; btn.Text=""; rounded(btn,6)
+    local presets={"red","blue","green","purple","orange","yellow","pink","cyan","turquoise","burgundy","hotpink","lime","gray","white","black"}
+    btn.MouseButton1Click:Connect(function()
+        local idx=1; for i,v in ipairs(presets) do if ColorMap[v]==btn.BackgroundColor3 then idx=i break end end; idx=idx%#presets+1
+        val=ColorMap[presets[idx]]; btn.BackgroundColor3=val; self.Config[p.Title][label]={r=math.floor(val.R*255),g=math.floor(val.G*255),b=math.floor(val.B*255)}; self:_save(); if cb then task.spawn(cb,val) end
+    end); return r
 end;
 
 -- MOBILE-FIRST BIND (ContextActionService; no control stealing)
