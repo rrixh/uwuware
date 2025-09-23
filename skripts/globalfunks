@@ -629,6 +629,17 @@ getgenv().frz = getgenv().freeze;
 getgenv().anchor = getgenv().freeze;
 getgenv().stopmoving = getgenv().freeze;
 
+-- set gravity --
+getgenv().Gravity = function(x)
+if not tonumber(x) then warn("gravity kan only b set to a number only") return end;
+game:service("Workspace").Gravity = x
+end;
+-- Gravity() aliases --
+getgenv().grav = getgenv().Gravity;
+getgenv().Grav = getgenv().Gravity;
+getgenv().gravity = getgenv().Gravity;
+
+
 -- returns players health --
 env.getHealth = function(plr)
 if not plr or plr:match("^%s*$") then
