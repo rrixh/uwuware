@@ -609,6 +609,26 @@ args = {...}
 return args[1] ~= args[2]
 end;
 
+    --//>> PLAYER STUFF <<\\--
+
+-- FREEZE URSELF OR OTHER PLR --
+getgenv().freeze = function(b,p)
+if p then
+c = game.Players[p].Character
+else
+c = game.Players.LocalPlayer.Character
+end;
+for _,x in ipairs(c:GetChildren()) do
+   if(x:IsA"BasePart")then
+		x.Anchored = b
+		end
+	end;
+end;
+-- freeze() aliases --
+getgenv().frz = getgenv().freeze;
+getgenv().anchor = getgenv().freeze;
+getgenv().stopmoving = getgenv().freeze;
+
 -- returns players health --
 env.getHealth = function(plr)
 if not plr or plr:match("^%s*$") then
