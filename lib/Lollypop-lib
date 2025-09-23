@@ -848,6 +848,11 @@ function Window:color(page,label,defaultColor,cb)
         val=ColorMap[presets[idx]]; btn.BackgroundColor3=val; self.Config[p.Title][label]={r=math.floor(val.R*255),g=math.floor(val.G*255),b=math.floor(val.B*255)}; self:_save(); if cb then task.spawn(cb,val) end
     end); return r
 end;
+--window:color aliases--
+Window.kolor = Window.color;
+Window.Kolorpicker = Window.color;
+Window.kolorpicker = Window.color;
+Window.colorpicker = Window.color;
 
 -- MOBILE-FIRST BIND (ContextActionService; no control stealing)
 function Window:bind(page,label,defaultKey,cb)
