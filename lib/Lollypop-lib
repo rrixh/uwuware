@@ -746,7 +746,6 @@ function Window:list(page, label, values, defaultItem, cb)
     self.Config[p.Title] = self.Config[p.Title] or {}
     local val = self.Config[p.Title][label] or defaultItem or values[1] or ""
 
-    -- row
     local r = Instance.new("Frame", p.Frame)
     r.Size = UDim2.new(1,0,0,40)
     r.BackgroundTransparency = 1
@@ -768,17 +767,14 @@ function Window:list(page, label, values, defaultItem, cb)
     cur.TextColor3 = Color3.new(1,1,1)
     cur.TextScaled = true
     cur.Font = F(fonts.buttonsFont)
-    cur.TextXAlignment = Enum.TextXAlignment.Left  -- keep left for readability
+    cur.TextXAlignment = Enum.TextXAlignment.Left
     cur.Text = tostring(val)
     rounded(cur,6)
-    local curPad = Instance.new("UIPadding", cur)  -- left padding for text
-    curPad.PaddingLeft = UDim.new(0,8)
+    local curPad = Instance.new("UIPadding", cur); curPad.PaddingLeft = UDim.new(0,8)
 
     local function setV(v)
-        val = v
-        cur.Text = tostring(v)
-        self.Config[p.Title][label] = v
-        self:_save()
+        val = v; cur.Text = tostring(v)
+        self.Config[p.Title][label] = v; self:_save()
         if cb then task.spawn(cb, v) end
     end
 
@@ -788,13 +784,12 @@ function Window:list(page, label, values, defaultItem, cb)
         local pop = Instance.new("Frame")
         pop.Name = "Dropdown"
         pop.BackgroundColor3 = Color3.fromRGB(40,40,40)
-        pop.Visible = false
-        pop.ZIndex = 65
+        pop.Visible = false; pop.ZIndex = 65
         pop.ClipsDescendants = true
-        rounded(pop,6)
-        glow(pop, Color3.fromRGB(255,40,40),1)
+        rounded(pop,6); glow(pop, Color3.fromRGB(255,40,40),1)
         pop.Parent = self.PopupLayer
 
+        -- SCROLLING list
         local sc = Instance.new("ScrollingFrame", pop)
         sc.BackgroundTransparency = 1
         sc.BorderSizePixel = 0
@@ -802,8 +797,7 @@ function Window:list(page, label, values, defaultItem, cb)
         sc.Size = UDim2.new(1,0,1,0)
         sc.CanvasSize = UDim2.new(0,0,0,0)
         sc.AutomaticCanvasSize = Enum.AutomaticSize.Y
-        local pad = Instance.new("UIPadding", sc)     -- keep items clear of the scrollbar
-        pad.PaddingRight = UDim.new(0,8 + sc.ScrollBarThickness)
+        -- NOTE: no extra padding here (per your request)
 
         local lay = Instance.new("UIListLayout", sc)
         lay.Padding = UDim.new(0,4)
@@ -817,18 +811,15 @@ function Window:list(page, label, values, defaultItem, cb)
             b.TextColor3 = Color3.new(1,1,1)
             b.TextScaled = true
             b.Font = F(fonts.buttonsFont)
-            b.Text = tostring(opt)
             b.TextXAlignment = Enum.TextXAlignment.Left
+            b.Text = tostring(opt)
             rounded(b,6)
-            local bp = Instance.new("UIPadding", b)
-            bp.PaddingLeft = UDim.new(0,8)
+            local bp = Instance.new("UIPadding", b); bp.PaddingLeft = UDim.new(0,8)
             b.MouseButton1Click:Connect(function()
-                setV(opt)
-                if pop then pop:Destroy() end
+                setV(opt); if pop then pop:Destroy() end
             end)
         end
 
-        -- place safely & keep on-screen
         local function place()
             if not (pop and cur and cur.Parent) then return end
             local ap, as = cur.AbsolutePosition, cur.AbsoluteSize
@@ -842,7 +833,6 @@ function Window:list(page, label, values, defaultItem, cb)
 
         place(); pop.Visible = true
 
-        -- close on click-away / page scroll / window move
         local conns = {}
         table.insert(conns, UIS.InputBegan:Connect(function(i,gp)
             if gp or not pop.Parent then return end
@@ -898,9 +888,8 @@ function Window:bind(page,label,defaultKey,cb)
     txt.TextXAlignment=Enum.TextXAlignment.Left
     txt.Text=label
 
-    -- main button now leaves space on the right for icons
     local btn=Instance.new("TextButton", r)
-    btn.Size=UDim2.new(.62,-56,1,0)          -- <-- narrower
+    btn.Size=UDim2.new(.62,-56,1,0)
     btn.Position=UDim2.new(.38,4,0,0)
     btn.BackgroundColor3=Color3.fromRGB(60,60,60)
     btn.TextColor3=Color3.new(1,1,1)
@@ -908,10 +897,8 @@ function Window:bind(page,label,defaultKey,cb)
     btn.Font=F(fonts.buttonsFont)
     btn.TextXAlignment = Enum.TextXAlignment.Left
     rounded(btn,6)
-    local btnPad = Instance.new("UIPadding", btn)
-    btnPad.PaddingLeft = UDim.new(0,8)
+    local btnPad = Instance.new("UIPadding", btn); btnPad.PaddingLeft = UDim.new(0,8)
 
-    -- icons moved OUTSIDE of the text area
     local iconHold = Instance.new("Frame", r)
     iconHold.Size = UDim2.new(0,52,1,0)
     iconHold.Position = UDim2.new(1,-52,0,0)
@@ -937,15 +924,24 @@ function Window:bind(page,label,defaultKey,cb)
 
     local actionName = "LulasBind_"..(HS:GenerateGUID(false))
     local showTouchButton = true
-    local function setText()
-        btn.Text="Key: "..(key and key.Name or "None")
-    end
+    local synthGuard = false  -- prevents recursion/“spam”
+
+    local function setText() btn.Text="Key: "..(key and key.Name or "None") end
     setText()
 
-    -- when CAS action fires on mobile, actually simulate the key
+    local function onceSimulate()
+        if synthGuard then return end
+        synthGuard = true
+        task.spawn(function()
+            if key then simulateKey(key) end
+            task.wait(0.12)           -- short guard window
+            synthGuard = false
+        end)
+    end
+
     local function handler(_, state)
         if state==Enum.UserInputState.Begin then
-            if UIS.TouchEnabled and key then simulateKey(key) end  -- << simulate physical key on touch
+            if UIS.TouchEnabled then onceSimulate() end
             if cb then task.spawn(cb) end
             return Enum.ContextActionResult.Sink
         end
@@ -954,7 +950,7 @@ function Window:bind(page,label,defaultKey,cb)
 
     local function applyBinding()
         CAS:UnbindAction(actionName)
-        CAS:BindAction(actionName, handler, true, key)   -- createTouchButton=true by default
+        CAS:BindAction(actionName, handler, true, key)
         if UIS.TouchEnabled then
             CAS:SetTitle(actionName, label)
             if showTouchButton then
@@ -967,14 +963,12 @@ function Window:bind(page,label,defaultKey,cb)
     end
     applyBinding()
 
-    -- clicking the big button: also simulate on mobile so games listening to keyboard get it
     btn.MouseButton1Click:Connect(function()
-        if UIS.TouchEnabled and key then simulateKey(key) end
+        if UIS.TouchEnabled then onceSimulate() end
         if cb then task.spawn(cb) end
     end)
 
-    -- rebind flow:
-    local commonKeys={"Space","Q","E","F","G","R","LeftShift","LeftControl","Tab"}
+    local commonKeys={"Space","A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z","LeftShift","LeftControl","Tab"}
     local function openRebind()
         if UIS.KeyboardEnabled then
             btn.Text="Press a key…"
@@ -987,7 +981,6 @@ function Window:bind(page,label,defaultKey,cb)
                 end
             end)
         else
-            -- same dropdown style as :list
             self:_dismissDropdowns()
             local pop=Instance.new("Frame"); pop.Name="Dropdown"; pop.BackgroundColor3=Color3.fromRGB(40,40,40)
             pop.Visible=false; pop.ZIndex=65; pop.ClipsDescendants=true; rounded(pop,6); glow(pop, Color3.fromRGB(255,40,40),1); pop.Parent=self.PopupLayer
@@ -995,9 +988,9 @@ function Window:bind(page,label,defaultKey,cb)
             local sc=Instance.new("ScrollingFrame", pop)
             sc.BackgroundTransparency=1; sc.BorderSizePixel=0; sc.ScrollBarThickness=6; sc.Size=UDim2.new(1,0,1,0)
             sc.CanvasSize=UDim2.new(0,0,0,0); sc.AutomaticCanvasSize=Enum.AutomaticSize.Y
-            local pad = Instance.new("UIPadding", sc); pad.PaddingRight = UDim.new(0, 8 + sc.ScrollBarThickness)
-            local lay=Instance.new("UIListLayout", sc); lay.Padding=UDim.new(0,4); lay.SortOrder=Enum.SortOrder.LayoutOrder
+            -- NOTE: no extra padding here
 
+            local lay=Instance.new("UIListLayout", sc); lay.Padding=UDim.new(0,4); lay.SortOrder=Enum.SortOrder.LayoutOrder
             for _,opt in ipairs(commonKeys) do
                 local b=Instance.new("TextButton", sc)
                 b.Size=UDim2.new(1,-8,0,32); b.Position=UDim2.new(0,4,0,0)
@@ -1027,14 +1020,12 @@ function Window:bind(page,label,defaultKey,cb)
 
     gear.MouseButton1Click:Connect(openRebind)
 
-    -- mobile touch button show/hide
     phone.MouseButton1Click:Connect(function()
         showTouchButton = not showTouchButton
         applyBinding()
         self:sendAlert(showTouchButton and "Mobile button: ON" or "Mobile button: OFF", 1.2, showTouchButton and "green" or "yellow")
     end)
 
-    -- global keyboard still works
     UIS.InputBegan:Connect(function(i,gp)
         if gp then return end
         if key and i.KeyCode==key then if cb then task.spawn(cb) end end
