@@ -273,22 +273,17 @@ end;
 
         -- /// MORE KUSTOM FUNKS \\\ --
 
-getgenv().findtarget = function(...)
-args = {...}; local name,bool;
-name = args[1]; bool = args[2];
-local plr = game.Players
-local targetFound; local plrList = {};
-for i,Player in ipairs(plr:GetPlayers()) do
-if not plr.LocalPlayer then
-table.insert(plrList, Player.Name)
-warn("plrList:",tostring(plrList))
+ -- helper find plr name by partial --
+getgenv().findtarget = function(name)
+name = name:lower();
+local targetPlayer;
+for i,v in ipairs(game:GetService("Players"):GetPlayers()) do
+if v.Name:lower():find(name) or v.DisplayName:lower():find(name) then
+   targetPlayer = v;
+ return targetPlayer 
     end;
-if string.find(Player.Name:lower(), name:lower()) or string.find(Player.DisplayName:lower(), name:lower()) then
-targetFound = (bool=="display") and Player.DisplayName or (bool=="user") and Player.Name or  Player.Name;
-        break
-          end;
-        end;
-  return targetFound
+  end;
+return "no bitxh ass playr found"
 end;
 
 
@@ -1562,7 +1557,7 @@ getgenv().updateTPWalkSpeed = _G.updateTPWalkSpeed;
 
 -- [[ FIND PLR BY PARTIAL NAME ]] -- 
 _G.findTargetPlr = function(name)
-for _, player in ipairs(players:GetPlayers()) do
+for _, player in ipairs(game.Players:GetPlayers()) do
 if player.DisplayName:lower():find(name:lower()) or player.Name:lower():find(name:lower()) then
 if _G.find(_G.immune, player.Name) then
 task.wait(); targetPlayer = nil; 
@@ -1573,7 +1568,8 @@ end
 end;
 end;
 return nil;
-end; getgenv().findTargetPlr = _G.findTargetPlr
+end;
+getgenv().findTargetPlr = _G.findTargetPlr;
 
 --[[ AKALI NOTIF ]]--
 _G.note = function(txt, dur)
