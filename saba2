@@ -201,17 +201,21 @@ Kontent(vars.loop, "loop tp target", function()
 end, "heartbeat")
 
 -- ===== HEAVY GRAVITY (switch) ============================================================== 
-Kontent(vars.switch, "HEAVY", function() gravity("inf") end, function() gravity("normal") end)
+Kontent(vars.switch, "HEAVY (squid game anti-push)", function() gravity("inf") 
+end, 
+function() 
+gravity("normal") 
+end)
 
 -- ===== FREEZE (switch) =====================================================================
-Kontent(vars.switch, "FREEZE URSELF", function() 
+Kontent(vars.switch, "FREEZE (squid game anti-push)", function() 
 freeze(true) 
 end, 
 function() 
 freeze(false) 
 end)
 
--- ===== TP TO RANDOM PLAYER (button) ========================================================
+-- ==TP TO RANDOM PLAYER==--
 Kontent(vars.btn, "TP to random player", function()
 	local players=Players:GetPlayers()
 	local function tpOnce()
