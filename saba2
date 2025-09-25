@@ -1,4 +1,5 @@
---== SGX Kill All (mobile)
+--== SGX Kill All (mobile UI + aliases + globals + fade notifs + minimize/close + dropdown) ==
+-- Tap-safe controls (no accidental clicks while scrolling), press feedback, real loops.
 -- ==========================================================================================
 
 -- Services
@@ -13,493 +14,419 @@ local TeleportService = game:GetService("TeleportService")
 local Workspace       = game:GetService("Workspace")
 
 -- ===== State / helpers ====================================================================
-getgenv().SGX = getgenv().SGX or { conns = {}, loops = {}, toggles = {}, minimized = false }
+getgenv().SGX = getgenv().SGX or {
+  conns = {}, loops = {}, toggles = {}, minimized = false,
+ scrollMoving = false,
+tapThreshold = 140, pressColor = Color3.fromRGB(36,36,44),
+}
 local function track(c) table.insert(SGX.conns, c); return c end
 local function tidyConn(c) if c and c.Disconnect then pcall(function() c:Disconnect() end) end end
+local function tween(i,t,props) TS:Create(i,TweenInfo.new(t,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),props):Play() end
+local function round(i,r) local c=Instance.new("UICorner"); c.CornerRadius=UDim.new(0,r or 6); c.Parent=i end
 
 -- Safe getters
 getgenv().getchar = getgenv().getchar or function()
-    return LP.Character or LP.CharacterAdded:Wait()
+  return LP.Character or LP.CharacterAdded:Wait()
 end
-local function gethrp()
-    local ch = getchar()
-    return ch:WaitForChild("HumanoidRootPart")
+getgenv().gethrp=function()
+local ch = getchar(); return ch:WaitForChild("HumanoidRootPart")
 end
 
--- Player list for partial-name find
+-- Player list cache
 _G.gplrs = _G.gplrs or Players:GetPlayers()
 track(Players.PlayerAdded:Connect(function(p) table.insert(_G.gplrs, p) end))
 track(Players.PlayerRemoving:Connect(function(p)
-    for i,v in ipairs(_G.gplrs) do if v==p then table.remove(_G.gplrs,i) break end end
+  for i,v in ipairs(_G.gplrs) do if v==p then table.remove(_G.gplrs,i) break end end
 end))
 
--- expose common globals for snippet bodies
-getgenv().Players     = Players
-getgenv().LocalPlayer = LP
-getgenv().light       = Lighting
+-- expose for snippets
+getgenv().Players, getgenv().LocalPlayer, getgenv().light = Players, LP, Lighting
 
--- jumpreq shim so `jumpreq:connect(fn)` works in loadstring code
+-- jumpreq shim
 getgenv().jumpreq = getgenv().jumpreq or setmetatable({}, {
-    __index = { connect = function(_, fn) return UIS.JumpRequest:Connect(fn) end }
+  __index = { connect = function(_, fn) return UIS.JumpRequest:Connect(fn) end }
 })
 
--- gravity / freeze helpers
+-- gravity / freeze
 getgenv().gravity = function(mode)
-    if tostring(mode or ""):lower() == "inf" then
-        Workspace.Gravity = 1000; SGX.toggles.heavy = true
-    else
-        Workspace.Gravity = 196.2; SGX.toggles.heavy = false
-    end
+  if tostring(mode or ""):lower()=="inf" then Workspace.Gravity=1000; SGX.toggles.heavy=true
+  else Workspace.Gravity=196.2; SGX.toggles.heavy=false end
 end
 getgenv().freeze = function(state)
-    local ch = getchar()
-    for _,v in ipairs(ch:GetDescendants()) do
-        if v:IsA("BasePart") then v.Anchored = state and true or false end
-    end
-    SGX.toggles.freeze = not not state
+  local ch = getchar()
+  for _,v in ipairs(ch:GetDescendants()) do if v:IsA("BasePart") then v.Anchored = state and true or false end end
+  SGX.toggles.freeze = not not state
 end
 
 local function safe_setfpscap(n)
-    local ok, fn = pcall(function() return getfenv().setfpscap end)
-    if ok and type(fn)=="function" then pcall(fn, n) end
+  local ok, fn = pcall(function() return getfenv().setfpscap end)
+  if ok and type(fn)=="function" then pcall(fn, n) end
 end
 
 -- ===== UI ================================================================================
 local UI = Instance.new("ScreenGui")
-UI.Name = "SGX_GhostUI"
-UI.ResetOnSpawn = false
-UI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-UI.IgnoreGuiInset = true
-UI.Parent = LP:WaitForChild("PlayerGui")
+UI.Name = "SGX_GhostUI"; UI.ResetOnSpawn=false; UI.ZIndexBehavior=Enum.ZIndexBehavior.Sibling
+UI.IgnoreGuiInset=true; UI.Parent = LP:WaitForChild("PlayerGui")
 
 local Root = Instance.new("Frame")
-Root.Name = "Root"
-Root.Size = UDim2.new(0, 340, 0, 260)        -- mobile height
-Root.Position = UDim2.new(0, 18, 0.5, -130)
-Root.BackgroundColor3 = Color3.fromRGB(18,18,22)
-Root.Active = true
-Root.Draggable = true
-Root.Parent = UI
-Instance.new("UICorner", Root).CornerRadius = UDim.new(0, 14)
+Root.Name="Root"; Root.Size = UDim2.new(0,340,0,260); Root.Position=UDim2.new(0,18,0.5,-130)
+Root.BackgroundColor3=Color3.fromRGB(18,18,22); Root.Active=true; Root.Draggable=true; Root.Parent=UI; round(Root,14)
 
 local Top = Instance.new("Frame")
-Top.BackgroundTransparency = 1
-Top.Size = UDim2.new(1, -16, 0, 36)
-Top.Position = UDim2.new(0, 8, 0, 6)
-Top.Parent = Root
+Top.BackgroundTransparency=1; Top.Size=UDim2.new(1,-16,0,36); Top.Position=UDim2.new(0,8,0,6); Top.Parent=Root
 
 local Title = Instance.new("TextLabel")
-Title.Name = "Title"
-Title.Text = "SGX"
-Title.Font = Enum.Font.GothamBold
-Title.TextSize = 20
-Title.TextColor3 = Color3.fromRGB(255,255,255)
-Title.BackgroundTransparency = 1
-Title.Size = UDim2.new(1, -80, 1, 0)
-Title.TextXAlignment = Enum.TextXAlignment.Left
-Title.Parent = Top
+Title.Name="Title"; Title.Text="SGX"; Title.Font=Enum.Font.GothamBold; Title.TextSize=20
+Title.TextColor3=Color3.fromRGB(255,255,255); Title.BackgroundTransparency=1
+Title.Size=UDim2.new(1,-80,1,0); Title.TextXAlignment=Enum.TextXAlignment.Left; Title.Parent=Top
 
 local BtnRow = Instance.new("Frame")
-BtnRow.BackgroundTransparency = 1
-BtnRow.Size = UDim2.new(0, 70, 1, 0)
-BtnRow.Position = UDim2.new(1, -70, 0, 0)
-BtnRow.Parent = Top
-
-local function round(i,r) local c=Instance.new("UICorner"); c.CornerRadius=UDim.new(0,r or 6); c.Parent=i end
-local function tween(i,t,props) TS:Create(i,TweenInfo.new(t,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),props):Play() end
+BtnRow.BackgroundTransparency=1; BtnRow.Size=UDim2.new(0,70,1,0); BtnRow.Position=UDim2.new(1,-70,0,0); BtnRow.Parent=Top
 
 local function makeTopBtn(txt,xoff)
-    local b = Instance.new("TextButton")
-    b.Size = UDim2.new(0, 32, 0, 28)
-    b.Position = UDim2.new(0, xoff, 0.5, -14)
-    b.BackgroundColor3 = Color3.fromRGB(28,28,36)
-    b.TextColor3 = Color3.fromRGB(230,230,230)
-    b.Font = Enum.Font.GothamBold
-    b.TextSize = 14
-    b.Text = txt
-    b.AutoButtonColor = true
-    b.Parent = BtnRow
-    round(b, 8)
-    return b
+  local b=Instance.new("TextButton"); b.Size=UDim2.new(0,32,0,28); b.Position=UDim2.new(0,xoff,0.5,-14)
+  b.BackgroundColor3=Color3.fromRGB(28,28,36); b.TextColor3=Color3.fromRGB(230,230,230)
+  b.Font=Enum.Font.GothamBold; b.TextSize=14; b.Text=txt; b.AutoButtonColor=true; b.Parent=BtnRow; round(b,8); return b
 end
-local MinBtn  = makeTopBtn("–", 0)
-local CloseBtn= makeTopBtn("X", 36)
+local MinBtn=makeTopBtn("–",0); local CloseBtn=makeTopBtn("X",36)
 
-local Line = Instance.new("Frame")
-Line.Size = UDim2.new(1, -16, 0, 1)
-Line.Position = UDim2.new(0, 8, 0, 44)
-Line.BackgroundColor3 = Color3.fromRGB(60,60,70)
-Line.BorderSizePixel = 0
-Line.Parent = Root
+local Line=Instance.new("Frame"); Line.Size=UDim2.new(1,-16,0,1); Line.Position=UDim2.new(0,8,0,44)
+Line.BackgroundColor3=Color3.fromRGB(60,60,70); Line.BorderSizePixel=0; Line.Parent=Root
 
-local Scroll = Instance.new("ScrollingFrame")
-Scroll.Name = "Content"
-Scroll.Size = UDim2.new(1, -16, 1, -56)
-Scroll.Position = UDim2.new(0, 8, 0, 52)
-Scroll.CanvasSize = UDim2.new(0,0,0,0)
-Scroll.ScrollBarThickness = 4
-Scroll.BackgroundTransparency = 1
-Scroll.Parent = Root
+local Scroll=Instance.new("ScrollingFrame")
+Scroll.Name="Content"; Scroll.Size=UDim2.new(1,-16,1,-56); Scroll.Position=UDim2.new(0,8,0,52)
+Scroll.CanvasSize=UDim2.new(0,0,0,0); Scroll.ScrollBarThickness=4; Scroll.BackgroundTransparency=1
+Scroll.Active=true; Scroll.ScrollingEnabled=true; Scroll.Parent=Root
 
-local List = Instance.new("UIListLayout")
-List.Padding = UDim.new(0, 8)
-List.SortOrder = Enum.SortOrder.LayoutOrder
-List.Parent = Scroll
+-- SCROLL GUARD: mark scrolling while CanvasPosition is changing; cool down for 120ms
+local scrollCooldown = 0.12
+local scrollTimer
+track(Scroll:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
+  SGX.scrollMoving=true
+  if scrollTimer then task.cancel(scrollTimer) end
+  scrollTimer = task.delay(scrollCooldown, function() SGX.scrollMoving=false end)
+end))
+
+local List=Instance.new("UIListLayout"); List.Padding=UDim.new(0,8); List.SortOrder=Enum.SortOrder.LayoutOrder; List.Parent=Scroll
 track(List:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-    Scroll.CanvasSize = UDim2.new(0,0,0,List.AbsoluteContentSize.Y+16)
+  Scroll.CanvasSize = UDim2.new(0,0,0,List.AbsoluteContentSize.Y+16)
 end))
 
 -- notifications
-local NotifFrame = Instance.new("Frame")
-NotifFrame.Name = "Notifs"
-NotifFrame.Size = UDim2.new(0, 300, 1, 0)
-NotifFrame.Position = UDim2.new(1, -320, 0, 0)
-NotifFrame.BackgroundTransparency = 1
-NotifFrame.Parent = UI
+local NotifFrame=Instance.new("Frame"); NotifFrame.Name="Notifs"; NotifFrame.Size=UDim2.new(0,300,1,0)
+NotifFrame.Position=UDim2.new(1,-320,0,0); NotifFrame.BackgroundTransparency=1; NotifFrame.Parent=UI
+local NotifList=Instance.new("UIListLayout"); NotifList.Padding=UDim.new(0,6); NotifList.VerticalAlignment=Enum.VerticalAlignment.Bottom
+NotifList.HorizontalAlignment=Enum.HorizontalAlignment.Right; NotifList.Parent=NotifFrame
 
-local NotifList = Instance.new("UIListLayout")
-NotifList.Padding = UDim.new(0, 6)
-NotifList.VerticalAlignment = Enum.VerticalAlignment.Bottom
-NotifList.HorizontalAlignment = Enum.HorizontalAlignment.Right
-NotifList.Parent = NotifFrame
-
-_G.rnote = function(msg, dur)
-    dur = tonumber(dur) or 2
-    local b = Instance.new("TextLabel")
-    b.BackgroundColor3 = Color3.fromRGB(25,25,30)
-    b.TextColor3 = Color3.fromRGB(255,255,255)
-    b.Font = Enum.Font.Gotham
-    b.TextSize = 14
-    b.TextWrapped = true
-    b.Text = tostring(msg)
-    b.Size = UDim2.new(0, 280, 0, 28)
-    b.BackgroundTransparency = 1
-    b.TextTransparency = 1
-    b.Parent = NotifFrame
-    round(b, 8)
-    local pad = Instance.new("UIPadding", b)
-    pad.PaddingTop, pad.PaddingBottom, pad.PaddingLeft, pad.PaddingRight = UDim.new(0,6), UDim.new(0,6), UDim.new(0,8), UDim.new(0,8)
-    b.AutomaticSize = Enum.AutomaticSize.Y
-    tween(b, 0.18, {TextTransparency=0, BackgroundTransparency=0.1})
-    task.delay(dur, function()
-        tween(b, 0.22, {TextTransparency=1, BackgroundTransparency=1})
-        task.wait(0.24); b:Destroy()
-    end)
+_G.rnote=function(msg,dur)
+  dur=tonumber(dur) or 2
+  local b=Instance.new("TextLabel"); b.BackgroundColor3=Color3.fromRGB(25,25,30); b.TextColor3=Color3.fromRGB(255,255,255)
+  b.Font=Enum.Font.Gotham; b.TextSize=14; b.TextWrapped=true; b.Text=tostring(msg); b.Size=UDim2.new(0,280,0,28)
+  b.BackgroundTransparency=1; b.TextTransparency=1; b.Parent=NotifFrame; round(b,8)
+  local pad=Instance.new("UIPadding",b); pad.PaddingTop=UDim.new(0,6); pad.PaddingBottom=UDim.new(0,6); pad.PaddingLeft=UDim.new(0,8); pad.PaddingRight=UDim.new(0,8)
+  b.AutomaticSize=Enum.AutomaticSize.Y; tween(b,0.18,{TextTransparency=0,BackgroundTransparency=0.1})
+  task.delay(dur,function() tween(b,0.22,{TextTransparency=1,BackgroundTransparency=1}); task.wait(0.24); b:Destroy() end)
 end
 
 -- minimize / close
 local function setMinimized(min)
-    SGX.minimized = not not min
-    Scroll.Visible = not SGX.minimized
-    Line.Visible   = not SGX.minimized
-    Root.Size = SGX.minimized and UDim2.new(0,340,0,56) or UDim2.new(0,340,0,260)
+  SGX.minimized = not not min
+  Scroll.Visible = not SGX.minimized; Line.Visible = not SGX.minimized
+  Root.Size = SGX.minimized and UDim2.new(0,340,0,56) or UDim2.new(0,340,0,260)
 end
 track(MinBtn.MouseButton1Click:Connect(function() setMinimized(not SGX.minimized) end))
 
 local function hardClose()
-    for _,h in pairs(SGX.loops) do tidyConn(h) end
-    SGX.loops = {}
-    if _G.infjump then tidyConn(_G.infjump); _G.infjump=nil end
-    _G.klip = true
-    tidyConn(_G.noklipping); _G.noklipping=nil
-    tidyConn(_G.respawned);  _G.respawned=nil
-    if SGX.toggles.heavy then pcall(function() gravity("normal") end) end
-    if SGX.toggles.freeze then pcall(function() freeze(false) end) end
-    for _,c in ipairs(SGX.conns) do tidyConn(c) end
-    SGX.conns = {}
-    pcall(function() UI:Destroy() end)
-    _G.rnote = nil
+  for _,h in pairs(SGX.loops) do tidyConn(h) end; SGX.loops={}
+  if _G.infjump then tidyConn(_G.infjump); _G.infjump=nil end
+  _G.klip=true; tidyConn(_G.noklipping); _G.noklipping=nil; tidyConn(_G.respawned); _G.respawned=nil
+  if SGX.toggles.heavy then pcall(function() gravity("normal") end) end
+  if SGX.toggles.freeze then pcall(function() freeze(false) end) end
+  for _,c in ipairs(SGX.conns) do tidyConn(c) end; SGX.conns={}
+  pcall(function() UI:Destroy() end); _G.rnote=nil
 end
 track(CloseBtn.MouseButton1Click:Connect(hardClose))
 
+-- ===== Scroll-safe TAP handler with press feedback ========================================
+local function guardClick(guiObject, onActivate, feedbackFrame, baseColor)
+  local downPos, moved, pressed=false,false,false
+  baseColor = baseColor or (feedbackFrame and feedbackFrame.BackgroundColor3)
+
+  local function setPressed(on)
+    if not feedbackFrame then return end
+    if on then feedbackFrame.BackgroundColor3 = SGX.pressColor; pressed=true
+    else feedbackFrame.BackgroundColor3 = baseColor; pressed=false end
+  end
+
+  track(guiObject.InputBegan:Connect(function(io)
+    if io.UserInputType==Enum.UserInputType.Touch or io.UserInputType==Enum.UserInputType.MouseButton1 then
+      downPos = io.Position; moved=false
+      if not SGX.scrollMoving then setPressed(true) end
+    end
+  end))
+
+  track(guiObject.InputChanged:Connect(function(io)
+    if not downPos then return end
+    if io.UserInputType==Enum.UserInputType.Touch or io.UserInputType==Enum.UserInputType.MouseMovement then
+      if (io.Position - downPos).Magnitude > SGX.tapThreshold then moved = true end
+      if moved or SGX.scrollMoving then if pressed then setPressed(false) end end
+    end
+  end))
+
+  track(guiObject.InputEnded:Connect(function(io)
+    if not downPos then return end
+    if io.UserInputType==Enum.UserInputType.Touch or io.UserInputType==Enum.UserInputType.MouseButton1 then
+      local doIt = (not moved) and (not SGX.scrollMoving)
+      downPos=nil
+      if doIt then
+        if pressed then task.delay(0.06,function() setPressed(false) end) else setPressed(false) end
+        onActivate()
+      else
+        setPressed(false)
+      end
+    end
+  end))
+end
+
 -- ===== Controls (builders) =================================================================
 local function makeRow(height)
-    local f = Instance.new("Frame")
-    f.Size = UDim2.new(1, -8, 0, height or 36)
-    f.BackgroundColor3 = Color3.fromRGB(28,28,36)
-    f.Parent = Scroll
-    round(f, 10)
-    local pad = Instance.new("UIPadding", f)
-    pad.PaddingTop, pad.PaddingBottom, pad.PaddingLeft, pad.PaddingRight = UDim.new(0,4), UDim.new(0,4), UDim.new(0,6), UDim.new(0,6)
-    return f
+  local f=Instance.new("Frame"); f.Size=UDim2.new(1,-8,0,height or 36); f.BackgroundColor3=Color3.fromRGB(28,28,36)
+  f.Parent=Scroll; round(f,10)
+  local pad=Instance.new("UIPadding",f); pad.PaddingTop=UDim.new(0,4); pad.PaddingBottom=UDim.new(0,4); pad.PaddingLeft=UDim.new(0,6); pad.PaddingRight=UDim.new(0,6)
+  return f
 end
 
 local function makeButton(label)
-    local f = makeRow(36)
-    local b = Instance.new("TextButton")
-    b.BackgroundTransparency = 1
-    b.Size = UDim2.new(1, 0, 1, 0)
-    b.Text = label
-    b.Font = Enum.Font.Gotham
-    b.TextSize = 15
-    b.TextColor3 = Color3.fromRGB(235,235,235)
-    b.Parent = f
-    return b
+  local f = makeRow(36)
+  local b = Instance.new("TextButton")
+  b.BackgroundTransparency=1; b.AutoButtonColor=true; b.Size=UDim2.new(1,0,1,0)
+  b.Text=label; b.Font=Enum.Font.Gotham; b.TextSize=15; b.TextColor3=Color3.fromRGB(235,235,235); b.Parent=f
+  return f,b
 end
 
 local function makeSwitch(label)
-    local f = makeRow(42)
-
-    local txt = Instance.new("TextLabel")
-    txt.BackgroundTransparency = 1
-    txt.Size = UDim2.new(1, -70, 1, 0)
-    txt.TextXAlignment = Enum.TextXAlignment.Left
-    txt.Font = Enum.Font.Gotham
-    txt.TextSize = 15
-    txt.TextColor3 = Color3.fromRGB(235,235,235)
-    txt.Text = label
-    txt.Parent = f
-
-    local knob = Instance.new("Frame")
-    knob.Size = UDim2.new(0, 52, 0, 26)
-    knob.Position = UDim2.new(1, -58, 0.5, -13)
-    knob.BackgroundColor3 = Color3.fromRGB(70,70,78) -- OFF gray
-    knob.Parent = f
-    round(knob, 13)
-
-    local dot = Instance.new("Frame")
-    dot.Size = UDim2.new(0, 22, 0, 22)
-    dot.Position = UDim2.new(0, 2, 0, 2)
-    dot.BackgroundColor3 = Color3.fromRGB(210,210,210)
-    dot.Parent = knob
-    round(dot, 11)
-
-    return f, knob, dot, txt
+  local f = makeRow(42)
+  local txt=Instance.new("TextLabel"); txt.BackgroundTransparency=1; txt.Size=UDim2.new(1,-70,1,0)
+  txt.TextXAlignment=Enum.TextXAlignment.Left; txt.Font=Enum.Font.Gotham; txt.TextSize=15; txt.TextColor3=Color3.fromRGB(235,235,235)
+  txt.Text=label; txt.Parent=f
+  local knob=Instance.new("Frame"); knob.Size=UDim2.new(0,52,0,26); knob.Position=UDim2.new(1,-58,0.5,-13)
+  knob.BackgroundColor3=Color3.fromRGB(70,70,78); knob.Parent=f; round(knob,13)
+  local dot=Instance.new("Frame"); dot.Size=UDim2.new(0,22,0,22); dot.Position=UDim2.new(0,2,0,2)
+  dot.BackgroundColor3=Color3.fromRGB(210,210,210); dot.Parent=knob; round(dot,11)
+  -- Hitbox
+  local hit=Instance.new("TextButton"); hit.BackgroundTransparency=1; hit.Text=""; hit.AutoButtonColor=false; hit.Size=UDim2.new(1,0,1,0); hit.Parent=f
+  return f,knob,dot,txt,hit
 end
 
 local function makeLoop(label)
-    local f = makeRow(42)
-
-    local txt = Instance.new("TextLabel")
-    txt.BackgroundTransparency = 1
-    txt.Size = UDim2.new(1, -50, 1, 0)
-    txt.TextXAlignment = Enum.TextXAlignment.Left
-    txt.Font = Enum.Font.Gotham
-    txt.TextSize = 15
-    txt.TextColor3 = Color3.fromRGB(235,235,235)
-    txt.Text = label
-    txt.Parent = f
-
-    local ring = Instance.new("Frame")
-    ring.Size = UDim2.new(0, 22, 0, 22)
-    ring.Position = UDim2.new(1, -28, 0.5, -11)
-    ring.BackgroundColor3 = Color3.fromRGB(50,50,58)
-    ring.Parent = f
-    round(ring, 11)
-
-    local fill = Instance.new("Frame")
-    fill.Size = UDim2.new(0, 0, 1, 0)
-    fill.BackgroundColor3 = Color3.fromRGB(46, 204, 113) -- green
-    fill.Parent = ring
-    round(fill, 11)
-
-    return f, ring, fill, txt
+  local f = makeRow(42)
+  local txt=Instance.new("TextLabel"); txt.BackgroundTransparency=1; txt.Size=UDim2.new(1,-50,1,0)
+  txt.TextXAlignment=Enum.TextXAlignment.Left; txt.Font=Enum.Font.Gotham; txt.TextSize=15; txt.TextColor3=Color3.fromRGB(235,235,235)
+  txt.Text=label; txt.Parent=f
+  local ring=Instance.new("Frame"); ring.Size=UDim2.new(0,22,0,22); ring.Position=UDim2.new(1,-28,0.5,-11)
+  ring.BackgroundColor3=Color3.fromRGB(50,50,58); ring.Parent=f; round(ring,11)
+  local fill=Instance.new("Frame"); fill.Size=UDim2.new(0,0,1,0); fill.BackgroundColor3=Color3.fromRGB(46,204,113); fill.Parent=ring; round(fill,11)
+  -- Hitbox
+  local hit=Instance.new("TextButton"); hit.BackgroundTransparency=1; hit.Text=""; hit.AutoButtonColor=false; hit.Size=UDim2.new(1,0,1,0); hit.Parent=f
+  return f,ring,fill,txt,hit
 end
 
 local function makeTextBox(placeholder)
-    local f = makeRow(38)
+  local f = makeRow(38)
+  local tb=Instance.new("TextBox"); tb.BackgroundTransparency=1; tb.Size=UDim2.new(1,-40,1,0); tb.Position=UDim2.new(0,6,0,0)
+  tb.Font=Enum.Font.Gotham; tb.TextSize=15; tb.PlaceholderText=placeholder or "enter text"; tb.Text=""; tb.TextColor3=Color3.fromRGB(235,235,235)
+  tb.ClearTextOnFocus=false; tb.Parent=f
+  local clearBtn=Instance.new("TextButton"); clearBtn.Size=UDim2.new(0,28,0,28); clearBtn.Position=UDim2.new(1,-32,0.5,-14)
+  clearBtn.BackgroundColor3=Color3.fromRGB(200,40,40); clearBtn.TextColor3=Color3.fromRGB(255,255,255)
+  clearBtn.Font=Enum.Font.GothamBold; clearBtn.TextSize=16; clearBtn.Text="X"; clearBtn.AutoButtonColor=true; clearBtn.Parent=f; round(clearBtn,8)
+  guardClick(clearBtn,function() tb.Text=""; tb:ReleaseFocus() end, clearBtn, clearBtn.BackgroundColor3)
+  return tb,f
+end
 
-    local tb = Instance.new("TextBox")
-    tb.BackgroundTransparency = 1
-    tb.Size = UDim2.new(1, -40, 1, 0) -- room for X
-    tb.Position = UDim2.new(0, 6, 0, 0)
-    tb.Font = Enum.Font.Gotham
-    tb.TextSize = 15
-    tb.PlaceholderText = placeholder or "enter text"
-    tb.Text = ""
-    tb.TextColor3 = Color3.fromRGB(235,235,235)
-    tb.ClearTextOnFocus = false
-    tb.Parent = f
+-- Dropdown (collapsible list)
+local function makeDropdown(label, itemsProvider)
+  local holder = makeRow(42)
+  local header = Instance.new("TextButton"); header.BackgroundTransparency=1; header.Size=UDim2.new(1,0,1,0)
+  header.Text=label.."  ▾"; header.TextXAlignment=Enum.TextXAlignment.Left; header.Font=Enum.Font.Gotham
+  header.TextSize=15; header.TextColor3=Color3.fromRGB(235,235,235); header.AutoButtonColor=true; header.Parent=holder
 
-    -- red X clear
-    local clearBtn = Instance.new("TextButton")
-    clearBtn.Size = UDim2.new(0, 28, 0, 28)
-    clearBtn.Position = UDim2.new(1, -32, 0.5, -14)
-    clearBtn.BackgroundColor3 = Color3.fromRGB(200,40,40)
-    clearBtn.TextColor3 = Color3.fromRGB(255,255,255)
-    clearBtn.Font = Enum.Font.GothamBold
-    clearBtn.TextSize = 16
-    clearBtn.Text = "X"
-    clearBtn.AutoButtonColor = true
-    clearBtn.Parent = f
-    round(clearBtn, 8)
-    track(clearBtn.MouseButton1Click:Connect(function()
-        tb.Text = ""
-        tb:ReleaseFocus()
-    end))
+  local listFrame=Instance.new("Frame"); listFrame.Size=UDim2.new(1,-8,0,0); listFrame.BackgroundColor3=Color3.fromRGB(24,24,30)
+  listFrame.Visible=false; listFrame.Parent=Scroll; round(listFrame,10)
+  local listPad=Instance.new("UIPadding",listFrame); listPad.PaddingTop=UDim.new(0,6); listPad.PaddingBottom=UDim.new(0,6); listPad.PaddingLeft=UDim.new(0,6); listPad.PaddingRight=UDim.new(0,6)
+  local uiList=Instance.new("UIListLayout"); uiList.Padding=UDim.new(0,6); uiList.Parent=listFrame
 
-    return tb
+  local function rebuild()
+    for _,c in ipairs(listFrame:GetChildren()) do if c:IsA("TextButton") then c:Destroy() end end
+    local items={}
+    if type(itemsProvider)=="function" then local ok,data=pcall(itemsProvider); if ok and type(data)=="table" then items=data end
+    elseif type(itemsProvider)=="table" then items=itemsProvider end
+    for _,name in ipairs(items) do
+      local item=Instance.new("TextButton"); item.Size=UDim2.new(1,-12,0,30); item.BackgroundColor3=Color3.fromRGB(34,34,42)
+      item.TextColor3=Color3.fromRGB(240,240,240); item.Font=Enum.Font.Gotham; item.TextSize=14; item.Text=tostring(name); item.AutoButtonColor=true; item.Parent=listFrame; round(item,8)
+      guardClick(item,function()
+        -- Default action for Players list: set target
+        for _,p in ipairs(Players:GetPlayers()) do if p.Name==name or p.DisplayName==name then _G.targetPlayer=p; _G.rnote("target: "..p.Name,2); break end end
+      end, item, item.BackgroundColor3)
+    end
+    listFrame.Size = UDim2.new(1,-8,0, uiList.AbsoluteContentSize.Y + 12)
+  end
+  track(uiList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+    if listFrame.Visible then listFrame.Size = UDim2.new(1,-8,0, uiList.AbsoluteContentSize.Y + 12) end
+  end))
+
+  guardClick(header,function()
+    listFrame.Visible = not listFrame.Visible
+    header.Text = label .. (listFrame.Visible and "  ▴" or "  ▾")
+    if listFrame.Visible then rebuild() end
+  end, holder, holder.BackgroundColor3)
+
+  return {frame=listFrame, refresh=rebuild}
 end
 
 -- ===== Public API (aliases, fokus, AddContent with loop channels) ==========================
 getgenv().vars = {
-    btn="btn", button="btn", Button="btn", Btn="btn",
-    switch="switch", switxh="switch", Switch="switch", Switxh="switch",
-    loop="loop", tog="loop", toggle="loop",
-    txt="txt", textbox="txt", text="txt", Textbox="txt"
+  btn="btn", button="btn", Button="btn", Btn="btn",
+  switch="switch", switxh="switch", Switch="switch", Switxh="switch",
+  loop="loop", tog="loop", toggle="loop",
+  txt="txt", textbox="txt", text="txt", Textbox="txt",
+  list="list", dropdown="list", List="list", Dropdown="list",
+  Dropdownlist="list", dropdownlist="list", DropdownList="list"
 }
 
-getgenv().fokus = function(tb)
-    return { connect = function(_, fn)
-        if tb and typeof(tb)=="Instance" and tb:IsA("TextBox") then
-            return track(tb.FocusLost:Connect(function(enter) fn(enter) end))
-        else return {Disconnect=function()end} end
-    end }
+getgenv().fokus=function(tb)
+  return { connect=function(_,fn)
+    if tb and typeof(tb)=="Instance" and tb:IsA("TextBox") then
+      return track(tb.FocusLost:Connect(function(enter) fn(enter) end))
+    else return {Disconnect=function()end} end
+  end }
 end
 
-getgenv().AddTitle = function(t)
-    Title.Text = tostring(t)
-end
+getgenv().AddTitle=function(t) Title.Text=tostring(t) end
 
 -- snippet env
-local shared_env = getgenv()._SGX_ENV
+local shared_env=getgenv()._SGX_ENV
 if not shared_env then
-    shared_env = setmetatable({
-        _G=_G, game=game, workspace=workspace, Workspace=workspace,
-        task=task, spawn=task.spawn, wait=task.wait,
-        print=print, warn=warn, error=error, tonumber=tonumber, tostring=tostring, pairs=pairs, ipairs=ipairs,
-        Players=Players, LocalPlayer=LP, UIS=UIS, RS=RS, TS=TS, Lighting=Lighting, HttpService=HttpService, TeleportService=TeleportService,
-        getchar=getgenv().getchar, rnote=_G.rnote, light=Lighting, jumpreq=getgenv().jumpreq, gravity=getgenv().gravity, freeze=getgenv().freeze,
-    }, {__index = getfenv()})
-    getgenv()._SGX_ENV = shared_env
+  shared_env=setmetatable({
+    _G=_G, game=game, workspace=workspace, Workspace=workspace,
+    task=task, spawn=task.spawn, wait=task.wait,
+    print=print, warn=warn, error=error, tonumber=tonumber, tostring=tostring, pairs=pairs, ipairs=ipairs,
+    Players=Players, LocalPlayer=LP, UIS=UIS, RS=RS, TS=TS, Lighting=Lighting, HttpService=HttpService, TeleportService=TeleportService,
+    getchar=getgenv().getchar, rnote=_G.rnote, light=Lighting, jumpreq=getgenv().jumpreq, gravity=getgenv().gravity, freeze=getgenv().freeze,
+  }, {__index=getfenv()})
+  getgenv()._SGX_ENV=shared_env
 end
 local function runSnippet(src)
-    if type(src)~="string" or #src==0 then return end
-    local f, e = loadstring(src); if not f then _G.rnote("code error: "..tostring(e),2) return end
-    setfenv(f, shared_env); local ok, err = pcall(f); if not ok then _G.rnote("runtime error: "..tostring(err),2) end
+  if type(src)~="string" or #src==0 then return end
+  local f,e=loadstring(src); if not f then _G.rnote("code error: "..tostring(e),2) return end
+  setfenv(f,shared_env); local ok,err=pcall(f); if not ok then _G.rnote("runtime error: "..tostring(err),2) end
 end
 
 local function resolveChannel(s)
-    s = tostring(s or "heartbeat"):lower()
-    if s=="renderstepped" or s=="render" then return RS.RenderStepped
-    elseif s=="stepped" then return RS.Stepped
-    elseif s=="loop" then return RS.Heartbeat
-    else return RS.Heartbeat end
+  s=tostring(s or "heartbeat"):lower()
+  if s=="renderstepped" or s=="render" then return RS.RenderStepped
+  elseif s=="stepped" then return RS.Stepped
+  elseif s=="loop" then return RS.Heartbeat
+  else return RS.Heartbeat end
 end
 
-getgenv().AddContent = function(kind, label, onCode, offOrChannel)
-    local k = tostring(kind or ""):lower()
-    for alias,target in pairs(getgenv().vars) do
-        if alias:lower()==k then kind = target break end
-    end
-    if kind == "btn" then
-        local b = makeButton(label)
-        track(b.MouseButton1Click:Connect(function() runSnippet(onCode) end))
-        return b
+getgenv().AddContent=function(kind,label,onCodeOrItems,offOrChannel)
+  local k=tostring(kind or ""):lower()
+  for alias,target in pairs(getgenv().vars) do if alias:lower()==k then kind=target break end end
 
-    elseif kind == "switch" then
-        local row, knob, dot = makeSwitch(label)
-        local on = false
-        track(row.InputBegan:Connect(function(io)
-            if io.UserInputType ~= Enum.UserInputType.MouseButton1 and io.UserInputType ~= Enum.UserInputType.Touch then return end
-            on = not on
-            tween(dot, 0.16, {Position = on and UDim2.new(1, -24, 0, 2) or UDim2.new(0, 2, 0, 2)})
-            tween(knob, 0.16, {BackgroundColor3 = on and Color3.fromRGB(46,204,113) or Color3.fromRGB(70,70,78)})
-            if on then runSnippet(onCode) else if offOrChannel then runSnippet(offOrChannel) end end
-        end))
-        return row
+  if kind=="btn" then
+    local row,b=makeButton(label)
+    guardClick(b,function() runSnippet(onCodeOrItems) end, row, row.BackgroundColor3)
+    return b
 
-    elseif kind == "loop" then
-        local row, ring, fill = makeLoop(label)
-        local on = false
-        local conn
-        local chan = resolveChannel(offOrChannel)
-        local function setFill(v)
-            local w = math.floor(22 * math.clamp(v,0,1))
-            tween(fill, 0.16, {Size = UDim2.new(0, w, 1, 0)})
-        end
-        track(row.InputBegan:Connect(function(io)
-            if io.UserInputType ~= Enum.UserInputType.MouseButton1 and io.UserInputType ~= Enum.UserInputType.Touch then return end
-            on = not on
-            if on then
-                setFill(1)
-                conn = chan:Connect(function() task.spawn(runSnippet, onCode) end)
-                table.insert(SGX.loops, conn)
-            else
-                setFill(0); tidyConn(conn); conn=nil
-            end
-        end))
-        return row
+  elseif kind=="switch" then
+    local row,knob,dot,_,hit = makeSwitch(label)
+    local on=false
+    guardClick(hit,function()
+      on=not on
+      tween(dot,0.16,{Position=on and UDim2.new(1,-24,0,2) or UDim2.new(0,2,0,2)})
+      tween(knob,0.16,{BackgroundColor3=on and Color3.fromRGB(46,204,113) or Color3.fromRGB(70,70,78)})
+      if on then runSnippet(onCodeOrItems) else if offOrChannel then runSnippet(offOrChannel) end end
+    end, row, row.BackgroundColor3)
+    return row
 
-    elseif kind == "txt" then
-        return makeTextBox(label)
-    end
+  elseif kind=="loop" then
+    local row,ring,fill,_,hit = makeLoop(label)
+    local on,conn=false,nil
+    local chan=resolveChannel(offOrChannel)
+    local function setFill(v) local w=math.floor(22*math.clamp(v,0,1)); tween(fill,0.16,{Size=UDim2.new(0,w,1,0)}) end
+    guardClick(hit,function()
+      on=not on
+      if on then
+        setFill(1)
+        conn = chan:Connect(function() task.spawn(runSnippet,onCodeOrItems) end)
+        table.insert(SGX.loops,conn)
+      else
+        setFill(0); tidyConn(conn); conn=nil
+      end
+    end, row, row.BackgroundColor3)
+    return row
+
+  elseif kind=="txt" then
+    local tb = select(1, makeTextBox(label)); return tb
+
+  elseif kind=="list" then
+    local dd = makeDropdown(label,onCodeOrItems); return dd
+  end
 end
 
--- ===== Your content wired in ===============================================================
+--========================--
+--========================--
+
 AddTitle("squid game x")
 
--- Cache orig position when HRP is ready
-task.spawn(function()
-    local ok, h = pcall(gethrp)
-    if ok and h then getgenv().ogpos = h.CFrame end
-end)
+-- Cache original pos
+task.spawn(function() local ok,h=pcall(gethrp); if ok and h then getgenv().ogpos=h.CFrame end end)
 
 -- GLASS GAME
 AddContent(vars.btn, "GLASS GAME", [[ 
-local ws = game:GetService("Workspace")
+local ws=game:GetService("Workspace")
 repeat task.wait() until ws:FindFirstChild("Map") and ws.Map:FindFirstChild("Glass")
 spawn(function()
-    repeat task.wait() until ws.Map.Glass:FindFirstChild("Map") and ws.Map.Glass.Map:FindFirstChild("KillSecure")
-    local bottomkillpart = ws.Map.Glass.Map.KillSecure;
-    if bottomkillpart then 
-        bottomkillpart:Destroy(); 
-        _G.rnote("destroyed bottom kill part", 5)
-    end
+  repeat task.wait() until ws.Map.Glass:FindFirstChild("Map") and ws.Map.Glass.Map:FindFirstChild("KillSecure")
+  local bottomkillpart=ws.Map.Glass.Map.KillSecure; if bottomkillpart then bottomkillpart:Destroy(); _G.rnote("destroyed bottom kill part",5) end
 end)
-local glassesFolder = ws.Map.Glass:FindFirstChild("Glasses")
-if not glassesFolder then _G.rnote("no glasses folder found", 3) return end
-local glasses = glassesFolder:GetChildren();
-for _, revealed in pairs(glasses) do
-    if revealed.BrickColor == BrickColor.new("Really red") then return end
-end;
-for _, glass in pairs(glasses) do
-    if glass:IsA("BasePart") then
-        glass.Transparency = 0;
-        if glass.CanCollide then
-            glass.BrickColor = BrickColor.new("Pink")
-        else
-            glass.BrickColor = BrickColor.new("Really red")
-            glass.CanCollide = true
-            glass.CanTouch = false
-            _G.rnote("godmode enabled", 2)
-        end
-    end
-end;
+local gf=ws.Map.Glass:FindFirstChild("Glasses"); if not gf then _G.rnote("no glasses folder found",3) return end
+local glasses=gf:GetChildren()
+for _,revealed in pairs(glasses) do if revealed.BrickColor==BrickColor.new("Really red") then return end end
+for _,glass in pairs(glasses) do
+  if glass:IsA("BasePart") then
+    glass.Transparency=0
+    if glass.CanCollide then glass.BrickColor=BrickColor.new("Pink")
+    else glass.BrickColor=BrickColor.new("Really red"); glass.CanCollide=true; glass.CanTouch=false; _G.rnote("godmode enabled",2) end
+  end
+end
 ]])
 
 -- LIGHTS (switch)
 AddContent(vars.switch, "turn on light 💡",
 [[
-lights = true
+lights=true
 while lights do task.wait(.5)
-    light.Brightness = 1
-    light.ClockTime = 13.5
-    light.FogEnd = 1e5
-    light.GlobalShadows = false     
-    light.OutdoorAmbient = Color3.fromRGB(128,128,128)
+  light.Brightness=1; light.ClockTime=13.5; light.FogEnd=1e5
+  light.GlobalShadows=false; light.OutdoorAmbient=Color3.fromRGB(128,128,128)
 end
 ]],
 [[
-lights = false
-light.ClockTime = 0
-light.GlobalShadows = true
+lights=false; light.ClockTime=0; light.GlobalShadows=true
 ]])
 
--- Jump pulse (loop)
+-- Jump pulse (loop; heartbeat)
 AddContent(vars.loop, "jump", [[
-local ch = getchar()
-local h = ch:FindFirstChildOfClass("Humanoid")
-if h then h.Jump=true end
-]], "heartbeat")
+local ch=getchar();
+local h=ch:FindFirstChildOfClass("Humanoid");
+h.Jump=true
+]])
 
 -- INF JUMP (switch)
-AddContent(vars.switch, "inf jump", 
+AddContent(vars.switch, "inf jump",
 [[
-_G.infjump = jumpreq:connect(function()
-    local ch = getchar()
-    local h = ch:FindFirstChildOfClass('Humanoid')
-    if h then h:ChangeState("Jumping") end
+_G.infjump=jumpreq:connect(function()
+  local ch=getchar(); local h=ch:FindFirstChildOfClass('Humanoid'); if h then h:ChangeState("Jumping") end
 end)
 ]],
 [[
@@ -507,155 +434,130 @@ if _G.infjump then _G.infjump:Disconnect() _G.infjump=nil end
 ]])
 
 -- NOCLIP (switch)
-AddContent(vars.switch, "noklip",
+AddContent(vars.switch,"noklip",
 [[
-local RunService = game:GetService("RunService")
-_G.klip = false
+local RunService=game:GetService("RunService"); _G.klip=false
 local function loopnoklip()
-    local char = getchar()
-    while not _G.klip do task.wait(0.01)
-        for _, v in ipairs(char:GetDescendants()) do
-            if v:IsA("BasePart") and v.CanCollide == true then
-                v.CanCollide = false
-            end
-        end
-        RunService.Heartbeat:Wait()
-    end
+  local char=getchar()
+  while not _G.klip do task.wait(0.01)
+    for _,v in ipairs(char:GetDescendants()) do if v:IsA("BasePart") and v.CanCollide then v.CanCollide=false end end
+    RunService.Heartbeat:Wait()
+  end
 end
-_G.noklipping = RunService.Heartbeat:Connect(loopnoklip)
-_G.respawned = Players.LocalPlayer.CharacterAdded:Connect(function()
-    task.wait()
-    if not _G.klip then task.spawn(loopnoklip) end
-end)
+_G.noklipping=RunService.Heartbeat:Connect(loopnoklip)
+_G.respawned=Players.LocalPlayer.CharacterAdded:Connect(function() task.wait(); if not _G.klip then task.spawn(loopnoklip) end end)
 ]],
 [[
-_G.klip = true
-if _G.noklipping then _G.noklipping:Disconnect() _G.noklipping=nil end
+_G.klip=true; if _G.noklipping then _G.noklipping:Disconnect() _G.noklipping=nil end
 if _G.respawned then _G.respawned:Disconnect() _G.respawned=nil end
 ]])
 
 -- Target TEXTBOX + fokus
-_G.targetPlayer = nil
+_G.targetPlayer=nil
 local function findPlrName(name)
-    for _, target in ipairs(_G.gplrs) do
-        if target.DisplayName:lower():find(name:lower()) or target.Name:lower():find(name:lower()) then
-            _G.targetPlayer = target
-            return target
-        end
-    end
-    return nil
+  for _,t in ipairs(_G.gplrs) do if t.DisplayName:lower():find(name:lower()) or t.Name:lower():find(name:lower()) then _G.targetPlayer=t; return t end end
+  return nil
 end
 local targetbox = AddContent(vars.txt, "target name...")
 fokus(targetbox):connect(function(enter)
-    local txt = targetbox.Text
-    if txt and #txt > 0 then
-        local t = findPlrName(txt)
-        if t then _G.rnote("target: "..t.Name, 3) else _G.rnote("no target match",2) end
-    else
-        _G.targetPlayer = nil
-        _G.rnote("target cleared",1.2)
-    end
+  local txt=targetbox.Text
+  if txt and #txt>0 then local t=findPlrName(txt); if t then _G.rnote("target: "..t.Name,3) else _G.rnote("no target match",2) end
+  else _G.targetPlayer=nil; _G.rnote("target cleared",1.2) end
 end)
 
--- Loop TP target (loop)
+-- Players dropdown (auto-updates; selecting sets target)
+local function listOfPlayers()
+local players={}
+for _,p in ipairs(Players:GetPlayers()) do table.insert(players,p.DisplayName)
+    end 
+   return items
+end;
+
+local dd = AddContent(vars.list, "players", listOfPlayers)
+
+track(Players.PlayerAdded:Connect(function()
+if dd and dd.refresh then dd.refresh() 
+     end
+end))
+track(Players.PlayerRemoving:Connect(function()
+if dd and dd.refresh then dd.refresh() 
+      end 
+end))
+
+-- Loop TP target (loop; renderstepped)
 AddContent(vars.loop, "loop tp target", [[
 if _G.targetPlayer and _G.targetPlayer.Character and _G.targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
-    local my = getchar()
-    local hrp = my:FindFirstChild("HumanoidRootPart")
-    if hrp then
-        hrp.CFrame = CFrame.new(_G.targetPlayer.Character.HumanoidRootPart.Position) * CFrame.new(0, 0, 2.33)
-    end
+  local my=getchar(); local hrp=my:FindFirstChild("HumanoidRootPart")
+  if hrp then hrp.CFrame = CFrame.new(_G.targetPlayer.Character.HumanoidRootPart.Position) * CFrame.new(0,0,2.33) end
 end
-]], "renderstepped")
+]], "heartbeat")
 
 -- HEAVY gravity (switch)
-AddContent(vars.switch, "HEAVY", [[ gravity"inf" ]], [[ gravity"normal" ]])
+AddContent(vars.switch,"HEAVY", [[ gravity"inf" ]],
+[[ gravity"normal" ]])
 
--- FREEZE (switch; supports your switxh alias too)
-AddContent(vars.Switxh, "FREEZE URSELF", [[ freeze(true) ]], [[ freeze(false) ]])
+-- FREEZE (switch; switxh alias also works)
+AddContent(vars.Switxh,"FREEZE URSELF", 
+[[ freeze(true) ]], [[ freeze(false) ]])
 
 -- TP to random player (button)
-AddContent(vars.btn, "TP to random player", [[
-local players = Players:GetPlayers()
+AddContent(vars.btn,"TP to random player", [[
+local players=Players:GetPlayers()
 local function teleportFunction()
-    local tries = 0
-    while tries < 10 do
-        local randomPlayer = players[math.random(1, #players)]
-        if randomPlayer and randomPlayer ~= Players.LocalPlayer and randomPlayer.Character and randomPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            local my = getchar(); local hrp = my:FindFirstChild("HumanoidRootPart")
-            if hrp then hrp.CFrame = randomPlayer.Character.HumanoidRootPart.CFrame end
-            return
-        end
-        tries += 1; task.wait()
+  local tries=0
+  while tries<10 do
+    local r=players[math.random(1,#players)]
+    if r and r~=Players.LocalPlayer and r.Character and r.Character:FindFirstChild("HumanoidRootPart") then
+      local my=getchar(); local hrp=my:FindFirstChild("HumanoidRootPart"); if hrp then hrp.CFrame=r.Character.HumanoidRootPart.CFrame end; return
     end
+    tries+=1; task.wait()
+  end
 end
-if not _G._tp_rand_hooked then
-    _G._tp_rand_hooked = true
-    Players.LocalPlayer.CharacterAdded:Connect(function()
-        task.wait(0.25); teleportFunction()
-    end)
-end
+if not _G._tp_rand_hooked then _G._tp_rand_hooked=true; Players.LocalPlayer.CharacterAdded:Connect(function() task.wait(0.25); teleportFunction() end) end
 teleportFunction()
 ]])
 
 -- Join hidden game (button)
-AddContent(vars.btn, "join hidden game", [[
+AddContent(vars.btn,"join hidden game", [[
 _G.rnote("searxhing...",.6)
-local Number, SomeSRVS, found = 0, {}, 0
-local ok, data = pcall(function()
-    return HttpService:JSONDecode(game:HttpGetAsync("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"))
-end)
+local Number,SomeSRVS,found=0,{},0
+local ok,data=pcall(function() return HttpService:JSONDecode(game:HttpGetAsync("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100")) end)
 if ok and data and data.data then
-    for _,v in ipairs(data.data) do
-        if type(v) == "table" and v.maxPlayers > v.playing and v.id ~= game.JobId then
-            if v.playing > Number then Number = v.playing table.insert(SomeSRVS, v.id) found = v.playing end
-        end
+  for _,v in ipairs(data.data) do
+    if type(v)=="table" and v.maxPlayers>v.playing and v.id~=game.JobId then
+      if v.playing>Number then Number=v.playing; table.insert(SomeSRVS,v.id); found=v.playing end
     end
+  end
 end
-if(#SomeSRVS>0)then
-    _G.rnote("serverhopping | player kount: " .. found); task.wait(1)
-    TeleportService:TeleportToPlaceInstance(game.PlaceId, SomeSRVS[1])
+if #SomeSRVS>0 then _G.rnote("serverhopping | player kount: "..found); task.wait(1); TeleportService:TeleportToPlaceInstance(game.PlaceId,SomeSRVS[1])
 else
-    _G.rnote("none found...teleporting to small server"); task.wait(1.2)
-    local bestId, bestCount = nil, 1e9
-    local ok2, data2 = pcall(function()
-        return HttpService:JSONDecode(game:HttpGetAsync("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"))
-    end)
-    if ok2 and data2 and data2.data then
-        for _,v in ipairs(data2.data) do
-            if v.id ~= game.JobId and v.playing < bestCount then bestCount=v.playing; bestId=v.id end
-        end
-    end
-    if bestId then TeleportService:TeleportToPlaceInstance(game.PlaceId, bestId) else _G.rnote("none found",.6) end
+  _G.rnote("none found...teleporting to small server"); task.wait(1.4)
+  local bestId,bestCount=nil,1e9
+  local ok2,data2=pcall(function() return HttpService:JSONDecode(game:HttpGetAsync("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100")) end)
+  if ok2 and data2 and data2.data then
+    for _,v in ipairs(data2.data) do if v.id~=game.JobId and v.playing<bestCount then bestCount=v.playing; bestId=v.id end end
+  end
+  if bestId then TeleportService:TeleportToPlaceInstance(game.PlaceId,bestId) else _G.rnote("none found",.6) end
 end
 ]])
 
 -- Re-TP target on respawn
 local function gotoplr()
-    task.wait(.5)
-    if _G.targetPlayer and _G.targetPlayer ~= Players.LocalPlayer and _G.targetPlayer.Character then
-        local hrp = gethrp()
-        local th = _G.targetPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if hrp and th then hrp.CFrame = CFrame.new(th.Position) * CFrame.new(0, 0, 2.33) end
-    end
+  task.wait(.5)
+  if _G.targetPlayer and _G.targetPlayer~=Players.LocalPlayer and _G.targetPlayer.Character then
+    local hrp=gethrp(); local th=_G.targetPlayer.Character:FindChild("HumanoidRootPart")
+    if hrp and th then hrp.CFrame=CFrame.new(th.Position)*CFrame.new(0,0,2.33) end
+  end
 end
 track(Players.LocalPlayer.CharacterAdded:Connect(function()
-    -- wait until a target is chosen (or cleared)
-    local t0 = os.clock()
-    while os.clock()-t0 < 5 and not _G.targetPlayer do RS.Heartbeat:Wait() end
-    gotoplr()
+  local t0=os.clock(); while os.clock()-t0<5 and not _G.targetPlayer do RS.Heartbeat:Wait() end; gotoplr()
 end))
 track(Players.LocalPlayer.CharacterAdded:Connect(gotoplr))
 
--- Optional FPS toggle demo (switch)
-AddContent(vars.switch, "FPS 120",
-[[ pcall(function() setfpscap(math.clamp(120,1,999)) end) ]],
-[[ pcall(function() setfpscap(0) end) ]])
+-- Optional FPS toggle
+AddContent(vars.switch,"FPS 120", [[ pcall(function() setfpscap(math.clamp(120,1,999)) end) ]], [[ pcall(function() setfpscap(0) end) ]])
 
 -- End banner
-local ok,_ = pcall(function()
-    local FPS = 120; local setfps = false
-    if setfps then safe_setfpscap(FPS) end
-end)
+local ok,_=pcall(function() local FPS=120; local setfps=false; if setfps then safe_setfpscap(FPS) end end)
 if ok then print("sgx saba") else warn("sgx saba") end
 -- ==========================================================================================
