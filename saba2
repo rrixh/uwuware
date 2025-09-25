@@ -1,4 +1,4 @@
--- basik ui test (full)
+-- basik ui lib (Gui)
 local basikUi = loadstring(game:HttpGet("https://pastebin.com/raw/SnbMBRXB", true))();
 local Kontent, vars, utils = basikUi[1], basikUi[2], basikUi[3]
 
@@ -14,20 +14,22 @@ local TeleportService = cloneref(game:GetService("TeleportService"))
 local Workspace = cloneref(game:GetService("Workspace"))
 
 -- helpers / globals
-local function getchar() return LP.Character or LP.CharacterAdded:Wait() 
+local function getchar()
+return LP.Character or LP.CharacterAdded:Wait() 
 end;
 local function gethrp()
 local ch=getchar(); return ch:WaitForChild("HumanoidRootPart") 
 end;
 
-_G.gplrs = Players:GetPlayers()
+-- getplrs = Players:GetPlayers();
+
 Players.PlayerAdded:Connect(function(p)
-table.insert(_G.gplrs, p) 
+table.insert(Players:GetPlayers(), p) 
 end)
 Players.PlayerRemoving:Connect(function(p)
-	for i,v in ipairs(_G.gplrs) do 
+	for i,v in ipairs(Players:GetPlayers()) do 
 if v==p then 
-table.remove(_G.gplrs, i) 
+table.remove(Players:GetPlayers(), i) 
 break end end
 end)
 
@@ -43,7 +45,7 @@ end
 
 -- ui header
 Kontent:Title("squid game x")
-Kontent.notif("gay", 1.2)
+Kontent.notif("gay", 2)
 
 if lightz then
 Kontent(vars.switch, "Lights",
@@ -52,9 +54,12 @@ Kontent(vars.switch, "Lights",
 )
 end;
 
+if jumpbtn then
 Kontent(vars.loop, "jump", function()
-
+getchar().Humanoid.Jump = not getchar().Humanoid.Jump
 end)
+end;
+
 -- =======GLASS GAME=======--
 Kontent(vars.btn, "GLASS GAME", function()
 	local ws = Workspace
@@ -139,10 +144,12 @@ _G.targetPlayer = _G.targetPlayer or nil
 local function findPlrName(query)
 	if not query or query=="" then return nil end
 	query=query:lower()
-	for _,p in ipairs(_G.gplrs) do
-		if p.DisplayName:lower():find(query,1,true) or p.Name:lower():find(query,1,true) then
-			return p
-		end
+	for _,p in ipairs(Players:GetPlayers()) do
+if p ~= LP then
+if p.DisplayName:lower():find(query,1,true) or p.Name:lower():find(query,1,true) then
+		return p
+  end;
+  end;
 	end
 	return nil
 end
@@ -220,7 +227,8 @@ Kontent(vars.btn, "TP to random player", function()
 	if not tpOnce() then Kontent.notif("no target found", 1.2) end
 end)
 
--- ===== JOIN HIDDEN GAME (button) ===========================================================
+if joinhiddengame then
+-- ===JOIN HIDDEN GAME===--
 Kontent(vars.btn, "join hidden game", function()
 	Kontent.notif("searxhing...", .8)
 	local Number, SomeSRVS, found = 0, {}, 0
@@ -254,6 +262,7 @@ Kontent(vars.btn, "join hidden game", function()
 		else Kontent.notif("none found", .8) end
 	end
 end)
+end;
 
 -- ===== RE-TP TARGET ON RESPAWN ============================================================== 
 local function gotoplr()
@@ -278,4 +287,4 @@ pcall(function() setfpscap(math.clamp(120,1,999)) end)
 end,
 	function()
 pcall(function() setfpscap(60) end) 
-end);
+end)
