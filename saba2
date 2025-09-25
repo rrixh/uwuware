@@ -11,7 +11,9 @@ local TS = cloneref(game:GetService("TweenService"))
 local Lighting = cloneref(game:GetService("Lighting"))
 local HttpService = cloneref(game:GetService("HttpService"))
 local TeleportService = cloneref(game:GetService("TeleportService"))
-local Workspace = cloneref(game:GetService("Workspace"))
+local Workspace = cloneref(game:GetService("Workspace"));
+
+local num,fps,getplrs;
 
 -- helpers / globals
 local function getchar()
@@ -179,10 +181,10 @@ end;
 	return t
 end
 
-local dd = Kontent(vars.list, "Players", listOfPlayers, function(selected)
-	if typeof(selected)=="Instance" and selected:IsA("Player") then
-		_G.targetPlayer = selected
-		Kontent.notif("target: (@"..selected.Name..") "..selected.DisplayName, 1.2)
+local dd = Kontent(vars.list, "Players", listOfPlayers, function(selekted)
+	if typeof(selekted)=="Instance" and selekted:IsA("Player") then
+		_G.targetPlayer = selekted
+		Kontent.notif("target: (@"..selekted.Name..") "..selekted.DisplayName, 2.33)
 	end
 end)
 
@@ -264,7 +266,7 @@ Kontent(vars.btn, "join hidden game", function()
 end)
 end;
 
--- ===== RE-TP TARGET ON RESPAWN ============================================================== 
+-- ===== RE-TP TARGET ON RESPAWN ======== 
 local function gotoplr()
 	task.wait(.5)
 	local t=_G.targetPlayer
@@ -281,10 +283,16 @@ LP.CharacterAdded:Connect(function()
 end)
 LP.CharacterAdded:Connect(gotoplr)
 
-Kontent(vars.switch, "FPS 120",
+Kontent(vars.switch, "boost FPS if lagging",
 	function() 
-pcall(function() setfpscap(math.clamp(120,1,999)) end) 
+pcall(function()
+num = tonumber;
+fps = 160;
+setfpscap(math.clamp(num(fps),1,999)) 
+   end) 
 end,
 	function()
-pcall(function() setfpscap(60) end) 
+pcall(function() 
+-- setfpscap(60) 
+  end) 
 end)
