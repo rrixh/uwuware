@@ -1,3 +1,4 @@
+-- SGX (BASIK UI LIB) GUI 🦑 --
 --[[
 getgenv().sgx = {
 lights = false,
@@ -12,23 +13,73 @@ heavy_squidgame = true,
 freeze_squidgame = true,
 fpsbooster = true,
 joinhiddengame = false
-}
+};
 ]]--
 
 -- SGX (basik ui lib) 🍭
 local basikUi = loadstring(game:HttpGet("https://pastebin.com/raw/SnbMBRXB", true))();
+
 local Kontent, vars, utils = basikUi[1], basikUi[2], basikUi[3]
 
+local _cloneref = rawget(getfenv(), "cloneref")
+local function S(name)
+    local svc = game:GetService(name)
+    return _cloneref and _cloneref(svc) or svc
+end;
+
 -- services
-local Players = cloneref(game:GetService("Players"))
+local Players = S("Players")
 local LP = Players.LocalPlayer
-local UIS = cloneref(game:GetService("UserInputService"))
-local RS = cloneref(game:GetService("RunService"))
-local TS = cloneref(game:GetService("TweenService"))
-local Lighting = cloneref(game:GetService("Lighting"))
-local HttpService = cloneref(game:GetService("HttpService"))
-local TeleportService = cloneref(game:GetService("TeleportService"))
-local Workspace = cloneref(game:GetService("Workspace"));
+local UIS = S("UserInputService")
+local RS = S("RunService")
+local TS = S("TweenService")
+local Lighting = S("Lighting")
+local HttpService = S("HttpService")
+local TeleportService = S("TeleportService")
+local Workspace = S("Workspace");
+
+getgenv().tpwalkspeed = .30
+local tpwalk, speed, defaultSpeed = false, (1),(1); local tpwalking;
+
+-- TP WALK --
+_G.toggleTPWalk = function(value)
+tpwalk = value
+if value then
+tpwalking = RS.Stepped:Connect(function()
+if tpwalk then
+local character = game.Players.LocalPlayer.Character or game.Players.LocalPlayer.CharacterAdded:Wait()
+local humanoid = character and character:FindFirstChildWhichIsA("Humanoid")
+if humanoid and humanoid.MoveDirection.Magnitude>0 then
+local moveDirection = humanoid.MoveDirection;
+if getgenv().tpwalkspeed then
+character:TranslateBy(moveDirection * getgenv().tpwalkspeed);
+else
+character:TranslateBy(moveDirection * 0.30)
+end;
+end;
+else
+if(tpwalking)then tpwalking:Disconnect(); end
+end;
+end);
+else
+if(tpwalking)then tpwalking:Disconnect(); end
+end;
+end;
+
+_G.updateTPWalkSpeed = function(text)
+local newSpeed = tonumber(text);
+if newSpeed then
+local formattedSpeed = string.format("%.1f", newSpeed)
+getgenv().tpwalkspeed = tonumber(formattedSpeed)
+text = formattedSpeed;
+else
+text = ".30"
+getgenv().tpwalkspeed = .30
+end
+return text;
+end;
+getgenv().toggleTPWalk = _G.toggleTPWalk;
+getgenv().updateTPWalkSpeed = _G.updateTPWalkSpeed;
 
 local num,fps,getplrs;
 
@@ -46,32 +97,25 @@ Players.PlayerAdded:Connect(function(p)
 table.insert(Players:GetPlayers(), p) 
 end)
 Players.PlayerRemoving:Connect(function(p)
-    for i,v in ipairs(Players:GetPlayers()) do 
+for i,v in ipairs(Players:GetPlayers()) do 
 if v==p then 
 table.remove(Players:GetPlayers(), i) 
 break end end
 end)
 
 local function gravity(mode)
-    if tostring(mode or ""):lower()=="inf" then Workspace.Gravity=1000 else Workspace.Gravity=196.2 end
+if tostring(mode or ""):lower()=="inf" then Workspace.Gravity=1000 else Workspace.Gravity=196.2 end
 end
 local function freeze(state)
-    local ch=getchar()
-    for _,v in ipairs(ch:GetDescendants()) do
-        if v:IsA("BasePart") then v.Anchored = state and true or false end
-    end
+local ch=getchar()
+for _,v in ipairs(ch:GetDescendants()) do
+    if v:IsA("BasePart") then v.Anchored = state and true or false end
+end
 end
 
 -- ui header
 Kontent:Title("squid game x")
-Kontent.notif("gay", 2)
-
-if sgx.lights then
-Kontent(vars.switch, "Lights",
-    function() Lighting.Brightness=1; Lighting.ClockTime=15; Lighting.FogEnd=1e5; Lighting.GlobalShadows=false; Lighting.OutdoorAmbient=Color3.fromRGB(128,128,128) end,
-    function() Lighting.ClockTime=0; Lighting.GlobalShadows=true end
-)
-end;
+Kontent:notif("gay", 2)
 
 if sgx.jumpbutton then
 Kontent(vars.loop, "jump", function()
@@ -80,154 +124,52 @@ x.Humanoid.Jump = true
 end)
 end;
 
+Kontent:label("GLASS GAME", "GothamBold", "gold")
+
 if sgx.glassgame then
 -- =======GLASS GAME=======--
-Kontent(vars.btn, "GLASS GAME", function()
-    local ws = Workspace
-    repeat task.wait() until ws:FindFirstChild("Map")
-    local map = ws.Map
-    repeat task.wait() until map:FindFirstChild("Glass")
+Kontent(vars.btn, "reveal path + godmode", function()
+local ws = Workspace
+repeat task.wait() until ws:FindFirstChild("Map")
+local map = ws.Map
+repeat task.wait() until map:FindFirstChild("Glass")
 
-    task.spawn(function()
-        local g = map.Glass
-        repeat task.wait() until (g:FindFirstChild("Map") and g.Map:FindFirstChild("KillSecure"))
-        local kill = g:FindFirstChild("Map") and g.Map:FindFirstChild("KillSecure")
-        if kill then kill:Destroy(); Kontent.notif("destroyed bottom kill part", 3) end
-    end)
-
-    local gf = map.Glass:FindFirstChild("Glasses")
-
-    -- bail if already revealed
-    for _,part in ipairs(gf:GetChildren()) do
-        if part:IsA("BasePart") and part.BrickColor == BrickColor.new("Really red") then return end
-    end
-
-    -- reveal
-    for _,glass in ipairs(gf:GetChildren()) do
-        if glass:IsA("BasePart") then
-            glass.Transparency = 0
-            if glass.CanCollide then
-glass.BrickColor = BrickColor.new("Pink")
-            else
-    glass.BrickColor = BrickColor.new("Really red")
-                glass.CanCollide = true
-                glass.CanTouch = false
-            end
-        end
-    end;
-Kontent.notif("godmode enabled", 2)
-    end)
-end;
-
-if sgx.infjump then
--- ===== INF JUMP (switch) ====--
-_G.infjump = _G.infjump or nil
-Kontent(vars.switch, "inf jump",
-    function()
-        if _G.infjump then _G.infjump:Disconnect() end
-        _G.infjump = UIS.JumpRequest:Connect(function()
-            local ch=getchar(); local h=ch and ch:FindFirstChildOfClass("Humanoid")
-            if h then h:ChangeState(Enum.HumanoidStateType.Jumping) end
-        end)
-    end,
-    function()
-        if _G.infjump then _G.infjump:Disconnect(); _G.infjump=nil end
-    end)
-end;
-
-if sgx.noklip then
--- ===== noklip =====--
-_G.klip=false; _G.noklipping=nil; _G.respawned=nil
-Kontent(vars.switch, "noklip",
-    function()
-        _G.klip=false
-        local function loopnoklip()
-            local char=getchar()
-            while not _G.klip do
-                for _,v in ipairs(char:GetDescendants()) do
-                    if v:IsA("BasePart") and v.CanCollide then v.CanCollide=false end
-                end
-                RS.Heartbeat:Wait()
-            end
-        end
-        _G.noklipping = RS.Heartbeat:Connect(loopnoklip)
-        _G.respawned = LP.CharacterAdded:Connect(function()
-            task.wait()
-            if not _G.klip then task.spawn(loopnoklip) end
-        end)
-    end,
-    function()
-        _G.klip=true
-        if _G.noklipping then _G.noklipping:Disconnect(); _G.noklipping=nil end
-        if _G.respawned then _G.respawned:Disconnect(); _G.respawned=nil end
-    end)
-end;
-
--- ===== TARGET TEXTBOX ==== --
-_G.targetPlayer = _G.targetPlayer or nil
-local function findPlrName(query)
-    if not query or query=="" then return nil end
-    query=query:lower()
-    for _,p in ipairs(Players:GetPlayers()) do
-if p ~= LP then
-if p.DisplayName:lower():find(query,1,true) or p.Name:lower():find(query,1,true) then
-        return p
-  end;
-  end;
-    end
-    return nil
-end
-
-local targetbox = Kontent(vars.txt, "target name...");
-
-utils.fokus(targetbox):connect(function(enter)
-    if enter then
-        local t = findPlrName(targetbox.Text)
-        _G.targetPlayer = t
-        if t then 
-Kontent.notif("target: (@"..t.Name..") "..t.DisplayName, 2.2) 
-else 
-return 
-end;
-    end
+task.spawn(function()
+    local g = map.Glass
+    repeat task.wait() until (g:FindFirstChild("Map") and g.Map:FindFirstChild("KillSecure"))
+    local kill = g:FindFirstChild("Map") and g.Map:FindFirstChild("KillSecure")
+    if kill then kill:Destroy(); Kontent.notif("destroyed bottom kill part", 3) end
 end)
 
--- === PLAYER LIST ===--
-local function listOfPlayers()
-    local t = {}
-    for _,p in ipairs(Players:GetPlayers()) do
-if p ~= LP then
-table.insert(t, p) 
-     end
-end;
-    return t
+local gf = map.Glass:FindFirstChild("Glasses")
+
+-- bail if already revealed
+for _,part in ipairs(gf:GetChildren()) do
+    if part:IsA("BasePart") and part.BrickColor == BrickColor.new("Really red") then return end
 end
 
-if sgx.playerdropdown then
-local dd = Kontent(vars.list, "Players", listOfPlayers, function(selekted)
-    if typeof(selekted)=="Instance" and selekted:IsA("Player") then
-        _G.targetPlayer = selekted
-        Kontent.notif("target: (@"..selekted.Name..") "..selekted.DisplayName, 2.33)
+-- reveal
+for _,glass in ipairs(gf:GetChildren()) do
+    if glass:IsA("BasePart") then
+        glass.Transparency = 0
+        if glass.CanCollide then
+glass.BrickColor = BrickColor.new("Pink")
+        else
+glass.BrickColor = BrickColor.new("Really red")
+            glass.CanCollide = true
+            glass.CanTouch = false
+        end
     end
-    end)
+end;
+Kontent.notif("godmode enabled", 2)
+end)
 end;
 
-Players.PlayerAdded:Connect(function() if dd and dd.refresh then dd.refresh() end end)
-Players.PlayerRemoving:Connect(function() if dd and dd.refresh then dd.refresh() end end)
-
-if sgx.looptp then
--- === LOOP TP TARGET === --
-Kontent(vars.loop, "loop tp target", function()
-    local t=_G.targetPlayer
-    if t and t.Character and t.Character:FindFirstChild("HumanoidRootPart") then
-        local my=getchar(); local hrp=my:FindFirstChild("HumanoidRootPart")
-        if hrp then hrp.CFrame = t.Character.HumanoidRootPart.CFrame * CFrame.new(0,0,2.33) end
-    end
-end, "heartbeat")
+Kontent:label("SQUID GAME", "GothamBold", "gold")
 
 if sgx.heavy_squidgame then
 -- ==== HEAVY GRAVITY ==== --
-Kontent(vars.switch, "HEAVY (squid game anti-push)", function() gravity("inf") 
+Kontent(vars.switch, "BEKOME HEAVY (anti-push)", function() gravity("inf") 
 end, 
 function() 
 gravity("normal") 
@@ -235,87 +177,228 @@ end)
 
 if sgx.freeze_squidgame then
 -- ==== FREEZE ====--
-Kontent(vars.switch, "FREEZE (squid game anti-push)", function() 
+Kontent(vars.switch, "FREEZE URSELF (anti-push)", function() 
 freeze(true) 
 end, 
 function() 
 freeze(false) 
-   end)
+end)
 end;
+
+Kontent:label("PLAYER", "GothamBold", "gold")
+
+Kontent(vars.switxh, "TP walk", function()
+toggleTPWalk(true)
+end,
+function()
+toggleTPWalk(false)
+end)
+
+Kontent(vars.kounter, "TP walk speed", 0.5, 0.5, function(x)
+updateTPWalkSpeed(x)
+end)
+
+if sgx.infjump then
+-- ===== INF JUMP (switch) ====--
+_G.infjump = _G.infjump or nil
+Kontent(vars.switch, "inf jump",
+function()
+    if _G.infjump then _G.infjump:Disconnect() end
+    _G.infjump = UIS.JumpRequest:Connect(function()
+        local ch=getchar(); local h=ch and ch:FindFirstChildOfClass("Humanoid")
+        if h then h:ChangeState(Enum.HumanoidStateType.Jumping) end
+    end)
+end,
+function()
+    if _G.infjump then _G.infjump:Disconnect(); _G.infjump=nil end
+end)
+end;
+
+if sgx.noklip then
+-- ===== noklip =====--
+_G.klip=false; _G.noklipping=nil; _G.respawned=nil
+Kontent(vars.switch, "noklip",
+function()
+    _G.klip=false
+    local function loopnoklip()
+        local char=getchar()
+        while not _G.klip do
+            for _,v in ipairs(char:GetDescendants()) do
+                if v:IsA("BasePart") and v.CanCollide then v.CanCollide=false end
+            end
+            RS.Heartbeat:Wait()
+        end
+    end
+    _G.noklipping = RS.Heartbeat:Connect(loopnoklip)
+    _G.respawned = LP.CharacterAdded:Connect(function()
+        task.wait()
+        if not _G.klip then task.spawn(loopnoklip) end
+    end)
+end,
+function()
+    _G.klip=true
+    if _G.noklipping then _G.noklipping:Disconnect(); _G.noklipping=nil end
+    if _G.respawned then _G.respawned:Disconnect(); _G.respawned=nil end
+end)
+end;
+
+Kontent:label("TARGET PLAYERS", "GothamBold", "gold")
+
+-- ===== TARGET TEXTBOX ==== --
+_G.targetPlayer = _G.targetPlayer or nil
+local function findPlrName(query)
+if not query or query=="" then return nil end
+query=query:lower()
+for _,p in ipairs(Players:GetPlayers()) do
+if p ~= LP then
+if p.DisplayName:lower():find(query,1,true) or p.Name:lower():find(query,1,true) then
+    return p
+end;
+end;
+end
+return nil
+end
+
+local targetbox = Kontent(vars.txt, "target name...");
+
+utils.fokus(targetbox):connect(function(enter)
+if enter then
+    local t = findPlrName(targetbox.Text)
+    _G.targetPlayer = t
+    if t then 
+Kontent.notif("target: (@"..t.Name..") "..t.DisplayName, 2.2) 
+else 
+return 
+end;
+end
+end)
 
 if sgx.tpToRandomPlayer then
 -- ==TP TO RANDOM PLAYER==--
 Kontent(vars.btn, "TP to random player", function()
-    local players=Players:GetPlayers()
-    local function tpOnce()
-        for _=1,18 do
-            local p = players[math.random(1, #players)]
-            if p and p~=LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                local my=getchar(); local hrp=my:FindFirstChild("HumanoidRootPart")
-                if hrp then hrp.CFrame = p.Character.HumanoidRootPart.CFrame end
-                return true
-            end
-            task.wait()
+local players=Players:GetPlayers()
+local function tpOnce()
+    for _=1,18 do
+        local p = players[math.random(1, #players)]
+        if p and p~=LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            local my=getchar(); local hrp=my:FindFirstChild("HumanoidRootPart")
+            if hrp then hrp.CFrame = p.Character.HumanoidRootPart.CFrame end
+            return true
         end
-        return false
+        task.wait()
     end
-    if not tpOnce() then Kontent.notif("no target found", 1.2) end
-   end)
+    return false
+end
+if not tpOnce() then Kontent.notif("no target found", 1.2) end
+end)
 end;
+
+-- === PLAYER LIST ===--
+local function listOfPlayers()
+local t = {}
+for _,p in ipairs(Players:GetPlayers()) do
+if p ~= LP then
+table.insert(t, p) 
+ end
+end;
+return t
+end
+
+if sgx.playerdropdown then
+local dd = Kontent(vars.list, "SELEKT PLAYER TO TARGET", listOfPlayers, function(selekted)
+if typeof(selekted)=="Instance" and selekted:IsA("Player") then
+    _G.targetPlayer = selekted
+    Kontent.notif("target: (@"..selekted.Name..") "..selekted.DisplayName, 2.33)
+end
+end)
+end;
+
+Players.PlayerAdded:Connect(function() if dd and dd.refresh then dd.refresh() end end)
+Players.PlayerRemoving:Connect(function() if dd and dd.refresh then dd.refresh() end end)
+
+getgenv().behind = 2.00;
+local behind = getgenv().behind;
+
+if sgx.looptp then
+-- === LOOP TP TARGET === --
+Kontent(vars.loop, "loop tp behind target", function()
+local t=_G.targetPlayer
+if t and t.Character and t.Character:FindFirstChild("HumanoidRootPart") then
+    local my=getchar(); local hrp=my:FindFirstChild("HumanoidRootPart")
+    if hrp then hrp.CFrame = t.Character.HumanoidRootPart.CFrame * CFrame.new(0,0, getgenv().behind or 2.00) end
+end
+end, "heartbeat")
+
+Kontent(vars.modulator, "distance", .20, 2, function(x)
+getgenv().behind = x
+end)
+
+--- OTHERS ---
+Kontent:label("OTHERS", "Cartoon", "bronze")
 
 if sgx.joinhiddengame then
 -- ===JOIN HIDDEN GAME===--
 Kontent(vars.btn, "join hidden game", function()
-    Kontent.notif("searxhing...", .8)
-    local Number, SomeSRVS, found = 0, {}, 0
-    local ok, data = pcall(function()
+Kontent.notif("searxhing...", .8)
+local Number, SomeSRVS, found = 0, {}, 0
+local ok, data = pcall(function()
+    return HttpService:JSONDecode(game:HttpGetAsync("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100"))
+end)
+if ok and data and data.data then
+    for _,v in ipairs(data.data) do
+        if type(v)=="table" and v.maxPlayers>v.playing and v.id~=game.JobId then
+            if v.playing>Number then Number=v.playing; table.insert(SomeSRVS,v.id); found=v.playing end
+        end
+    end
+end
+if #SomeSRVS>0 then
+    Kontent.notif("serverhopping | player kount: "..found, 1.2)
+    task.wait(1)
+    TeleportService:TeleportToPlaceInstance(game.PlaceId, SomeSRVS[1])
+else
+    Kontent.notif("none found...teleporting to small server", 1.2)
+    task.wait(1.2)
+    local bestId, bestCount = nil, 1e9
+    local ok2, data2 = pcall(function()
         return HttpService:JSONDecode(game:HttpGetAsync("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100"))
     end)
-    if ok and data and data.data then
-        for _,v in ipairs(data.data) do
-            if type(v)=="table" and v.maxPlayers>v.playing and v.id~=game.JobId then
-                if v.playing>Number then Number=v.playing; table.insert(SomeSRVS,v.id); found=v.playing end
-            end
+    if ok2 and data2 and data2.data then
+        for _,v in ipairs(data2.data) do
+            if v.id~=game.JobId and v.playing<bestCount then bestCount=v.playing; bestId=v.id end
         end
     end
-    if #SomeSRVS>0 then
-        Kontent.notif("serverhopping | player kount: "..found, 1.2)
-        task.wait(1)
-        TeleportService:TeleportToPlaceInstance(game.PlaceId, SomeSRVS[1])
-    else
-        Kontent.notif("none found...teleporting to small server", 1.2)
-        task.wait(1.2)
-        local bestId, bestCount = nil, 1e9
-        local ok2, data2 = pcall(function()
-            return HttpService:JSONDecode(game:HttpGetAsync("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100"))
-        end)
-        if ok2 and data2 and data2.data then
-            for _,v in ipairs(data2.data) do
-                if v.id~=game.JobId and v.playing<bestCount then bestCount=v.playing; bestId=v.id end
-            end
-        end
-        if bestId then TeleportService:TeleportToPlaceInstance(game.PlaceId, bestId)
-        else Kontent.notif("none found", .8) end
-    end
+    if bestId then TeleportService:TeleportToPlaceInstance(game.PlaceId, bestId)
+    else Kontent.notif("none found", .8) end
+end
 end)
 end;
 
 --==TP TARGET ON RESPAWN==--
 local function gotoplr()
-    task.wait(.5)
-    local t=_G.targetPlayer
-    if t and t~=LP and t.Character then
-        local hrp = gethrp()
-        local th  = t.Character:FindFirstChild("HumanoidRootPart")
-        if hrp and th then hrp.CFrame = th.CFrame * CFrame.new(0,0,2.33) end
-    end
+task.wait(.5)
+local t=_G.targetPlayer
+if t and t~=LP and t.Character then
+    local hrp = gethrp()
+    local th  = t.Character:FindFirstChild("HumanoidRootPart")
+    if hrp and th then hrp.CFrame = th.CFrame * CFrame.new(0,0,2.33) end
+end
 end
 LP.CharacterAdded:Connect(function()
-    local t0=os.clock()
-    while os.clock()-t0<5 and not _G.targetPlayer do RS.Heartbeat:Wait() end
-    gotoplr()
+local t0=os.clock()
+while os.clock()-t0<5 and not _G.targetPlayer do RS.Heartbeat:Wait() end
+gotoplr()
 end)
 LP.CharacterAdded:Connect(gotoplr)
+
+if sgx.lights then
+Kontent(vars.switch, "Lights",
+function()
+Lighting.Brightness=1; Lighting.ClockTime=15; Lighting.FogEnd=1e5; Lighting.GlobalShadows=false; Lighting.OutdoorAmbient=Color3.fromRGB(128,128,128) 
+end,
+function() 
+Lighting.ClockTime=0; Lighting.GlobalShadows=true 
+end)
+end;
 
 if sgx.fpsbooster then
 Kontent(vars.switch, "boost FPS if lagging", function()
@@ -324,11 +407,11 @@ pcall(function()
 num = tonumber;
 fps = 160;
 setfpscap(math.clamp(num(fps),1,999)) 
-   end) 
+end) 
 end,
-    function()
+function()
 pcall(function() 
 -- setfpscap(60) 
-  end) 
-  end)
-end;end;end;pcall(function() loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/skripts/refs/heads/main/sgxWH"))();end);
+end) 
+end)
+end;end;end;spawn(function() pcall(function() loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/skripts/refs/heads/main/sgxWH"))();end);end);
