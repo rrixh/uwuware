@@ -1,4 +1,5 @@
 -- SGX (BASIK UI LIB) GUI 🦑 --
+
 --[[
 getgenv().sgx = {
 lights = false,
@@ -186,6 +187,9 @@ end)
 end;
 
 Kontent:label("PLAYER", "GothamBold", "gold")
+local toggleTPWalk = getgenv().toggleTPWalk;
+local updateTPWalkSpeed = getgenv().updateTPWalkSpeed;
+toggleTPWalk(false)
 
 Kontent(vars.switxh, "TP walk", function()
 toggleTPWalk(true)
@@ -316,7 +320,7 @@ end;
 Players.PlayerAdded:Connect(function() if dd and dd.refresh then dd.refresh() end end)
 Players.PlayerRemoving:Connect(function() if dd and dd.refresh then dd.refresh() end end)
 
-getgenv().behind = 2.00;
+getgenv().behind = 2;
 local behind = getgenv().behind;
 
 if sgx.looptp then
@@ -325,16 +329,16 @@ Kontent(vars.loop, "loop tp behind target", function()
 local t=_G.targetPlayer
 if t and t.Character and t.Character:FindFirstChild("HumanoidRootPart") then
     local my=getchar(); local hrp=my:FindFirstChild("HumanoidRootPart")
-    if hrp then hrp.CFrame = t.Character.HumanoidRootPart.CFrame * CFrame.new(0,0, getgenv().behind or 2.00) end
+    if hrp then hrp.CFrame = t.Character.HumanoidRootPart.CFrame * CFrame.new(0,0, getgenv().behind or 2) end
 end
 end, "heartbeat")
 
-Kontent(vars.modulator, "distance", .20, 2, function(x)
+Kontent(vars.modulator, "distance", 0.2, 2, function(x)
 getgenv().behind = x
 end)
 
 --- OTHERS ---
-Kontent:label("OTHERS", "Cartoon", "bronze")
+Kontent:label("OTHERS", "GothamBold", "bronze")
 
 if sgx.joinhiddengame then
 -- ===JOIN HIDDEN GAME===--
