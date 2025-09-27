@@ -473,7 +473,7 @@ Kontent:notif("if u reading this u gay", 4)
 
 Kontent:label("NIGHT BRAWL", "GothamBold", "blue")
 
-Kontent(vars.loop, "loop tp and activate tool", function()
+Kontent(vars.loop, "auto kill players", function()
     local Players = game:GetService("Players")
     local LP = Players.LocalPlayer
     local function alive(plr)
