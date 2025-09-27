@@ -310,8 +310,14 @@ break end end
 end)
 
 local function gravity(mode)
-if tostring(mode or ""):lower()=="inf" then Workspace.Gravity=1000 else Workspace.Gravity=196.2 end
-end
+if tostring(mode or ""):lower()=="inf" then Workspace.Gravity=1000 
+         elseif tonumber(mode) then
+Workspace.Gravity = tonumber(mode) or 196.2
+         else
+Workspace.Gravity=196.19999
+         end
+end;
+
 local function freeze(state)
 local ch=getchar()
 for _,v in ipairs(ch:GetDescendants()) do
@@ -563,6 +569,22 @@ if _G.infjump then _G.infjump:Disconnect(); _G.infjump=nil end
 end)
 end;
 
+local gravitybox = Kontent(vars.txt, "TYPE GRAVITY AMOUNT....")
+
+utils.fokus(gravitybox):connect(function(enter)
+if enter then
+if gravitybox.Text:match("^%s*$") then return end;
+gravity(gravitybox.Text)
+Kontent:notif("gravity set to: "..gravitybox.Text, 1.5)
+end
+end)
+
+Kontent(vars.btn, "reset gravity", function()
+gravity(196.2)
+Kontent:notif("gravity reset", 1.5)
+end)
+
+--[[
 if sgx.noklip then
 -- ===== noklip =====--
 _G.klip=false; _G.noklipping=nil; _G.respawned=nil
@@ -590,6 +612,7 @@ if _G.noklipping then _G.noklipping:Disconnect(); _G.noklipping=nil end
 if _G.respawned then _G.respawned:Disconnect(); _G.respawned=nil end
 end)
 end;
+]]--
 
 Kontent:label("TARGET PLAYERS", "GothamBold", "gold")
 
