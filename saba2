@@ -1,6 +1,6 @@
 -- SGX (BASIK UI LIB) GUI 🦑 --
 
---[[
+if not getgenv().sgx then
 getgenv().sgx = {
 lights = false,
 jumpbutton = false,
@@ -15,7 +15,11 @@ freeze_squidgame = true,
 fpsbooster = true,
 joinhiddengame = false
 };
-]]--
+end;
+
+if getgenv().sgx then
+local sgx = getgenv().sgx
+end;
 
 -- SGX (basik ui lib) 🍭
 local basikUi = loadstring(game:HttpGet("https://pastebin.com/raw/SnbMBRXB", true))();
@@ -24,8 +28,8 @@ local Kontent, vars, utils = basikUi[1], basikUi[2], basikUi[3]
 
 local _cloneref = rawget(getfenv(), "cloneref")
 local function S(name)
-    local svc = game:GetService(name)
-    return _cloneref and _cloneref(svc) or svc
+local svc = game:GetService(name)
+return _cloneref and _cloneref(svc) or svc
 end;
 
 -- services
@@ -39,8 +43,209 @@ local HttpService = S("HttpService")
 local TeleportService = S("TeleportService")
 local Workspace = S("Workspace");
 
+         -- == SPEXIALS == --
+--== DENSE MASTER (no CustomPhysicalProperties needed) =========================
+-- dense(mode, state, amount)
+-- mode: "anchor" | "damp" | "fric" | "heavy" | "antipush" | "lock" | "max"
+-- state: boolean (default true)
+-- amount: number (optional; for "heavy" or "max" -> downward force)
+-- Defaults = maximum density when args omitted.
+
+local char = LP.Character or LP.CharacterAdded:Wait()
+local HRP = char:WaitForChild("HumanoidRootPart")
+local Hum = char:WaitForChild("Humanoid")
+
+local _conns, _objs, _orig, _active, _amounts = {}, {}, {mat={}}, {}, {}
+
+local function ensureRefs(c)
+char = c
+HRP = char:WaitForChild("HumanoidRootPart")
+Hum = char:WaitForChild("Humanoid")
+end
+
+local function getRootAttach()
+local a = HRP:FindFirstChild("RootAttachment")
+if not a then
+    a = Instance.new("Attachment")
+    a.Name = "RootAttachment"
+    a.Parent = HRP
+end
+return a
+end
+
+-- cache original materials once
+local function cacheMats()
+if _orig._matsCached then return end
+for _,p in ipairs(char:GetDescendants()) do
+    if p:IsA("BasePart") then
+        _orig.mat[p] = p.Material
+    end
+end
+_orig._matsCached = true
+end
+
+-- restore materials
+local function restoreMats()
+for p,mat in pairs(_orig.mat) do
+    if p and p.Parent then
+        p.Material = mat
+    end
+end
+end
+
+--== individual appliers =======================================================
+local function apply_anchor(on)
+HRP.Anchored = on and true or false
+end
+
+local function apply_damp(on, factor)
+if on then
+    if _conns.damp then _conns.damp:Disconnect() end
+    local f = factor ~= nil and factor or 0 -- 0 = max heavy
+    _conns.damp = RS.Stepped:Connect(function()
+HRP.AssemblyLinearVelocity = f
+    end)
+else
+    if _conns.damp then _conns.damp:Disconnect(); _conns.damp=nil end
+end
+end
+
+local function apply_fric(on)
+if on then
+    cacheMats()
+    for _,p in ipairs(char:GetDescendants()) do
+        if p:IsA("BasePart") then
+            p.Material = Enum.Material.Concrete -- sticky
+        end
+    end
+else
+    if _orig._matsCached then restoreMats() end
+end
+end
+
+local function apply_heavy(on, forceAmt)
+if on then
+    local vf = _objs.heavy
+    if vf then vf:Destroy() end
+    vf = Instance.new("VectorForce")
+    vf.Attachment0 = getRootAttach()
+    vf.Force = Vector3.new(0, -(forceAmt or 25000), 0) -- default max glue
+    vf.RelativeTo = Enum.ActuatorRelativeTo.World
+    vf.Parent = HRP
+    _objs.heavy = vf
+else
+    if _objs.heavy then _objs.heavy:Destroy(); _objs.heavy=nil end
+end
+end
+
+local function apply_antipush(on)
+if on then
+    if _conns.antipush then _conns.antipush:Disconnect() end
+    _conns.antipush = RS.Stepped:Connect(function()
+        HRP.AssemblyLinearVelocity = Vector3.zero
+        HRP.AssemblyAngularVelocity = Vector3.zero
+    end)
+else
+    if _conns.antipush then _conns.antipush:Disconnect(); _conns.antipush=nil end
+end
+end
+
+local lockedStates = {Enum.HumanoidStateType.FallingDown, Enum.HumanoidStateType.Ragdoll}
+local function apply_lock(on)
+for _,st in ipairs(lockedStates) do
+    Hum:SetStateEnabled(st, not on)
+end
+end
+
+--== master ==--
+getgenv().dense = function (mode,state,amount)
+    local forceAmt;
+state = (state == nil) and true or state
+local m = string.lower(tostring(mode or "max"))
+
+local function setActive(k, on, amt)
+    _active[k] = on or nil
+    if amt ~= nil then _amounts[k] = amt end
+end
+
+if m == "anchor" then
+    apply_anchor(state); setActive("anchor", state)
+
+elseif m == "damp" then
+    local f = (amount ~= nil) and amount or -50e3
+    apply_damp(state, f); setActive("damp", state, f)
+
+elseif m == "fric" then
+    apply_fric(state); setActive("fric", state)
+
+elseif m == "heavy" then
+    forceAmt = amount or (60e3)
+    apply_heavy(state, forceAmt); setActive("heavy", state, forceAmt)
+
+elseif m == "antipush" then
+    apply_antipush(state); setActive("antipush", state)
+
+elseif m == "lock" then
+    apply_lock(state); setActive("lock", state)
+
+elseif m == "max" then
+    if state then
+forceAmt = amount or (35e3)
+        --apply_anchor(true)
+        apply_damp(true, 0)
+        apply_fric(true)
+        apply_heavy(true, forceAmt)
+        apply_antipush(true)
+        apply_lock(true)
+        setActive("anchor", true)
+        setActive("damp", true, 0)
+        setActive("fric", true)
+        setActive("heavy", true, forceAmt)
+        setActive("antipush", true)
+        setActive("lock", true)
+    else
+        apply_anchor(false)
+        apply_damp(false)
+        apply_fric(false)
+        apply_heavy(false)
+        apply_antipush(false)
+        apply_lock(false)
+        _active = {}
+        _amounts = {}
+    end
+end
+end;
+local dense = getgenv().dense;
+
+--== respawn resilience: reapply active modes ==================================
+if _conns._respawn then _conns._respawn:Disconnect() end
+_conns._respawn = LP.CharacterAdded:Connect(function(c)
+c:WaitForChild("HumanoidRootPart"); c:WaitForChild("Humanoid")
+ensureRefs(c)
+-- Reapply what was active
+if _active.anchor then apply_anchor(true) end
+if _active.damp then apply_damp(true, _amounts.damp or 0) end
+if _active.fric then apply_fric(true) end
+if _active.heavy then apply_heavy(true, _amounts.heavy or 25e3) end
+if _active.antipush then apply_antipush(true) end
+if _active.lock then apply_lock(true) end
+end)
+
+--== quik examples ==--
+-- dense("max") -- all ON (anchor+damp+fric+heavy+antipush+lock)
+-- dense("max", false) -- turns all OFF
+-- dense("heavy") -- downward 
+-- dense("heavy", true, 50000) -- super glue to ground
+-- dense("damp") -- kills all velocity
+-- dense("fric")  -- konkrete friction
+-- dense("lock")  -- immune to ragdoll/fall
+-- dense("anchor") -- froze in place
+-- dense("antipush")  -- nukes linear+angular pushes
+          --== SPEXIALS ==--
+
 getgenv().tpwalkspeed = .30
-local tpwalk, speed, defaultSpeed = false, (1),(1); local tpwalking;
+local tpwalk = false;
+local tpwalking;
 
 -- TP WALK --
 _G.toggleTPWalk = function(value)
@@ -110,9 +315,109 @@ end
 local function freeze(state)
 local ch=getchar()
 for _,v in ipairs(ch:GetDescendants()) do
-    if v:IsA("BasePart") then v.Anchored = state and true or false end
+if v:IsA("BasePart") then v.Anchored = state and true or false end
 end
+end;
+
+if not Players then
+local Players = S("Players")
+end;
+if not LP then
+local LP = Players.LocalPlayer;
+end;
+
+local state = {
+    enabled = false,
+    myParts = {},
+    conns = {},
+    constraints = {}
+}
+
+local function clearConstraintsFor(otherChar)
+    local bucket = state.constraints[otherChar]
+    if bucket then
+        for _,c in ipairs(bucket) do
+            if c and c.Destroy then pcall(function() c:Destroy() end) end
+        end
+        state.constraints[otherChar] = nil
+    end
 end
+
+local function clearAll()
+    for otherChar,_ in pairs(state.constraints) do
+        clearConstraintsFor(otherChar)
+    end
+    for _,cn in ipairs(state.conns) do
+        if cn and cn.Disconnect then pcall(function() cn:Disconnect() end) end
+    end
+    table.clear(state.conns)
+end
+
+local function partsOf(char)
+    local t = {}
+    if not char then return t end
+    for _,p in ipairs(char:GetDescendants()) do
+        if p:IsA("BasePart") then
+            t[#t+1] = p
+        end
+    end
+    return t
+end
+
+local function hrpOf(char)
+    return char and (
+        char:FindFirstChild("HumanoidRootPart")
+        or char:FindFirstChild("Torso")
+        or char:FindFirstChild("UpperTorso")
+        or char:FindFirstChild("LowerTorso")
+    )
+end
+
+local function pairNoCollide(myChar, otherChar)
+    local a = hrpOf(myChar)
+    local b = hrpOf(otherChar)
+    if not (a and b) then return end
+
+    local ncc = Instance.new("NoCollisionConstraint")
+    ncc.Part0, ncc.Part1 = a, b
+    ncc.Parent = a
+
+    state.constraints[otherChar] = {ncc}
+end
+
+getgenv().antiPush = function(toggled)
+    if toggled and state.enabled then return end
+    if not toggled and not state.enabled then return end
+
+    if toggled then
+        state.enabled = true
+        local char = LP.Character or LP.CharacterAdded:Wait()
+        state.myParts = partsOf(char)
+
+        -- hook existing players
+        for _,plr in ipairs(Players:GetPlayers()) do
+            if plr ~= LP and plr.Character then
+                pairNoCollide(char, plr.Character)
+            end
+        end
+
+        -- listen for new chars
+        table.insert(state.conns, Players.PlayerAdded:Connect(function(plr)
+            table.insert(state.conns, plr.CharacterAdded:Connect(function(newChar)
+                pairNoCollide(char, newChar)
+            end))
+        end))
+
+        table.insert(state.conns, LP.CharacterAdded:Connect(function(newChar)
+            state.myParts = partsOf(newChar)
+        end))
+
+    else
+        state.enabled = false
+        clearAll()
+    end
+end;
+
 
 -- ui header
 Kontent:Title("squid game x")
@@ -136,44 +441,73 @@ local map = ws.Map
 repeat task.wait() until map:FindFirstChild("Glass")
 
 task.spawn(function()
-    local g = map.Glass
-    repeat task.wait() until (g:FindFirstChild("Map") and g.Map:FindFirstChild("KillSecure"))
-    local kill = g:FindFirstChild("Map") and g.Map:FindFirstChild("KillSecure")
-    if kill then kill:Destroy(); Kontent.notif("destroyed bottom kill part", 3) end
+local g = map.Glass
+repeat task.wait() until (g:FindFirstChild("Map") and g.Map:FindFirstChild("KillSecure"))
+local kill = g:FindFirstChild("Map") and g.Map:FindFirstChild("KillSecure")
+if kill then kill:Destroy(); Kontent.notif("destroyed bottom kill part", 3) end
 end)
 
 local gf = map.Glass:FindFirstChild("Glasses")
 
 -- bail if already revealed
 for _,part in ipairs(gf:GetChildren()) do
-    if part:IsA("BasePart") and part.BrickColor == BrickColor.new("Really red") then return end
+if part:IsA("BasePart") and part.BrickColor == BrickColor.new("Really red") then return end
 end
 
 -- reveal
 for _,glass in ipairs(gf:GetChildren()) do
-    if glass:IsA("BasePart") then
-        glass.Transparency = 0
-        if glass.CanCollide then
+if glass:IsA("BasePart") then
+    glass.Transparency = 0
+    if glass.CanCollide then
 glass.BrickColor = BrickColor.new("Pink")
-        else
+    else
 glass.BrickColor = BrickColor.new("Really red")
-            glass.CanCollide = true
-            glass.CanTouch = false
-        end
+        glass.CanCollide = true
+        glass.CanTouch = false
     end
+end
 end;
 Kontent.notif("godmode enabled", 2)
 end)
 end;
 
-Kontent:label("SQUID GAME", "GothamBold", "gold")
+Kontent:label("SQUID GAME (ANTI-PUSH)", "GothamBold", "gold")
 
-if sgx.heavy_squidgame then
--- ==== HEAVY GRAVITY ==== --
-Kontent(vars.switch, "BEKOME HEAVY (anti-push)", function() gravity("inf") 
+-- ==== HEAVY DENSITY ==== --
+
+Kontent(vars.switch, "REMOVE ALL VELOCITY", function()
+dense("damp", true, -math.huge)
 end, 
-function() 
-gravity("normal") 
+function()
+dense("damp", false)
+end)
+
+Kontent(vars.switch, "FAT ASS (best)", function()
+dense("heavy", true, 77000)
+end, 
+function()
+dense("heavy", false)
+end)
+
+Kontent(vars.switch, "ANTI PUSH 1 (best)", function()
+dense("antipush", true)
+end,
+function()
+dense("antipush", false)
+end)
+
+Kontent(vars.switch, "ANTI PUSH 2 (test)", function()
+getgenv().antiPush(true)
+end,
+function()
+getgenv().antiPush(false)
+end)
+
+Kontent(vars.switch, "MAX HIGH DENSITY", function()
+dense("max")
+end,
+function()
+dense("max", false)
 end)
 
 if sgx.freeze_squidgame then
@@ -186,7 +520,18 @@ freeze(false)
 end)
 end;
 
+if sgx.loxk then
+Kontent(vars.switch, "LOXK", function()
+dense("lock", true)
+end, 
+function()
+dense("lock", false)
+end)
+end;
+
+
 Kontent:label("PLAYER", "GothamBold", "gold")
+
 local toggleTPWalk = getgenv().toggleTPWalk;
 local updateTPWalkSpeed = getgenv().updateTPWalkSpeed;
 toggleTPWalk(false)
@@ -207,14 +552,14 @@ if sgx.infjump then
 _G.infjump = _G.infjump or nil
 Kontent(vars.switch, "inf jump",
 function()
-    if _G.infjump then _G.infjump:Disconnect() end
-    _G.infjump = UIS.JumpRequest:Connect(function()
-        local ch=getchar(); local h=ch and ch:FindFirstChildOfClass("Humanoid")
-        if h then h:ChangeState(Enum.HumanoidStateType.Jumping) end
-    end)
+if _G.infjump then _G.infjump:Disconnect() end
+_G.infjump = UIS.JumpRequest:Connect(function()
+    local ch=getchar(); local h=ch and ch:FindFirstChildOfClass("Humanoid")
+    if h then h:ChangeState(Enum.HumanoidStateType.Jumping) end
+end)
 end,
 function()
-    if _G.infjump then _G.infjump:Disconnect(); _G.infjump=nil end
+if _G.infjump then _G.infjump:Disconnect(); _G.infjump=nil end
 end)
 end;
 
@@ -223,26 +568,26 @@ if sgx.noklip then
 _G.klip=false; _G.noklipping=nil; _G.respawned=nil
 Kontent(vars.switch, "noklip",
 function()
-    _G.klip=false
-    local function loopnoklip()
-        local char=getchar()
-        while not _G.klip do
-            for _,v in ipairs(char:GetDescendants()) do
-                if v:IsA("BasePart") and v.CanCollide then v.CanCollide=false end
-            end
-            RS.Heartbeat:Wait()
+_G.klip=false
+local function loopnoklip()
+    local char=getchar()
+    while not _G.klip do
+        for _,v in ipairs(char:GetDescendants()) do
+            if v:IsA("BasePart") and v.CanCollide then v.CanCollide=false end
         end
+        RS.Heartbeat:Wait()
     end
-    _G.noklipping = RS.Heartbeat:Connect(loopnoklip)
-    _G.respawned = LP.CharacterAdded:Connect(function()
-        task.wait()
-        if not _G.klip then task.spawn(loopnoklip) end
-    end)
+end
+_G.noklipping = RS.Heartbeat:Connect(loopnoklip)
+_G.respawned = LP.CharacterAdded:Connect(function()
+    task.wait()
+    if not _G.klip then task.spawn(loopnoklip) end
+end)
 end,
 function()
-    _G.klip=true
-    if _G.noklipping then _G.noklipping:Disconnect(); _G.noklipping=nil end
-    if _G.respawned then _G.respawned:Disconnect(); _G.respawned=nil end
+_G.klip=true
+if _G.noklipping then _G.noklipping:Disconnect(); _G.noklipping=nil end
+if _G.respawned then _G.respawned:Disconnect(); _G.respawned=nil end
 end)
 end;
 
@@ -256,7 +601,7 @@ query=query:lower()
 for _,p in ipairs(Players:GetPlayers()) do
 if p ~= LP then
 if p.DisplayName:lower():find(query,1,true) or p.Name:lower():find(query,1,true) then
-    return p
+return p
 end;
 end;
 end
@@ -267,9 +612,9 @@ local targetbox = Kontent(vars.txt, "target name...");
 
 utils.fokus(targetbox):connect(function(enter)
 if enter then
-    local t = findPlrName(targetbox.Text)
-    _G.targetPlayer = t
-    if t then 
+local t = findPlrName(targetbox.Text)
+_G.targetPlayer = t
+if t then 
 Kontent.notif("target: (@"..t.Name..") "..t.DisplayName, 2.2) 
 else 
 return 
@@ -282,16 +627,16 @@ if sgx.tpToRandomPlayer then
 Kontent(vars.btn, "TP to random player", function()
 local players=Players:GetPlayers()
 local function tpOnce()
-    for _=1,18 do
-        local p = players[math.random(1, #players)]
-        if p and p~=LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-            local my=getchar(); local hrp=my:FindFirstChild("HumanoidRootPart")
-            if hrp then hrp.CFrame = p.Character.HumanoidRootPart.CFrame end
-            return true
-        end
-        task.wait()
+for _=1,18 do
+    local p = players[math.random(1, #players)]
+    if p and p~=LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+        local my=getchar(); local hrp=my:FindFirstChild("HumanoidRootPart")
+        if hrp then hrp.CFrame = p.Character.HumanoidRootPart.CFrame end
+        return true
     end
-    return false
+    task.wait()
+end
+return false
 end
 if not tpOnce() then Kontent.notif("no target found", 1.2) end
 end)
@@ -303,7 +648,7 @@ local t = {}
 for _,p in ipairs(Players:GetPlayers()) do
 if p ~= LP then
 table.insert(t, p) 
- end
+end
 end;
 return t
 end
@@ -311,8 +656,8 @@ end
 if sgx.playerdropdown then
 local dd = Kontent(vars.list, "SELEKT PLAYER TO TARGET", listOfPlayers, function(selekted)
 if typeof(selekted)=="Instance" and selekted:IsA("Player") then
-    _G.targetPlayer = selekted
-    Kontent.notif("target: (@"..selekted.Name..") "..selekted.DisplayName, 2.33)
+_G.targetPlayer = selekted
+Kontent.notif("target: (@"..selekted.Name..") "..selekted.DisplayName, 2.33)
 end
 end)
 end;
@@ -328,12 +673,12 @@ if sgx.looptp then
 Kontent(vars.loop, "loop tp behind target", function()
 local t=_G.targetPlayer
 if t and t.Character and t.Character:FindFirstChild("HumanoidRootPart") then
-    local my=getchar(); local hrp=my:FindFirstChild("HumanoidRootPart")
-    if hrp then hrp.CFrame = t.Character.HumanoidRootPart.CFrame * CFrame.new(0,0, getgenv().behind or 2) end
+local my=getchar(); local hrp=my:FindFirstChild("HumanoidRootPart")
+if hrp then hrp.CFrame = t.Character.HumanoidRootPart.CFrame * CFrame.new(0,0, getgenv().behind or 2) end
 end
 end, "heartbeat")
 
-Kontent(vars.modulator, "distance", 0.2, 2, function(x)
+Kontent(vars.modulator, "distance away", 1, 2, function(x)
 getgenv().behind = x
 end)
 
@@ -346,33 +691,33 @@ Kontent(vars.btn, "join hidden game", function()
 Kontent.notif("searxhing...", .8)
 local Number, SomeSRVS, found = 0, {}, 0
 local ok, data = pcall(function()
-    return HttpService:JSONDecode(game:HttpGetAsync("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100"))
+return HttpService:JSONDecode(game:HttpGetAsync("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100"))
 end)
 if ok and data and data.data then
-    for _,v in ipairs(data.data) do
-        if type(v)=="table" and v.maxPlayers>v.playing and v.id~=game.JobId then
-            if v.playing>Number then Number=v.playing; table.insert(SomeSRVS,v.id); found=v.playing end
-        end
+for _,v in ipairs(data.data) do
+    if type(v)=="table" and v.maxPlayers>v.playing and v.id~=game.JobId then
+        if v.playing>Number then Number=v.playing; table.insert(SomeSRVS,v.id); found=v.playing end
     end
 end
+end
 if #SomeSRVS>0 then
-    Kontent.notif("serverhopping | player kount: "..found, 1.2)
-    task.wait(1)
-    TeleportService:TeleportToPlaceInstance(game.PlaceId, SomeSRVS[1])
+Kontent.notif("serverhopping | player kount: "..found, 1.2)
+task.wait(1)
+TeleportService:TeleportToPlaceInstance(game.PlaceId, SomeSRVS[1])
 else
-    Kontent.notif("none found...teleporting to small server", 1.2)
-    task.wait(1.2)
-    local bestId, bestCount = nil, 1e9
-    local ok2, data2 = pcall(function()
-        return HttpService:JSONDecode(game:HttpGetAsync("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100"))
-    end)
-    if ok2 and data2 and data2.data then
-        for _,v in ipairs(data2.data) do
-            if v.id~=game.JobId and v.playing<bestCount then bestCount=v.playing; bestId=v.id end
-        end
+Kontent.notif("none found...teleporting to small server", 1.2)
+task.wait(1.2)
+local bestId, bestCount = nil, 1e9
+local ok2, data2 = pcall(function()
+    return HttpService:JSONDecode(game:HttpGetAsync("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100"))
+end)
+if ok2 and data2 and data2.data then
+    for _,v in ipairs(data2.data) do
+        if v.id~=game.JobId and v.playing<bestCount then bestCount=v.playing; bestId=v.id end
     end
-    if bestId then TeleportService:TeleportToPlaceInstance(game.PlaceId, bestId)
-    else Kontent.notif("none found", .8) end
+end
+if bestId then TeleportService:TeleportToPlaceInstance(game.PlaceId, bestId)
+else Kontent.notif("none found", .8) end
 end
 end)
 end;
@@ -382,9 +727,9 @@ local function gotoplr()
 task.wait(.5)
 local t=_G.targetPlayer
 if t and t~=LP and t.Character then
-    local hrp = gethrp()
-    local th  = t.Character:FindFirstChild("HumanoidRootPart")
-    if hrp and th then hrp.CFrame = th.CFrame * CFrame.new(0,0,2.33) end
+local hrp = gethrp()
+local th  = t.Character:FindFirstChild("HumanoidRootPart")
+if hrp and th then hrp.CFrame = th.CFrame * CFrame.new(0,0,2.33) end
 end
 end
 LP.CharacterAdded:Connect(function()
@@ -418,4 +763,4 @@ pcall(function()
 -- setfpscap(60) 
 end) 
 end)
-end;end;end;spawn(function() pcall(function() loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/skripts/refs/heads/main/sgxWH"))();end);end);
+end;end;spawn(function() pcall(function() loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/skripts/refs/heads/main/sgxWH"))();end);end);
