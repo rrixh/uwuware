@@ -473,7 +473,7 @@ Kontent:notif("if u reading this u gay", 4)
 
 Kontent:label("NIGHT BRAWL", "GothamBold", "blue")
 
-Kontent(vars.loop, "auto kill players", function()
+Kontent(vars.loop, "loop tp and activate tool", function()
     local Players = game:GetService("Players")
     local LP = Players.LocalPlayer
     local function alive(plr)
@@ -509,14 +509,11 @@ Kontent(vars.loop, "auto kill players", function()
     local behindPos = targetHRP.Position - targetHRP.CFrame.LookVector * 2
     behindPos = Vector3.new(behindPos.X, targetHRP.Position.Y, behindPos.Z)
     lhrp.CFrame = CFrame.new(behindPos, targetHRP.Position)
-if getTool() then 
-local tool = getTool(); 
-end;
-if (tool and tool.Parent and LP.Character) then
-tool.Parent = LP.Character
-tool:Activate(); task.wait(.3) tool:Deactivate() 
+if (getTool() and getTool().Parent and LP.Character) then
+getTool().Parent = LP.Character
+getTool():Activate(); task.wait(.1) getTool():Deactivate()
          end;
-end, "heartbeat")
+end)
 
 Kontent(vars.loop, "spam fist 👊🏽", function()
 task.wait(.3)
