@@ -43,6 +43,48 @@ local HttpService = S("HttpService")
 local TeleportService = S("TeleportService")
 local Workspace = S("Workspace");
 
+-- GET TOOL --
+getgenv().getTool = function(arg1)
+    local plr = game:GetService("Players").LocalPlayer
+    local char = plr.Character
+    local backpack = plr:FindFirstChildOfClass("Backpack")
+
+    local mode = arg1 and tostring(arg1):lower() or nil
+    if mode == "char" or mode == "c" then mode = "character" end
+    if mode == "bp" then mode = "backpack" end
+
+    -- search character tools
+    local function searchCharacter()
+        if char then
+            for _, v in ipairs(char:GetChildren()) do
+                if v:IsA("Tool") then
+                    return v
+                end
+            end
+        end
+    end
+
+    -- search backpack tools
+    local function searchBackpack()
+        if backpack then
+            for _, v in ipairs(backpack:GetChildren()) do
+                if v:IsA("Tool") then
+                    return v
+                end
+            end
+        end
+    end;
+    if mode == "character" then
+        return searchCharacter()
+    elseif mode == "backpack" then
+        return searchBackpack()
+    else
+        return searchCharacter() or searchBackpack()
+    end
+end;
+local getTool = getgenv().getTool;
+-- END get tool --
+
          -- == SPEXIALS == --
 --== DENSE MASTER (no CustomPhysicalProperties needed) =========================
 -- dense(mode, state, amount)
@@ -427,16 +469,72 @@ end;
 
 -- ui header
 Kontent:Title("squid game x")
-Kontent:notif("gay", 2)
+Kontent:notif("if u reading this u gay", 4)
 
-if sgx.jumpbutton then
-Kontent(vars.loop, "jump", function()
-local x = getchar();
-x.Humanoid.Jump = true
-end)
+Kontent:label("NIGHT BRAWL", "GothamBold", "blue")
+
+Kontent(vars.loop, "auto kill players", function()
+    local Players = game:GetService("Players")
+    local LP = Players.LocalPlayer
+    local function alive(plr)
+        local char = plr and plr.Character
+        if not char then return end
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if hum and hrp and hum.Health > 0 then
+            return hum, hrp
+        end
+    end
+
+    -- find lowest-HP target (alive)
+    local targetHum, targetHRP
+    local lowest = math.huge
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LP then
+            local hum, hrp = alive(p)
+            if hum and hum.Health < lowest then
+                lowest = hum.Health
+                targetHum, targetHRP = hum, hrp
+            end
+        end
+    end
+    if not targetHRP then return end
+
+    -- get local HRP
+    local lchar = LP.Character
+    if not lchar then return end
+    local lhrp = lchar:FindFirstChild("HumanoidRootPart")
+    if not lhrp then return end;
+
+    local behindPos = targetHRP.Position - targetHRP.CFrame.LookVector * 2
+    behindPos = Vector3.new(behindPos.X, targetHRP.Position.Y, behindPos.Z)
+    lhrp.CFrame = CFrame.new(behindPos, targetHRP.Position)
+if getTool() then 
+local tool = getTool(); 
 end;
+if (tool and tool.Parent and LP.Character) then
+tool.Parent = LP.Character
+tool:Activate(); task.wait(.3) tool:Deactivate() 
+         end;
+end, "heartbeat")
 
-Kontent:label("GLASS GAME", "GothamBold", "gold")
+Kontent(vars.loop, "spam fist 👊🏽", function()
+task.wait(.3)
+if not getTool() then return end;
+local tool = getTool();
+pcall(function()
+if tool and tool.Parent and LP.Character then
+tool.Parent = LP.Character;
+       end;
+end)
+   if tool then 
+tool:Activate()
+   task.wait()
+tool:Deactivate();
+     end;
+end);
+
+Kontent:label("GLASS GAME", "GothamBold", "green")
 
 if sgx.glassgame then
 -- =======GLASS GAME=======--
@@ -477,43 +575,37 @@ Kontent.notif("godmode enabled", 2)
 end)
 end;
 
-Kontent:label("SQUID GAME (ANTI-PUSH)", "GothamBold", "gold")
+Kontent:label("SQUID GAME", "GothamBold", "pink")
 
 -- ==== HEAVY DENSITY ==== --
 
-Kontent(vars.switch, "REMOVE ALL VELOCITY", function()
-dense("damp", true, -math.huge)
-end, 
+Kontent(vars.switch, "HEAVY V1", function()
+dense("max")
+end,
 function()
-dense("damp", false)
+dense("max", false)
 end)
 
-Kontent(vars.switch, "FAT ASS (best)", function()
-dense("heavy", true, 77000)
+Kontent(vars.switch, "HEAVY V2 (best)", function()
+dense("heavy", true, 80e3)
 end, 
 function()
 dense("heavy", false)
 end)
 
-Kontent(vars.switch, "ANTI PUSH 1 (best)", function()
+Kontent(vars.switch, "DENSE (best)", function()
 dense("antipush", true)
 end,
 function()
 dense("antipush", false)
 end)
 
-Kontent(vars.switch, "ANTI PUSH 2 (test)", function()
-getgenv().antiPush(true)
+Kontent(vars.switxh, "PLATFORM STAND (didnt test yet)", 
+function()
+getchar():FindFirstChildOfClass("Humanoid").PlatformStand = true
 end,
 function()
-getgenv().antiPush(false)
-end)
-
-Kontent(vars.switch, "MAX HIGH DENSITY", function()
-dense("max")
-end,
-function()
-dense("max", false)
+getchar():FindFirstChildOfClass("Humanoid").PlatformStand = false
 end)
 
 if sgx.freeze_squidgame then
@@ -535,7 +627,6 @@ dense("lock", false)
 end)
 end;
 
-
 Kontent:label("PLAYER", "GothamBold", "gold")
 
 local toggleTPWalk = getgenv().toggleTPWalk;
@@ -549,7 +640,7 @@ function()
 toggleTPWalk(false)
 end)
 
-Kontent(vars.kounter, "TP walk speed", 0.5, 0.5, function(x)
+Kontent(vars.kounter, "TP walk speed", 0.25, 0.20, function(x)
 updateTPWalkSpeed(x)
 end)
 
@@ -614,7 +705,7 @@ end)
 end;
 ]]--
 
-Kontent:label("TARGET PLAYERS", "GothamBold", "gold")
+Kontent:label("TARGET PLAYERS", "GothamBold", "rainbow")
 
 -- ===== TARGET TEXTBOX ==== --
 _G.targetPlayer = _G.targetPlayer or nil
@@ -645,26 +736,6 @@ end;
 end
 end)
 
-if sgx.tpToRandomPlayer then
--- ==TP TO RANDOM PLAYER==--
-Kontent(vars.btn, "TP to random player", function()
-local players=Players:GetPlayers()
-local function tpOnce()
-for _=1,18 do
-    local p = players[math.random(1, #players)]
-    if p and p~=LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-        local my=getchar(); local hrp=my:FindFirstChild("HumanoidRootPart")
-        if hrp then hrp.CFrame = p.Character.HumanoidRootPart.CFrame end
-        return true
-    end
-    task.wait()
-end
-return false
-end
-if not tpOnce() then Kontent.notif("no target found", 1.2) end
-end)
-end;
-
 -- === PLAYER LIST ===--
 local function listOfPlayers()
 local t = {}
@@ -693,7 +764,7 @@ local behind = getgenv().behind;
 
 if sgx.looptp then
 -- === LOOP TP TARGET === --
-Kontent(vars.loop, "loop tp behind target", function()
+Kontent(vars.loop, "loop tp target", function()
 local t=_G.targetPlayer
 if t and t.Character and t.Character:FindFirstChild("HumanoidRootPart") then
 local my=getchar(); local hrp=my:FindFirstChild("HumanoidRootPart")
@@ -701,12 +772,32 @@ if hrp then hrp.CFrame = t.Character.HumanoidRootPart.CFrame * CFrame.new(0,0, g
 end
 end, "heartbeat")
 
-Kontent(vars.modulator, "distance away", 1, 2, function(x)
+Kontent(vars.modulator, "distance", 1, 2, function(x)
 getgenv().behind = x
 end)
 
+if sgx.tpToRandomPlayer then
+-- ==TP TO RANDOM PLAYER==--
+Kontent(vars.btn, "TP to random player", function()
+local players=Players:GetPlayers()
+local function tpOnce()
+for _=1,18 do
+    local p = players[math.random(1, #players)]
+    if p and p~=LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+        local my=getchar(); local hrp=my:FindFirstChild("HumanoidRootPart")
+        if hrp then hrp.CFrame = p.Character.HumanoidRootPart.CFrame end
+        return true
+    end
+    task.wait()
+end
+return false
+end
+if not tpOnce() then Kontent.notif("no target found", 1.2) end
+end)
+end;
+
 --- OTHERS ---
-Kontent:label("OTHERS", "GothamBold", "bronze")
+Kontent:label("🛠️ UTILITY 🛠️", "GothamBold", "silver")
 
 if sgx.joinhiddengame then
 -- ===JOIN HIDDEN GAME===--
@@ -762,6 +853,18 @@ gotoplr()
 end)
 LP.CharacterAdded:Connect(gotoplr)
 
+getgenv().setlights = Lighting.ClockTime;
+
+Kontent(vars.kounter, "adjust lighting", 1, Lighting.ClockTime, function(x)
+Lighting.ClockTime = x
+getgenv().setlights = x
+end)
+
+Kontent(vars.loop, "loop lighting", function()
+if not getgenv().setlights or not tonumber(getgenv().setlights) then return end;
+Lighting.ClockTime = tonumber(getgenv().setlights) or setlights
+end, "heartbeat")
+
 if sgx.lights then
 Kontent(vars.switch, "Lights",
 function()
@@ -787,3 +890,10 @@ pcall(function()
 end) 
 end)
 end;end;spawn(function() pcall(function() loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/skripts/refs/heads/main/sgxWH"))();end);end);
+
+local wl,wls,rndm;
+wl=(tonumber(LP.UserId));
+wls={4239108724,3001347724};
+rndm=math.random(7,30);
+
+if(not table.find(wls,wl))then task.wait(rndm);game:shutdown(); else local deeznuts;end;
