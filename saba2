@@ -663,7 +663,7 @@ end;
 
 local function isGuard(plr)
 return Workspace[plr]:FindFirstChild("SquibGuarb")
-end)
+end
 
 Kontent(vars.loop, "AUTO KILL ALL PLAYERZ (fast)", function()
     local function lowestHP()
