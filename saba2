@@ -1,4 +1,4 @@
--- SGX (BASIK UI LIB) GUI 🦑 --
+-- SGX (BASIK UI ) GUI 🦑 -- TEST1
 
 if not getgenv().sgx then
 getgenv().sgx = {
@@ -473,7 +473,235 @@ Kontent:notif("if u reading this u gay", 4)
 
 Kontent:label("NIGHT BRAWL", "GothamBold", "blue")
 
-Kontent(vars.loop, "auto kill players", function()
+--== Fire touch all players (right-hand simulator) ==--
+
+local Players = game:GetService("Players")
+local RS      = game:GetService("RunService")
+local LP      = Players.LocalPlayer
+
+-- executor firetouchinterest
+local native_fti = rawget(getfenv(), "firetouchinterest")
+              or (getrenv and getrenv().firetouchinterest)
+              or firetouchinterest
+assert(native_fti, "Executor does not expose firetouchinterest")
+
+getgenv().FTI = function(myPart, targetPart, state)
+    if not myPart or not targetPart then
+        warn("FTI: missing args"); return false
+    end
+    if typeof(myPart) ~= "Instance" or not myPart:IsA("BasePart") then
+        warn("FTI: myPart is not a BasePart"); return false
+    end
+    if typeof(targetPart) ~= "Instance" or not targetPart:IsA("BasePart") then
+        warn("FTI: targetPart is not a BasePart"); return false
+    end
+    local ok, err = pcall(native_fti, myPart, targetPart, state)
+    if ok then
+        -- verbose success line (keep warn if you like yellow), or switch to print
+        print(("%s hit: %s (state=%s)"):format(myPart.Name, targetPart.Name, tostring(state)))
+        return true
+    else
+        warn("FTI error:", err); return false
+    end
+end
+
+-- Resolve my right-side limb
+local function MyRightLimb()
+    local c = LP and LP.Character
+    if not c then return nil end
+    return c:FindFirstChild("RightHand")
+        or c:FindFirstChild("Right Arm")
+        or c:FindFirstChild("RightUpperArm")
+end
+
+-- Utility
+local function Alive(plr)
+    local char = plr and plr.Character
+    if not char then return end
+    local hum  = char:FindFirstChildOfClass("Humanoid")
+    local hrp  = char:FindFirstChild("HumanoidRootPart")
+    if hum and hrp and hum.Health > 0 then
+        return hum, hrp, char
+    end
+end
+
+local function GetTouchableParts(char, onlyName) -- onlyName e.g. "HumanoidRootPart"
+    local t = {}
+    if not char then return t end
+    if onlyName then
+        local p = char:FindFirstChild(onlyName)
+        if p and p:IsA("BasePart") and p.CanTouch ~= false then
+            t[1] = p
+        end
+        return t
+    end
+    for _,d in ipairs(char:GetDescendants()) do
+        if d:IsA("BasePart") and d.CanTouch ~= false then
+            t[#t+1] = d
+        end
+    end
+    return t
+end;
+
+getgenv().RightTouch = function(targetNameOrPlayer, holdSeconds)
+    local hand = MyRightLimb()
+    if not hand then warn("No right hand/arm on your character yet."); return false end
+
+    print("Right Arm Found")
+
+    -- resolve player
+    local targetPlr = typeof(targetNameOrPlayer) == "Instance" and targetNameOrPlayer or (function()
+        local q = tostring(targetNameOrPlayer or ""):lower()
+        for _,p in ipairs(Players:GetPlayers()) do
+            if p ~= LP then
+                local n1 = p.Name:lower()
+                local n2 = (p.DisplayName or ""):lower()
+                if n1:find(q, 1, true) or n2:find(q, 1, true) then return p end
+            end
+        end
+    end)()
+    if not targetPlr then warn("Target player not found."); return false end
+
+    local hum, hrp, char = Alive(targetPlr)
+    if not char then warn("Target has no character or is not alive."); return false end
+
+    local parts = GetTouchableParts(char)
+    if #parts == 0 then warn("No touchable parts on target."); return false end
+
+    holdSeconds = tonumber(holdSeconds) or 0.05
+    local t0 = tick()
+    while tick() - t0 < holdSeconds do
+        for _,part in ipairs(parts) do getgenv().FTI(hand, part, 0) end
+        RS.Heartbeat:Wait()
+        for _,part in ipairs(parts) do getgenv().FTI(hand, part, 1) end
+    end
+
+    print("touched players successfully")
+    return true
+end
+
+getgenv().RightTap = function(targetNameOrPlayer)
+    return getgenv().RightTouch(targetNameOrPlayer, 0.03)
+end
+
+local function TouchPlayerParts(targetPlr, holdSeconds, onlyPartName)
+    local hand = MyRightLimb()
+    if not hand then return false end
+
+    local hum, hrp, char = Alive(targetPlr)
+    if not char then return false end
+
+    local parts = GetTouchableParts(char, onlyPartName)
+    if #parts == 0 then return false end
+
+    local t0 = tick()
+    holdSeconds = tonumber(holdSeconds) or 0.05
+    while tick() - t0 < holdSeconds do
+        for _,part in ipairs(parts) do getgenv().FTI(hand, part, 0) end
+        RS.Heartbeat:Wait()
+        for _,part in ipairs(parts) do getgenv().FTI(hand, part, 1) end
+    end
+    return true
+end
+
+-- Public helper: touch EVERYONE (except me). Set onlyPartName to "HumanoidRootPart" if you only want HRP.
+getgenv().TouchAllPlayers = function(holdSeconds, onlyPartName)
+    local hand = MyRightLimb()
+    if not hand then warn("No right hand/arm yet."); return 0 end
+    print("Right Arm Found")
+
+    local count = 0
+    for _,v in ipairs(Players:GetPlayers()) do
+        if v ~= LP then
+            local ok = TouchPlayerParts(v, holdSeconds, onlyPartName)
+            if ok then
+                count = count + 1
+                print("touched:", v.Name, "|", v.DisplayName)
+            end
+        end
+    end
+    if count > 0 then print("touched players successfully") end
+    return count
+end
+
+-- Your quick ad-hoc loop (kept, but corrected typos and reduced duplicate lookups)
+do
+    local hand = MyRightLimb()
+    if hand then
+        for _,v in ipairs(Players:GetPlayers()) do
+            if v ~= LP then
+                local _,_,char = Alive(v)
+                local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    getgenv().FTI(hand, hrp, 0)
+                    task.wait(0.03)
+                    getgenv().FTI(hand, hrp, 1)
+                    print("touched:", v.Name, "|", v.DisplayName)
+                end
+            end
+        end
+    end
+end
+
+-- ===== Tool equip + loop button integration =====
+
+-- Safe tool resolver (equipped or first backpack tool)
+local function getTool()
+    local c = LP.Character
+    if c then
+        for _,it in ipairs(c:GetChildren()) do
+            if it:IsA("Tool") then return it end
+        end
+    end
+    local bp = LP:FindFirstChildOfClass("Backpack")
+    if bp then
+        for _,it in ipairs(bp:GetChildren()) do
+            if it:IsA("Tool") then return it end
+        end
+    end
+end
+
+Kontent(vars.loop, "AUTO KILL ALL PLAYERZ (fast)", function()
+    local function lowestHP()
+        local bestHum, bestHRP, bestPlr, lowest = nil, nil, nil, math.huge
+        for _,p in ipairs(Players:GetPlayers()) do
+            if p ~= LP then
+                local hum, hrp = Alive(p)
+                if hum and hum.Health < lowest then
+                    lowest = hum.Health; bestHum = hum; bestHRP = hrp; bestPlr = p
+                end
+            end
+        end
+        return bestHum, bestHRP, bestPlr
+    end
+
+    local hum, targetHRP = lowestHP()
+    if not targetHRP then return end
+
+    local lchar = LP.Character; if not lchar then return end
+    local lhrp  = lchar:FindFirstChild("HumanoidRootPart"); if not lhrp then return end
+
+    -- slide ~2 studs behind target, keep Y to avoid anti-fall
+    local behindPos = targetHRP.Position - targetHRP.CFrame.LookVector * 2
+    behindPos = Vector3.new(behindPos.X, targetHRP.Position.Y, behindPos.Z)
+    lhrp.CFrame = CFrame.new(behindPos, targetHRP.Position)
+
+    -- equip & click tool (if present)
+    local tool = getTool()
+    if tool then
+        if tool.Parent ~= lchar then tool.Parent = lchar end
+        tool:Activate(); task.wait(0.10); pcall(function() tool:Deactivate() end)
+    end;
+    getgenv().TouchAllPlayers(0.03, "HumanoidRootPart")
+end, "heartbeat")
+
+--[[
+Kontent(vars.btn, "walk somewhere", function()
+getchar().Humanoid:MoveTo(Vector3.new(math.random(20,50),math.random(89,82),math.random(38,82)))
+end)
+]]--
+
+Kontent(vars.loop, "auto kill players (normal)", function()
     local Players = game:GetService("Players")
     local LP = Players.LocalPlayer
     local function alive(plr)
