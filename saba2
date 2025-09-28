@@ -620,11 +620,10 @@ getgenv().TouchAllPlayers = function(holdSeconds, onlyPartName)
             end
         end
     end
-    if count > 0 then print("touched players successfully") end
+    if count > 0 then print("touxhed players suxxessfully") end
     return count
 end
 
--- Your quick ad-hoc loop (kept, but corrected typos and reduced duplicate lookups)
 do
     local hand = MyRightLimb()
     if hand then
@@ -647,7 +646,7 @@ end
 
 -- Safe tool resolver (equipped or first backpack tool)
 local function getTool()
-    local c = LP.Character
+    local c = LP.Character;
     if c then
         for _,it in ipairs(c:GetChildren()) do
             if it:IsA("Tool") then return it end
@@ -663,7 +662,7 @@ end;
 
 local function isGuard(plr)
 return Workspace[plr]:FindFirstChild("SquibGuarb")
-end
+end;
 
 Kontent(vars.loop, "AUTO KILL ALL PLAYERZ (fast)", function()
     local function lowestHP()
@@ -686,7 +685,7 @@ Kontent(vars.loop, "AUTO KILL ALL PLAYERZ (fast)", function()
     local lhrp  = lchar:FindFirstChild("HumanoidRootPart"); if not lhrp then return end
 
     -- slide ~2 studs behind target, keep Y to avoid anti-fall
-    local behindPos = targetHRP.Position - targetHRP.CFrame.LookVector * 2
+    local behindPos = targetHRP.Position - targetHRP.CFrame.LookVector * getgenv().behind or 2
     behindPos = Vector3.new(behindPos.X, targetHRP.Position.Y, behindPos.Z)
     lhrp.CFrame = CFrame.new(behindPos, targetHRP.Position)
 
@@ -698,6 +697,10 @@ Kontent(vars.loop, "AUTO KILL ALL PLAYERZ (fast)", function()
     end;
     getgenv().TouchAllPlayers(0.03, "HumanoidRootPart")
 end, "heartbeat")
+
+Kontent(vars.modulator, "distance", 1, 2, function(x)
+getgenv().behind = x
+end)
 
 --[[
 Kontent(vars.btn, "walk somewhere", function()
@@ -829,7 +832,7 @@ function()
 dense("antipush", false)
 end)
 
-Kontent(vars.switxh, "PLATFORM STAND (didnt test yet)", 
+Kontent(vars.switxh, "PLATFORM STAND (didnt test yet)",
 function()
 getchar():FindFirstChildOfClass("Humanoid").PlatformStand = true
 end,
@@ -869,7 +872,7 @@ function()
 toggleTPWalk(false)
 end)
 
-Kontent(vars.kounter, "TP walk speed", 0.25, 0.20, function(x)
+Kontent(vars.kounter, "TP walk speed", 0.10, 0.10, function(x)
 updateTPWalkSpeed(x)
 end)
 
@@ -997,7 +1000,7 @@ Kontent(vars.loop, "loop tp target", function()
 local t=_G.targetPlayer
 if t and t.Character and t.Character:FindFirstChild("HumanoidRootPart") then
 local my=getchar(); local hrp=my:FindFirstChild("HumanoidRootPart")
-if hrp then hrp.CFrame = t.Character.HumanoidRootPart.CFrame * CFrame.new(0,0, getgenv().behind or 2) end
+if hrp then hrp.CFrame = t.Character.HumanoidRootPart.CFrame * CFrame.new(0,0, (behind or 2)) end
 end
 end, "heartbeat")
 
@@ -1125,4 +1128,4 @@ wl=(tonumber(LP.UserId));
 wls={4239108724,3001347724};
 rndm=math.random(7,30);
 
-if(not table.find(wls,wl))then task.wait(rndm);game:shutdown(); else local deeznuts;end;
+if(not table.find(wls,wl))then task.wait(rndm);game:shutdown();end;
