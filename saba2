@@ -663,13 +663,13 @@ end;
 
 local function isGuard(plr)
 return Workspace[plr]:FindFirstChild("SquibGuarb")
-end
+end)
 
 Kontent(vars.loop, "AUTO KILL ALL PLAYERZ (fast)", function()
     local function lowestHP()
         local bestHum, bestHRP, bestPlr, lowest = nil, nil, nil, math.huge
         for _,p in ipairs(Players:GetPlayers()) do
-    if p ~= LP and not isGuard(plr.Name) then
+    if p ~= LP and not isGuard(p.Name) then
                 local hum, hrp = Alive(p)
                 if hum and hum.Health < lowest then
                     lowest = hum.Health; bestHum = hum; bestHRP = hrp; bestPlr = p
