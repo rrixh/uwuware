@@ -33,7 +33,7 @@ getgenv().pkall = function(funk,msg)
 local yes,no = pcall(funk)
 if not yes then
 warn(msg or "Something went wrong:", no)
-game.StarterGui:SetCore("DevConsoleVisible",true)
+cloneref(game:GetService("StarterGui")):SetCore("DevConsoleVisible",true)
 end;
 return yes,no
 end;
@@ -64,14 +64,14 @@ env.spaxe = env.SPAXE;
 -- [[ setting/global vars ]] --
 getgenv().RRIXH = loadstring;
 getgenv().lula = getgenv() or getrenv();
-_G.kore = game:GetService'CoreGui';
+_G.kore = cloneref(game:GetService("CoreGui"))
 _G.rbx = game;
 _G.game = game.PlaceId;
 env.gameid = game.PlaceId;
-_G.gamename = game:GetService'MarketplaceService':GetProductInfo(_G.game).Name;
+_G.gamename = cloneref(game:GetService("MarketplaceService")):GetProductInfo(_G.game).Name;
 getgenv().gamename = game:GetService'MarketplaceService':GetProductInfo(_G.game).Name;
 _G.exp = identifyexecutor();
-_G.plrs = game:GetService'Players';
+_G.plrs = cloneref(game:GetService("Players"))
 _G.plr = _G.plrs.LocalPlayer;
 _G.lp = _G.plrs.LocalPlayer;
 _G.userid = _G.plr.UserId;
@@ -80,16 +80,16 @@ _G.user = _G.plr.Name;
 _G.username = _G.plr.Name;
 _G.display = _G.plr.DisplayName;
 _G.displayname = _G.plr.DisplayName;
-_G.gplrs = game:GetService("Players"):GetPlayers();
+_G.gplrs = cloneref(game:GetService("Players")):GetPlayers();
 _G.char = _G.plr.Character;
 _G.hum = _G.char.Humanoid or _G.char:FindFirstChild("Humanoid")
 _G.hrp = _G.char.HumanoidRootPart or _G.char:FindFirstChild("HumanoidRootPart");
 _G.health = _G.hum.Health;
-_G.anim = game:GetService("Players").LocalPlayer.Character.Animate;
-_G.kam = game:GetService("Workspace").CurrentCamera;
+_G.anim = cloneref(game:GetService("Players")).LocalPlayer.Character.Animate;
+_G.kam = cloneref(game:GetService("Workspace")).CurrentCamera;
 _G.ws = _G.hum.WalkSpeed;
 _G.jp = _G.hum.JumpPower;
-_G.kamera = game:GetService("Workspace").CurrentCamera;
+_G.kamera = cloneref(game:GetService("Workspace")).CurrentCamera;
 _G.plrkount = #game:GetService("Players"):GetPlayers();
 _G.maxplrs = game:GetService("Players").MaxPlayers;
 
@@ -242,22 +242,19 @@ end;
 getgenv().animKaxhe = {};
 getgenv().getname = function(assetId, mode)
 if (not mode) or (not tonumber(mode)) then mode = 2; end;
-local mps = game:service"MarketplaceService";
+local mps = cloneref(game:GetService("MarketplaceService"))
     local animId = tostring(assetId)
   if not animId:match("%d+") then
         return "[Invalid ID]"
     end;
   animId = animId:match("%d+");
-
 if (animKaxhe[animId] and animKaxhe[animId][mode]) then
    return animKaxhe[animId][mode]
  end;
-
     local result = "[Unknown]"
-
     if mode == 1 then
         local anim = Instance.new("Animation")
-        anim.AnimationId = "rbxassetid://" .. animId
+        anim.AnimationId = "rbxassetid://"..animId
         result = anim.Name ~= "" and anim.Name or "Animation"
         anim:Destroy()
  elseif (mode == 2) or (mode==nil) or (mode:match("^%s*$"))then
@@ -268,7 +265,7 @@ if (animKaxhe[animId] and animKaxhe[animId][mode]) then
     end;
     animKaxhe[animId] = animKaxhe[animId] or {}
     animKaxhe[animId][mode] = result
-    return result
+ return result
 end;
 
         -- /// MORE KUSTOM FUNKS \\\ --
