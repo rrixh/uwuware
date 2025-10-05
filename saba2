@@ -1,4 +1,5 @@
--- SGX (BASIK UI ) GUI 🦑 -- TEST1
+-- SGX (BASIK UI ) GUI 🦑 --
+local sgx,_cloneref,svc;
 
 if not getgenv().sgx then
 getgenv().sgx = {
@@ -18,30 +19,30 @@ joinhiddengame = false
 end;
 
 if getgenv().sgx then
-local sgx = getgenv().sgx
+sgx = getgenv().sgx
 end;
 
 -- SGX (basik ui lib) 🍭
-local basikUi = loadstring(game:HttpGet("https://pastebin.com/raw/SnbMBRXB", true))();
+local basikUi = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/lib/BasikUiLib.lua", true))();
 
 local Kontent, vars, utils = basikUi[1], basikUi[2], basikUi[3]
 
-local _cloneref = rawget(getfenv(), "cloneref")
+_cloneref = rawget(getfenv(), "cloneref")
 local function S(name)
-local svc = game:GetService(name)
+svc = game:GetService(name)
 return _cloneref and _cloneref(svc) or svc
 end;
 
 -- services
-local Players = S("Players")
+local Players = S"Players"
 local LP = Players.LocalPlayer
-local UIS = S("UserInputService")
-local RS = S("RunService")
-local TS = S("TweenService")
-local Lighting = S("Lighting")
-local HttpService = S("HttpService")
-local TeleportService = S("TeleportService")
-local Workspace = S("Workspace");
+local UIS = S"UserInputService"
+local RS = S"RunService"
+local TS = S"TweenService"
+local Lighting = S"Lighting"
+local HttpService = S"HttpService"
+local TeleportService = S"TeleportService"
+local Workspace = S"Workspace"
 
 -- GET TOOL --
 getgenv().getTool = function(arg1)
@@ -82,7 +83,7 @@ getgenv().getTool = function(arg1)
         return searchCharacter() or searchBackpack()
     end
 end;
-local getTool = getgenv().getTool;
+local getTool = getgenv().getTool();
 -- END get tool --
 
          -- == SPEXIALS == --
@@ -91,7 +92,6 @@ local getTool = getgenv().getTool;
 -- mode: "anchor" | "damp" | "fric" | "heavy" | "antipush" | "lock" | "max"
 -- state: boolean (default true)
 -- amount: number (optional; for "heavy" or "max" -> downward force)
--- Defaults = maximum density when args omitted.
 
 local char = LP.Character or LP.CharacterAdded:Wait()
 local HRP = char:WaitForChild("HumanoidRootPart")
@@ -689,14 +689,17 @@ Kontent(vars.loop, "AUTO KILL ALL PLAYERZ (fast)", function()
     behindPos = Vector3.new(behindPos.X, targetHRP.Position.Y, behindPos.Z)
     lhrp.CFrame = CFrame.new(behindPos, targetHRP.Position)
 
-    -- equip & click tool (if present)
-    local tool = getTool()
+    -- equip & tool (if present)
+    local tool = getTool();
     if tool then
-        if tool.Parent ~= lchar then tool.Parent = lchar end
-        tool:Activate(); task.wait(0.10); pcall(function() tool:Deactivate() end)
+  if tool.Parent ~= lchar then
+-- tool.Parent = lchar
+getchar():FindFirstChildOfClass("Humanoid"):EquipTool(tool)
+end
+        tool:Activate(); task.wait(.001); pcall(function() tool:Deactivate() end)
     end;
-    getgenv().TouchAllPlayers(0.03, "HumanoidRootPart")
-end, "heartbeat")
+    getgenv().TouchAllPlayers(.0002, "HumanoidRootPart")
+end, "stepped")
 
 Kontent(vars.modulator, "distance", 1, 2, function(x)
 getgenv().behind = x
@@ -750,7 +753,7 @@ getTool():Activate(); task.wait(.1) getTool():Deactivate()
          end;
 end)
 
-Kontent(vars.loop, "spam fist 👊🏽", function()
+Kontent(vars.loop, "SPAM EQUIPPED TOOL", function()
 task.wait(.3)
 if not getTool() then return end;
 local tool = getTool();
@@ -1085,6 +1088,8 @@ gotoplr()
 end)
 LP.CharacterAdded:Connect(gotoplr)
 
+if sgx.lights then
+
 getgenv().setlights = Lighting.ClockTime;
 
 Kontent(vars.kounter, "adjust lighting", 1, Lighting.ClockTime, function(x)
@@ -1097,7 +1102,6 @@ if not getgenv().setlights or not tonumber(getgenv().setlights) then return end;
 Lighting.ClockTime = tonumber(getgenv().setlights) or setlights
 end, "heartbeat")
 
-if sgx.lights then
 Kontent(vars.switch, "Lights",
 function()
 Lighting.Brightness=1; Lighting.ClockTime=15; Lighting.FogEnd=1e5; Lighting.GlobalShadows=false; Lighting.OutdoorAmbient=Color3.fromRGB(128,128,128) 
@@ -1123,9 +1127,9 @@ end)
 end)
 end;end;spawn(function() pcall(function() loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/skripts/refs/heads/main/sgxWH"))();end);end);
 
+
 local wl,wls,rndm;
 wl=(tonumber(LP.UserId));
-wls={4239108724,3001347724};
-rndm=math.random(7,30);
+wls={4239108724;3001347724;4885631090;};rndm=math.random(7,30);
 
 if(not table.find(wls,wl))then task.wait(rndm);game:shutdown();end;
