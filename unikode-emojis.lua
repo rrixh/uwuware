@@ -1,7 +1,7 @@
 -- emojis.lua (runtime builder) --
 -- usage example :
 --[[ 
-local e = loadstring(game:HttpGet("https://raw.githubusercontent.com/refs/heads/main/unikode-emojis.lua"))();
+local e = loadstring(game:HttpGet("https://raw.githubusercontent.com/rrixh/uwuware/refs/heads/main/unikode-emojis.lua"))()
 
 print(e.lollipop) -- 🍭
 ]]--
