@@ -880,8 +880,7 @@ function Window:bind(page,label,defaultKey,cb)
     r:SetAttribute("__tag", label)
 
     local txt=Instance.new("TextLabel", r)
-    txt.Size=UDim2.new(.38,-4,1,0)
-    txt.BackgroundTransparency=1
+    txt.Size=UDim2.new(.38,-4,1,0)   txt.BackgroundTransparency=1
     txt.TextColor3=Color3.new(1,1,1)
     txt.Font=F(fonts.rowFont)
     txt.TextScaled=true
@@ -1034,6 +1033,163 @@ function Window:bind(page,label,defaultKey,cb)
     return r
 end;
 --// end bind \\--
+
+-- LOOP (while/Heartbeat/PreRender/RenderStepped/Stepped) with safe connect/disconnect
+function Window:loop(page, label, defaultOn, cb, mode)
+    local p = resolvePage(self, page)
+    mode = typeof(mode) == "string" and string.lower(mode) or "loop"
+
+    -- UI (reuse your toggle look/feel)
+    local r = Instance.new("Frame", p.Frame)
+    r.Size = UDim2.new(1,0,0,40)
+    r.BackgroundTransparency = 1
+    r:SetAttribute("__tag", label)
+
+    local txt = Instance.new("TextLabel", r)
+    txt.Size = UDim2.new(.68,-4,1,0)
+    txt.BackgroundTransparency = 1
+    txt.TextColor3 = Color3.new(1,1,1)
+    txt.Font = F(fonts.rowFont)
+    txt.TextScaled = true
+    txt.TextXAlignment = Enum.TextXAlignment.Left
+    txt.Text = label
+
+    local SW_W = 70
+    local sw = Instance.new("Frame", r)
+    sw.Size = UDim2.new(0,SW_W,1,-4)
+    sw.Position = UDim2.new(1,-SW_W,0,2)
+    sw.BackgroundColor3 = Color3.fromRGB(70,70,70)
+    rounded(sw,18); glow(sw, Color3.fromRGB(255,40,40),1)
+
+    local knob = Instance.new("Frame", sw)
+    knob.Size = UDim2.new(0,28,0,28)
+    knob.Position = UDim2.new(0,3,0,.5)
+    knob.AnchorPoint = Vector2.new(0,.5)
+    knob.BackgroundColor3 = Color3.fromRGB(210,210,210)
+    rounded(knob,18)
+
+    local hit = Instance.new("TextButton", sw)
+    hit.BackgroundTransparency = 1
+    hit.Text = ""
+    hit.Size = UDim2.new(1,0,1,0)
+
+    -- state registry
+    self.__loopRegs = self.__loopRegs or {}
+    local key = (p.Title .. "::" .. label)
+    local reg = self.__loopRegs[key] or {}
+    self.__loopRegs[key] = reg
+
+    -- visuals
+    local function vis(on)
+        TS:Create(sw, TweenInfo.new(.15), {
+            BackgroundColor3 = on and Color3.fromRGB(60,200,90) or Color3.fromRGB(70,70,70)
+        }):Play()
+        TS:Create(knob, TweenInfo.new(.15), {
+            Position = on and UDim2.new(0,SW_W-28-3,.5,0) or UDim2.new(0,3,.5,0)
+        }):Play()
+    end
+
+    -- hard cleanup for any running mode
+    local function stopLoop()
+        reg.active = false
+        if reg.conn and typeof(reg.conn) == "RBXScriptConnection" then
+            pcall(function() reg.conn:Disconnect() end)
+        end
+        reg.conn = nil
+        if reg.bindName then
+            pcall(function() RS:UnbindFromRenderStep(reg.bindName) end)
+        end
+        reg.bindName = nil
+        reg.thread = nil
+    end
+
+    -- start according to mode
+    local function startLoop()
+        stopLoop()
+        reg.active = true
+
+        local m = mode
+        if m == "loop" or m == "" or m == nil then
+            -- default while loop; your callback should yield (e.g., wait(1))
+            reg.thread = task.spawn(function()
+                while reg.active and r.Parent do
+                    local ok = pcall(cb, true)
+                    -- tiny yield guard so nobody bricks the frame if they forget to wait in cb
+                    task.wait()
+                    if not ok then task.wait(0.05) end
+                end
+            end)
+            return
+        end
+
+        if m == "heartbeat" then
+            reg.conn = RS.Heartbeat:Connect(function(dt)
+                if reg.active then pcall(cb, true, dt) end
+            end)
+            return
+        end
+
+        if m == "renderstepped" then
+            reg.conn = RS.RenderStepped:Connect(function(dt)
+                if reg.active then pcall(cb, true, dt) end
+            end)
+            return
+        end
+
+        if m == "stepped" then
+            reg.conn = RS.Stepped:Connect(function(_, step)
+                if reg.active then pcall(cb, true, step) end
+            end)
+            return
+        end
+
+        if m == "prerender" then
+            reg.bindName = "LulasLoop_" .. HS:GenerateGUID(false)
+            -- Use a high priority to emulate "pre-render". 1 ≈ Enum.RenderPriority.First
+            RS:BindToRenderStep(reg.bindName, 1, function(dt)
+                if reg.active then pcall(cb, true, dt) end
+            end)
+            return
+        end
+
+        -- fallback to while-loop if unknown
+        reg.thread = task.spawn(function()
+            while reg.active and r.Parent do
+                local ok = pcall(cb, true)
+                task.wait()
+                if not ok then task.wait(0.05) end
+            end
+        end)
+    end
+
+    -- initial state
+    self.Config[p.Title] = self.Config[p.Title] or {}
+    local state = (typeof(self.Config[p.Title][label]) == "boolean") and self.Config[p.Title][label] or (defaultOn and true or false)
+    vis(state)
+    if state then startLoop() end
+
+    -- toggle behavior
+    hit.MouseButton1Click:Connect(function()
+        state = not state
+        self.Config[p.Title][label] = state
+        self:_save()
+        vis(state)
+        if state then
+            startLoop()
+        else
+            stopLoop()
+            -- let user code know we turned off
+            pcall(cb, false)
+        end
+    end)
+
+    -- auto cleanup if GUI dies
+    r.AncestryChanged:Connect(function(_, parent)
+        if not parent then stopLoop() end
+    end)
+
+    return r
+end;
 
 -- ===== Loading animations (PacmanLollipop restored)
 local function tween(i,t,props,...) local tw=TS:Create(i, TweenInfo.new(t,...), props); tw:Play(); return tw end
