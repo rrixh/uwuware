@@ -119,6 +119,31 @@ getgenv().maxplrs = _G.maxplrs;
 getgenv().anim = _G.anim;
 getgenv().kore = _G.kore;
 
+fireproximityprompt = fireproximityprompt;
+fireclickdetector = fireclickdetector;
+firetouchinterest = firetouchinterest;
+cloneref = cloneref; game=game; getgenv=getgenv;
+local hrp;
+
+hrp = cloneref(game:GetService("Players")).LocalPlayer.Character:WaitForChild("HumanoidRootPart")
+
+getgenv().Fire = function(obj,dur)
+if not obj then
+    warn("must insert objekt; see example:\n1. Fire(workspace.Part)\n2. Fire(workspace.Part.ClickDetector)\n3. Fire(workspace.Part.ProximityPrompt)")
+    return
+end;
+
+if obj:IsA("ProximityPrompt") then       fireproximityprompt(obj)
+elseif obj:IsA("ClickDetector") then
+   fireclickdetector(obj)
+elseif obj:IsA("BasePart") then
+    local char = cloneref(game:GetService("Players")).LocalPlayer.Character or cloneref(game:GetService("Players")).LocalPlayer.CharacterAdded:Wait();
+    hrp = char:WaitForChild("HumanoidRootPart")
+    firetouchinterest(hrp, obj, 0)
+        task.wait(dur or .3)
+    firetouchinterest(hrp, obj, 1)
+end
+end;
 
 --[[ inputs ]]--
 _G.mobile = Enum.UserInputType.Touch;
