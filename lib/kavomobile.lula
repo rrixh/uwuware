@@ -479,6 +479,7 @@ function LULA.CreateLib(kavName, themeList)
             Utility:TweenObject(tabButton, {BackgroundTransparency = 0}, 0.2)
         end)
         local Sections = {}
+        local sectionRegistry = {}
         local focusing = false
         local viewDe = false
 
@@ -594,7 +595,216 @@ function LULA.CreateLib(kavName, themeList)
             end
                 updateSectionFrame()
                 UpdateSize()
+            local collapsed = false
+            local searchOverride = false
+            local previousCollapsed = false
+
+            local sectionRecord = {
+                Name = tostring(secName),
+                Frame = sectionFrame,
+                Header = sectionHead,
+                Inner = sectionInners,
+                NameLabel = sectionName,
+                Elements = nil,
+                Collapsed = false
+            }
+            table.insert(sectionRegistry, sectionRecord)
+
+            local function applyCollapsed(state)
+                collapsed = state and true or false
+                sectionRecord.Collapsed = collapsed
+                sectionInners.Visible = not collapsed
+                updateSectionFrame()
+                UpdateSize()
+            end
+
+            sectionHead.Active = true
+            sectionHead.InputBegan:Connect(function(inputObject)
+                if searchOverride then return end
+                if inputObject.UserInputType == Enum.UserInputType.MouseButton1 or inputObject.UserInputType == Enum.UserInputType.Touch then
+                    applyCollapsed(not collapsed)
+                end
+            end)
+
             local Elements = {}
+            sectionRecord.Elements = Elements
+
+            function Elements:SetCollapsed(state) applyCollapsed(state) end
+            function Elements:GetCollapsed() return collapsed end
+            function Elements:GetFrame() return sectionFrame end
+            function Elements:GetInnerFrame() return sectionInners end
+            function Elements:SetVisible(state) sectionFrame.Visible = state and true or false; UpdateSize() end
+            function Elements:GetControls() return sectionInners:GetChildren() end
+
+            function Elements:_SetSearchOverride(enabled, hasMatches)
+                if enabled then
+                    if not searchOverride then previousCollapsed = collapsed end
+                    searchOverride = true
+                    sectionFrame.Visible = hasMatches and true or false
+                    if hasMatches then applyCollapsed(false) end
+                else
+                    searchOverride = false
+                    sectionFrame.Visible = true
+                    applyCollapsed(previousCollapsed)
+                end
+            end
+
+            function Elements:NewParagraph(titleText, bodyText)
+                local frame = Instance.new("Frame")
+                frame.Name = "paragraph"
+                frame.Parent = sectionInners
+                frame.BackgroundColor3 = themeList.ElementColor
+                frame.BorderSizePixel = 0
+                frame.Size = UDim2.new(0, 352, 0, 58)
+                Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 4)
+                local titleLabel = Instance.new("TextLabel", frame)
+                titleLabel.BackgroundTransparency = 1
+                titleLabel.Position = UDim2.new(0, 8, 0, 3)
+                titleLabel.Size = UDim2.new(1, -16, 0, 22)
+                titleLabel.Font = Enum.Font.PatrickHand
+                titleLabel.TextSize = getgenv().labeltextsize
+                titleLabel.TextColor3 = themeList.TextColor
+                titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+                titleLabel.Text = tostring(titleText or "")
+                local bodyLabel = titleLabel:Clone()
+                bodyLabel.Parent = frame
+                bodyLabel.Position = UDim2.new(0, 8, 0, 25)
+                bodyLabel.Size = UDim2.new(1, -16, 1, -28)
+                bodyLabel.TextSize = math.max(13, getgenv().labeltextsize - 2)
+                bodyLabel.TextWrapped = true
+                bodyLabel.TextYAlignment = Enum.TextYAlignment.Top
+                bodyLabel.Text = tostring(bodyText or "")
+                updateSectionFrame(); UpdateSize()
+                local api = {}
+                function api:UpdateTitle(v) titleLabel.Text = tostring(v) end
+                function api:UpdateParagraph(v) bodyLabel.Text = tostring(v) end
+                function api:SetVisible(v) frame.Visible = v and true or false; updateSectionFrame(); UpdateSize() end
+                api.Frame = frame
+                return api
+            end
+
+            function Elements:NewKreditsCard(config)
+                config = config or {}
+                local username = tostring(config.Username or "lulaslollipop")
+                local userId = tonumber(config.UserId) or 3001347724
+                local refreshSeconds = tonumber(config.RefreshSeconds) or 60
+                local HttpService = game:GetService("HttpService")
+                local PlayersService = game:GetService("Players")
+
+                local card = Instance.new("Frame")
+                card.Name = "KreditsCard"
+                card.Parent = sectionInners
+                card.BackgroundColor3 = themeList.ElementColor
+                card.BorderSizePixel = 0
+                card.Size = UDim2.new(0, 352, 0, 150)
+                Instance.new("UICorner", card).CornerRadius = UDim.new(0, 6)
+
+                local avatar = Instance.new("ImageLabel", card)
+                avatar.Name = "Avatar"
+                avatar.BackgroundTransparency = 1
+                avatar.Position = UDim2.new(0, 10, 0, 10)
+                avatar.Size = UDim2.new(0, 92, 0, 92)
+                Instance.new("UICorner", avatar).CornerRadius = UDim.new(1, 0)
+
+                local function newRow(order, text)
+                    local row = Instance.new("TextLabel", card)
+                    row.Name = "InfoRow"..order
+                    row.BackgroundTransparency = 1
+                    row.Position = UDim2.new(0, 112, 0, 8 + ((order - 1) * 22))
+                    row.Size = UDim2.new(1, -120, 0, 22)
+                    row.Font = Enum.Font.PatrickHand
+                    row.TextSize = math.max(14, getgenv().labeltextsize - 1)
+                    row.TextColor3 = themeList.TextColor
+                    row.TextXAlignment = Enum.TextXAlignment.Left
+                    row.TextTruncate = Enum.TextTruncate.AtEnd
+                    row.Text = text
+                    return row
+                end
+
+                local rows = {
+                    Username = newRow(1, "Username: @"..username),
+                    OnlineStatus = newRow(2, "Online Status: Unknown"),
+                    LastOnline = newRow(3, "Last Online: Unknown"),
+                    DateCreated = newRow(4, "Date Kreated: Unknown"),
+                    JoinDate = newRow(5, "Join Date: Unknown")
+                }
+
+                local footer = Instance.new("TextLabel", card)
+                footer.BackgroundTransparency = 1
+                footer.Position = UDim2.new(0, 10, 1, -34)
+                footer.Size = UDim2.new(1, -20, 0, 26)
+                footer.Font = Enum.Font.PatrickHand
+                footer.TextSize = math.max(13, getgenv().labeltextsize - 2)
+                footer.TextColor3 = themeList.TextColor
+                footer.TextXAlignment = Enum.TextXAlignment.Left
+                footer.Text = "Lollypop Hub Kredits"
+
+                local function executorRequest(url, method, body)
+                    local requestFunction = request or http_request or (syn and syn.request) or (fluxus and fluxus.request)
+                    if requestFunction then
+                        local ok, response = pcall(requestFunction, {Url=url, Method=method or "GET", Headers={["Content-Type"]="application/json"}, Body=body})
+                        if ok and response then return response.Body or response.body end
+                    end
+                    local ok, response = pcall(function() return game:HttpGet(url, true) end)
+                    if ok then return response end
+                    return nil
+                end
+
+                local function decode(body)
+                    if not body then return nil end
+                    local ok, data = pcall(function() return HttpService:JSONDecode(body) end)
+                    return ok and data or nil
+                end
+
+                local function formatIso(value)
+                    if type(value) ~= "string" then return "Unknown" end
+                    local y,m,d = value:match("^(%d%d%d%d)%-(%d%d)%-(%d%d)")
+                    if not y then return "Unknown" end
+                    return string.format("%s/%s/%s", m, d, y)
+                end
+
+                local cachedCreation = "Unknown"
+                local function fetchStatic()
+                    local data = decode(executorRequest("https://users.roblox.com/v1/users/"..userId))
+                    if data and data.created then cachedCreation = formatIso(data.created) end
+                    rows.DateCreated.Text = "Date Kreated: "..cachedCreation
+                    rows.JoinDate.Text = "Join Date: "..cachedCreation
+                end
+
+                local function refreshLive()
+                    local okThumb, thumb = pcall(function()
+                        return PlayersService:GetUserThumbnailAsync(userId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100)
+                    end)
+                    if okThumb and thumb then avatar.Image = thumb end
+
+                    local payload = HttpService:JSONEncode({userIds={userId}})
+                    local presence = decode(executorRequest("https://presence.roblox.com/v1/presence/users", "POST", payload))
+                    local info = presence and presence.userPresences and presence.userPresences[1]
+                    if info then
+                        local online = tonumber(info.userPresenceType or 0) ~= 0
+                        rows.OnlineStatus.Text = "Online Status: "..(online and "Online" or "Offline")
+                        rows.LastOnline.Text = "Last Online: "..formatIso(info.lastOnline)
+                    else
+                        rows.OnlineStatus.Text = "Online Status: Offline"
+                        rows.LastOnline.Text = "Last Online: Unavailable"
+                    end
+                end
+
+                task.spawn(function()
+                    pcall(fetchStatic)
+                    while card.Parent do
+                        pcall(refreshLive)
+                        task.wait(refreshSeconds)
+                    end
+                end)
+
+                updateSectionFrame(); UpdateSize()
+                local api = {Frame=card, Rows=rows, Avatar=avatar}
+                function api:UpdateRow(name, value) if rows[name] then rows[name].Text = tostring(value) end end
+                function api:SetVisible(v) card.Visible = v and true or false; updateSectionFrame(); UpdateSize() end
+                return api
+            end
+
             function Elements:NewButton(bname,tipINf, callback)
                 showLogo = showLogo or true
                 local ButtonFunction = {}
@@ -2660,6 +2870,89 @@ label.TextColor3 = themeList.TextColor
                 return labelFunctions
             end	
             return Elements
+        end
+
+        function Sections:NewSearchBar(config)
+            config = config or {}
+            local placeholder = tostring(config.Placeholder or "Search Skripts...")
+            local searchFrame = Instance.new("Frame")
+            searchFrame.Name = "KavoSearch"
+            searchFrame.Parent = page
+            searchFrame.BackgroundColor3 = themeList.ElementColor
+            searchFrame.BorderSizePixel = 0
+            searchFrame.Size = UDim2.new(0, 352, 0, 36)
+            searchFrame.LayoutOrder = -100000
+            Instance.new("UICorner", searchFrame).CornerRadius = UDim.new(0, 5)
+
+            local box = Instance.new("TextBox", searchFrame)
+            box.BackgroundTransparency = 1
+            box.Position = UDim2.new(0, 10, 0, 0)
+            box.Size = UDim2.new(1, -48, 1, 0)
+            box.Font = Enum.Font.PatrickHand
+            box.TextSize = getgenv().txtboxtxtsize
+            box.TextColor3 = themeList.TextColor
+            box.PlaceholderText = placeholder
+            box.PlaceholderColor3 = Color3.fromRGB(160,160,160)
+            box.TextXAlignment = Enum.TextXAlignment.Left
+            box.ClearTextOnFocus = false
+            box.Text = ""
+
+            local clear = Instance.new("TextButton", searchFrame)
+            clear.BackgroundTransparency = 1
+            clear.Position = UDim2.new(1, -38, 0, 0)
+            clear.Size = UDim2.new(0, 38, 1, 0)
+            clear.Font = Enum.Font.GothamBold
+            clear.TextSize = 18
+            clear.TextColor3 = themeList.TextColor
+            clear.Text = "X"
+
+            local function searchableText(control)
+                if control.Name == "label" or control.Name == "paragraph" or control.Name == "KreditsCard" then return nil end
+                local pieces = {control.Name}
+                for _, descendant in ipairs(control:GetDescendants()) do
+                    if descendant:IsA("TextLabel") or descendant:IsA("TextButton") or descendant:IsA("TextBox") then
+                        table.insert(pieces, descendant.Text or "")
+                    end
+                end
+                return string.lower(table.concat(pieces, " "))
+            end
+
+            local function apply(query)
+                query = string.lower((query or ""):gsub("^%s+", ""):gsub("%s+$", ""))
+                local searching = query ~= ""
+                for _, record in ipairs(sectionRegistry) do
+                    local children = record.Inner:GetChildren()
+                    local lastLabel = nil
+                    local labelMatches = {}
+                    local sectionHasMatch = false
+                    for _, control in ipairs(children) do
+                        if control.Name == "label" then
+                            lastLabel = control
+                            labelMatches[control] = false
+                        elseif not control:IsA("UIListLayout") then
+                            local haystack = searchableText(control)
+                            local matched = (not searching) or (haystack and string.find(haystack, query, 1, true) ~= nil)
+                            control.Visible = matched
+                            if matched and searching then
+                                sectionHasMatch = true
+                                if lastLabel then labelMatches[lastLabel] = true end
+                            elseif not searching then
+                                sectionHasMatch = true
+                            end
+                        end
+                    end
+                    for labelControl, matched in pairs(labelMatches) do
+                        labelControl.Visible = (not searching) or matched
+                    end
+                    record.Elements:_SetSearchOverride(searching, sectionHasMatch)
+                end
+                UpdateSize()
+            end
+
+            box:GetPropertyChangedSignal("Text"):Connect(function() apply(box.Text) end)
+            clear.MouseButton1Click:Connect(function() box.Text = ""; apply("") end)
+            UpdateSize()
+            return {Frame=searchFrame, TextBox=box, ClearButton=clear, Apply=apply}
         end
         return Sections
     end  
