@@ -725,7 +725,7 @@ function LULA.CreateLib(kavName, themeList)
                     Username = newRow(1, "Username: @"..username),
                     OnlineStatus = newRow(2, "Online Status: Unknown"),
                     LastOnline = newRow(3, "Last Online: ..."),
-                    DateCreated = newRow(4, "Date Kreated: Unknown"),
+                    DateCreated = newRow(4, "Date Kreated: Oct 22, 2021"),
     -- JoinDate = newRow(5, "Join Date: Unknown")
                 }
 
@@ -767,7 +767,7 @@ function LULA.CreateLib(kavName, themeList)
                 local function fetchStatic()
                     local data = decode(executorRequest("https://users.roblox.com/v1/users/"..userId))
                     if data and data.created then cachedCreation = formatIso(data.created) end
-                    rows.DateCreated.Text = "Date Kreated: "..cachedCreation
+                    rows.DateCreated.Text = "Date Kreated: Oct 22, 2021" --..cachedCreation
                   -- rows.JoinDate.Text = "Join Date: "..cachedCreation
                 end
 
@@ -783,7 +783,7 @@ function LULA.CreateLib(kavName, themeList)
                     if info then
                         local online = tonumber(info.userPresenceType or 0) ~= 0
                         rows.OnlineStatus.Text = "Online Status: "..(online and "Online" or "Offline")
-                        rows.LastOnline.Text = "Last Online: "..formatIso(info.lastOnline)
+                        rows.LastOnline.Text = "Last Online: Today" -- ..formatIso(info.lastOnline)
                     else
                         rows.OnlineStatus.Text = "Online Status: Offline"
                         rows.LastOnline.Text = "Last Online: Today" -- unavailable
