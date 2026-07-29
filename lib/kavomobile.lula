@@ -785,7 +785,7 @@ function LULA.CreateLib(kavName, themeList)
                         rows.OnlineStatus.Text = "Online Status: "..(online and "Online" or "Offline")
                         rows.LastOnline.Text = "Last Online: Today" -- ..formatIso(info.lastOnline)
                     else
-                        rows.OnlineStatus.Text = "Online Status: Offline"
+                        rows.OnlineStatus.Text = "Online Status: "..getgenv().onlinestatus ~= nil and tostring(getgenv().onlinestatus)  or "Online 🟢"
                         rows.LastOnline.Text = "Last Online: Today" -- unavailable
                     end
                 end
