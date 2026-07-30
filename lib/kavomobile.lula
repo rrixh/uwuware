@@ -383,7 +383,7 @@ function LULA:DraggingEnabled(handle, target)
                 if inputObject.UserInputState == Enum.UserInputState.End then
                     dragging = false
                     if ended then ended:Disconnect() end
-                    snapMain(target)
+                    -- Main UI intentionally stays exactly where the user drops it.
                 end
             end)
             track(ended)
@@ -487,14 +487,15 @@ end
 local function createNotificationHost(screenGui)
     local host = Instance.new("Frame")
     host.Name = "NotificationHost"
-    host.AnchorPoint = Vector2.new(1, 0)
-    host.Position = UDim2.new(1, -12, 0, 12)
+    host.AnchorPoint = Vector2.new(0, 1)
+    host.Position = UDim2.new(0, 12, 1, -12)
     host.Size = UDim2.fromOffset(320, 500)
     host.BackgroundTransparency = 1
     host.ZIndex = 100
     host.Parent = screenGui
     local layout = Instance.new("UIListLayout")
-    layout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+    layout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+    layout.VerticalAlignment = Enum.VerticalAlignment.Bottom
     layout.SortOrder = Enum.SortOrder.LayoutOrder
     layout.Padding = UDim.new(0, 8)
     layout.Parent = host
@@ -572,13 +573,13 @@ function LULA:Notify(kind, title, text, seconds, progress)
         makeCorner(progressFill, 3)
     end
 
-    card.Position = UDim2.fromOffset(330, 0)
+    card.Position = UDim2.fromOffset(-330, 0)
     tween(card, {Position = UDim2.fromOffset(0, 0)}, 0.2)
     local dead = false
     local function dismiss()
         if dead then return end
         dead = true
-        tween(card, {Position = UDim2.fromOffset(340, 0), BackgroundTransparency = 1}, 0.18)
+        tween(card, {Position = UDim2.fromOffset(-340, 0), BackgroundTransparency = 1}, 0.18)
         task.delay(duration(0.2), function() if card then card:Destroy() end end)
     end
     track(close.MouseButton1Click:Connect(dismiss))
@@ -639,7 +640,7 @@ function LULA.CreateLib(kavName, themeInput)
     main.BackgroundTransparency = 0
     main.ClipsDescendants = true
     main.Parent = screenGui
-    makeCorner(main, 4)
+    makeCorner(main, 13)
     bind(main, "BackgroundColor3", "Background")
     local mainStroke = makeStroke(main, theme.SchemeColor, 1, 1)
 
@@ -673,6 +674,7 @@ function LULA.CreateLib(kavName, themeInput)
     header.BorderSizePixel = 0
     header.Parent = main
     bind(header, "BackgroundColor3", "Header")
+    makeCorner(header, 13)
 
     local logo = Instance.new("ImageButton")
     logo.Name = "Logo"
@@ -717,6 +719,7 @@ function LULA.CreateLib(kavName, themeInput)
     sidebar.BackgroundTransparency = 0
     sidebar.Parent = main
     bind(sidebar, "BackgroundColor3", "Header")
+    makeCorner(sidebar, 13)
 
     local sideGradient = Instance.new("UIGradient")
     sideGradient.Rotation = 90
@@ -887,13 +890,13 @@ function LULA.CreateLib(kavName, themeInput)
     track(UserInputService.InputEnded:Connect(function(inputObject)
         if inputObject.UserInputType == Enum.UserInputType.MouseButton1 or inputObject.UserInputType == Enum.UserInputType.Touch then
             resizing = false
-            snapMain(main)
+            -- Resized UI intentionally stays exactly where the user leaves it.
         end
     end))
 
     local function refreshScale()
         scale.Scale = adaptiveScale()
-        task.defer(function() clampMain(main) end)
+        -- Do not boomerang/reposition the main UI after viewport changes.
     end
     local camera = workspace.CurrentCamera
     if camera then track(camera:GetPropertyChangedSignal("ViewportSize"):Connect(refreshScale)) end
@@ -1032,8 +1035,21 @@ function LULA.CreateLib(kavName, themeInput)
                 local click = Instance.new("TextButton")
                 click.BackgroundTransparency = 1
                 click.Text = ""
-                click.Size = UDim2.fromScale(1, 1)
+                click.Size = UDim2.new(1, -34, 1, 0)
                 click.Parent = row
+                local infoButton = makeButton(row, "...")
+                infoButton.Name = "InfoDots"
+                infoButton.AnchorPoint = Vector2.new(1, 0.5)
+                infoButton.Position = UDim2.new(1, -5, 0.5, 0)
+                infoButton.Size = UDim2.fromOffset(28, 25)
+                infoButton.TextSize = 15
+                infoButton.BackgroundTransparency = 1
+                infoButton.ZIndex = 4
+                track(infoButton.MouseButton1Click:Connect(function()
+                    if tostring(tip or "") ~= "" then
+                        LULA:Notify("info", tostring(name), tostring(tip), 5)
+                    end
+                end))
                 local busy = false
                 track(click.MouseButton1Click:Connect(function()
                     if busy then return end
@@ -1108,6 +1124,7 @@ function LULA.CreateLib(kavName, themeInput)
             function elements:NewTextBox(name, tip, callback, placeholder, defaultValue)
                 callback = callback or function() end
                 local default = tostring(defaultValue or "")
+                if default == "TextBox" then default = "" end
                 local row = newRow(section, name, 66)
                 local textLabel = makeText(row, name, 13, Enum.Font.GothamMedium)
                 textLabel.Position = UDim2.fromOffset(12, 3)
@@ -1518,18 +1535,20 @@ function LULA.CreateLib(kavName, themeInput)
                 nameLabel.Position = UDim2.fromOffset(94, 13)
                 nameLabel.Size = UDim2.new(1, -106, 0, 22)
                 nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-                local idLabel = makeText(row, "User ID: " .. tostring(userId), 12, Enum.Font.Gotham)
+                local idLabel = makeText(row, "Last Online: " .. tostring(config.LastOnline or "Today"), 12, Enum.Font.Gotham)
                 idLabel.Position = UDim2.fromOffset(94, 38)
                 idLabel.Size = UDim2.new(1, -106, 0, 19)
                 idLabel.TextXAlignment = Enum.TextXAlignment.Left
                 bind(idLabel, "TextColor3", "MutedText")
-                local status = makeText(row, "Lollypop Hub owner", 12, Enum.Font.Gotham)
+                local statusText = tostring(config.OnlineStatus or "Online")
+                local statusIcon = statusText:lower() == "offline" and (utf8.char(0x1F534)) or (utf8.char(0x1F7E2))
+                local status = makeText(row, "Online Status: " .. statusText .. " " .. statusIcon, 12, Enum.Font.Gotham)
                 status.Position = UDim2.fromOffset(94, 59)
                 status.Size = UDim2.new(1, -106, 0, 19)
                 status.TextXAlignment = Enum.TextXAlignment.Left
                 bind(status, "TextColor3", "SchemeColor")
                 local api = register({}, row, username)
-                api.Rows = {Username = nameLabel, UserId = idLabel, Status = status}
+                api.Rows = {Username = nameLabel, LastOnline = idLabel, OnlineStatus = status, UserId = idLabel, Status = status}
                 api.Avatar = avatar
                 function api:UpdateRow(key, newValue)
                     if self.Rows[key] then self.Rows[key].Text = tostring(newValue) end
