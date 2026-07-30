@@ -1,7 +1,3 @@
--- Kavo UI v3.1 - Lollypop Hub klassik-look upgrade
--- Preserves the old Kavo layout while adding responsive scaling, resizing, drag lock, scrollable tabs, safer callbacks, and mobile support.
--- Solid panels only: no glassmorphism, glowing panel borders, gradient sidebar, or background particles.
-
 local LULA = {}
 local env = (getgenv and getgenv()) or _G
 
@@ -689,26 +685,13 @@ function LULA.CreateLib(kavName, themeInput)
     local title = makeText(header, kavName or "Lollypop Hub", tonumber(env.titlesize) or 16.5, Enum.Font.LuckiestGuy)
     title.Name = "Title"
     title.Position = UDim2.fromOffset(9, 0)
-    title.Size = UDim2.new(1, -96, 1, 0)
+    title.Size = UDim2.new(1, -48, 1, 0)
     title.TextXAlignment = Enum.TextXAlignment.Left
     title.TextWrapped = false
-
-    local palette = makeButton(header, ">")
-    palette.Name = "Palette"
-    palette.Position = UDim2.new(1, -83, 0, 2)
-    palette.Size = UDim2.fromOffset(24, 24)
-    palette.TextSize = 16
-
-    local minimize = makeButton(header, "-")
-    minimize.Position = UDim2.new(1, -56, 0, 2)
-    minimize.Size = UDim2.fromOffset(24, 24)
-    minimize.TextSize = 18
 
     local close = makeButton(header, "X")
     close.Position = UDim2.new(1, -29, 0, 2)
     close.Size = UDim2.fromOffset(24, 24)
-    palette.BackgroundTransparency = 1
-    minimize.BackgroundTransparency = 1
     close.BackgroundTransparency = 1
 
     local sidebar = Instance.new("Frame")
@@ -842,18 +825,14 @@ function LULA.CreateLib(kavName, themeInput)
         end
     end))
 
-    local minimized = false
-    track(minimize.MouseButton1Click:Connect(function()
-        minimized = not minimized
-        if minimized then
-            tween(main, {Size = UDim2.fromOffset(525, 29)}, 0.18)
+    track(close.MouseButton1Click:Connect(function()
+        if type(env.LHRequestClose) == "function" then
+            safeCall("Close confirmation", env.LHRequestClose)
+        elseif env.LHRuntime and type(env.LHRuntime.Unload) == "function" then
+            safeCall("Unload LH", function() env.LHRuntime:Unload("close button") end)
         else
-            tween(main, {Size = UDim2.fromOffset(525, 318)}, 0.18)
+            LULA:Destroy()
         end
-    end))
-    track(close.MouseButton1Click:Connect(function() LULA:Destroy() end))
-    track(palette.MouseButton1Click:Connect(function()
-        if env.LHOpenPalette then safeCall("Open palette", env.LHOpenPalette) end
     end))
 
     local logoClicks = 0
