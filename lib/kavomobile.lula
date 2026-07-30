@@ -1119,8 +1119,9 @@ function LULA.CreateLib(kavName, themeInput)
                 box.TextSize = 13
                 box.TextXAlignment = Enum.TextXAlignment.Left
                 box.PlaceholderText = tostring(placeholder or "Type here...")
-                box.Text = default
+                box.Text = (default == "TextBox") and "" or default
                 box.Parent = row
+                if box.Text == "TextBox" then box.Text = "" end
                 bind(box, "BackgroundColor3", "Header")
                 bind(box, "TextColor3", "TextColor")
                 makeCorner(box, 6)
