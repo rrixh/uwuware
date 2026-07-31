@@ -7,6 +7,7 @@ local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local Lighting = game:GetService("Lighting")
 local HttpService = game:GetService("HttpService")
+local TextService = game:GetService("TextService")
 local CoreGui = game:GetService("CoreGui")
 local LocalPlayer = Players.LocalPlayer
 
@@ -138,10 +139,34 @@ if settings.EdgeSnap == nil then settings.EdgeSnap = true end
 if settings.ScaleMode == nil then settings.ScaleMode = "Auto" end
 if settings.GlassBlur == nil then settings.GlassBlur = false end
 if settings.CustomCursor == nil then settings.CustomCursor = false end
-if settings.NotificationMuted == nil then settings.NotificationMuted = false end
+if settings.NotificationMuted == nil then settings.NotificationMuted = true end
 if settings.NotificationVolume == nil then settings.NotificationVolume = 0.45 end
+if settings.UIFont == nil then settings.UIFont = "Gotham" end
 
 local active = nil
+local fontMap = {}
+local fontNames = {}
+for _, fontItem in ipairs(Enum.Font:GetEnumItems()) do
+    fontMap[fontItem.Name] = fontItem
+    table.insert(fontNames, fontItem.Name)
+end
+table.sort(fontNames)
+
+local function resolveUIFont(fallback)
+    return fontMap[tostring(settings.UIFont or "")] or fallback or Enum.Font.Gotham
+end
+
+local function applyUIFont()
+    if not active or not active.ScreenGui then return end
+    local selected = resolveUIFont(Enum.Font.Gotham)
+    for _, object in ipairs(active.ScreenGui:GetDescendants()) do
+        if object:IsA("TextLabel") or object:IsA("TextButton") or object:IsA("TextBox") then
+            pcall(function() object.Font = selected end)
+        end
+    end
+end
+
+active = nil
 local connections = {}
 local bindings = {}
 local notificationHistory = env.LHNotificationHistory or {}
@@ -279,7 +304,7 @@ local function makeText(parent, text, size, font)
     local label = Instance.new("TextLabel")
     label.BackgroundTransparency = 1
     label.BorderSizePixel = 0
-    label.Font = font or Enum.Font.Gotham
+    label.Font = resolveUIFont(font or Enum.Font.Gotham)
     label.Text = tostring(text or "")
     label.TextSize = size or 15
     label.TextWrapped = true
@@ -288,18 +313,86 @@ local function makeText(parent, text, size, font)
     return label
 end
 
+local function addButtonPressEffect(button)
+    if not button or not button:IsA("GuiButton") then return end
+    if button:GetAttribute("LHPressEffectBound") then return end
+    button:SetAttribute("LHPressEffectBound", true)
+    local scaleObject = button:FindFirstChild("LHPressScale") or Instance.new("UIScale")
+    scaleObject.Name = "LHPressScale"
+    scaleObject.Scale = 1
+    scaleObject.Parent = button
+    local pressing = false
+    track(button.InputBegan:Connect(function(inputObject)
+        if inputObject.UserInputType == Enum.UserInputType.MouseButton1 or inputObject.UserInputType == Enum.UserInputType.Touch then
+            pressing = true
+            tween(scaleObject, {Scale = 0.955}, 0.06, Enum.EasingStyle.Quad)
+        end
+    end))
+    track(button.InputEnded:Connect(function(inputObject)
+        if inputObject.UserInputType == Enum.UserInputType.MouseButton1 or inputObject.UserInputType == Enum.UserInputType.Touch then
+            pressing = false
+            tween(scaleObject, {Scale = 1}, 0.09, Enum.EasingStyle.Back)
+        end
+    end))
+    track(button.MouseLeave:Connect(function()
+        if pressing then
+            pressing = false
+            tween(scaleObject, {Scale = 1}, 0.09, Enum.EasingStyle.Back)
+        end
+    end))
+end
+
 local function makeButton(parent, text)
     local button = Instance.new("TextButton")
     button.AutoButtonColor = false
     button.BorderSizePixel = 0
-    button.Font = Enum.Font.GothamMedium
+    button.Font = resolveUIFont(Enum.Font.GothamMedium)
     button.Text = tostring(text or "")
     button.TextSize = 14
     button.Parent = parent
     bind(button, "TextColor3", "TextColor")
     bind(button, "BackgroundColor3", "ElementColor")
     makeCorner(button, 7)
+    addButtonPressEffect(button)
     return button
+end
+
+local function makeKolorButton(parent, text, kolor)
+    local button = Instance.new("TextButton")
+    button.AutoButtonColor = false
+    button.BorderSizePixel = 0
+    button.Font = resolveUIFont(Enum.Font.GothamBold)
+    button.Text = tostring(text or "")
+    button.TextSize = 14
+    button.TextColor3 = rgb(255, 255, 255)
+    button.BackgroundColor3 = kolor
+    button.Parent = parent
+    makeCorner(button, 7)
+    addButtonPressEffect(button)
+    return button
+end
+
+local function attachClearX(textBox, onClear)
+    if not textBox then return nil end
+    local existing = textBox:FindFirstChild("ClearTextX")
+    if existing then return existing end
+    local padding = textBox:FindFirstChildOfClass("UIPadding") or Instance.new("UIPadding")
+    if padding.PaddingLeft.Offset == 0 then padding.PaddingLeft = UDim.new(0, 8) end
+    padding.PaddingRight = UDim.new(0, 25)
+    padding.Parent = textBox
+    local clear = makeKolorButton(textBox, "X", rgb(220, 48, 65))
+    clear.Name = "ClearTextX"
+    clear.AnchorPoint = Vector2.new(1, 0.5)
+    clear.Position = UDim2.new(1, -3, 0.5, 0)
+    clear.Size = UDim2.fromOffset(20, 20)
+    clear.TextSize = 10
+    clear.ZIndex = math.max(5, textBox.ZIndex + 2)
+    track(clear.MouseButton1Click:Connect(function()
+        textBox.Text = ""
+        if type(onClear) == "function" then safeCall("Clear TextBox", onClear, textBox) end
+        pcall(function() textBox:CaptureFocus() end)
+    end))
+    return clear
 end
 
 local function viewportSize()
@@ -505,52 +598,74 @@ local kindColors = {
     info = rgb(66, 164, 255),
 }
 
-function LULA:Notify(kind, title, text, seconds, progress)
+function LULA:Notify(kind, title, text, seconds, progress, force)
     kind = string.lower(tostring(kind or "info"))
     title = tostring(title or "Lollypop Hub")
     text = tostring(text or "")
-    seconds = tonumber(seconds) or 5
+    if progress ~= nil then
+        seconds = math.clamp(tonumber(seconds) or 8, 2, 15)
+    else
+        seconds = math.clamp(tonumber(seconds) or 3, 1.5, 3.5)
+    end
     table.insert(notificationHistory, 1, {
         Time = os.time(), Kind = kind, Title = title, Text = text, Progress = progress,
     })
     while #notificationHistory > 100 do table.remove(notificationHistory) end
-    if settings.NotificationMuted or not active or not active.NotificationHost then return nil end
+    if (settings.NotificationMuted and force ~= true) or not active or not active.NotificationHost then return nil end
 
-    local card = Instance.new("Frame")
+    local width = 310
+    local bodyWidth = width - 34
+    local bodyBounds = TextService:GetTextSize(text ~= "" and text or " ", 12, resolveUIFont(Enum.Font.Gotham), Vector2.new(bodyWidth, 1000))
+    local bodyHeight = math.clamp(math.ceil(bodyBounds.Y) + 4, 18, 96)
+    local titleHeight = 20
+    local cardHeight = 10 + titleHeight + 4 + bodyHeight + (progress ~= nil and 22 or 9)
+
+    local holder = Instance.new("Frame")
+    holder.Name = "NotificationHolder"
+    holder.Size = UDim2.fromOffset(width, cardHeight)
+    holder.BackgroundTransparency = 1
+    holder.ClipsDescendants = false
+    holder.ZIndex = 101
+    holder.Parent = active.NotificationHost
+
+    local card = Instance.new("CanvasGroup")
     card.Name = "Notification"
-    card.Size = UDim2.fromOffset(310, progress ~= nil and 92 or 78)
-    card.BackgroundTransparency = 0.05
+    card.Size = UDim2.fromScale(1, 1)
+    card.Position = UDim2.fromOffset(-330, 0)
+    card.BackgroundTransparency = 0.04
+    card.GroupTransparency = 0
     card.BorderSizePixel = 0
     card.ClipsDescendants = true
-    card.ZIndex = 101
-    card.Parent = active.NotificationHost
+    card.ZIndex = 102
+    card.Parent = holder
     bind(card, "BackgroundColor3", "Header")
     makeCorner(card, 10)
     makeStroke(card, kindColors[kind] or kindColors.info, 0.2, 1)
 
     local stripe = Instance.new("Frame")
-    stripe.Size = UDim2.fromOffset(4, card.Size.Y.Offset)
+    stripe.Size = UDim2.new(0, 4, 1, 0)
     stripe.BorderSizePixel = 0
     stripe.BackgroundColor3 = kindColors[kind] or kindColors.info
     stripe.Parent = card
 
     local titleLabel = makeText(card, title, 14, Enum.Font.GothamBold)
     titleLabel.Position = UDim2.fromOffset(14, 8)
-    titleLabel.Size = UDim2.new(1, -44, 0, 19)
+    titleLabel.Size = UDim2.new(1, -46, 0, titleHeight)
     titleLabel.TextXAlignment = Enum.TextXAlignment.Left
     titleLabel.TextWrapped = false
 
     local body = makeText(card, text, 12, Enum.Font.Gotham)
-    body.Position = UDim2.fromOffset(14, 29)
-    body.Size = UDim2.new(1, -26, 0, progress ~= nil and 38 or 39)
+    body.Position = UDim2.fromOffset(14, 31)
+    body.Size = UDim2.new(1, -28, 0, bodyHeight)
     body.TextXAlignment = Enum.TextXAlignment.Left
     body.TextYAlignment = Enum.TextYAlignment.Top
+    body.TextWrapped = true
     bind(body, "TextColor3", "MutedText")
 
-    local close = makeButton(card, "X")
+    local close = makeKolorButton(card, "X", rgb(210, 48, 65))
     close.Position = UDim2.new(1, -28, 0, 6)
     close.Size = UDim2.fromOffset(22, 22)
-    close.BackgroundTransparency = 1
+    close.TextSize = 10
 
     local progressFill = nil
     if progress ~= nil then
@@ -569,14 +684,19 @@ function LULA:Notify(kind, title, text, seconds, progress)
         makeCorner(progressFill, 3)
     end
 
-    card.Position = UDim2.fromOffset(-330, 0)
-    tween(card, {Position = UDim2.fromOffset(0, 0)}, 0.2)
+    tween(card, {Position = UDim2.fromOffset(0, 0)}, 0.22)
     local dead = false
     local function dismiss()
         if dead then return end
         dead = true
-        tween(card, {Position = UDim2.fromOffset(-340, 0), BackgroundTransparency = 1}, 0.18)
-        task.delay(duration(0.2), function() if card then card:Destroy() end end)
+        tween(card, {
+            Position = UDim2.fromOffset(0, -24),
+            GroupTransparency = 1,
+            BackgroundTransparency = 1,
+        }, 0.42, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+        task.delay(duration(0.44), function()
+            if holder then holder:Destroy() end
+        end)
     end
     track(close.MouseButton1Click:Connect(dismiss))
     task.delay(seconds, dismiss)
@@ -588,7 +708,7 @@ function LULA:Notify(kind, title, text, seconds, progress)
         info = "rbxassetid://9118823107",
     }
     local soundId = soundIds[kind]
-    if soundId and tonumber(settings.NotificationVolume or 0) > 0 then
+    if not settings.NotificationMuted and soundId and tonumber(settings.NotificationVolume or 0) > 0 then
         local sound = Instance.new("Sound")
         sound.Name = "LHNotificationSound"
         sound.SoundId = tostring(soundId)
@@ -598,7 +718,7 @@ function LULA:Notify(kind, title, text, seconds, progress)
         task.delay(6, function() if sound then sound:Destroy() end end)
     end
 
-    local api = {Frame = card}
+    local api = {Frame = card, Holder = holder}
     function api:SetProgress(value, newText)
         value = math.clamp(tonumber(value) or 0, 0, 100)
         if progressFill then tween(progressFill, {Size = UDim2.new(value / 100, 0, 1, 0)}, 0.1) end
@@ -626,6 +746,12 @@ function LULA.CreateLib(kavName, themeInput)
     screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     screenGui.DisplayOrder = 900000
     screenGui.Parent = parent
+
+    track(screenGui.DescendantAdded:Connect(function(descendant)
+        if descendant:IsA("GuiButton") then
+            task.defer(addButtonPressEffect, descendant)
+        end
+    end))
 
     local main = Instance.new("Frame")
     main.Name = "Main"
@@ -916,7 +1042,7 @@ function LULA.CreateLib(kavName, themeInput)
         tabButton.Text = tabName
         tabButton.BackgroundTransparency = 1
         tabButton.TextSize = tonumber(env.tabtextsize) or 16
-        tabButton.Font = Enum.Font.DenkOne
+        tabButton.Font = resolveUIFont(Enum.Font.DenkOne)
 
         local page = Instance.new("CanvasGroup")
         page.Name = tabName .. "Page"
@@ -977,13 +1103,29 @@ function LULA.CreateLib(kavName, themeInput)
             sectionLayout.Parent = section
 
             if not hidden then
-                local heading = makeText(section, "  " .. sectionName, tonumber(env.sektiontextsize) or 18.5, Enum.Font.PatrickHand)
+                local heading = Instance.new("TextLabel")
                 heading.Name = "SectionHeading"
-                heading.Size = UDim2.new(1, 0, 0, 33)
+                heading.Size = UDim2.new(1, 0, 0, 36)
                 heading.BackgroundTransparency = 0
-                heading.TextXAlignment = Enum.TextXAlignment.Left
-                bind(heading, "BackgroundColor3", "SchemeColor")
-                makeCorner(heading, 4)
+                heading.BackgroundColor3 = rgb(235, 177, 45)
+                heading.BorderSizePixel = 0
+                heading.Font = resolveUIFont(Enum.Font.GothamBold)
+                heading.Text = "[      " .. string.upper(sectionName) .. "      ]"
+                heading.TextSize = tonumber(env.sektiontextsize) or 18.5
+                heading.TextColor3 = rgb(42, 27, 5)
+                heading.TextXAlignment = Enum.TextXAlignment.Center
+                heading.TextWrapped = true
+                heading.Parent = section
+                makeCorner(heading, 7)
+                local headingGradient = Instance.new("UIGradient")
+                headingGradient.Color = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, rgb(255, 226, 119)),
+                    ColorSequenceKeypoint.new(0.5, rgb(232, 164, 31)),
+                    ColorSequenceKeypoint.new(1, rgb(255, 207, 74)),
+                })
+                headingGradient.Rotation = 8
+                headingGradient.Parent = heading
+                makeStroke(heading, rgb(255, 225, 125), 0.2, 1)
             end
 
             local elements = {}
@@ -1115,7 +1257,7 @@ function LULA.CreateLib(kavName, themeInput)
                 box.BackgroundTransparency = 0.1
                 box.BorderSizePixel = 0
                 box.ClearTextOnFocus = false
-                box.Font = Enum.Font.Gotham
+                box.Font = resolveUIFont(Enum.Font.Gotham)
                 box.TextSize = 13
                 box.TextXAlignment = Enum.TextXAlignment.Left
                 box.PlaceholderText = tostring(placeholder or "Type here...")
@@ -1133,8 +1275,9 @@ function LULA.CreateLib(kavName, themeInput)
                     safeCall("TextBox " .. tostring(name), callback, box.Text)
                 end
                 createReset(row, function() box.Text = default; submit() end)
+                attachClearX(box)
                 track(box.FocusLost:Connect(function(enterPressed)
-                    if enterPressed or UserInputService.TouchEnabled then submit() end
+                    if enterPressed then submit() end
                 end))
                 attachTip(row, tip)
                 local api = register({}, row, tostring(name) .. " " .. tostring(tip))
@@ -1166,7 +1309,7 @@ function LULA.CreateLib(kavName, themeInput)
                 valueBox.BackgroundTransparency = 0.08
                 valueBox.BorderSizePixel = 0
                 valueBox.ClearTextOnFocus = false
-                valueBox.Font = Enum.Font.GothamMedium
+                valueBox.Font = resolveUIFont(Enum.Font.GothamMedium)
                 valueBox.TextSize = 12
                 valueBox.Parent = row
                 bind(valueBox, "BackgroundColor3", "Header")
@@ -1220,7 +1363,8 @@ function LULA.CreateLib(kavName, themeInput)
                 track(UserInputService.InputEnded:Connect(function(inputObject)
                     if inputObject.UserInputType == Enum.UserInputType.MouseButton1 or inputObject.UserInputType == Enum.UserInputType.Touch then dragging = false end
                 end))
-                track(valueBox.FocusLost:Connect(function() set(tonumber(valueBox.Text) or value) end))
+                attachClearX(valueBox)
+                track(valueBox.FocusLost:Connect(function(enterPressed) if enterPressed then set(tonumber(valueBox.Text) or value) end end))
                 createReset(row, function() set(default) end)
                 set(default, false)
                 attachTip(row, tip)
@@ -1246,6 +1390,13 @@ function LULA.CreateLib(kavName, themeInput)
                 selectButton.Size = UDim2.new(1, -46, 0, 31)
                 selectButton.TextXAlignment = Enum.TextXAlignment.Left
                 selectButton.Text = "  " .. selectButton.Text
+                makeStroke(selectButton, active.Theme.SchemeColor, 0.55, 1)
+                local arrow = makeText(selectButton, utf8.char(0x25BC), 12, Enum.Font.GothamBold)
+                arrow.AnchorPoint = Vector2.new(1, 0.5)
+                arrow.Position = UDim2.new(1, -10, 0.5, 0)
+                arrow.Size = UDim2.fromOffset(18, 20)
+                arrow.TextXAlignment = Enum.TextXAlignment.Center
+                bind(arrow, "TextColor3", "SchemeColor")
                 local popup = Instance.new("ScrollingFrame")
                 popup.Name = "DropdownPopup"
                 popup.Position = UDim2.fromOffset(10, 62)
@@ -1260,6 +1411,7 @@ function LULA.CreateLib(kavName, themeInput)
                 popup.Parent = row
                 bind(popup, "BackgroundColor3", "Header")
                 makeCorner(popup, 7)
+                makeStroke(popup, active.Theme.SchemeColor, 0.45, 1)
                 local popupLayout = Instance.new("UIListLayout")
                 popupLayout.Padding = UDim.new(0, 2)
                 popupLayout.Parent = popup
@@ -1272,6 +1424,7 @@ function LULA.CreateLib(kavName, themeInput)
                 end
                 local function closePopup()
                     open = false
+                    arrow.Rotation = 0
                     popup.Visible = false
                     row.Size = UDim2.new(1, 0, 0, 70)
                     popup.Size = UDim2.new(1, -46, 0, 0)
@@ -1285,8 +1438,14 @@ function LULA.CreateLib(kavName, themeInput)
                         local optionButton = makeButton(popup, tostring(option))
                         optionButton.Size = UDim2.new(1, -4, 0, 28)
                         optionButton.TextXAlignment = Enum.TextXAlignment.Left
-                        optionButton.Text = "  " .. tostring(option)
+                        optionButton.Text = (option == value and ("  " .. utf8.char(0x2713) .. "  ") or "     ") .. tostring(option)
                         optionButton.ZIndex = 21
+                        if option == value then
+                            optionButton.BackgroundTransparency = 0.02
+                            bind(optionButton, "TextColor3", "SchemeColor")
+                        else
+                            optionButton.BackgroundTransparency = 0.16
+                        end
                         track(optionButton.MouseButton1Click:Connect(function()
                             set(option)
                             closePopup()
@@ -1297,11 +1456,13 @@ function LULA.CreateLib(kavName, themeInput)
                 track(selectButton.MouseButton1Click:Connect(function()
                     open = not open
                     if open then
+                        arrow.Rotation = 180
                         local height = math.min(150, math.max(32, #list * 30))
                         popup.Visible = true
                         popup.Size = UDim2.new(1, -46, 0, height)
                         row.Size = UDim2.new(1, 0, 0, 70 + height)
                     else
+                        arrow.Rotation = 0
                         closePopup()
                     end
                 end))
@@ -1314,6 +1475,118 @@ function LULA.CreateLib(kavName, themeInput)
                     rebuild(newList)
                     self.SearchText = string.lower(tostring(name) .. " " .. tostring(tip) .. " " .. table.concat(list, " "))
                 end
+                function api:Reset() set(default) end
+                return api
+            end
+
+            function elements:NewCounter(name, tip, stepValue, callback, defaultValue, minValue, maxValue)
+                callback = callback or function() end
+                local step = math.abs(tonumber(stepValue) or 0.5)
+                if step == 0 then step = 0.5 end
+                local default = tonumber(defaultValue) or 0
+                local minimum = tonumber(minValue)
+                local maximum = tonumber(maxValue)
+                local value = default
+                local row = newRow(section, name, 72)
+
+                local textLabel = makeText(row, name, 13, Enum.Font.GothamMedium)
+                textLabel.Position = UDim2.fromOffset(12, 2)
+                textLabel.Size = UDim2.new(1, -46, 0, 22)
+                textLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+                local minus = makeKolorButton(row, "-", rgb(214, 50, 67))
+                minus.Position = UDim2.fromOffset(10, 31)
+                minus.Size = UDim2.fromOffset(42, 31)
+                minus.TextSize = 21
+
+                local plus = makeKolorButton(row, "+", rgb(40, 177, 91))
+                plus.Position = UDim2.new(1, -87, 0, 31)
+                plus.Size = UDim2.fromOffset(42, 31)
+                plus.TextSize = 20
+
+                local valueBox = Instance.new("TextBox")
+                valueBox.Position = UDim2.fromOffset(58, 31)
+                valueBox.Size = UDim2.new(1, -151, 0, 31)
+                valueBox.BackgroundTransparency = 0.08
+                valueBox.BorderSizePixel = 0
+                valueBox.ClearTextOnFocus = false
+                valueBox.Font = resolveUIFont(Enum.Font.GothamBold)
+                valueBox.TextSize = 13
+                valueBox.TextXAlignment = Enum.TextXAlignment.Center
+                valueBox.PlaceholderText = tostring(default)
+                valueBox.Parent = row
+                bind(valueBox, "BackgroundColor3", "Header")
+                bind(valueBox, "TextColor3", "TextColor")
+                makeCorner(valueBox, 7)
+                attachClearX(valueBox)
+
+                local function cleanNumber(number)
+                    number = tonumber(number) or 0
+                    local rounded = math.floor(number * 10000 + (number >= 0 and 0.5 or -0.5)) / 10000
+                    return rounded
+                end
+
+                local function set(newValue, fire)
+                    local number = tonumber(newValue)
+                    if number == nil then number = value end
+                    if minimum ~= nil then number = math.max(minimum, number) end
+                    if maximum ~= nil then number = math.min(maximum, number) end
+                    value = cleanNumber(number)
+                    valueBox.Text = tostring(value)
+                    if fire ~= false then safeCall("Kounter " .. tostring(name), callback, value) end
+                end
+
+                local holdToken = 0
+                local function beginHold(direction)
+                    holdToken = holdToken + 1
+                    local mine = holdToken
+                    local started = tick()
+                    set(value + (step * direction))
+                    task.spawn(function()
+                        task.wait(0.3)
+                        while mine == holdToken and row.Parent do
+                            local elapsed = tick() - started
+                            local multiplier = elapsed >= 2 and 5 or (elapsed >= 1 and 2 or 1)
+                            set(value + (step * multiplier * direction))
+                            task.wait(math.max(0.045, 0.13 - math.min(elapsed, 2) * 0.03))
+                        end
+                    end)
+                end
+                local function stopHold()
+                    holdToken = holdToken + 1
+                end
+                local function bindHold(button, direction)
+                    track(button.InputBegan:Connect(function(inputObject)
+                        if inputObject.UserInputType == Enum.UserInputType.MouseButton1 or inputObject.UserInputType == Enum.UserInputType.Touch then
+                            beginHold(direction)
+                        end
+                    end))
+                    track(button.InputEnded:Connect(function(inputObject)
+                        if inputObject.UserInputType == Enum.UserInputType.MouseButton1 or inputObject.UserInputType == Enum.UserInputType.Touch then
+                            stopHold()
+                        end
+                    end))
+                    track(button.MouseLeave:Connect(stopHold))
+                end
+                bindHold(minus, -1)
+                bindHold(plus, 1)
+
+                track(valueBox.FocusLost:Connect(function(enterPressed)
+                    if enterPressed then set(tonumber(valueBox.Text) or value) end
+                end))
+                local resetCounter = makeButton(row, "Reset")
+                resetCounter.AnchorPoint = Vector2.new(1, 0.5)
+                resetCounter.Position = UDim2.new(1, -6, 0, 46)
+                resetCounter.Size = UDim2.fromOffset(38, 24)
+                resetCounter.TextSize = 9
+                resetCounter.ZIndex = 7
+                track(resetCounter.MouseButton1Click:Connect(function() set(default) end))
+                set(default, false)
+                attachTip(row, tip)
+
+                local api = register({}, row, tostring(name) .. " " .. tostring(tip))
+                function api:SetValue(newValue, fire) set(newValue, fire) end
+                function api:GetValue() return value end
                 function api:Reset() set(default) end
                 return api
             end
@@ -1420,7 +1693,7 @@ function LULA.CreateLib(kavName, themeInput)
                     box.BackgroundTransparency = 0.08
                     box.BorderSizePixel = 0
                     box.ClearTextOnFocus = false
-                    box.Font = Enum.Font.GothamMedium
+                    box.Font = resolveUIFont(Enum.Font.GothamMedium)
                     box.TextSize = 12
                     box.PlaceholderText = labelText
                     box.Parent = row
@@ -1445,7 +1718,7 @@ function LULA.CreateLib(kavName, themeInput)
                         math.clamp(tonumber(fields[3].Text) or 0, 0, 255)
                     ))
                 end
-                for _, field in ipairs(fields) do track(field.FocusLost:Connect(readFields)) end
+                for _, field in ipairs(fields) do attachClearX(field); track(field.FocusLost:Connect(function(enterPressed) if enterPressed then readFields() end end)) end
                 track(preview.MouseButton1Click:Connect(function()
                     local h, s, v = value:ToHSV()
                     h = (h + 0.08) % 1
@@ -1462,13 +1735,23 @@ function LULA.CreateLib(kavName, themeInput)
             end
 
             function elements:NewLabel(labelText)
-                local row = newRow(section, "label", 38)
-                row.BackgroundTransparency = 0.18
-                local label = makeText(row, "  " .. tostring(labelText or ""), 13, Enum.Font.Gotham)
-                label.Size = UDim2.fromScale(1, 1)
+                local row = newRow(section, "label", 42)
+                row.BackgroundTransparency = 0.08
+                local accent = Instance.new("Frame")
+                accent.Size = UDim2.new(0, 4, 1, -10)
+                accent.Position = UDim2.fromOffset(6, 5)
+                accent.BorderSizePixel = 0
+                accent.BackgroundColor3 = rgb(236, 176, 40)
+                accent.Parent = row
+                makeCorner(accent, 2)
+                local label = makeText(row, tostring(labelText or ""), 12.5, Enum.Font.GothamMedium)
+                label.Position = UDim2.fromOffset(17, 4)
+                label.Size = UDim2.new(1, -25, 1, -8)
                 label.TextXAlignment = Enum.TextXAlignment.Left
+                label.TextYAlignment = Enum.TextYAlignment.Center
+                bind(label, "TextColor3", "MutedText")
                 local api = register({}, row, tostring(labelText))
-                function api:UpdateLabel(newText) label.Text = "  " .. tostring(newText or "") end
+                function api:UpdateLabel(newText) label.Text = tostring(newText or "") end
                 return api
             end
 
@@ -1492,14 +1775,18 @@ function LULA.CreateLib(kavName, themeInput)
             function elements:NewKreditsCard(config)
                 config = config or {}
                 local username = tostring(config.Username or "lulaslollipop")
+                local displayName = tostring(config.DisplayName or (LocalPlayer and LocalPlayer.DisplayName) or username)
                 local userId = tonumber(config.UserId) or 3001347724
-                local row = newRow(section, "KreditsCard", 92)
+                local row = newRow(section, "KreditsCard", 232)
+
                 local avatar = Instance.new("ImageLabel")
-                avatar.Position = UDim2.fromOffset(10, 10)
-                avatar.Size = UDim2.fromOffset(72, 72)
+                avatar.AnchorPoint = Vector2.new(0.5, 0)
+                avatar.Position = UDim2.new(0.5, 0, 0, 10)
+                avatar.Size = UDim2.fromOffset(82, 82)
                 avatar.BackgroundTransparency = 1
                 avatar.Parent = row
-                makeCorner(avatar, 36)
+                makeCorner(avatar, 41)
+                makeStroke(avatar, rgb(236, 176, 40), 0.12, 2)
                 task.spawn(function()
                     if thumbnailCache[userId] then
                         avatar.Image = thumbnailCache[userId]
@@ -1511,24 +1798,62 @@ function LULA.CreateLib(kavName, themeInput)
                     if ok then thumbnailCache[userId] = image end
                     if ok and avatar.Parent then avatar.Image = image end
                 end)
-                local nameLabel = makeText(row, "@" .. username, 15, Enum.Font.GothamBold)
-                nameLabel.Position = UDim2.fromOffset(94, 13)
-                nameLabel.Size = UDim2.new(1, -106, 0, 22)
-                nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-                local idLabel = makeText(row, "Last Online: " .. tostring(config.LastOnline or "Today"), 12, Enum.Font.Gotham)
-                idLabel.Position = UDim2.fromOffset(94, 38)
-                idLabel.Size = UDim2.new(1, -106, 0, 19)
-                idLabel.TextXAlignment = Enum.TextXAlignment.Left
-                bind(idLabel, "TextColor3", "MutedText")
+
+                local welcome = makeText(row, "Welkome to Lollypop Hub, " .. displayName, 15, Enum.Font.GothamBold)
+                welcome.Position = UDim2.fromOffset(12, 99)
+                welcome.Size = UDim2.new(1, -24, 0, 24)
+                welcome.TextXAlignment = Enum.TextXAlignment.Center
+
+                local owner = makeText(row, "Owner: @" .. username, 12, Enum.Font.GothamMedium)
+                owner.Position = UDim2.fromOffset(12, 124)
+                owner.Size = UDim2.new(1, -24, 0, 18)
+                owner.TextXAlignment = Enum.TextXAlignment.Center
+                bind(owner, "TextColor3", "SchemeColor")
+
+                local liveTime = makeText(row, "Live Time: " .. os.date("%I:%M:%S %p"), 12, Enum.Font.Gotham)
+                liveTime.Position = UDim2.fromOffset(14, 148)
+                liveTime.Size = UDim2.new(1, -28, 0, 18)
+                liveTime.TextXAlignment = Enum.TextXAlignment.Left
+                bind(liveTime, "TextColor3", "MutedText")
+
+                local today = makeText(row, "Today's Date: " .. os.date("%A, %B %d, %Y"), 12, Enum.Font.Gotham)
+                today.Position = UDim2.fromOffset(14, 168)
+                today.Size = UDim2.new(1, -28, 0, 18)
+                today.TextXAlignment = Enum.TextXAlignment.Left
+                bind(today, "TextColor3", "MutedText")
+
+                local lastOnline = makeText(row, "Last Online: " .. tostring(config.LastOnline or "Today"), 12, Enum.Font.Gotham)
+                lastOnline.Position = UDim2.fromOffset(14, 188)
+                lastOnline.Size = UDim2.new(0.5, -14, 0, 18)
+                lastOnline.TextXAlignment = Enum.TextXAlignment.Left
+                bind(lastOnline, "TextColor3", "MutedText")
+
                 local statusText = tostring(config.OnlineStatus or "Online")
-                local statusIcon = statusText:lower() == "offline" and (utf8.char(0x1F534)) or (utf8.char(0x1F7E2))
+                local statusIcon = statusText:lower() == "offline" and utf8.char(0x1F534) or utf8.char(0x1F7E2)
                 local status = makeText(row, "Online Status: " .. statusText .. " " .. statusIcon, 12, Enum.Font.Gotham)
-                status.Position = UDim2.fromOffset(94, 59)
-                status.Size = UDim2.new(1, -106, 0, 19)
-                status.TextXAlignment = Enum.TextXAlignment.Left
+                status.Position = UDim2.new(0.5, 0, 0, 188)
+                status.Size = UDim2.new(0.5, -14, 0, 18)
+                status.TextXAlignment = Enum.TextXAlignment.Right
                 bind(status, "TextColor3", "SchemeColor")
-                local api = register({}, row, username)
-                api.Rows = {Username = nameLabel, LastOnline = idLabel, OnlineStatus = status, UserId = idLabel, Status = status}
+
+                task.spawn(function()
+                    while row.Parent do
+                        liveTime.Text = "Live Time: " .. os.date("%I:%M:%S %p")
+                        today.Text = "Today's Date: " .. os.date("%A, %B %d, %Y")
+                        task.wait(1)
+                    end
+                end)
+
+                local api = register({}, row, username .. " " .. displayName)
+                api.Rows = {
+                    Username = owner,
+                    Welcome = welcome,
+                    LastOnline = lastOnline,
+                    OnlineStatus = status,
+                    LiveTime = liveTime,
+                    Today = today,
+                    Status = status,
+                }
                 api.Avatar = avatar
                 function api:UpdateRow(key, newValue)
                     if self.Rows[key] then self.Rows[key].Text = tostring(newValue) end
@@ -1551,17 +1876,17 @@ function LULA.CreateLib(kavName, themeInput)
             box.BackgroundTransparency = 1
             box.BorderSizePixel = 0
             box.ClearTextOnFocus = false
-            box.Font = Enum.Font.Gotham
+            box.Font = resolveUIFont(Enum.Font.Gotham)
             box.TextSize = 13
             box.TextXAlignment = Enum.TextXAlignment.Left
             box.PlaceholderText = tostring(config.Placeholder or "Search...")
             box.Text = ""
             box.Parent = holder
             bind(box, "TextColor3", "TextColor")
-            local clear = makeButton(holder, "X")
+            local clear = makeKolorButton(holder, "X", rgb(220, 48, 65))
             clear.Position = UDim2.new(1, -34, 0, 6)
             clear.Size = UDim2.fromOffset(28, 28)
-            clear.BackgroundTransparency = 1
+            clear.BackgroundTransparency = 0.08
             local function apply(query)
                 query = string.lower(tostring(query or "")):gsub("^%s+", ""):gsub("%s+$", "")
                 for _, sectionFrame in ipairs(tab.Sections) do
@@ -1603,6 +1928,7 @@ function LULA.CreateLib(kavName, themeInput)
     function window:GetTabs() return active.Tabs end
     function window:GetRoot() return main end
     function window:SetFooter(text) footer.Text = tostring(text or "") end
+    function window:SetFont(fontName) return LULA:SetFont(fontName) end
     function window:Notify(...) return LULA:Notify(...) end
     function window:Destroy() LULA:Destroy() end
 
@@ -1632,6 +1958,20 @@ function LULA:SetTheme(themeInput)
     if not active then return false end
     active.Theme = resolveTheme(themeInput)
     applyTheme()
+    return true
+end
+
+function LULA:GetFontNames()
+    local copy = {}
+    for index, name in ipairs(fontNames) do copy[index] = name end
+    return copy
+end
+
+function LULA:SetFont(fontName)
+    fontName = tostring(fontName or "Gotham")
+    if not fontMap[fontName] then return false end
+    settings.UIFont = fontName
+    applyUIFont()
     return true
 end
 
