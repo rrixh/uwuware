@@ -1,3 +1,7 @@
+-- Kavo UI v3.8 - Lollypop Hub kolor, input, and admin fix
+-- Preserves the old Kavo layout while adding responsive scaling, resizing, drag lock, scrollable tabs, safer callbacks, and mobile support.
+-- Solid panels only: no glassmorphism, glowing panel borders, gradient sidebar, or background particles.
+
 local LULA = {}
 local env = (getgenv and getgenv()) or _G
 
@@ -374,23 +378,33 @@ end
 
 local function attachClearX(textBox, onClear)
     if not textBox then return nil end
-    local existing = textBox:FindFirstChild("ClearTextX")
+    local clearParent = textBox.Parent or textBox
+    local existing = clearParent:FindFirstChild(tostring(textBox.Name) .. "_ClearTextX")
     if existing then return existing end
+
     local padding = textBox:FindFirstChildOfClass("UIPadding") or Instance.new("UIPadding")
     if padding.PaddingLeft.Offset == 0 then padding.PaddingLeft = UDim.new(0, 8) end
-    padding.PaddingRight = UDim.new(0, 0)
+    padding.PaddingRight = UDim.new(0, 28)
     padding.Parent = textBox
-    local clear = makeKolorButton(textBox, "X", rgb(220, 48, 65))
-    clear.Name = "ClearTextX"
+
+    -- Make X a sibling instead of a child of the TextBox so tapping it cannot focus the keyboard.
+    local clear = makeKolorButton(clearParent, "X", rgb(220, 48, 65))
+    clear.Name = tostring(textBox.Name) .. "_ClearTextX"
     clear.AnchorPoint = Vector2.new(1, 0.5)
-    clear.Position = UDim2.new(1, -3, 0.5, 0)
+    clear.Position = UDim2.new(
+        textBox.Position.X.Scale + textBox.Size.X.Scale,
+        textBox.Position.X.Offset + textBox.Size.X.Offset - 3,
+        textBox.Position.Y.Scale + (textBox.Size.Y.Scale * 0.5),
+        textBox.Position.Y.Offset + (textBox.Size.Y.Offset * 0.5)
+    )
     clear.Size = UDim2.fromOffset(20, 20)
     clear.TextSize = 10
     clear.ZIndex = math.max(5, textBox.ZIndex + 2)
+
     track(clear.MouseButton1Click:Connect(function()
+        pcall(function() textBox:ReleaseFocus(false) end)
         textBox.Text = ""
         if type(onClear) == "function" then safeCall("Clear TextBox", onClear, textBox) end
-        pcall(function() textBox:CaptureFocus() end)
     end))
     return clear
 end
@@ -1248,7 +1262,7 @@ function LULA.CreateLib(kavName, themeInput)
                     render(true)
                     if fire ~= false then safeCall("Toggle " .. tostring(name), callback, value) end
                 end
-                createReset(row, function() set(default) end)
+                -- Toggles do not need a separate Reset button; switching OFF is already the reset action.
                 track(hit.MouseButton1Click:Connect(function() set(not value) end))
                 render(false)
                 attachTip(row, tip)
@@ -1319,12 +1333,13 @@ function LULA.CreateLib(kavName, themeInput)
                 local row = newRow(section, name, 70)
                 local textLabel = makeText(row, name, 13, Enum.Font.GothamMedium)
                 textLabel.Position = UDim2.fromOffset(12, 2)
-                textLabel.Size = UDim2.new(1, -115, 0, 23)
+                textLabel.Size = UDim2.new(1, -150, 0, 23)
                 textLabel.TextXAlignment = Enum.TextXAlignment.Left
                 local valueBox = Instance.new("TextBox")
                 valueBox.AnchorPoint = Vector2.new(1, 0)
-                valueBox.Position = UDim2.new(1, -38, 0, 5)
-                valueBox.Size = UDim2.fromOffset(58, 24)
+                -- Keep the number field fully visible and reserve the far-right column for X / R.
+                valueBox.Position = UDim2.new(1, -70, 0, 5)
+                valueBox.Size = UDim2.fromOffset(70, 24)
                 valueBox.BackgroundTransparency = 0.08
                 valueBox.BorderSizePixel = 0
                 valueBox.ClearTextOnFocus = false
@@ -1390,8 +1405,9 @@ function LULA.CreateLib(kavName, themeInput)
                 clearSlider.TextSize = 10
                 clearSlider.ZIndex = 7
                 track(clearSlider.MouseButton1Click:Connect(function()
+                    -- X only clears; it must not summon the keyboard.
+                    pcall(function() valueBox:ReleaseFocus(false) end)
                     valueBox.Text = ""
-                    pcall(function() valueBox:CaptureFocus() end)
                 end))
                 track(valueBox.FocusLost:Connect(function(enterPressed) if enterPressed then set(tonumber(valueBox.Text) or value) end end))
                 local sliderReset = createReset(row, function() set(default) end)
@@ -1724,66 +1740,22 @@ function LULA.CreateLib(kavName, themeInput)
                 makeCorner(preview, 6)
                 makeStroke(preview, rgb(255, 255, 255), 0.55, 1)
 
-                local svArea = Instance.new("TextButton")
-                svArea.Name = "ManualKolorPicker"
-                svArea.Text = ""
-                svArea.AutoButtonColor = false
-                svArea.Position = UDim2.fromOffset(10, 36)
-                svArea.Size = UDim2.new(1, -96, 0, 82)
-                svArea.BorderSizePixel = 0
-                svArea.ClipsDescendants = true
-                svArea.Parent = row
-                makeCorner(svArea, 7)
+                -- Main area: full rainbow. X selects hue; Y selects saturation.
+                local colorArea = Instance.new("TextButton")
+                colorArea.Name = "ManualKolorPicker"
+                colorArea.Text = ""
+                colorArea.AutoButtonColor = false
+                colorArea.Position = UDim2.fromOffset(10, 36)
+                colorArea.Size = UDim2.new(1, -96, 0, 82)
+                colorArea.BackgroundColor3 = rgb(255, 255, 255)
+                colorArea.BorderSizePixel = 0
+                colorArea.ClipsDescendants = true
+                colorArea.Parent = row
+                makeCorner(colorArea, 7)
 
-                local whiteLayer = Instance.new("Frame")
-                whiteLayer.Size = UDim2.fromScale(1, 1)
-                whiteLayer.BackgroundColor3 = rgb(255, 255, 255)
-                whiteLayer.BorderSizePixel = 0
-                whiteLayer.Parent = svArea
-                local whiteGradient = Instance.new("UIGradient")
-                whiteGradient.Transparency = NumberSequence.new({
-                    NumberSequenceKeypoint.new(0, 0),
-                    NumberSequenceKeypoint.new(1, 1),
-                })
-                whiteGradient.Parent = whiteLayer
-
-                local blackLayer = Instance.new("Frame")
-                blackLayer.Size = UDim2.fromScale(1, 1)
-                blackLayer.BackgroundColor3 = rgb(0, 0, 0)
-                blackLayer.BorderSizePixel = 0
-                blackLayer.Parent = svArea
-                local blackGradient = Instance.new("UIGradient")
-                blackGradient.Rotation = 90
-                blackGradient.Transparency = NumberSequence.new({
-                    NumberSequenceKeypoint.new(0, 1),
-                    NumberSequenceKeypoint.new(1, 0),
-                })
-                blackGradient.Parent = blackLayer
-
-                local svCursor = Instance.new("Frame")
-                svCursor.AnchorPoint = Vector2.new(0.5, 0.5)
-                svCursor.Size = UDim2.fromOffset(14, 14)
-                svCursor.BackgroundTransparency = 1
-                svCursor.BorderSizePixel = 0
-                svCursor.ZIndex = 5
-                svCursor.Parent = svArea
-                makeCorner(svCursor, 7)
-                makeStroke(svCursor, rgb(255, 255, 255), 0, 2)
-
-                local hueBar = Instance.new("TextButton")
-                hueBar.Name = "HueBar"
-                hueBar.Text = ""
-                hueBar.AutoButtonColor = false
-                hueBar.Position = UDim2.new(1, -75, 0, 36)
-                hueBar.Size = UDim2.fromOffset(18, 82)
-                hueBar.BackgroundColor3 = rgb(255, 255, 255)
-                hueBar.BorderSizePixel = 0
-                hueBar.ClipsDescendants = false
-                hueBar.Parent = row
-                makeCorner(hueBar, 7)
-                local hueGradient = Instance.new("UIGradient")
-                hueGradient.Rotation = 90
-                hueGradient.Color = ColorSequence.new({
+                local rainbowGradient = Instance.new("UIGradient")
+                rainbowGradient.Rotation = 0
+                rainbowGradient.Color = ColorSequence.new({
                     ColorSequenceKeypoint.new(0.00, Color3.fromHSV(0.00, 1, 1)),
                     ColorSequenceKeypoint.new(0.17, Color3.fromHSV(0.17, 1, 1)),
                     ColorSequenceKeypoint.new(0.33, Color3.fromHSV(0.33, 1, 1)),
@@ -1792,18 +1764,56 @@ function LULA.CreateLib(kavName, themeInput)
                     ColorSequenceKeypoint.new(0.83, Color3.fromHSV(0.83, 1, 1)),
                     ColorSequenceKeypoint.new(1.00, Color3.fromHSV(1.00, 1, 1)),
                 })
-                hueGradient.Parent = hueBar
+                rainbowGradient.Parent = colorArea
 
-                local hueCursor = Instance.new("Frame")
-                hueCursor.AnchorPoint = Vector2.new(0.5, 0.5)
-                hueCursor.Position = UDim2.fromScale(0.5, hue)
-                hueCursor.Size = UDim2.fromOffset(24, 5)
-                hueCursor.BackgroundColor3 = rgb(255, 255, 255)
-                hueCursor.BorderSizePixel = 0
-                hueCursor.ZIndex = 5
-                hueCursor.Parent = hueBar
-                makeCorner(hueCursor, 3)
-                makeStroke(hueCursor, rgb(0, 0, 0), 0.2, 1)
+                local saturationLayer = Instance.new("Frame")
+                saturationLayer.Size = UDim2.fromScale(1, 1)
+                saturationLayer.BackgroundColor3 = rgb(255, 255, 255)
+                saturationLayer.BorderSizePixel = 0
+                saturationLayer.Parent = colorArea
+                local saturationGradient = Instance.new("UIGradient")
+                saturationGradient.Rotation = 90
+                saturationGradient.Transparency = NumberSequence.new({
+                    NumberSequenceKeypoint.new(0, 0),
+                    NumberSequenceKeypoint.new(1, 1),
+                })
+                saturationGradient.Parent = saturationLayer
+
+                local colorCursor = Instance.new("Frame")
+                colorCursor.AnchorPoint = Vector2.new(0.5, 0.5)
+                colorCursor.Size = UDim2.fromOffset(14, 14)
+                colorCursor.BackgroundTransparency = 1
+                colorCursor.BorderSizePixel = 0
+                colorCursor.ZIndex = 5
+                colorCursor.Parent = colorArea
+                makeCorner(colorCursor, 7)
+                makeStroke(colorCursor, rgb(255, 255, 255), 0, 2)
+
+                -- Side slider: bright selected kolor at top, dark at bottom.
+                local brightnessBar = Instance.new("TextButton")
+                brightnessBar.Name = "BrightnessBar"
+                brightnessBar.Text = ""
+                brightnessBar.AutoButtonColor = false
+                brightnessBar.Position = UDim2.new(1, -75, 0, 36)
+                brightnessBar.Size = UDim2.fromOffset(18, 82)
+                brightnessBar.BackgroundColor3 = rgb(255, 255, 255)
+                brightnessBar.BorderSizePixel = 0
+                brightnessBar.ClipsDescendants = false
+                brightnessBar.Parent = row
+                makeCorner(brightnessBar, 7)
+                local brightnessGradient = Instance.new("UIGradient")
+                brightnessGradient.Rotation = 90
+                brightnessGradient.Parent = brightnessBar
+
+                local brightnessCursor = Instance.new("Frame")
+                brightnessCursor.AnchorPoint = Vector2.new(0.5, 0.5)
+                brightnessCursor.Size = UDim2.fromOffset(24, 5)
+                brightnessCursor.BackgroundColor3 = rgb(255, 255, 255)
+                brightnessCursor.BorderSizePixel = 0
+                brightnessCursor.ZIndex = 5
+                brightnessCursor.Parent = brightnessBar
+                makeCorner(brightnessCursor, 3)
+                makeStroke(brightnessCursor, rgb(0, 0, 0), 0.2, 1)
 
                 local rainbowButton = makeButton(row, "Rainbow: OFF")
                 rainbowButton.Position = UDim2.fromOffset(10, 124)
@@ -1824,9 +1834,12 @@ function LULA.CreateLib(kavName, themeInput)
                 local function render(fire)
                     value = Color3.fromHSV(hue, saturation, brightness)
                     preview.BackgroundColor3 = value
-                    svArea.BackgroundColor3 = Color3.fromHSV(hue, 1, 1)
-                    svCursor.Position = UDim2.fromScale(saturation, 1 - brightness)
-                    hueCursor.Position = UDim2.fromScale(0.5, hue)
+                    colorCursor.Position = UDim2.fromScale(hue, saturation)
+                    brightnessCursor.Position = UDim2.fromScale(0.5, 1 - brightness)
+                    brightnessGradient.Color = ColorSequence.new({
+                        ColorSequenceKeypoint.new(0, Color3.fromHSV(hue, saturation, 1)),
+                        ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 0, 0)),
+                    })
                     if fire ~= false then safeCall("Color picker " .. tostring(name), callback, value) end
                 end
 
@@ -1836,45 +1849,44 @@ function LULA.CreateLib(kavName, themeInput)
                     render(fire)
                 end
 
-                local function setSV(position)
+                local function setColorArea(position)
                     stopRainbow()
-                    local x = math.clamp((position.X - svArea.AbsolutePosition.X) / math.max(svArea.AbsoluteSize.X, 1), 0, 1)
-                    local y = math.clamp((position.Y - svArea.AbsolutePosition.Y) / math.max(svArea.AbsoluteSize.Y, 1), 0, 1)
-                    saturation = x
+                    hue = math.clamp((position.X - colorArea.AbsolutePosition.X) / math.max(colorArea.AbsoluteSize.X, 1), 0, 1)
+                    saturation = math.clamp((position.Y - colorArea.AbsolutePosition.Y) / math.max(colorArea.AbsoluteSize.Y, 1), 0, 1)
+                    render(true)
+                end
+
+                local function setBrightness(position)
+                    stopRainbow()
+                    local y = math.clamp((position.Y - brightnessBar.AbsolutePosition.Y) / math.max(brightnessBar.AbsoluteSize.Y, 1), 0, 1)
                     brightness = 1 - y
                     render(true)
                 end
 
-                local function setHue(position)
-                    stopRainbow()
-                    hue = math.clamp((position.Y - hueBar.AbsolutePosition.Y) / math.max(hueBar.AbsoluteSize.Y, 1), 0, 1)
-                    render(true)
-                end
-
-                local draggingSV = false
-                local draggingHue = false
-                track(svArea.InputBegan:Connect(function(inputObject)
+                local draggingColor = false
+                local draggingBrightness = false
+                track(colorArea.InputBegan:Connect(function(inputObject)
                     if inputObject.UserInputType == Enum.UserInputType.MouseButton1 or inputObject.UserInputType == Enum.UserInputType.Touch then
-                        draggingSV = true
-                        setSV(inputObject.Position)
+                        draggingColor = true
+                        setColorArea(inputObject.Position)
                     end
                 end))
-                track(hueBar.InputBegan:Connect(function(inputObject)
+                track(brightnessBar.InputBegan:Connect(function(inputObject)
                     if inputObject.UserInputType == Enum.UserInputType.MouseButton1 or inputObject.UserInputType == Enum.UserInputType.Touch then
-                        draggingHue = true
-                        setHue(inputObject.Position)
+                        draggingBrightness = true
+                        setBrightness(inputObject.Position)
                     end
                 end))
                 track(UserInputService.InputChanged:Connect(function(inputObject)
                     if inputObject.UserInputType == Enum.UserInputType.MouseMovement or inputObject.UserInputType == Enum.UserInputType.Touch then
-                        if draggingSV then setSV(inputObject.Position) end
-                        if draggingHue then setHue(inputObject.Position) end
+                        if draggingColor then setColorArea(inputObject.Position) end
+                        if draggingBrightness then setBrightness(inputObject.Position) end
                     end
                 end))
                 track(UserInputService.InputEnded:Connect(function(inputObject)
                     if inputObject.UserInputType == Enum.UserInputType.MouseButton1 or inputObject.UserInputType == Enum.UserInputType.Touch then
-                        draggingSV = false
-                        draggingHue = false
+                        draggingColor = false
+                        draggingBrightness = false
                     end
                 end))
 
