@@ -378,7 +378,7 @@ local function attachClearX(textBox, onClear)
     if existing then return existing end
     local padding = textBox:FindFirstChildOfClass("UIPadding") or Instance.new("UIPadding")
     if padding.PaddingLeft.Offset == 0 then padding.PaddingLeft = UDim.new(0, 8) end
-    padding.PaddingRight = UDim.new(0, 25)
+    padding.PaddingRight = UDim.new(0, 0)
     padding.Parent = textBox
     local clear = makeKolorButton(textBox, "X", rgb(220, 48, 65))
     clear.Name = "ClearTextX"
@@ -501,7 +501,23 @@ local function createReset(parent, callback)
     reset.ZIndex = 5
     reset.BackgroundTransparency = 0.12
     track(reset.MouseButton1Click:Connect(function()
-        safeCall("Reset", callback)
+        local node = parent
+        local settingsControl = false
+        while node do
+            if node:GetAttribute("LHTabName") == "Ui Kustomization" then
+                settingsControl = true
+                break
+            end
+            node = node.Parent
+        end
+        local resetAction = function()
+            safeCall("Reset " .. tostring(parent.Name), callback)
+        end
+        if settingsControl and type(env.LHConfirmReset) == "function" then
+            env.LHConfirmReset("Are you sure you want to reset " .. tostring(parent.Name) .. " to default?", resetAction)
+        else
+            resetAction()
+        end
     end))
     return reset
 end
@@ -1046,6 +1062,7 @@ function LULA.CreateLib(kavName, themeInput)
 
         local page = Instance.new("CanvasGroup")
         page.Name = tabName .. "Page"
+        page:SetAttribute("LHTabName", tabName)
         page.Size = UDim2.new(1, 0, 1, 0)
         page.BackgroundTransparency = 1
         page.Visible = false
@@ -1145,7 +1162,7 @@ function LULA.CreateLib(kavName, themeInput)
             function elements:NewButton(name, tip, callback)
                 callback = callback or function() end
                 local row = newRow(section, name, 33)
-                local icon = makeText(row, ">", 18, Enum.Font.PatrickHand)
+                local icon = makeText(row, utf8.char(0x1F449), 18, Enum.Font.PatrickHand)
                 icon.Position = UDim2.fromOffset(10, 0)
                 icon.Size = UDim2.fromOffset(18, 33)
                 bind(icon, "TextColor3", "SchemeColor")
@@ -1238,6 +1255,7 @@ function LULA.CreateLib(kavName, themeInput)
                 local api = register({}, row, tostring(name) .. " " .. tostring(tip))
                 function api:SetValue(newValue, fire) set(newValue, fire) end
                 function api:GetValue() return value end
+                function api:SetResetDefault(newDefault) default = newDefault == true end
                 function api:Reset() set(default) end
                 return api
             end
@@ -1286,6 +1304,7 @@ function LULA.CreateLib(kavName, themeInput)
                     if fire ~= false then submit() end
                 end
                 function api:GetValue() return box.Text end
+                function api:SetResetDefault(newDefault) default = tostring(newDefault or "") end
                 function api:Reset() box.Text = default; submit() end
                 return api
             end
@@ -1363,14 +1382,26 @@ function LULA.CreateLib(kavName, themeInput)
                 track(UserInputService.InputEnded:Connect(function(inputObject)
                     if inputObject.UserInputType == Enum.UserInputType.MouseButton1 or inputObject.UserInputType == Enum.UserInputType.Touch then dragging = false end
                 end))
-                attachClearX(valueBox)
+                local clearSlider = makeKolorButton(row, "X", rgb(220, 48, 65))
+                clearSlider.Name = "ClearSliderTextX"
+                clearSlider.AnchorPoint = Vector2.new(1, 0.5)
+                clearSlider.Position = UDim2.new(1, -7, 0, 15)
+                clearSlider.Size = UDim2.fromOffset(22, 22)
+                clearSlider.TextSize = 10
+                clearSlider.ZIndex = 7
+                track(clearSlider.MouseButton1Click:Connect(function()
+                    valueBox.Text = ""
+                    pcall(function() valueBox:CaptureFocus() end)
+                end))
                 track(valueBox.FocusLost:Connect(function(enterPressed) if enterPressed then set(tonumber(valueBox.Text) or value) end end))
-                createReset(row, function() set(default) end)
+                local sliderReset = createReset(row, function() set(default) end)
+                sliderReset.Position = UDim2.new(1, -7, 0, 54)
                 set(default, false)
                 attachTip(row, tip)
                 local api = register({}, row, tostring(name) .. " " .. tostring(tip))
                 function api:SetValue(newValue, fire) set(newValue, fire) end
                 function api:GetValue() return value end
+                function api:SetResetDefault(newDefault) default = math.clamp(tonumber(newDefault) or minValue, minValue, maxValue) end
                 function api:Reset() set(default) end
                 return api
             end
@@ -1475,6 +1506,7 @@ function LULA.CreateLib(kavName, themeInput)
                     rebuild(newList)
                     self.SearchText = string.lower(tostring(name) .. " " .. tostring(tip) .. " " .. table.concat(list, " "))
                 end
+                function api:SetResetDefault(newDefault) default = newDefault end
                 function api:Reset() set(default) end
                 return api
             end
@@ -1587,6 +1619,7 @@ function LULA.CreateLib(kavName, themeInput)
                 local api = register({}, row, tostring(name) .. " " .. tostring(tip))
                 function api:SetValue(newValue, fire) set(newValue, fire) end
                 function api:GetValue() return value end
+                function api:SetResetDefault(newDefault) default = tonumber(newDefault) or default end
                 function api:Reset() set(default) end
                 return api
             end
@@ -1661,6 +1694,7 @@ function LULA.CreateLib(kavName, themeInput)
                     bindButton.Text = UserInputService.TouchEnabled and "MOBILE TAP" or tostring(current.Name or current)
                 end
                 function api:GetValue() return current end
+                function api:SetResetDefault(newDefault) default = newDefault or default end
                 function api:Reset()
                     current = default
                     removeMobileButton()
@@ -1672,65 +1706,217 @@ function LULA.CreateLib(kavName, themeInput)
                 callback = callback or function() end
                 local default = typeof(defaultColor) == "Color3" and defaultColor or active.Theme.SchemeColor
                 local value = default
-                local row = newRow(section, name, 78)
+                local hue, saturation, brightness = default:ToHSV()
+                local rainbow = false
+                local rainbowConnection = nil
+                local row = newRow(section, name, 156)
+
                 local textLabel = makeText(row, name, 13, Enum.Font.GothamMedium)
                 textLabel.Position = UDim2.fromOffset(12, 0)
-                textLabel.Size = UDim2.new(1, -110, 0, 28)
+                textLabel.Size = UDim2.new(1, -112, 0, 28)
                 textLabel.TextXAlignment = Enum.TextXAlignment.Left
-                local preview = Instance.new("TextButton")
-                preview.Text = ""
-                preview.Position = UDim2.new(1, -70, 0, 7)
+
+                local preview = Instance.new("Frame")
+                preview.Position = UDim2.new(1, -70, 0, 6)
                 preview.Size = UDim2.fromOffset(34, 22)
                 preview.BorderSizePixel = 0
                 preview.Parent = row
                 makeCorner(preview, 6)
-                local fields = {}
-                local labels = {"R", "G", "B"}
-                for i, labelText in ipairs(labels) do
-                    local box = Instance.new("TextBox")
-                    box.Position = UDim2.new((i - 1) / 3, 10 + (i - 1) * 3, 0, 38)
-                    box.Size = UDim2.new(1 / 3, -17, 0, 28)
-                    box.BackgroundTransparency = 0.08
-                    box.BorderSizePixel = 0
-                    box.ClearTextOnFocus = false
-                    box.Font = resolveUIFont(Enum.Font.GothamMedium)
-                    box.TextSize = 12
-                    box.PlaceholderText = labelText
-                    box.Parent = row
-                    bind(box, "BackgroundColor3", "Header")
-                    bind(box, "TextColor3", "TextColor")
-                    makeCorner(box, 6)
-                    fields[i] = box
+                makeStroke(preview, rgb(255, 255, 255), 0.55, 1)
+
+                local svArea = Instance.new("TextButton")
+                svArea.Name = "ManualKolorPicker"
+                svArea.Text = ""
+                svArea.AutoButtonColor = false
+                svArea.Position = UDim2.fromOffset(10, 36)
+                svArea.Size = UDim2.new(1, -96, 0, 82)
+                svArea.BorderSizePixel = 0
+                svArea.ClipsDescendants = true
+                svArea.Parent = row
+                makeCorner(svArea, 7)
+
+                local whiteLayer = Instance.new("Frame")
+                whiteLayer.Size = UDim2.fromScale(1, 1)
+                whiteLayer.BackgroundColor3 = rgb(255, 255, 255)
+                whiteLayer.BorderSizePixel = 0
+                whiteLayer.Parent = svArea
+                local whiteGradient = Instance.new("UIGradient")
+                whiteGradient.Transparency = NumberSequence.new({
+                    NumberSequenceKeypoint.new(0, 0),
+                    NumberSequenceKeypoint.new(1, 1),
+                })
+                whiteGradient.Parent = whiteLayer
+
+                local blackLayer = Instance.new("Frame")
+                blackLayer.Size = UDim2.fromScale(1, 1)
+                blackLayer.BackgroundColor3 = rgb(0, 0, 0)
+                blackLayer.BorderSizePixel = 0
+                blackLayer.Parent = svArea
+                local blackGradient = Instance.new("UIGradient")
+                blackGradient.Rotation = 90
+                blackGradient.Transparency = NumberSequence.new({
+                    NumberSequenceKeypoint.new(0, 1),
+                    NumberSequenceKeypoint.new(1, 0),
+                })
+                blackGradient.Parent = blackLayer
+
+                local svCursor = Instance.new("Frame")
+                svCursor.AnchorPoint = Vector2.new(0.5, 0.5)
+                svCursor.Size = UDim2.fromOffset(14, 14)
+                svCursor.BackgroundTransparency = 1
+                svCursor.BorderSizePixel = 0
+                svCursor.ZIndex = 5
+                svCursor.Parent = svArea
+                makeCorner(svCursor, 7)
+                makeStroke(svCursor, rgb(255, 255, 255), 0, 2)
+
+                local hueBar = Instance.new("TextButton")
+                hueBar.Name = "HueBar"
+                hueBar.Text = ""
+                hueBar.AutoButtonColor = false
+                hueBar.Position = UDim2.new(1, -75, 0, 36)
+                hueBar.Size = UDim2.fromOffset(18, 82)
+                hueBar.BackgroundColor3 = rgb(255, 255, 255)
+                hueBar.BorderSizePixel = 0
+                hueBar.ClipsDescendants = false
+                hueBar.Parent = row
+                makeCorner(hueBar, 7)
+                local hueGradient = Instance.new("UIGradient")
+                hueGradient.Rotation = 90
+                hueGradient.Color = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0.00, Color3.fromHSV(0.00, 1, 1)),
+                    ColorSequenceKeypoint.new(0.17, Color3.fromHSV(0.17, 1, 1)),
+                    ColorSequenceKeypoint.new(0.33, Color3.fromHSV(0.33, 1, 1)),
+                    ColorSequenceKeypoint.new(0.50, Color3.fromHSV(0.50, 1, 1)),
+                    ColorSequenceKeypoint.new(0.67, Color3.fromHSV(0.67, 1, 1)),
+                    ColorSequenceKeypoint.new(0.83, Color3.fromHSV(0.83, 1, 1)),
+                    ColorSequenceKeypoint.new(1.00, Color3.fromHSV(1.00, 1, 1)),
+                })
+                hueGradient.Parent = hueBar
+
+                local hueCursor = Instance.new("Frame")
+                hueCursor.AnchorPoint = Vector2.new(0.5, 0.5)
+                hueCursor.Position = UDim2.fromScale(0.5, hue)
+                hueCursor.Size = UDim2.fromOffset(24, 5)
+                hueCursor.BackgroundColor3 = rgb(255, 255, 255)
+                hueCursor.BorderSizePixel = 0
+                hueCursor.ZIndex = 5
+                hueCursor.Parent = hueBar
+                makeCorner(hueCursor, 3)
+                makeStroke(hueCursor, rgb(0, 0, 0), 0.2, 1)
+
+                local rainbowButton = makeButton(row, "Rainbow: OFF")
+                rainbowButton.Position = UDim2.fromOffset(10, 124)
+                rainbowButton.Size = UDim2.new(1, -46, 0, 25)
+                rainbowButton.TextSize = 12
+                rainbowButton.ZIndex = 5
+                makeStroke(rainbowButton, active.Theme.SchemeColor, 0.45, 1)
+
+                local function stopRainbow()
+                    rainbow = false
+                    rainbowButton.Text = "Rainbow: OFF"
+                    if rainbowConnection then
+                        pcall(function() rainbowConnection:Disconnect() end)
+                        rainbowConnection = nil
+                    end
                 end
-                local function set(newColor, fire)
-                    if typeof(newColor) ~= "Color3" then return end
-                    value = newColor
+
+                local function render(fire)
+                    value = Color3.fromHSV(hue, saturation, brightness)
                     preview.BackgroundColor3 = value
-                    fields[1].Text = tostring(math.floor(value.R * 255 + 0.5))
-                    fields[2].Text = tostring(math.floor(value.G * 255 + 0.5))
-                    fields[3].Text = tostring(math.floor(value.B * 255 + 0.5))
+                    svArea.BackgroundColor3 = Color3.fromHSV(hue, 1, 1)
+                    svCursor.Position = UDim2.fromScale(saturation, 1 - brightness)
+                    hueCursor.Position = UDim2.fromScale(0.5, hue)
                     if fire ~= false then safeCall("Color picker " .. tostring(name), callback, value) end
                 end
-                local function readFields()
-                    set(rgb(
-                        math.clamp(tonumber(fields[1].Text) or 0, 0, 255),
-                        math.clamp(tonumber(fields[2].Text) or 0, 0, 255),
-                        math.clamp(tonumber(fields[3].Text) or 0, 0, 255)
-                    ))
+
+                local function set(newColor, fire)
+                    if typeof(newColor) ~= "Color3" then return end
+                    hue, saturation, brightness = newColor:ToHSV()
+                    render(fire)
                 end
-                for _, field in ipairs(fields) do attachClearX(field); track(field.FocusLost:Connect(function(enterPressed) if enterPressed then readFields() end end)) end
-                track(preview.MouseButton1Click:Connect(function()
-                    local h, s, v = value:ToHSV()
-                    h = (h + 0.08) % 1
-                    set(Color3.fromHSV(h, math.max(0.45, s), v))
+
+                local function setSV(position)
+                    stopRainbow()
+                    local x = math.clamp((position.X - svArea.AbsolutePosition.X) / math.max(svArea.AbsoluteSize.X, 1), 0, 1)
+                    local y = math.clamp((position.Y - svArea.AbsolutePosition.Y) / math.max(svArea.AbsoluteSize.Y, 1), 0, 1)
+                    saturation = x
+                    brightness = 1 - y
+                    render(true)
+                end
+
+                local function setHue(position)
+                    stopRainbow()
+                    hue = math.clamp((position.Y - hueBar.AbsolutePosition.Y) / math.max(hueBar.AbsoluteSize.Y, 1), 0, 1)
+                    render(true)
+                end
+
+                local draggingSV = false
+                local draggingHue = false
+                track(svArea.InputBegan:Connect(function(inputObject)
+                    if inputObject.UserInputType == Enum.UserInputType.MouseButton1 or inputObject.UserInputType == Enum.UserInputType.Touch then
+                        draggingSV = true
+                        setSV(inputObject.Position)
+                    end
                 end))
-                createReset(row, function() set(default) end)
+                track(hueBar.InputBegan:Connect(function(inputObject)
+                    if inputObject.UserInputType == Enum.UserInputType.MouseButton1 or inputObject.UserInputType == Enum.UserInputType.Touch then
+                        draggingHue = true
+                        setHue(inputObject.Position)
+                    end
+                end))
+                track(UserInputService.InputChanged:Connect(function(inputObject)
+                    if inputObject.UserInputType == Enum.UserInputType.MouseMovement or inputObject.UserInputType == Enum.UserInputType.Touch then
+                        if draggingSV then setSV(inputObject.Position) end
+                        if draggingHue then setHue(inputObject.Position) end
+                    end
+                end))
+                track(UserInputService.InputEnded:Connect(function(inputObject)
+                    if inputObject.UserInputType == Enum.UserInputType.MouseButton1 or inputObject.UserInputType == Enum.UserInputType.Touch then
+                        draggingSV = false
+                        draggingHue = false
+                    end
+                end))
+
+                local function startRainbow()
+                    if rainbow then return end
+                    rainbow = true
+                    rainbowButton.Text = "Rainbow: ON"
+                    rainbowConnection = RunService.RenderStepped:Connect(function()
+                        hue = (os.clock() % 5) / 5
+                        saturation = 1
+                        brightness = 1
+                        render(true)
+                    end)
+                    track(rainbowConnection)
+                end
+
+                track(rainbowButton.MouseButton1Click:Connect(function()
+                    if rainbow then stopRainbow() else startRainbow() end
+                end))
+
+                createReset(row, function()
+                    stopRainbow()
+                    set(default)
+                end)
                 set(default, false)
                 attachTip(row, tip)
-                local api = register({}, row, tostring(name) .. " " .. tostring(tip))
-                function api:SetValue(newColor, fire) set(newColor, fire) end
+                local api = register({}, row, tostring(name) .. " " .. tostring(tip) .. " rainbow manual kolor picker")
+                function api:SetValue(newColor, fire)
+                    stopRainbow()
+                    set(newColor, fire)
+                end
                 function api:GetValue() return value end
-                function api:Reset() set(default) end
+                function api:SetResetDefault(newDefault)
+                    if typeof(newDefault) == "Color3" then default = newDefault end
+                end
+                function api:SetRainbow(enabled)
+                    if enabled then startRainbow() else stopRainbow() end
+                end
+                function api:Reset()
+                    stopRainbow()
+                    set(default)
+                end
                 return api
             end
 
