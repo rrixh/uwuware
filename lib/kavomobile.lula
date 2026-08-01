@@ -1,7 +1,3 @@
--- Kavo UI v3.8 - Lollypop Hub kolor, input, and admin fix
--- Preserves the old Kavo layout while adding responsive scaling, resizing, drag lock, scrollable tabs, safer callbacks, and mobile support.
--- Solid panels only: no glassmorphism, glowing panel borders, gradient sidebar, or background particles.
-
 local LULA = {}
 local env = (getgenv and getgenv()) or _G
 
@@ -317,10 +313,46 @@ local function makeText(parent, text, size, font)
     return label
 end
 
+local function createButtonRipple(button, inputObject)
+    if settings.ReducedMotion or settings.LowPerformance then return end
+    if not button or not button.Parent then return end
+    local absoluteSize = button.AbsoluteSize
+    if absoluteSize.X <= 0 or absoluteSize.Y <= 0 then return end
+
+    local absolutePosition = button.AbsolutePosition
+    local point = inputObject and inputObject.Position or Vector3.new(
+        absolutePosition.X + (absoluteSize.X * 0.5),
+        absolutePosition.Y + (absoluteSize.Y * 0.5),
+        0
+    )
+    local diameter = math.max(absoluteSize.X, absoluteSize.Y) * 2.25
+    local ripple = Instance.new("Frame")
+    ripple.Name = "LHRipple"
+    ripple.AnchorPoint = Vector2.new(0.5, 0.5)
+    ripple.Position = UDim2.fromOffset(point.X - absolutePosition.X, point.Y - absolutePosition.Y)
+    ripple.Size = UDim2.fromOffset(0, 0)
+    ripple.BackgroundColor3 = (active and active.Theme and active.Theme.SchemeColor) or defaultAccent
+    ripple.BackgroundTransparency = 0.52
+    ripple.BorderSizePixel = 0
+    ripple.Active = false
+    ripple.ZIndex = math.max(1, button.ZIndex)
+    ripple.Parent = button
+    makeCorner(ripple, 999)
+
+    tween(ripple, {
+        Size = UDim2.fromOffset(diameter, diameter),
+        BackgroundTransparency = 1,
+    }, 0.34, Enum.EasingStyle.Quad)
+    task.delay(duration(0.38), function()
+        if ripple then pcall(function() ripple:Destroy() end) end
+    end)
+end
+
 local function addButtonPressEffect(button)
     if not button or not button:IsA("GuiButton") then return end
     if button:GetAttribute("LHPressEffectBound") then return end
     button:SetAttribute("LHPressEffectBound", true)
+    button.ClipsDescendants = true
     local scaleObject = button:FindFirstChild("LHPressScale") or Instance.new("UIScale")
     scaleObject.Name = "LHPressScale"
     scaleObject.Scale = 1
@@ -329,6 +361,7 @@ local function addButtonPressEffect(button)
     track(button.InputBegan:Connect(function(inputObject)
         if inputObject.UserInputType == Enum.UserInputType.MouseButton1 or inputObject.UserInputType == Enum.UserInputType.Touch then
             pressing = true
+            createButtonRipple(button, inputObject)
             tween(scaleObject, {Scale = 0.955}, 0.06, Enum.EasingStyle.Quad)
         end
     end))
@@ -539,7 +572,10 @@ end
 local function attachTip(row, tip)
     tip = tostring(tip or "")
     if tip == "" or not active then return end
+    row:SetAttribute("LHDescription", tip)
     local token = 0
+    local longPressed = false
+
     local function show()
         if not active or not active.Tooltip then return end
         active.Tooltip.Text = tip
@@ -553,22 +589,53 @@ local function attachTip(row, tip)
             if active and active.Tooltip then active.Tooltip.Visible = false end
         end)
     end
-    track(row.MouseEnter:Connect(show))
-    track(row.MouseLeave:Connect(hide))
-    track(row.InputBegan:Connect(function(inputObject)
-        if inputObject.UserInputType ~= Enum.UserInputType.Touch then return end
+
+    track(row.MouseEnter:Connect(function()
+        if not UserInputService.TouchEnabled then show() end
+    end))
+    track(row.MouseLeave:Connect(function()
+        token = token + 1
+        longPressed = false
+        row:SetAttribute("LHLongPressTriggered", false)
+        hide()
+    end))
+    local function beginHold(inputObject)
+        if inputObject.UserInputType ~= Enum.UserInputType.Touch and inputObject.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
         token = token + 1
         local mine = token
-        task.delay(0.42, function()
-            if token == mine then show() end
+        longPressed = false
+        row:SetAttribute("LHLongPressTriggered", false)
+        task.delay(0.5, function()
+            if token == mine and row.Parent then
+                longPressed = true
+                row:SetAttribute("LHLongPressTriggered", true)
+                show()
+            end
         end)
-    end))
-    track(row.InputEnded:Connect(function(inputObject)
-        if inputObject.UserInputType == Enum.UserInputType.Touch then
+    end
+    local function endHold(inputObject)
+        if inputObject.UserInputType == Enum.UserInputType.Touch or inputObject.UserInputType == Enum.UserInputType.MouseButton1 then
             token = token + 1
-            task.delay(1.2, hide)
+            if longPressed then
+                task.delay(1.35, hide)
+                task.delay(0.18, function()
+                    if row then row:SetAttribute("LHLongPressTriggered", false) end
+                end)
+            elseif UserInputService.TouchEnabled then
+                hide()
+            end
+            longPressed = false
         end
-    end))
+    end
+
+    local inputTargets = {row}
+    for _, descendant in ipairs(row:GetDescendants()) do
+        if descendant:IsA("GuiObject") then table.insert(inputTargets, descendant) end
+    end
+    for _, target in ipairs(inputTargets) do
+        track(target.InputBegan:Connect(beginHold))
+        track(target.InputEnded:Connect(endHold))
+    end
 end
 
 local function addHover(row)
@@ -892,7 +959,7 @@ function LULA.CreateLib(kavName, themeInput)
     pages.ClipsDescendants = true
     pages.Parent = main
 
-    local footer = makeText(main, "Lollypop Hub v9.4.0", 11, Enum.Font.GothamMedium)
+    local footer = makeText(main, "Lollypop Hub v10.0.0", 11, Enum.Font.GothamMedium)
     footer.Name = "Footer"
     footer.Position = UDim2.new(0, 158, 1, -20)
     footer.Size = UDim2.new(1, -165, 0, 18)
@@ -942,6 +1009,7 @@ function LULA.CreateLib(kavName, themeInput)
         ParticleLayer = particleLayer,
         ParticleObjects = particleObjects,
         Cursor = nil,
+        SessionStarted = tonumber(env.LHSessionStart) or tick(),
     }
     applyTheme()
     setGlassBlur(true)
@@ -1166,9 +1234,23 @@ function LULA.CreateLib(kavName, themeInput)
                 api = api or {}
                 api.Frame = row
                 api.SearchText = string.lower(tostring(searchable or row.Name))
+                api.BaseVisible = row.Visible
+                local searchStroke = makeStroke(row, active.Theme.SchemeColor, 1, 1.4)
+                searchStroke.Name = "LHSearchMatch"
+                searchStroke.Enabled = false
                 table.insert(controls, api)
                 function api:SetVisible(value)
-                    row.Visible = value and true or false
+                    self.BaseVisible = value and true or false
+                    row.Visible = self.BaseVisible
+                end
+                function api:SetSearchHighlighted(value)
+                    searchStroke.Enabled = value and true or false
+                    if searchStroke.Enabled then
+                        searchStroke.Color = active.Theme.SchemeColor
+                        tween(searchStroke, {Transparency = 0.08}, 0.1)
+                    else
+                        searchStroke.Transparency = 1
+                    end
                 end
                 return api
             end
@@ -1204,6 +1286,10 @@ function LULA.CreateLib(kavName, themeInput)
                 end))
                 local busy = false
                 track(click.MouseButton1Click:Connect(function()
+                    if row:GetAttribute("LHLongPressTriggered") then
+                        row:SetAttribute("LHLongPressTriggered", false)
+                        return
+                    end
                     if busy then return end
                     busy = true
                     tween(row, {Size = UDim2.new(1, -3, 0, 31)}, 0.06)
@@ -1263,7 +1349,13 @@ function LULA.CreateLib(kavName, themeInput)
                     if fire ~= false then safeCall("Toggle " .. tostring(name), callback, value) end
                 end
                 -- Toggles do not need a separate Reset button; switching OFF is already the reset action.
-                track(hit.MouseButton1Click:Connect(function() set(not value) end))
+                track(hit.MouseButton1Click:Connect(function()
+                    if row:GetAttribute("LHLongPressTriggered") then
+                        row:SetAttribute("LHLongPressTriggered", false)
+                        return
+                    end
+                    set(not value)
+                end))
                 render(false)
                 attachTip(row, tip)
                 local api = register({}, row, tostring(name) .. " " .. tostring(tip))
@@ -1975,7 +2067,8 @@ function LULA.CreateLib(kavName, themeInput)
                 local username = tostring(config.Username or "lulaslollipop")
                 local displayName = tostring(config.DisplayName or (LocalPlayer and LocalPlayer.DisplayName) or username)
                 local userId = tonumber(config.UserId) or 3001347724
-                local row = newRow(section, "KreditsCard", 232)
+                local sessionStarted = tonumber(config.SessionStarted) or tonumber(env.LHSessionStart) or (active and active.SessionStarted) or tick()
+                local row = newRow(section, "KreditsCard", 252)
 
                 local avatar = Instance.new("ImageLabel")
                 avatar.AnchorPoint = Vector2.new(0.5, 0)
@@ -2014,14 +2107,20 @@ function LULA.CreateLib(kavName, themeInput)
                 liveTime.TextXAlignment = Enum.TextXAlignment.Left
                 bind(liveTime, "TextColor3", "MutedText")
 
+                local sessionTime = makeText(row, "Session Time: 00:00:00", 12, Enum.Font.Gotham)
+                sessionTime.Position = UDim2.fromOffset(14, 168)
+                sessionTime.Size = UDim2.new(1, -28, 0, 18)
+                sessionTime.TextXAlignment = Enum.TextXAlignment.Left
+                bind(sessionTime, "TextColor3", "SchemeColor")
+
                 local today = makeText(row, "Today's Date: " .. os.date("%A, %B %d, %Y"), 12, Enum.Font.Gotham)
-                today.Position = UDim2.fromOffset(14, 168)
+                today.Position = UDim2.fromOffset(14, 188)
                 today.Size = UDim2.new(1, -28, 0, 18)
                 today.TextXAlignment = Enum.TextXAlignment.Left
                 bind(today, "TextColor3", "MutedText")
 
                 local lastOnline = makeText(row, "Last Online: " .. tostring(config.LastOnline or "Today"), 12, Enum.Font.Gotham)
-                lastOnline.Position = UDim2.fromOffset(14, 188)
+                lastOnline.Position = UDim2.fromOffset(14, 208)
                 lastOnline.Size = UDim2.new(0.5, -14, 0, 18)
                 lastOnline.TextXAlignment = Enum.TextXAlignment.Left
                 bind(lastOnline, "TextColor3", "MutedText")
@@ -2029,26 +2128,32 @@ function LULA.CreateLib(kavName, themeInput)
                 local statusText = tostring(config.OnlineStatus or "Online")
                 local statusIcon = statusText:lower() == "offline" and utf8.char(0x1F534) or utf8.char(0x1F7E2)
                 local status = makeText(row, "Online Status: " .. statusText .. " " .. statusIcon, 12, Enum.Font.Gotham)
-                status.Position = UDim2.new(0.5, 0, 0, 188)
+                status.Position = UDim2.new(0.5, 0, 0, 208)
                 status.Size = UDim2.new(0.5, -14, 0, 18)
                 status.TextXAlignment = Enum.TextXAlignment.Right
                 bind(status, "TextColor3", "SchemeColor")
 
                 task.spawn(function()
                     while row.Parent do
+                        local elapsed = math.max(0, math.floor(tick() - sessionStarted))
+                        local hours = math.floor(elapsed / 3600)
+                        local minutes = math.floor((elapsed % 3600) / 60)
+                        local seconds = elapsed % 60
                         liveTime.Text = "Live Time: " .. os.date("%I:%M:%S %p")
+                        sessionTime.Text = string.format("Session Time: %02d:%02d:%02d", hours, minutes, seconds)
                         today.Text = "Today's Date: " .. os.date("%A, %B %d, %Y")
                         task.wait(1)
                     end
                 end)
 
-                local api = register({}, row, username .. " " .. displayName)
+                local api = register({}, row, username .. " " .. displayName .. " session time")
                 api.Rows = {
                     Username = owner,
                     Welcome = welcome,
                     LastOnline = lastOnline,
                     OnlineStatus = status,
                     LiveTime = liveTime,
+                    SessionTime = sessionTime,
                     Today = today,
                     Status = status,
                 }
@@ -2085,13 +2190,50 @@ function LULA.CreateLib(kavName, themeInput)
             clear.Position = UDim2.new(1, -34, 0, 6)
             clear.Size = UDim2.fromOffset(28, 28)
             clear.BackgroundTransparency = 0.08
+            local searching = false
+            local savedSectionVisibility = setmetatable({}, {__mode = "k"})
+            local savedControlVisibility = setmetatable({}, {__mode = "k"})
             local function apply(query)
                 query = string.lower(tostring(query or "")):gsub("^%s+", ""):gsub("%s+$", "")
+
+                if query == "" and not searching then
+                    for _, sectionFrame in ipairs(tab.Sections) do
+                        for _, api in ipairs(sectionControlRegistry[sectionFrame] or {}) do
+                            if api.SetSearchHighlighted then api:SetSearchHighlighted(false) end
+                        end
+                    end
+                    return
+                end
+
+                if query ~= "" and not searching then
+                    searching = true
+                    for _, sectionFrame in ipairs(tab.Sections) do
+                        savedSectionVisibility[sectionFrame] = sectionFrame.Visible
+                        for _, api in ipairs(sectionControlRegistry[sectionFrame] or {}) do
+                            savedControlVisibility[api] = api.Frame.Visible
+                        end
+                    end
+                elseif query == "" and searching then
+                    searching = false
+                    for _, sectionFrame in ipairs(tab.Sections) do
+                        sectionFrame.Visible = savedSectionVisibility[sectionFrame] ~= false
+                        for _, api in ipairs(sectionControlRegistry[sectionFrame] or {}) do
+                            api.Frame.Visible = savedControlVisibility[api] ~= false
+                            if api.SetSearchHighlighted then api:SetSearchHighlighted(false) end
+                        end
+                    end
+                    table.clear(savedSectionVisibility)
+                    table.clear(savedControlVisibility)
+                    return
+                end
+
                 for _, sectionFrame in ipairs(tab.Sections) do
                     local any = query == ""
                     for _, api in ipairs(sectionControlRegistry[sectionFrame] or {}) do
-                        local matched = query == "" or string.find(api.SearchText or "", query, 1, true) ~= nil
+                        local originallyVisible = savedControlVisibility[api] ~= false
+                        local matched = query == "" or (originallyVisible and string.find(api.SearchText or "", query, 1, true) ~= nil)
                         api.Frame.Visible = matched
+                        if api.SetSearchHighlighted then api:SetSearchHighlighted(query ~= "" and matched) end
                         if matched then any = true end
                     end
                     sectionFrame.Visible = any
@@ -2128,6 +2270,8 @@ function LULA.CreateLib(kavName, themeInput)
     function window:SetFooter(text) footer.Text = tostring(text or "") end
     function window:SetFont(fontName) return LULA:SetFont(fontName) end
     function window:Notify(...) return LULA:Notify(...) end
+    function window:SetVisible(value) return LULA:SetUIVisible(value) end
+    function window:IsVisible() return LULA:IsVisible() end
     function window:Destroy() LULA:Destroy() end
 
     active.Window = window
@@ -2138,7 +2282,20 @@ function LULA:ToggleUI()
     if active and active.ScreenGui then
         active.ScreenGui.Enabled = not active.ScreenGui.Enabled
         setGlassBlur(active.ScreenGui.Enabled)
+        return active.ScreenGui.Enabled
     end
+    return false
+end
+
+function LULA:SetUIVisible(value)
+    if not active or not active.ScreenGui then return false end
+    active.ScreenGui.Enabled = value and true or false
+    setGlassBlur(active.ScreenGui.Enabled)
+    return active.ScreenGui.Enabled
+end
+
+function LULA:IsVisible()
+    return active and active.ScreenGui and active.ScreenGui.Enabled == true or false
 end
 
 function LULA:ChangeColor(property, color)
