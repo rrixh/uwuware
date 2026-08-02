@@ -18,7 +18,9 @@ end
 local defaultAccent = env.LollypopTheme
 if typeof(defaultAccent) ~= "Color3" then
     defaultAccent = rgb(255, 72, 176)
-end
+end;
+
+local online_status = "Offline"
 
 local themes = {
     Kandy = {
@@ -2125,7 +2127,7 @@ function LULA.CreateLib(kavName, themeInput)
                 lastOnline.TextXAlignment = Enum.TextXAlignment.Left
                 bind(lastOnline, "TextColor3", "MutedText")
 
-                local statusText = tostring(config.OnlineStatus or "Online")
+    local statusText = online_status or "Online"
                 local statusIcon = statusText:lower() == "offline" and utf8.char(0x1F534) or utf8.char(0x1F7E2)
                 local status = makeText(row, "Online Status: " .. statusText .. " " .. statusIcon, 12, Enum.Font.Gotham)
                 status.Position = UDim2.new(0.5, 0, 0, 208)
