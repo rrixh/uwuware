@@ -1,3 +1,4 @@
+-- kavo ui
 local LULA = {}
 local env = (getgenv and getgenv()) or _G
 
@@ -20,7 +21,7 @@ if typeof(defaultAccent) ~= "Color3" then
     defaultAccent = rgb(255, 72, 176)
 end;
 
-local online_status = "Online"
+local online_status = "Offline"
 
 local themes = {
     Kandy = {
@@ -130,6 +131,138 @@ themes.LightTheme = {
     Background = rgb(240, 241, 246), Header = rgb(224, 226, 235),
     TextColor = rgb(28, 29, 35), MutedText = rgb(93, 96, 112),
     ElementColor = rgb(251, 251, 253), Danger = rgb(218, 49, 66),
+}
+
+-- Friendly aliases and expanded Lollypop-made theme collection.
+themes.Grape = themes.GrapeTheme
+themes.Light = themes.LightTheme
+themes.Sunset = {
+    SchemeColor = rgb(255, 105, 90), Accent2 = rgb(255, 181, 71),
+    Background = rgb(31, 18, 27), Header = rgb(22, 12, 20),
+    TextColor = rgb(255, 244, 239), MutedText = rgb(218, 181, 178),
+    ElementColor = rgb(49, 27, 38), Danger = rgb(255, 62, 86),
+}
+themes.Galaxy = {
+    SchemeColor = rgb(132, 82, 255), Accent2 = rgb(45, 199, 255),
+    Background = rgb(12, 10, 31), Header = rgb(8, 7, 23),
+    TextColor = rgb(245, 242, 255), MutedText = rgb(178, 171, 218),
+    ElementColor = rgb(24, 20, 53), Danger = rgb(255, 70, 105),
+}
+themes.Royal = {
+    SchemeColor = rgb(128, 82, 255), Accent2 = rgb(255, 201, 76),
+    Background = rgb(22, 16, 39), Header = rgb(15, 10, 29),
+    TextColor = rgb(252, 247, 255), MutedText = rgb(196, 181, 218),
+    ElementColor = rgb(38, 28, 62), Danger = rgb(255, 74, 92),
+}
+themes.Cyber = {
+    SchemeColor = rgb(0, 232, 255), Accent2 = rgb(255, 45, 211),
+    Background = rgb(7, 13, 24), Header = rgb(4, 8, 16),
+    TextColor = rgb(236, 253, 255), MutedText = rgb(145, 200, 211),
+    ElementColor = rgb(13, 27, 43), Danger = rgb(255, 55, 86),
+}
+themes.Mint = {
+    SchemeColor = rgb(73, 224, 173), Accent2 = rgb(116, 190, 255),
+    Background = rgb(12, 27, 25), Header = rgb(8, 19, 18),
+    TextColor = rgb(239, 255, 250), MutedText = rgb(164, 213, 195),
+    ElementColor = rgb(21, 44, 39), Danger = rgb(255, 78, 101),
+}
+themes["Rose Gold"] = {
+    SchemeColor = rgb(224, 139, 153), Accent2 = rgb(236, 190, 132),
+    Background = rgb(31, 22, 25), Header = rgb(22, 15, 18),
+    TextColor = rgb(255, 246, 246), MutedText = rgb(211, 181, 184),
+    ElementColor = rgb(49, 34, 39), Danger = rgb(255, 74, 93),
+}
+themes.Blueberry = {
+    SchemeColor = rgb(89, 111, 255), Accent2 = rgb(160, 95, 255),
+    Background = rgb(13, 17, 39), Header = rgb(9, 11, 29),
+    TextColor = rgb(242, 245, 255), MutedText = rgb(163, 175, 219),
+    ElementColor = rgb(23, 29, 62), Danger = rgb(255, 71, 96),
+}
+themes["Orange Cream"] = {
+    SchemeColor = rgb(255, 144, 61), Accent2 = rgb(255, 213, 113),
+    Background = rgb(31, 23, 17), Header = rgb(22, 16, 11),
+    TextColor = rgb(255, 248, 238), MutedText = rgb(218, 190, 157),
+    ElementColor = rgb(50, 37, 25), Danger = rgb(255, 70, 77),
+}
+themes.Lavender = {
+    SchemeColor = rgb(190, 132, 255), Accent2 = rgb(255, 142, 220),
+    Background = rgb(25, 19, 35), Header = rgb(17, 13, 25),
+    TextColor = rgb(252, 246, 255), MutedText = rgb(204, 183, 219),
+    ElementColor = rgb(42, 31, 57), Danger = rgb(255, 76, 101),
+}
+themes.Ice = {
+    SchemeColor = rgb(91, 211, 255), Accent2 = rgb(154, 154, 255),
+    Background = rgb(12, 24, 34), Header = rgb(8, 16, 24),
+    TextColor = rgb(239, 251, 255), MutedText = rgb(166, 204, 218),
+    ElementColor = rgb(21, 39, 52), Danger = rgb(255, 74, 99),
+}
+themes.Forest = {
+    SchemeColor = rgb(84, 191, 104), Accent2 = rgb(207, 183, 72),
+    Background = rgb(14, 25, 18), Header = rgb(9, 17, 12),
+    TextColor = rgb(242, 255, 245), MutedText = rgb(166, 203, 174),
+    ElementColor = rgb(24, 42, 29), Danger = rgb(255, 75, 82),
+}
+themes.Lava = {
+    SchemeColor = rgb(255, 77, 45), Accent2 = rgb(255, 183, 0),
+    Background = rgb(26, 12, 9), Header = rgb(18, 8, 6),
+    TextColor = rgb(255, 244, 238), MutedText = rgb(220, 171, 153),
+    ElementColor = rgb(45, 21, 15), Danger = rgb(255, 39, 56),
+}
+themes.Bubblegum = {
+    SchemeColor = rgb(255, 92, 188), Accent2 = rgb(85, 201, 255),
+    Background = rgb(31, 18, 33), Header = rgb(22, 12, 24),
+    TextColor = rgb(255, 244, 252), MutedText = rgb(220, 179, 209),
+    ElementColor = rgb(51, 29, 53), Danger = rgb(255, 65, 88),
+}
+themes.Gold = {
+    SchemeColor = rgb(239, 187, 53), Accent2 = rgb(255, 228, 122),
+    Background = rgb(27, 23, 13), Header = rgb(19, 16, 9),
+    TextColor = rgb(255, 250, 231), MutedText = rgb(213, 198, 147),
+    ElementColor = rgb(45, 38, 20), Danger = rgb(255, 71, 78),
+}
+themes.Aqua = {
+    SchemeColor = rgb(30, 216, 211), Accent2 = rgb(58, 141, 255),
+    Background = rgb(9, 25, 29), Header = rgb(6, 17, 20),
+    TextColor = rgb(237, 255, 255), MutedText = rgb(151, 205, 207),
+    ElementColor = rgb(16, 42, 47), Danger = rgb(255, 72, 94),
+}
+themes.Peach = {
+    SchemeColor = rgb(255, 151, 125), Accent2 = rgb(255, 205, 130),
+    Background = rgb(32, 22, 21), Header = rgb(23, 15, 14),
+    TextColor = rgb(255, 246, 242), MutedText = rgb(220, 187, 178),
+    ElementColor = rgb(51, 35, 32), Danger = rgb(255, 68, 86),
+}
+themes["Cotton Candy"] = {
+    SchemeColor = rgb(255, 129, 198), Accent2 = rgb(119, 199, 255),
+    Background = rgb(25, 20, 36), Header = rgb(17, 14, 26),
+    TextColor = rgb(252, 247, 255), MutedText = rgb(200, 188, 221),
+    ElementColor = rgb(41, 33, 57), Danger = rgb(255, 73, 96),
+}
+themes.Espresso = {
+    SchemeColor = rgb(196, 132, 78), Accent2 = rgb(232, 190, 120),
+    Background = rgb(25, 19, 16), Header = rgb(17, 13, 10),
+    TextColor = rgb(250, 242, 234), MutedText = rgb(194, 174, 158),
+    ElementColor = rgb(41, 31, 25), Danger = rgb(255, 75, 82),
+}
+themes.Storm = {
+    SchemeColor = rgb(110, 145, 196), Accent2 = rgb(169, 111, 220),
+    Background = rgb(18, 22, 30), Header = rgb(12, 15, 22),
+    TextColor = rgb(243, 247, 255), MutedText = rgb(171, 184, 207),
+    ElementColor = rgb(30, 36, 48), Danger = rgb(255, 72, 94),
+}
+themes.Emerald = {
+    SchemeColor = rgb(31, 204, 128), Accent2 = rgb(91, 234, 188),
+    Background = rgb(8, 25, 20), Header = rgb(5, 17, 13),
+    TextColor = rgb(237, 255, 248), MutedText = rgb(148, 207, 181),
+    ElementColor = rgb(15, 42, 33), Danger = rgb(255, 72, 91),
+}
+
+local publicThemeNames = {
+    "Kandy", "Dark", "Blood", "Sakura", "Neon", "Minimal",
+    "Grape", "Ocean", "Midnight", "Sentinel", "Synapse", "Serpent", "Light",
+    "Sunset", "Galaxy", "Royal", "Cyber", "Mint", "Rose Gold", "Blueberry",
+    "Orange Cream", "Lavender", "Ice", "Forest", "Lava", "Bubblegum", "Gold",
+    "Aqua", "Peach", "Cotton Candy", "Espresso", "Storm", "Emerald",
 }
 
 local settings = env.LHUISettings or {}
@@ -247,6 +380,44 @@ local function cloneTheme(source)
     return result
 end
 
+local function colorLuminance(color)
+    local function channel(value)
+        if value <= 0.03928 then return value / 12.92 end
+        return ((value + 0.055) / 1.055) ^ 2.4
+    end
+    return 0.2126 * channel(color.R) + 0.7152 * channel(color.G) + 0.0722 * channel(color.B)
+end
+
+local function contrastRatio(a, b)
+    local l1, l2 = colorLuminance(a), colorLuminance(b)
+    if l1 < l2 then l1, l2 = l2, l1 end
+    return (l1 + 0.05) / (l2 + 0.05)
+end
+
+local function readableTextColor(color, theme)
+    if typeof(color) ~= "Color3" then return rgb(245, 245, 248) end
+    theme = theme or themes.Kandy
+    local backgrounds = {
+        theme.Background or rgb(18, 18, 22),
+        theme.Header or rgb(12, 12, 15),
+        theme.ElementColor or rgb(29, 29, 36),
+    }
+    local function lowestContrast(candidate)
+        local lowest = math.huge
+        for _, background in ipairs(backgrounds) do
+            lowest = math.min(lowest, contrastRatio(candidate, background))
+        end
+        return lowest
+    end
+    if lowestContrast(color) >= 3.2 then return color end
+
+    -- Never use pure black. Pick the safer off-white or readable charcoal.
+    local light = rgb(248, 248, 252)
+    local charcoal = rgb(42, 43, 52)
+    if lowestContrast(light) >= lowestContrast(charcoal) then return light end
+    return charcoal
+end
+
 local function resolveTheme(theme)
     if type(theme) == "string" then
         return cloneTheme(themes[theme] or themes.Kandy)
@@ -271,6 +442,9 @@ local function applyTheme()
             table.remove(bindings, i)
         else
             local value = active.Theme[record.Key]
+            if record.Property == "TextColor3" and record.Object:GetAttribute("LHForceWhiteText") then
+                value = rgb(255, 255, 255)
+            end
             if value ~= nil then
                 pcall(function() record.Object[record.Property] = value end)
             end
@@ -313,6 +487,69 @@ local function makeText(parent, text, size, font)
     label.Parent = parent
     bind(label, "TextColor3", "TextColor")
     return label
+end
+
+-- Original Lollypop action glyph: kandy head, stick, shine, and spark.
+-- This replaces the basic pointer-finger emoji on normal buttons.
+local function makeLollyActionIcon(parent)
+    local holder = Instance.new("Frame")
+    holder.Name = "LollyActionIcon"
+    holder.BackgroundTransparency = 1
+    holder.BorderSizePixel = 0
+    holder.Parent = parent
+
+    local stick = Instance.new("Frame")
+    stick.Name = "Stick"
+    stick.AnchorPoint = Vector2.new(0.5, 0)
+    stick.Position = UDim2.fromOffset(14, 10)
+    stick.Size = UDim2.fromOffset(3, 11)
+    stick.Rotation = -36
+    stick.BackgroundColor3 = rgb(245, 245, 249)
+    stick.BorderSizePixel = 0
+    stick.Parent = holder
+    makeCorner(stick, 999)
+
+    local candy = Instance.new("Frame")
+    candy.Name = "Kandy"
+    candy.Position = UDim2.fromOffset(2, 1)
+    candy.Size = UDim2.fromOffset(13, 13)
+    candy.BorderSizePixel = 0
+    candy.Parent = holder
+    bind(candy, "BackgroundColor3", "SchemeColor")
+    makeCorner(candy, 999)
+    makeStroke(candy, rgb(255, 255, 255), 0.28, 1)
+
+    local swirl = Instance.new("Frame")
+    swirl.Name = "Swirl"
+    swirl.AnchorPoint = Vector2.new(0.5, 0.5)
+    swirl.Position = UDim2.fromScale(0.55, 0.55)
+    swirl.Size = UDim2.fromOffset(8, 3)
+    swirl.Rotation = 28
+    swirl.BorderSizePixel = 0
+    swirl.Parent = candy
+    bind(swirl, "BackgroundColor3", "Accent2")
+    makeCorner(swirl, 999)
+
+    local shine = Instance.new("Frame")
+    shine.Name = "Shine"
+    shine.Position = UDim2.fromOffset(3, 2)
+    shine.Size = UDim2.fromOffset(3, 3)
+    shine.BackgroundColor3 = rgb(255, 255, 255)
+    shine.BackgroundTransparency = 0.08
+    shine.BorderSizePixel = 0
+    shine.Parent = candy
+    makeCorner(shine, 999)
+
+    local spark = Instance.new("Frame")
+    spark.Name = "Spark"
+    spark.Position = UDim2.fromOffset(17, 2)
+    spark.Size = UDim2.fromOffset(3, 3)
+    spark.BorderSizePixel = 0
+    spark.Parent = holder
+    bind(spark, "BackgroundColor3", "Accent2")
+    makeCorner(spark, 999)
+
+    return holder
 end
 
 local function createButtonRipple(button, inputObject)
@@ -509,6 +746,16 @@ function LULA:DraggingEnabled(handle, target)
     local startPosition = nil
     local startFrame = nil
 
+    local function setDragGlow(enabled)
+        if not active or target ~= active.Main or not active.MainStroke then return end
+        active.MainStroke.Color = active.Theme.SchemeColor
+        if enabled then
+            tween(active.MainStroke, {Transparency = 0.14, Thickness = 5.2}, 0.10, Enum.EasingStyle.Quad)
+        else
+            tween(active.MainStroke, {Transparency = 1, Thickness = 1}, 0.16, Enum.EasingStyle.Quad)
+        end
+    end
+
     track(handle.InputBegan:Connect(function(inputObject)
         if settings.DragLocked then return end
         if inputObject.UserInputType == Enum.UserInputType.MouseButton1 or inputObject.UserInputType == Enum.UserInputType.Touch then
@@ -516,10 +763,12 @@ function LULA:DraggingEnabled(handle, target)
             dragInput = inputObject
             startPosition = inputObject.Position
             startFrame = target.Position
+            setDragGlow(true)
             local ended
             ended = inputObject.Changed:Connect(function()
                 if inputObject.UserInputState == Enum.UserInputState.End then
                     dragging = false
+                    setDragGlow(false)
                     if ended then ended:Disconnect() end
                     -- Main UI intentionally stays exactly where the user drops it.
                 end
@@ -1192,6 +1441,7 @@ function LULA.CreateLib(kavName, themeInput)
         function tab:NewSection(sectionName, hidden)
             self.Built = true
             sectionName = tostring(sectionName or "Section")
+            sectionName = sectionName:gsub("^%s*%[+%s*", ""):gsub("%s*%]+%s*$", "")
             local section = Instance.new("Frame")
             section.Name = sectionName
             section.Size = UDim2.new(1, -4, 0, 0)
@@ -1211,7 +1461,7 @@ function LULA.CreateLib(kavName, themeInput)
                 heading.BackgroundColor3 = rgb(235, 177, 45)
                 heading.BorderSizePixel = 0
                 heading.Font = resolveUIFont(Enum.Font.GothamBold)
-                heading.Text = "[      " .. string.upper(sectionName) .. "      ]"
+                heading.Text = string.upper(sectionName)
                 heading.TextSize = tonumber(env.sektiontextsize) or 18.5
                 heading.TextColor3 = rgb(42, 27, 5)
                 heading.TextXAlignment = Enum.TextXAlignment.Center
@@ -1260,13 +1510,12 @@ function LULA.CreateLib(kavName, themeInput)
             function elements:NewButton(name, tip, callback)
                 callback = callback or function() end
                 local row = newRow(section, name, 33)
-                local icon = makeText(row, utf8.char(0x1F449), 18, Enum.Font.PatrickHand)
-                icon.Position = UDim2.fromOffset(10, 0)
-                icon.Size = UDim2.fromOffset(18, 33)
-                bind(icon, "TextColor3", "SchemeColor")
+                local icon = makeLollyActionIcon(row)
+                icon.Position = UDim2.fromOffset(8, 5)
+                icon.Size = UDim2.fromOffset(22, 22)
                 local textLabel = makeText(row, name, tonumber(env.buttontextsize) or 18, Enum.Font.PatrickHand)
-                textLabel.Position = UDim2.fromOffset(34, 0)
-                textLabel.Size = UDim2.new(1, -46, 1, 0)
+                textLabel.Position = UDim2.fromOffset(36, 0)
+                textLabel.Size = UDim2.new(1, -48, 1, 0)
                 textLabel.TextXAlignment = Enum.TextXAlignment.Left
                 local click = Instance.new("TextButton")
                 click.BackgroundTransparency = 1
@@ -2133,7 +2382,8 @@ function LULA.CreateLib(kavName, themeInput)
                 status.Position = UDim2.new(0.5, 0, 0, 208)
                 status.Size = UDim2.new(0.5, -14, 0, 18)
                 status.TextXAlignment = Enum.TextXAlignment.Right
-                bind(status, "TextColor3", "SchemeColor")
+                status:SetAttribute("LHForceWhiteText", true)
+                status.TextColor3 = rgb(255, 255, 255)
 
                 task.spawn(function()
                     while row.Parent do
@@ -2302,13 +2552,20 @@ end
 
 function LULA:ChangeColor(property, color)
     if not active or typeof(color) ~= "Color3" then return false end
-    local aliases = {Accent = "SchemeColor", Scheme = "SchemeColor"}
+    local aliases = {Accent = "SchemeColor", Scheme = "SchemeColor", Text = "TextColor"}
     property = aliases[property] or property
     if active.Theme[property] == nil then return false end
+    if property == "TextColor" then color = readableTextColor(color, active.Theme) end
     active.Theme[property] = color
     if property == "SchemeColor" then env.LollypopTheme = color end
     applyTheme()
-    return true
+    return true, color
+end
+
+function LULA:SetTextColor(color)
+    local ok, safeColor = self:ChangeColor("TextColor", color)
+    if not ok then return nil end
+    return safeColor
 end
 
 function LULA:SetTheme(themeInput)
@@ -2316,6 +2573,12 @@ function LULA:SetTheme(themeInput)
     active.Theme = resolveTheme(themeInput)
     applyTheme()
     return true
+end
+
+function LULA:GetThemeNames()
+    local copy = {}
+    for index, name in ipairs(publicThemeNames) do copy[index] = name end
+    return copy
 end
 
 function LULA:GetFontNames()
