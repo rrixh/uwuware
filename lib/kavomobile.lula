@@ -1,4 +1,4 @@
--- kavo ui
+-- kavo ui v4.1 - LH advanced navigation/session build
 local LULA = {}
 local env = (getgenv and getgenv()) or _G
 
@@ -309,6 +309,66 @@ env.LHNotificationHistory = notificationHistory
 local thumbnailCache = {}
 -- Roblox Instances cannot hold arbitrary Lua fields. Keep kontrol metadata in a weak registry instead.
 local sectionControlRegistry = setmetatable({}, {__mode = "k"})
+local controlFrameRegistry = setmetatable({}, {__mode = "k"})
+local controlIdRegistry = {}
+local openControlMenu = nil
+
+local function shallowCopyArray(source)
+    local result = {}
+    if type(source) == "table" then
+        for index, value in ipairs(source) do result[index] = value end
+    end
+    return result
+end
+
+local function valuesEqual(a, b)
+    if typeof(a) == "Color3" and typeof(b) == "Color3" then return a == b end
+    if typeof(a) == "EnumItem" and typeof(b) == "EnumItem" then return a == b end
+    return a == b
+end
+
+local function encodeSessionValue(value)
+    local kind = typeof(value)
+    if kind == "nil" then return nil end
+    if kind == "boolean" or kind == "number" or kind == "string" then return value end
+    if kind == "Color3" then
+        return {__LHType = "Color3", R = value.R, G = value.G, B = value.B}
+    end
+    if kind == "EnumItem" then
+        return {__LHType = "EnumItem", EnumType = tostring(value.EnumType), Name = value.Name}
+    end
+    return nil
+end
+
+local function decodeSessionValue(value)
+    if type(value) ~= "table" then return value, true end
+    if value.__LHType == "Color3" then
+        return Color3.new(
+            math.clamp(tonumber(value.R) or 0, 0, 1),
+            math.clamp(tonumber(value.G) or 0, 0, 1),
+            math.clamp(tonumber(value.B) or 0, 0, 1)
+        ), true
+    end
+    if value.__LHType == "EnumItem" then
+        local enumName = tostring(value.EnumType or ""):match("Enum%.(.+)")
+        local enumType = enumName and Enum[enumName]
+        local enumItem = enumType and enumType[tostring(value.Name or "")]
+        if enumItem then return enumItem, true end
+        return nil, false
+    end
+    return nil, false
+end
+
+local function persistUiStateEdit()
+    if not env.LHRuntime then return end
+    if type(env.LHRuntime.SettingChanged) == "function" then
+        pcall(function() env.LHRuntime:SettingChanged() end)
+    end
+    -- Shelf changes are permanent preferences even when general Auto Save Edits is off.
+    if type(env.LHRuntime.SaveSettings) == "function" then
+        task.defer(function() pcall(function() env.LHRuntime:SaveSettings() end) end)
+    end
+end
 
 local function track(connection)
     if connection then
@@ -822,13 +882,13 @@ end
 
 local function attachTip(row, tip)
     tip = tostring(tip or "")
-    if tip == "" or not active then return end
-    row:SetAttribute("LHDescription", tip)
+    if not active then return end
+    if tip ~= "" then row:SetAttribute("LHDescription", tip) end
     local token = 0
     local longPressed = false
 
     local function show()
-        if not active or not active.Tooltip then return end
+        if tip == "" or not active or not active.Tooltip then return end
         active.Tooltip.Text = tip
         active.Tooltip.Visible = true
         tween(active.Tooltip, {BackgroundTransparency = 0.08, TextTransparency = 0}, 0.12)
@@ -856,10 +916,15 @@ local function attachTip(row, tip)
         local mine = token
         longPressed = false
         row:SetAttribute("LHLongPressTriggered", false)
-        task.delay(0.5, function()
-            if token == mine and row.Parent then
-                longPressed = true
-                row:SetAttribute("LHLongPressTriggered", true)
+        task.delay(0.52, function()
+            if token ~= mine or not row.Parent then return end
+            longPressed = true
+            row:SetAttribute("LHLongPressTriggered", true)
+            hide()
+            local api = controlFrameRegistry[row]
+            if api and type(openControlMenu) == "function" then
+                openControlMenu(api)
+            else
                 show()
             end
         end)
@@ -868,7 +933,6 @@ local function attachTip(row, tip)
         if inputObject.UserInputType == Enum.UserInputType.Touch or inputObject.UserInputType == Enum.UserInputType.MouseButton1 then
             token = token + 1
             if longPressed then
-                task.delay(1.35, hide)
                 task.delay(0.18, function()
                     if row then row:SetAttribute("LHLongPressTriggered", false) end
                 end)
@@ -1076,6 +1140,396 @@ function LULA:Notify(kind, title, text, seconds, progress, force)
     return api
 end
 
+
+--==================================================
+-- DYNAMIC ISLAND / UNDO / PERSONAL SHELF
+--==================================================
+local function normalizeControlId(value)
+    return tostring(value or "kontrol"):gsub("[^%w%-%_:%./ ]", ""):sub(1, 180)
+end
+
+local function shelfContains(controlId)
+    local shelf = env.LHSettings and env.LHSettings.PersonalShelf or settings.PersonalShelf
+    if type(shelf) ~= "table" then return false end
+    for _, savedId in ipairs(shelf) do
+        if tostring(savedId) == tostring(controlId) then return true end
+    end
+    return false
+end
+
+local function saveShelf(controlId, shouldPin)
+    env.LHSettings = env.LHSettings or {}
+    local shelf = env.LHSettings.PersonalShelf
+    if type(shelf) ~= "table" then shelf = {} end
+    local updated = {}
+    local found = false
+    for _, savedId in ipairs(shelf) do
+        if tostring(savedId) == tostring(controlId) then
+            found = true
+            if shouldPin then table.insert(updated, tostring(savedId)) end
+        else
+            table.insert(updated, tostring(savedId))
+        end
+    end
+    if shouldPin and not found then table.insert(updated, tostring(controlId)) end
+    env.LHSettings.PersonalShelf = updated
+    settings.PersonalShelf = updated
+    persistUiStateEdit()
+end
+
+local function updateNavButtons()
+    if not active then return end
+    if active.BackButton then active.BackButton.TextTransparency = #active.BackStack > 0 and 0 or 0.62 end
+    if active.ForwardButton then active.ForwardButton.TextTransparency = #active.ForwardStack > 0 and 0 or 0.62 end
+    if active.UndoButton then active.UndoButton.TextTransparency = #active.UndoStack > 0 and 0 or 0.62 end
+end
+
+function LULA:RecordUndo(controlId, name, oldValue, newValue, applyOld)
+    if not active or active.Undoing or active.RestoringState or type(applyOld) ~= "function" or valuesEqual(oldValue, newValue) then return false end
+    local now = os.clock()
+    controlId = normalizeControlId(controlId)
+    local last = active.UndoStack[#active.UndoStack]
+    if last and last.ControlId == controlId and now - last.ChangedAt <= 0.7 then
+        last.NewValue = newValue
+        last.ChangedAt = now
+    else
+        table.insert(active.UndoStack, {
+            ControlId = controlId,
+            Name = tostring(name or controlId),
+            OldValue = oldValue,
+            NewValue = newValue,
+            ApplyOld = applyOld,
+            ChangedAt = now,
+        })
+        while #active.UndoStack > 30 do table.remove(active.UndoStack, 1) end
+    end
+    updateNavButtons()
+    return true
+end
+
+function LULA:Undo()
+    if not active then return false, "UI is not active" end
+    local item = table.remove(active.UndoStack)
+    if not item then
+        LULA:ShowIsland("Undo History", "Nothing to undo.", {Duration = 2.2})
+        updateNavButtons()
+        return false, "empty"
+    end
+    active.Undoing = true
+    local ok, err = safeCall("Undo " .. tostring(item.Name), item.ApplyOld)
+    active.Undoing = false
+    updateNavButtons()
+    if ok then
+        LULA:ShowIsland("Undone", tostring(item.Name), {Duration = 2.5})
+    else
+        LULA:Notify("error", "Undo Failed", tostring(err), 5, nil, true)
+    end
+    return ok, err
+end
+
+function LULA:GetUndoHistory()
+    if not active then return {} end
+    local copy = {}
+    for index = #active.UndoStack, 1, -1 do
+        local item = active.UndoStack[index]
+        table.insert(copy, {Name = item.Name, OldValue = item.OldValue, NewValue = item.NewValue, ChangedAt = item.ChangedAt})
+    end
+    return copy
+end
+
+function LULA:OpenUndoHistory()
+    if not active or not active.ScreenGui then return end
+    if active.ContextOverlay then active.ContextOverlay:Destroy(); active.ContextOverlay = nil end
+    local overlay = Instance.new("CanvasGroup")
+    overlay.Name = "LHUndoHistory"
+    overlay.Size = UDim2.fromScale(1, 1)
+    overlay.BackgroundColor3 = rgb(0, 0, 0)
+    overlay.BackgroundTransparency = 0.48
+    overlay.BorderSizePixel = 0
+    overlay.ZIndex = 300
+    overlay.Parent = active.ScreenGui
+    active.ContextOverlay = overlay
+
+    local dismiss = Instance.new("TextButton")
+    dismiss.Size = UDim2.fromScale(1, 1)
+    dismiss.BackgroundTransparency = 1
+    dismiss.Text = ""
+    dismiss.ZIndex = 300
+    dismiss.Parent = overlay
+
+    local card = Instance.new("Frame")
+    card.AnchorPoint = Vector2.new(0.5, 0.5)
+    card.Position = UDim2.fromScale(0.5, 0.5)
+    card.Size = UDim2.fromOffset(390, 320)
+    card.BorderSizePixel = 0
+    card.ZIndex = 301
+    card.Parent = overlay
+    bind(card, "BackgroundColor3", "Header")
+    makeCorner(card, 13)
+    makeStroke(card, active.Theme.SchemeColor, 0.16, 1.2)
+    local cardScale = Instance.new("UIScale", card)
+    local view = viewportSize()
+    cardScale.Scale = math.max(0.72, math.min(1, (view.X - 24) / 410, (view.Y - 50) / 340))
+
+    local title = makeText(card, "Undo History", 17, Enum.Font.GothamBold)
+    title.Position = UDim2.fromOffset(14, 8)
+    title.Size = UDim2.new(1, -92, 0, 30)
+    title.ZIndex = 302
+    local undoNow = makeButton(card, "UNDO")
+    undoNow.AnchorPoint = Vector2.new(1, 0)
+    undoNow.Position = UDim2.new(1, -10, 0, 8)
+    undoNow.Size = UDim2.fromOffset(68, 30)
+    undoNow.ZIndex = 303
+
+    local scroll = Instance.new("ScrollingFrame")
+    scroll.Position = UDim2.fromOffset(10, 46)
+    scroll.Size = UDim2.new(1, -20, 1, -56)
+    scroll.BackgroundTransparency = 1
+    scroll.BorderSizePixel = 0
+    scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    scroll.CanvasSize = UDim2.new()
+    scroll.ScrollBarThickness = 3
+    scroll.ZIndex = 302
+    scroll.Parent = card
+    local layout = Instance.new("UIListLayout", scroll)
+    layout.Padding = UDim.new(0, 5)
+
+    if #active.UndoStack == 0 then
+        local empty = makeText(scroll, "Nothing to undo yet.", 13, Enum.Font.GothamMedium)
+        empty.Size = UDim2.new(1, 0, 0, 44)
+        empty.ZIndex = 303
+    else
+        for index = #active.UndoStack, 1, -1 do
+            local item = active.UndoStack[index]
+            local row = makeButton(scroll, tostring(item.Name))
+            row.Size = UDim2.new(1, -4, 0, 40)
+            row.TextXAlignment = Enum.TextXAlignment.Left
+            row.Text = "  " .. tostring(item.Name)
+            row.ZIndex = 303
+            row.BackgroundTransparency = 0.08
+        end
+    end
+
+    local function closePanel()
+        if active and active.ContextOverlay == overlay then active.ContextOverlay = nil end
+        if overlay.Parent then overlay:Destroy() end
+    end
+    track(dismiss.MouseButton1Click:Connect(closePanel))
+    track(undoNow.MouseButton1Click:Connect(function()
+        closePanel()
+        LULA:Undo()
+    end))
+end
+
+function LULA:ShowIsland(titleText, bodyText, options)
+    if not active or not active.Island then return nil end
+    options = type(options) == "table" and options or {}
+    active.IslandToken = (active.IslandToken or 0) + 1
+    local token = active.IslandToken
+    local island = active.Island
+    island.Title.Text = tostring(titleText or "Lollypop Hub")
+    island.Body.Text = tostring(bodyText or "")
+    island.Progress.Visible = options.Progress ~= nil
+    if options.Progress ~= nil then
+        island.ProgressFill.Size = UDim2.new(math.clamp(tonumber(options.Progress) or 0, 0, 100) / 100, 0, 1, 0)
+    end
+    island.Frame.Visible = true
+    island.Frame.GroupTransparency = 1
+    island.Frame.Size = UDim2.fromOffset(185, 38)
+    tween(island.Frame, {GroupTransparency = 0, Size = UDim2.fromOffset(340, options.Progress ~= nil and 72 or 62)}, 0.18, Enum.EasingStyle.Back)
+
+    local handle = {Token = token}
+    function handle:Update(newTitle, newBody, progress)
+        if not active or token ~= active.IslandToken then return false end
+        if newTitle ~= nil then island.Title.Text = tostring(newTitle) end
+        if newBody ~= nil then island.Body.Text = tostring(newBody) end
+        if progress ~= nil then
+            island.Progress.Visible = true
+            tween(island.ProgressFill, {Size = UDim2.new(math.clamp(tonumber(progress) or 0, 0, 100) / 100, 0, 1, 0)}, 0.12)
+        end
+        return true
+    end
+    function handle:SetProgress(progress, newBody)
+        return self:Update(nil, newBody, progress)
+    end
+    function handle:Close()
+        if not active or token ~= active.IslandToken then return false end
+        active.IslandToken = active.IslandToken + 1
+        tween(island.Frame, {GroupTransparency = 1, Size = UDim2.fromOffset(185, 38)}, 0.14)
+        task.delay(duration(0.16), function()
+            if active and active.Island and active.Island.Frame == island.Frame then island.Frame.Visible = false end
+        end)
+        return true
+    end
+
+    local seconds = tonumber(options.Duration)
+    if seconds and seconds > 0 then
+        task.delay(seconds, function() handle:Close() end)
+    end
+    return handle
+end
+
+function LULA:CloseIsland()
+    if not active or not active.Island then return end
+    active.IslandToken = (active.IslandToken or 0) + 1
+    active.Island.Frame.Visible = false
+end
+
+local function findTabByName(name)
+    if not active then return nil end
+    local needle = string.lower(tostring(name or ""))
+    for _, tab in ipairs(active.Tabs) do
+        if string.lower(tab.Name) == needle then return tab end
+    end
+    return nil
+end
+
+local function refreshShelf()
+    if not active or not active.Shelf or not active.Shelf.Scroll then return end
+    local shelf = active.Shelf
+    for _, child in ipairs(shelf.Scroll:GetChildren()) do
+        if not child:IsA("UIListLayout") and not child:IsA("UIPadding") and child.Name ~= "ShelfIntro" then child:Destroy() end
+    end
+    local saved = env.LHSettings and env.LHSettings.PersonalShelf or {}
+    local count = 0
+    for _, controlId in ipairs(type(saved) == "table" and saved or {}) do
+        local api = controlIdRegistry[tostring(controlId)]
+        if api and api.Frame and api.Frame.Parent then
+            count = count + 1
+            local row = newRow(shelf.Scroll, api.DisplayName or api.Name or controlId, 42)
+            row.ZIndex = 4
+            local launch = makeButton(row, "")
+            launch.Size = UDim2.new(1, -40, 1, 0)
+            launch.BackgroundTransparency = 1
+            launch.TextXAlignment = Enum.TextXAlignment.Left
+            launch.Text = "  " .. tostring(api.DisplayName or api.Name or controlId)
+            launch.ZIndex = 5
+            local remove = makeKolorButton(row, "X", rgb(205, 54, 68))
+            remove.AnchorPoint = Vector2.new(1, 0.5)
+            remove.Position = UDim2.new(1, -6, 0.5, 0)
+            remove.Size = UDim2.fromOffset(29, 29)
+            remove.ZIndex = 6
+            track(remove.MouseButton1Click:Connect(function()
+                saveShelf(controlId, false)
+                refreshShelf()
+                LULA:ShowIsland("My Shelf", "Removed " .. tostring(api.DisplayName or controlId), {Duration = 2.2})
+            end))
+            track(launch.MouseButton1Click:Connect(function()
+                if api.Kind == "button" and type(api.Fire) == "function" then
+                    api:Fire()
+                elseif api.Kind == "toggle" and type(api.GetValue) == "function" and type(api.SetValue) == "function" then
+                    api:SetValue(not api:GetValue(), true)
+                    launch.Text = "  " .. tostring(api.DisplayName or controlId) .. (api:GetValue() and "  [ON]" or "  [OFF]")
+                else
+                    local sourceTab = findTabByName(api.TabName)
+                    if sourceTab and active.Window then
+                        active.Window:SelectTab(sourceTab.Name)
+                        task.defer(function()
+                            if not active or not api.Frame or not api.Frame.Parent then return end
+                            local scroll = sourceTab.Scroll
+                            local y = math.max(0, api.Frame.AbsolutePosition.Y - scroll.AbsolutePosition.Y + scroll.CanvasPosition.Y - 8)
+                            scroll.CanvasPosition = Vector2.new(0, y)
+                            if api.SetSearchHighlighted then
+                                api:SetSearchHighlighted(true)
+                                task.delay(1.2, function() if api.SetSearchHighlighted then api:SetSearchHighlighted(false) end end)
+                            end
+                        end)
+                    end
+                end
+            end))
+            if api.Kind == "toggle" and type(api.GetValue) == "function" then
+                launch.Text = launch.Text .. (api:GetValue() and "  [ON]" or "  [OFF]")
+            end
+        end
+    end
+    if count == 0 then
+        local empty = makeText(shelf.Scroll, "Hold any feature, then choose Add to My Shelf.", 13, Enum.Font.GothamMedium)
+        empty.Size = UDim2.new(1, -8, 0, 62)
+        empty.TextWrapped = true
+        empty.ZIndex = 5
+    end
+end
+
+local function queueShelfRefresh()
+    if not active or not active.Shelf or active.ShelfRefreshQueued then return end
+    active.ShelfRefreshQueued = true
+    task.defer(function()
+        if not active then return end
+        active.ShelfRefreshQueued = false
+        refreshShelf()
+    end)
+end
+
+openControlMenu = function(api)
+    if not active or not api or not api.Frame or not active.ScreenGui then return end
+    if active.ContextOverlay then active.ContextOverlay:Destroy(); active.ContextOverlay = nil end
+    local overlay = Instance.new("CanvasGroup")
+    overlay.Name = "LHControlMenu"
+    overlay.Size = UDim2.fromScale(1, 1)
+    overlay.BackgroundColor3 = rgb(0, 0, 0)
+    overlay.BackgroundTransparency = 0.55
+    overlay.BorderSizePixel = 0
+    overlay.ZIndex = 300
+    overlay.Parent = active.ScreenGui
+    active.ContextOverlay = overlay
+
+    local dismiss = Instance.new("TextButton")
+    dismiss.Size = UDim2.fromScale(1, 1)
+    dismiss.BackgroundTransparency = 1
+    dismiss.Text = ""
+    dismiss.ZIndex = 300
+    dismiss.Parent = overlay
+
+    local card = Instance.new("Frame")
+    card.AnchorPoint = Vector2.new(0.5, 0.5)
+    card.Position = UDim2.fromScale(0.5, 0.5)
+    card.Size = UDim2.fromOffset(350, 190)
+    card.BorderSizePixel = 0
+    card.ZIndex = 301
+    card.Parent = overlay
+    bind(card, "BackgroundColor3", "Header")
+    makeCorner(card, 13)
+    makeStroke(card, active.Theme.SchemeColor, 0.14, 1.2)
+    local cardScale = Instance.new("UIScale", card)
+    local view = viewportSize()
+    cardScale.Scale = math.max(0.74, math.min(1, (view.X - 24) / 370, (view.Y - 40) / 210))
+
+    local title = makeText(card, tostring(api.DisplayName or api.Name or "Feature"), 16, Enum.Font.GothamBold)
+    title.Position = UDim2.fromOffset(14, 10)
+    title.Size = UDim2.new(1, -28, 0, 28)
+    title.TextWrapped = true
+    title.ZIndex = 302
+    local description = makeText(card, tostring(api.Tip or api.Frame:GetAttribute("LHDescription") or "No description."), 12, Enum.Font.GothamMedium)
+    description.Position = UDim2.fromOffset(14, 44)
+    description.Size = UDim2.new(1, -28, 0, 58)
+    description.TextWrapped = true
+    description.TextYAlignment = Enum.TextYAlignment.Top
+    description.ZIndex = 302
+
+    local pinned = shelfContains(api.ControlId)
+    local shelfButton = makeButton(card, pinned and "Remove from My Shelf" or "Add to My Shelf")
+    shelfButton.Position = UDim2.fromOffset(14, 112)
+    shelfButton.Size = UDim2.new(1, -28, 0, 34)
+    shelfButton.ZIndex = 303
+    local close = makeButton(card, "Close")
+    close.Position = UDim2.fromOffset(14, 151)
+    close.Size = UDim2.new(1, -28, 0, 28)
+    close.ZIndex = 303
+
+    local function closeMenu()
+        if active and active.ContextOverlay == overlay then active.ContextOverlay = nil end
+        if overlay.Parent then overlay:Destroy() end
+    end
+    track(dismiss.MouseButton1Click:Connect(closeMenu))
+    track(close.MouseButton1Click:Connect(closeMenu))
+    track(shelfButton.MouseButton1Click:Connect(function()
+        saveShelf(api.ControlId, not pinned)
+        refreshShelf()
+        closeMenu()
+        LULA:ShowIsland("My Shelf", (not pinned and "Added " or "Removed ") .. tostring(api.DisplayName or api.ControlId), {Duration = 2.4})
+    end))
+end
+
 function LULA.CreateLib(kavName, themeInput)
     if active then LULA:Destroy() end
     bindings = {}
@@ -1093,7 +1547,11 @@ function LULA.CreateLib(kavName, themeInput)
     screenGui.ResetOnSpawn = false
     screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     screenGui.DisplayOrder = 900000
-    screenGui.Parent = parent
+    local parented = pcall(function() screenGui.Parent = parent end)
+    if not parented or not screenGui.Parent then
+        local playerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui") or LocalPlayer:WaitForChild("PlayerGui", 8)
+        if playerGui then screenGui.Parent = playerGui else error("KAVO UI could not find a supported GUI parent") end
+    end
 
     track(screenGui.DescendantAdded:Connect(function(descendant)
         if descendant:IsA("GuiButton") then
@@ -1159,7 +1617,7 @@ function LULA.CreateLib(kavName, themeInput)
     local title = makeText(header, kavName or "Lollypop Hub", tonumber(env.titlesize) or 16.5, Enum.Font.LuckiestGuy)
     title.Name = "Title"
     title.Position = UDim2.fromOffset(9, 0)
-    title.Size = UDim2.new(1, -48, 1, 0)
+    title.Size = UDim2.new(1, -116, 1, 0)
     title.TextXAlignment = Enum.TextXAlignment.Left
     title.TextWrapped = false
 
@@ -1167,6 +1625,27 @@ function LULA.CreateLib(kavName, themeInput)
     close.Position = UDim2.new(1, -29, 0, 2)
     close.Size = UDim2.fromOffset(24, 24)
     close.BackgroundTransparency = 1
+
+    local backButton = makeButton(header, utf8.char(0x2039))
+    backButton.Name = "BackstackBack"
+    backButton.Position = UDim2.new(1, -101, 0, 2)
+    backButton.Size = UDim2.fromOffset(22, 24)
+    backButton.BackgroundTransparency = 1
+    backButton.TextSize = 22
+
+    local forwardButton = makeButton(header, utf8.char(0x203A))
+    forwardButton.Name = "BackstackForward"
+    forwardButton.Position = UDim2.new(1, -77, 0, 2)
+    forwardButton.Size = UDim2.fromOffset(22, 24)
+    forwardButton.BackgroundTransparency = 1
+    forwardButton.TextSize = 22
+
+    local undoButton = makeButton(header, utf8.char(0x21B6))
+    undoButton.Name = "UndoHistory"
+    undoButton.Position = UDim2.new(1, -53, 0, 2)
+    undoButton.Size = UDim2.fromOffset(22, 24)
+    undoButton.BackgroundTransparency = 1
+    undoButton.TextSize = 17
 
     local sidebar = Instance.new("Frame")
     sidebar.Name = "Sidebar"
@@ -1210,7 +1689,7 @@ function LULA.CreateLib(kavName, themeInput)
     pages.ClipsDescendants = true
     pages.Parent = main
 
-    local footer = makeText(main, "Lollypop Hub v10.0.0", 11, Enum.Font.GothamMedium)
+    local footer = makeText(main, "Lollypop Hub v10.1", 11, Enum.Font.GothamMedium)
     footer.Name = "Footer"
     footer.Position = UDim2.new(0, 158, 1, -20)
     footer.Size = UDim2.new(1, -165, 0, 18)
@@ -1230,6 +1709,50 @@ function LULA.CreateLib(kavName, themeInput)
     bind(tooltip, "BackgroundColor3", "Header")
     makeCorner(tooltip, 4)
     makeStroke(tooltip, theme.SchemeColor, 1, 1)
+
+    local islandFrame = Instance.new("CanvasGroup")
+    islandFrame.Name = "LHDynamicIsland"
+    islandFrame.AnchorPoint = Vector2.new(0.5, 0)
+    islandFrame.Position = UDim2.new(0.5, 0, 0, 8)
+    islandFrame.Size = UDim2.fromOffset(185, 38)
+    islandFrame.BackgroundColor3 = rgb(8, 8, 10)
+    islandFrame.BackgroundTransparency = 0.03
+    islandFrame.BorderSizePixel = 0
+    islandFrame.GroupTransparency = 1
+    islandFrame.Visible = false
+    islandFrame.ZIndex = 240
+    islandFrame.Parent = screenGui
+    makeCorner(islandFrame, 18)
+    local islandStroke = makeStroke(islandFrame, theme.SchemeColor, 0.22, 1)
+
+    local islandTitle = makeText(islandFrame, "Lollypop Hub", 13, Enum.Font.GothamBold)
+    islandTitle.Position = UDim2.fromOffset(14, 5)
+    islandTitle.Size = UDim2.new(1, -28, 0, 20)
+    islandTitle.TextXAlignment = Enum.TextXAlignment.Left
+    islandTitle.ZIndex = 241
+    local islandBody = makeText(islandFrame, "", 11, Enum.Font.GothamMedium)
+    islandBody.Position = UDim2.fromOffset(14, 25)
+    islandBody.Size = UDim2.new(1, -28, 0, 22)
+    islandBody.TextXAlignment = Enum.TextXAlignment.Left
+    islandBody.TextTruncate = Enum.TextTruncate.AtEnd
+    islandBody.ZIndex = 241
+    bind(islandBody, "TextColor3", "MutedText")
+    local islandProgress = Instance.new("Frame")
+    islandProgress.Position = UDim2.fromOffset(14, 54)
+    islandProgress.Size = UDim2.new(1, -28, 0, 5)
+    islandProgress.BackgroundColor3 = rgb(48, 48, 55)
+    islandProgress.BorderSizePixel = 0
+    islandProgress.Visible = false
+    islandProgress.ZIndex = 241
+    islandProgress.Parent = islandFrame
+    makeCorner(islandProgress, 3)
+    local islandProgressFill = Instance.new("Frame")
+    islandProgressFill.Size = UDim2.new(0, 0, 1, 0)
+    islandProgressFill.BorderSizePixel = 0
+    islandProgressFill.ZIndex = 242
+    islandProgressFill.Parent = islandProgress
+    bind(islandProgressFill, "BackgroundColor3", "SchemeColor")
+    makeCorner(islandProgressFill, 3)
 
     local resize = makeButton(main, "//")
     resize.Name = "ResizeHandle"
@@ -1261,6 +1784,26 @@ function LULA.CreateLib(kavName, themeInput)
         ParticleObjects = particleObjects,
         Cursor = nil,
         SessionStarted = tonumber(env.LHSessionStart) or tick(),
+        BackStack = {},
+        ForwardStack = {},
+        UndoStack = {},
+        Undoing = false,
+        RestoringState = false,
+        BackButton = backButton,
+        ForwardButton = forwardButton,
+        UndoButton = undoButton,
+        IslandToken = 0,
+        Island = {
+            Frame = islandFrame,
+            Title = islandTitle,
+            Body = islandBody,
+            Progress = islandProgress,
+            ProgressFill = islandProgressFill,
+            Stroke = islandStroke,
+        },
+        ContextOverlay = nil,
+        Shelf = nil,
+        ShelfRefreshQueued = false,
     }
     applyTheme()
     setGlassBlur(true)
@@ -1362,16 +1905,26 @@ function LULA.CreateLib(kavName, themeInput)
 
     local window = {}
 
-    local function selectTab(tab)
+    local function selectTab(tab, mode)
         if not tab or active.SelectedTab == tab then
             if tab and tab.EnsureBuilt then tab:EnsureBuilt() end
             return
         end
         local old = active.SelectedTab
+        if old then
+            old.LastCanvasPosition = old.Scroll and old.Scroll.CanvasPosition or old.LastCanvasPosition or Vector2.new()
+            if mode ~= "back" and mode ~= "forward" and mode ~= "restore" and mode ~= "initial" then
+                table.insert(active.BackStack, old.Name)
+                while #active.BackStack > 40 do table.remove(active.BackStack, 1) end
+                table.clear(active.ForwardStack)
+            end
+        end
         active.SelectedTab = tab
         if old then
             tween(old.Page, {Position = UDim2.new(-0.04, 0, 0, 0), GroupTransparency = 1}, 0.12)
-            task.delay(duration(0.13), function() if old.Page then old.Page.Visible = false end end)
+            task.delay(duration(0.13), function()
+                if old.Page and active and active.SelectedTab ~= old then old.Page.Visible = false end
+            end)
             tween(old.Button, {BackgroundTransparency = 1}, 0.1)
         end
         tab:EnsureBuilt()
@@ -1380,7 +1933,66 @@ function LULA.CreateLib(kavName, themeInput)
         tab.Page.Visible = true
         tween(tab.Page, {Position = UDim2.new(0, 0, 0, 0), GroupTransparency = 0}, 0.15)
         tween(tab.Button, {BackgroundTransparency = 0.04}, 0.1)
+        task.defer(function()
+            if active and active.SelectedTab == tab and tab.Scroll then
+                local saved = tab.LastCanvasPosition or Vector2.new()
+                local maxY = math.max(0, tab.Scroll.AbsoluteCanvasSize.Y - tab.Scroll.AbsoluteWindowSize.Y)
+                tab.Scroll.CanvasPosition = Vector2.new(math.max(0, saved.X), math.clamp(saved.Y, 0, maxY))
+            end
+        end)
+        updateNavButtons()
     end
+
+    local function goBack()
+        if not active or #active.BackStack == 0 then return false end
+        local targetName = table.remove(active.BackStack)
+        local current = active.SelectedTab
+        local target = findTabByName(targetName)
+        if not target then updateNavButtons(); return false end
+        if current then table.insert(active.ForwardStack, current.Name) end
+        selectTab(target, "back")
+        return true
+    end
+
+    local function goForward()
+        if not active or #active.ForwardStack == 0 then return false end
+        local targetName = table.remove(active.ForwardStack)
+        local current = active.SelectedTab
+        local target = findTabByName(targetName)
+        if not target then updateNavButtons(); return false end
+        if current then table.insert(active.BackStack, current.Name) end
+        selectTab(target, "forward")
+        return true
+    end
+
+    track(backButton.MouseButton1Click:Connect(goBack))
+    track(forwardButton.MouseButton1Click:Connect(goForward))
+
+    -- Tap = undo. Hold = open the full history, including on mobile.
+    local undoHoldToken = 0
+    local undoHeld = false
+    track(undoButton.InputBegan:Connect(function(inputObject)
+        if inputObject.UserInputType ~= Enum.UserInputType.Touch and inputObject.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
+        undoHoldToken = undoHoldToken + 1
+        local mine = undoHoldToken
+        undoHeld = false
+        task.delay(0.52, function()
+            if mine ~= undoHoldToken or not undoButton.Parent then return end
+            undoHeld = true
+            LULA:OpenUndoHistory()
+        end)
+    end))
+    track(undoButton.InputEnded:Connect(function(inputObject)
+        if inputObject.UserInputType == Enum.UserInputType.Touch or inputObject.UserInputType == Enum.UserInputType.MouseButton1 then
+            undoHoldToken = undoHoldToken + 1
+        end
+    end))
+    track(undoButton.MouseButton1Click:Connect(function()
+        if undoHeld then undoHeld = false; return end
+        LULA:Undo()
+    end))
+    track(undoButton.MouseButton2Click:Connect(function() LULA:OpenUndoHistory() end))
+    updateNavButtons()
 
     function window:NewTab(tabName)
         tabName = tostring(tabName or "Tab")
@@ -1424,7 +2036,12 @@ function LULA.CreateLib(kavName, themeInput)
             Built = false,
             Builder = nil,
             Sections = {},
+            LastCanvasPosition = Vector2.new(),
+            SearchBar = nil,
         }
+        track(scroll:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
+            tab.LastCanvasPosition = scroll.CanvasPosition
+        end))
 
         function tab:SetLazyBuilder(builder)
             self.Builder = builder
@@ -1485,12 +2102,35 @@ function LULA.CreateLib(kavName, themeInput)
             local function register(api, row, searchable)
                 api = api or {}
                 api.Frame = row
+                api.Name = tostring(row.Name or "Kontrol")
+                api.DisplayName = api.Name
+                api.TabName = tab.Name
+                api.SectionName = sectionName
+                api.ControlId = normalizeControlId(tab.Name .. "::" .. sectionName .. "::" .. api.Name)
                 api.SearchText = string.lower(tostring(searchable or row.Name))
                 api.BaseVisible = row.Visible
                 local searchStroke = makeStroke(row, active.Theme.SchemeColor, 1, 1.4)
                 searchStroke.Name = "LHSearchMatch"
                 searchStroke.Enabled = false
                 table.insert(controls, api)
+                controlFrameRegistry[row] = api
+                controlIdRegistry[api.ControlId] = api
+                row:SetAttribute("LHControlId", api.ControlId)
+                function api:SetMetadata(metadata)
+                    metadata = type(metadata) == "table" and metadata or {}
+                    if self.ControlId and controlIdRegistry[self.ControlId] == self then controlIdRegistry[self.ControlId] = nil end
+                    self.ControlId = normalizeControlId(metadata.ControlId or self.ControlId)
+                    self.DisplayName = tostring(metadata.DisplayName or metadata.Name or self.DisplayName or self.Name)
+                    self.Name = self.DisplayName
+                    self.Kind = tostring(metadata.Kind or self.Kind or "kontrol")
+                    self.Tip = tostring(metadata.Tip or self.Tip or row:GetAttribute("LHDescription") or "")
+                    self.TabName = tostring(metadata.TabName or self.TabName or tab.Name)
+                    self.SectionName = tostring(metadata.SectionName or self.SectionName or sectionName)
+                    row:SetAttribute("LHControlId", self.ControlId)
+                    controlIdRegistry[self.ControlId] = self
+                    queueShelfRefresh()
+                    return self
+                end
                 function api:SetVisible(value)
                     self.BaseVisible = value and true or false
                     row.Visible = self.BaseVisible
@@ -1552,6 +2192,7 @@ function LULA.CreateLib(kavName, themeInput)
                 end))
                 attachTip(row, tip)
                 local api = register({}, row, tostring(name) .. " " .. tostring(tip))
+                api.Kind = "button"
                 function api:Fire() safeCall("Button " .. tostring(name), callback) end
                 return api
             end
@@ -1610,6 +2251,7 @@ function LULA.CreateLib(kavName, themeInput)
                 render(false)
                 attachTip(row, tip)
                 local api = register({}, row, tostring(name) .. " " .. tostring(tip))
+                api.Kind = "toggle"
                 function api:SetValue(newValue, fire) set(newValue, fire) end
                 function api:GetValue() return value end
                 function api:SetResetDefault(newDefault) default = newDefault == true end
@@ -1656,6 +2298,7 @@ function LULA.CreateLib(kavName, themeInput)
                 end))
                 attachTip(row, tip)
                 local api = register({}, row, tostring(name) .. " " .. tostring(tip))
+                api.Kind = "textbox"
                 function api:SetValue(value, fire)
                     box.Text = tostring(value or "")
                     if fire ~= false then submit() end
@@ -1758,6 +2401,7 @@ function LULA.CreateLib(kavName, themeInput)
                 set(default, false)
                 attachTip(row, tip)
                 local api = register({}, row, tostring(name) .. " " .. tostring(tip))
+                api.Kind = "slider"
                 function api:SetValue(newValue, fire) set(newValue, fire) end
                 function api:GetValue() return value end
                 function api:SetResetDefault(newDefault) default = math.clamp(tonumber(newDefault) or minValue, minValue, maxValue) end
@@ -1859,11 +2503,15 @@ function LULA.CreateLib(kavName, themeInput)
                 createReset(row, function() set(default) end)
                 attachTip(row, tip)
                 api = register({}, row, tostring(name) .. " " .. tostring(tip) .. " " .. table.concat(list, " "))
+                api.Kind = "dropdown"
                 function api:SetValue(newValue, fire) set(newValue, fire) end
                 function api:GetValue() return value end
                 function api:Refresh(newList)
                     rebuild(newList)
                     self.SearchText = string.lower(tostring(name) .. " " .. tostring(tip) .. " " .. table.concat(list, " "))
+                end
+                function api:ContainsValue(candidate)
+                    return table.find(list, candidate) ~= nil
                 end
                 function api:SetResetDefault(newDefault) default = newDefault end
                 function api:Reset() set(default) end
@@ -1976,6 +2624,7 @@ function LULA.CreateLib(kavName, themeInput)
                 attachTip(row, tip)
 
                 local api = register({}, row, tostring(name) .. " " .. tostring(tip))
+                api.Kind = "counter"
                 function api:SetValue(newValue, fire) set(newValue, fire) end
                 function api:GetValue() return value end
                 function api:SetResetDefault(newDefault) default = tonumber(newDefault) or default end
@@ -2048,6 +2697,7 @@ function LULA.CreateLib(kavName, themeInput)
                 end)
                 attachTip(row, tip)
                 local api = register({}, row, tostring(name) .. " " .. tostring(tip))
+                api.Kind = "keybind"
                 function api:SetValue(newValue)
                     current = newValue or default
                     bindButton.Text = UserInputService.TouchEnabled and "MOBILE TAP" or tostring(current.Name or current)
@@ -2257,6 +2907,7 @@ function LULA.CreateLib(kavName, themeInput)
                 set(default, false)
                 attachTip(row, tip)
                 local api = register({}, row, tostring(name) .. " " .. tostring(tip) .. " rainbow manual kolor picker")
+                api.Kind = "colorpicker"
                 function api:SetValue(newColor, fire)
                     stopRainbow()
                     set(newColor, fire)
@@ -2292,6 +2943,7 @@ function LULA.CreateLib(kavName, themeInput)
                 label.TextYAlignment = Enum.TextYAlignment.Center
                 bind(label, "TextColor3", "MutedText")
                 local api = register({}, row, tostring(labelText))
+                api.Kind = "label"
                 function api:UpdateLabel(newText) label.Text = tostring(newText or "") end
                 return api
             end
@@ -2493,7 +3145,9 @@ function LULA.CreateLib(kavName, themeInput)
             end
             track(box:GetPropertyChangedSignal("Text"):Connect(function() apply(box.Text) end))
             track(clear.MouseButton1Click:Connect(function() box.Text = ""; apply("") end))
-            return {Frame = holder, TextBox = box, ClearButton = clear, Apply = apply}
+            local searchApi = {Frame = holder, TextBox = box, ClearButton = clear, Apply = apply}
+            tab.SearchBar = searchApi
+            return searchApi
         end
 
         table.insert(active.Tabs, tab)
@@ -2517,11 +3171,164 @@ function LULA.CreateLib(kavName, themeInput)
         return false
     end
 
+    function window:Back() return goBack() end
+    function window:Forward() return goForward() end
+    function window:Undo() return LULA:Undo() end
+    function window:OpenUndoHistory() return LULA:OpenUndoHistory() end
+
+    function window:EnablePersonalShelf(tabName)
+        if active.Shelf then return active.Shelf.Tab end
+        local shelfTab = self:NewTab(tabName or "My Shelf")
+        shelfTab:EnsureBuilt()
+        local shelfScroll = shelfTab.Scroll
+        local intro = Instance.new("TextLabel")
+        intro.Name = "ShelfIntro"
+        intro.Size = UDim2.new(1, -4, 0, 48)
+        intro.BackgroundTransparency = 1
+        intro.Font = resolveUIFont(Enum.Font.GothamMedium)
+        intro.TextSize = 12
+        intro.TextWrapped = true
+        intro.Text = "Hold any feature to add it here. Buttons and toggles run directly; other items jump to their original kontrol."
+        intro.Parent = shelfScroll
+        bind(intro, "TextColor3", "MutedText")
+        active.Shelf = {Tab = shelfTab, Scroll = shelfScroll, Intro = intro}
+        refreshShelf()
+        task.spawn(function()
+            for _, candidate in ipairs(active and active.Tabs or {}) do
+                if not active then return end
+                if candidate ~= shelfTab then candidate:EnsureBuilt() end
+                task.wait()
+            end
+            refreshShelf()
+        end)
+        return shelfTab
+    end
+
+    function window:RefreshShelf() refreshShelf() end
+
+    function window:GetUIState()
+        if not active then return nil end
+        local state = {
+            Version = 3,
+            SelectedTab = active.SelectedTab and active.SelectedTab.Name or nil,
+            Visible = active.ScreenGui.Enabled,
+            Main = {
+                Position = {main.Position.X.Scale, main.Position.X.Offset, main.Position.Y.Scale, main.Position.Y.Offset},
+                Size = {main.Size.X.Scale, main.Size.X.Offset, main.Size.Y.Scale, main.Size.Y.Offset},
+            },
+            TabList = {tabList.CanvasPosition.X, tabList.CanvasPosition.Y},
+            Tabs = {},
+            Controls = {},
+            BackStack = shallowCopyArray(active.BackStack),
+            ForwardStack = shallowCopyArray(active.ForwardStack),
+        }
+        for controlId, api in pairs(controlIdRegistry) do
+            if api and type(api.GetValue) == "function" and type(api.SetValue) == "function" then
+                local ok, value = pcall(function() return api:GetValue() end)
+                if ok then
+                    local encoded = encodeSessionValue(value)
+                    if encoded ~= nil then state.Controls[tostring(controlId)] = encoded end
+                end
+            end
+        end
+        for _, tab in ipairs(active.Tabs) do
+            local position = tab.Scroll and tab.Scroll.CanvasPosition or tab.LastCanvasPosition or Vector2.new()
+            state.Tabs[tab.Name] = {
+                Scroll = {position.X, position.Y},
+                Search = tab.SearchBar and tab.SearchBar.TextBox and tab.SearchBar.TextBox.Text or "",
+            }
+        end
+        return state
+    end
+
+    function window:RestoreUIState(state)
+        if type(state) ~= "table" or not active then return false, "invalid state" end
+        local mainState = state.Main
+        if type(mainState) == "table" then
+            local position = mainState.Position
+            local size = mainState.Size
+            if type(size) == "table" and #size >= 4 then
+                local width = math.clamp(tonumber(size[2]) or main.Size.X.Offset, 420, 760)
+                local height = math.clamp(tonumber(size[4]) or main.Size.Y.Offset, 250, 520)
+                main.Size = UDim2.new(tonumber(size[1]) or 0, width, tonumber(size[3]) or 0, height)
+            end
+            if type(position) == "table" and #position >= 4 then
+                main.Position = UDim2.new(tonumber(position[1]) or 0.5, tonumber(position[2]) or 0, tonumber(position[3]) or 0.5, tonumber(position[4]) or 0)
+            end
+            clampMain(main)
+        end
+        active.BackStack = type(state.BackStack) == "table" and shallowCopyArray(state.BackStack) or {}
+        active.ForwardStack = type(state.ForwardStack) == "table" and shallowCopyArray(state.ForwardStack) or {}
+        if type(state.TabList) == "table" then
+            tabList.CanvasPosition = Vector2.new(tonumber(state.TabList[1]) or 0, tonumber(state.TabList[2]) or 0)
+        end
+        local tabStates = type(state.Tabs) == "table" and state.Tabs or {}
+        for _, tab in ipairs(active.Tabs) do
+            local saved = tabStates[tab.Name]
+            if type(saved) == "table" and type(saved.Scroll) == "table" then
+                tab.LastCanvasPosition = Vector2.new(tonumber(saved.Scroll[1]) or 0, tonumber(saved.Scroll[2]) or 0)
+            end
+        end
+        local target = findTabByName(state.SelectedTab) or active.Tabs[1]
+        if target then selectTab(target, "restore") end
+        task.defer(function()
+            RunService.Heartbeat:Wait()
+            RunService.Heartbeat:Wait()
+            if not active then return end
+
+            -- A restored session must reapply enabled toggles and kontrol values, not only
+            -- reopen the page. Build lazy tabs first so every saved kontrol can be resolved.
+            local savedControls = type(state.Controls) == "table" and state.Controls or {}
+            if next(savedControls) ~= nil then
+                for _, tab in ipairs(active.Tabs) do tab:EnsureBuilt() end
+                active.RestoringState = true
+                local function restoreKontrols(togglePass)
+                    for controlId, encoded in pairs(savedControls) do
+                        local api = controlIdRegistry[tostring(controlId)]
+                        local isToggle = api and api.Kind == "toggle"
+                        if api and isToggle == togglePass and type(api.SetValue) == "function" then
+                            local decoded, valid = decodeSessionValue(encoded)
+                            if valid and (api.Kind ~= "dropdown" or type(api.ContainsValue) ~= "function" or api:ContainsValue(decoded)) then
+                                pcall(function() api:SetValue(decoded, true) end)
+                            end
+                        end
+                    end
+                end
+                -- Restore values/ranges/targets before enabling feature toggles that depend on them.
+                restoreKontrols(false)
+                restoreKontrols(true)
+                active.RestoringState = false
+            end
+
+            for _, tab in ipairs(active.Tabs) do
+                local saved = tabStates[tab.Name]
+                if type(saved) == "table" then
+                    if saved.Search and saved.Search ~= "" then
+                        tab:EnsureBuilt()
+                        if tab.SearchBar and tab.SearchBar.TextBox then
+                            tab.SearchBar.TextBox.Text = tostring(saved.Search)
+                            tab.SearchBar.Apply(saved.Search)
+                        end
+                    end
+                    if tab.Scroll then
+                        local wanted = tab.LastCanvasPosition or Vector2.new()
+                        local maxY = math.max(0, tab.Scroll.AbsoluteCanvasSize.Y - tab.Scroll.AbsoluteWindowSize.Y)
+                        tab.Scroll.CanvasPosition = Vector2.new(math.max(0, wanted.X), math.clamp(wanted.Y, 0, maxY))
+                    end
+                end
+            end
+            active.ScreenGui.Enabled = state.Visible ~= false
+            updateNavButtons()
+        end)
+        return true
+    end
+
     function window:GetTabs() return active.Tabs end
     function window:GetRoot() return main end
     function window:SetFooter(text) footer.Text = tostring(text or "") end
     function window:SetFont(fontName) return LULA:SetFont(fontName) end
     function window:Notify(...) return LULA:Notify(...) end
+    function window:ShowIsland(...) return LULA:ShowIsland(...) end
     function window:SetVisible(value) return LULA:SetUIVisible(value) end
     function window:IsVisible() return LULA:IsVisible() end
     function window:Destroy() LULA:Destroy() end
@@ -2646,6 +3453,19 @@ function LULA:GetRoot()
     return active and active.Main or nil
 end
 
+function LULA:GetUIState()
+    return active and active.Window and active.Window:GetUIState() or nil
+end
+
+function LULA:RestoreUIState(state)
+    if not active or not active.Window then return false, "UI is not active" end
+    return active.Window:RestoreUIState(state)
+end
+
+function LULA:RefreshShelf()
+    refreshShelf()
+end
+
 function LULA:Destroy()
     if not active then return end
     pcall(function() UserInputService.MouseIconEnabled = true end)
@@ -2654,6 +3474,8 @@ function LULA:Destroy()
     if active.ScreenGui then pcall(function() active.ScreenGui:Destroy() end) end
     active = nil
     bindings = {}
+    controlIdRegistry = {}
+    controlFrameRegistry = setmetatable({}, {__mode = "k"})
 end
 
 return LULA
