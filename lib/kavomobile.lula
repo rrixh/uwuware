@@ -20,7 +20,7 @@ if typeof(defaultAccent) ~= "Color3" then
     defaultAccent = rgb(255, 72, 176)
 end;
 
-local online_status = "Offline"
+local online_status = "Online"
 
 local themes = {
     Kandy = {
