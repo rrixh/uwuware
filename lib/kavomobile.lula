@@ -1,4 +1,4 @@
--- kavo ui v4.2 - LH personal shelf / appearance / notification build
+-- kavo ui v4.3 - avatar animation / shelf reorder / visibility build
 local LULA = {}
 local env = (getgenv and getgenv()) or _G
 
@@ -22,6 +22,10 @@ if typeof(defaultAccent) ~= "Color3" then
 end;
 
 local online_status = "Online"
+
+-- Easy animation settings. Change only the numeric IDs in the LH main hub.
+local DEFAULT_OWNER_KREDITS_ANIMATION_ID = 507771019
+local DEFAULT_MY_SHELF_ANIMATION_ID = 507771019
 
 local themes = {
     Kandy = {
@@ -453,6 +457,9 @@ local function cloneTheme(source)
     result.MutedText = result.MutedText or rgb(170, 170, 180)
     result.ElementColor = result.ElementColor or rgb(29, 29, 36)
     result.Danger = result.Danger or rgb(255, 70, 88)
+    result.NotificationColor = result.NotificationColor or result.ElementColor
+    result.NotificationTrack = result.NotificationTrack or result.Header
+    result.StatusTextColor = result.StatusTextColor or result.TextColor
     return result
 end
 
@@ -511,17 +518,38 @@ end
 
 local function applyAppearanceMode(theme)
     theme = cloneTheme(theme)
-    if string.lower(tostring(settings.AppearanceMode or "Dark")) ~= "light" then return theme end
-
     local white = rgb(255, 255, 255)
-    theme.SchemeColor = brightenAccent(theme.SchemeColor, 0.24)
-    theme.Accent2 = brightenAccent(theme.Accent2, 0.24)
-    theme.Background = blendColor(theme.Background, white, 0.91)
-    theme.Header = blendColor(theme.Header, white, 0.86)
-    theme.ElementColor = blendColor(theme.ElementColor, white, 0.80)
-    theme.TextColor = rgb(39, 40, 48)
-    theme.MutedText = blendColor(theme.SchemeColor, rgb(62, 64, 76), 0.78)
-    theme.Danger = brightenAccent(theme.Danger, 0.16)
+    local isLight = string.lower(tostring(settings.AppearanceMode or "Dark")) == "light"
+
+    if isLight then
+        theme.SchemeColor = brightenAccent(theme.SchemeColor, 0.24)
+        theme.Accent2 = brightenAccent(theme.Accent2, 0.24)
+        theme.Background = blendColor(theme.Background, white, 0.91)
+        theme.Header = blendColor(theme.Header, white, 0.86)
+        theme.ElementColor = blendColor(theme.ElementColor, white, 0.80)
+        theme.TextColor = rgb(39, 40, 48)
+        theme.MutedText = blendColor(theme.SchemeColor, rgb(62, 64, 76), 0.78)
+        theme.Danger = brightenAccent(theme.Danger, 0.16)
+        theme.NotificationColor = blendColor(theme.ElementColor, white, 0.28)
+        theme.NotificationTrack = blendColor(theme.Header, rgb(118, 120, 132), 0.14)
+        theme.StatusTextColor = theme.SchemeColor
+        return theme
+    end
+
+    -- Dark mode keeps the selected theme rich and readable instead of crushing
+    -- every panel into near-black. The original kolor identity stays intact.
+    theme.SchemeColor = brightenAccent(theme.SchemeColor, 0.15)
+    theme.Accent2 = brightenAccent(theme.Accent2, 0.13)
+    theme.Danger = brightenAccent(theme.Danger, 0.10)
+    local tint = blendColor(theme.SchemeColor, theme.Accent2, 0.34)
+    theme.Background = blendColor(blendColor(theme.Background, white, 0.075), tint, 0.095)
+    theme.Header = blendColor(blendColor(theme.Header, white, 0.105), tint, 0.085)
+    theme.ElementColor = blendColor(blendColor(theme.ElementColor, white, 0.145), tint, 0.105)
+    theme.TextColor = blendColor(theme.TextColor, white, 0.12)
+    theme.MutedText = blendColor(theme.MutedText, white, 0.20)
+    theme.NotificationColor = blendColor(blendColor(theme.ElementColor, white, 0.07), tint, 0.045)
+    theme.NotificationTrack = blendColor(theme.Header, white, 0.17)
+    theme.StatusTextColor = rgb(255, 255, 255)
     return theme
 end
 
@@ -567,6 +595,7 @@ local function applyTheme()
         })
     end
     if active.MainStroke then active.MainStroke.Color = active.Theme.SchemeColor end
+    if active.Island and active.Island.Stroke then active.Island.Stroke.Color = active.Theme.SchemeColor end
 end
 
 local function makeCorner(parent, radius)
@@ -1101,7 +1130,7 @@ function LULA:Notify(kind, title, text, seconds, progress, force)
     card.ClipsDescendants = true
     card.ZIndex = 102
     card.Parent = holder
-    bind(card, "BackgroundColor3", "Header")
+    bind(card, "BackgroundColor3", "NotificationColor")
     makeCorner(card, 10)
     makeStroke(card, kindColors[kind] or kindColors.info, 0.2, 1)
 
@@ -1136,8 +1165,8 @@ function LULA:Notify(kind, title, text, seconds, progress, force)
         bar.Position = UDim2.new(0, 14, 1, -13)
         bar.Size = UDim2.new(1, -28, 0, 5)
         bar.BorderSizePixel = 0
-        bar.BackgroundColor3 = rgb(60, 60, 68)
         bar.Parent = card
+        bind(bar, "BackgroundColor3", "NotificationTrack")
         makeCorner(bar, 3)
         progressFill = Instance.new("Frame")
         progressFill.Size = UDim2.new(math.clamp(tonumber(progress) or 0, 0, 100) / 100, 0, 1, 0)
@@ -1228,7 +1257,7 @@ function LULA:NotifyAction(kind, title, text, seconds, buttonText, callback)
     card.ClipsDescendants = true
     card.ZIndex = 112
     card.Parent = holder
-    bind(card, "BackgroundColor3", "Header")
+    bind(card, "BackgroundColor3", "NotificationColor")
     makeCorner(card, 11)
     makeStroke(card, kindColors[kind] or kindColors.warning, 0.12, 1.2)
 
@@ -1434,7 +1463,7 @@ function LULA:OpenUndoHistory()
     card.BorderSizePixel = 0
     card.ZIndex = 301
     card.Parent = overlay
-    bind(card, "BackgroundColor3", "Header")
+    bind(card, "BackgroundColor3", "NotificationColor")
     makeCorner(card, 13)
     makeStroke(card, active.Theme.SchemeColor, 0.16, 1.2)
     local cardScale = Instance.new("UIScale", card)
@@ -1519,7 +1548,7 @@ function LULA:Confirm(titleText, bodyText, onConfirm)
     card.BorderSizePixel = 0
     card.ZIndex = 321
     card.Parent = overlay
-    bind(card, "BackgroundColor3", "Header")
+    bind(card, "BackgroundColor3", "NotificationColor")
     makeCorner(card, 14)
     makeStroke(card, active.Theme.SchemeColor, 0.12, 1.2)
 
@@ -1671,6 +1700,147 @@ local function setShelfGuiZ(root, base)
     end
 end
 
+local function normalizeAnimationAssetId(value)
+    local digits = tostring(value or ""):match("%d+")
+    if not digits then return nil end
+    return "rbxassetid://" .. digits
+end
+
+local function createAnimatedAvatarViewport(parent, options)
+    options = options or {}
+    local userId = tonumber(options.UserId) or (LocalPlayer and LocalPlayer.UserId) or 1
+    local width = math.max(48, tonumber(options.Width) or 116)
+    local height = math.max(48, tonumber(options.Height) or width)
+    local radius = tonumber(options.Radius) or math.floor(math.min(width, height) * 0.5)
+
+    local viewport = Instance.new("ViewportFrame")
+    viewport.Name = tostring(options.Name or "LHAvatarViewport")
+    viewport.Position = options.Position or UDim2.fromOffset(0, 0)
+    viewport.Size = UDim2.fromOffset(width, height)
+    viewport.BackgroundTransparency = tonumber(options.BackgroundTransparency) or 0.05
+    viewport.BorderSizePixel = 0
+    viewport.Ambient = rgb(218, 218, 226)
+    viewport.LightColor = rgb(255, 255, 255)
+    viewport.LightDirection = Vector3.new(-1, -1, -1)
+    viewport.Parent = parent
+    bind(viewport, "BackgroundColor3", "ElementColor")
+    makeCorner(viewport, radius)
+    local viewportStroke = makeStroke(viewport, active.Theme.SchemeColor, 0.12, tonumber(options.StrokeThickness) or 2)
+    bind(viewportStroke, "Color", "SchemeColor")
+
+    local world = Instance.new("WorldModel")
+    world.Name = "AvatarWorld"
+    world.Parent = viewport
+
+    local camera = Instance.new("Camera")
+    camera.FieldOfView = tonumber(options.FieldOfView) or 32
+    camera.Parent = viewport
+    viewport.CurrentCamera = camera
+
+    local fallback = Instance.new("ImageLabel")
+    fallback.Name = tostring(options.Name or "LHAvatarViewport") .. "Fallback"
+    fallback.Position = viewport.Position
+    fallback.Size = viewport.Size
+    fallback.BackgroundTransparency = 1
+    fallback.Visible = false
+    fallback.Parent = parent
+    makeCorner(fallback, radius)
+
+    task.spawn(function()
+        local model
+        local okModel = pcall(function()
+            model = Players:CreateHumanoidModelFromUserId(userId)
+        end)
+
+        if (not okModel or not model) and LocalPlayer and userId == LocalPlayer.UserId then
+            local character = LocalPlayer.Character
+            if character then
+                local oldArchivable = character.Archivable
+                character.Archivable = true
+                pcall(function() model = character:Clone() end)
+                character.Archivable = oldArchivable
+            end
+        end
+
+        if not model or not viewport.Parent then
+            local okThumb, image = pcall(function()
+                return Players:GetUserThumbnailAsync(userId, Enum.ThumbnailType.AvatarBust, Enum.ThumbnailSize.Size180x180)
+            end)
+            if okThumb and fallback.Parent then
+                fallback.Image = image
+                fallback.Visible = true
+            end
+            return
+        end
+
+        for _, descendant in ipairs(model:GetDescendants()) do
+            if descendant:IsA("Script") or descendant:IsA("LocalScript") or descendant:IsA("Tool") then
+                descendant:Destroy()
+            elseif descendant:IsA("BasePart") then
+                descendant.Anchored = false
+                descendant.CanCollide = false
+                descendant.Massless = true
+            end
+        end
+
+        model.Name = tostring(options.ModelName or "LHAvatarModel")
+        model.Parent = world
+        pcall(function() model:PivotTo(CFrame.new()) end)
+
+        local avatarRoot = model:FindFirstChild("HumanoidRootPart") or model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart")
+        if avatarRoot then avatarRoot.Anchored = true end
+
+        local boxCFrame, boxSize = model:GetBoundingBox()
+        local focus = boxCFrame.Position + Vector3.new(0, boxSize.Y * (tonumber(options.FocusYOffset) or 0.035), 0)
+        local halfFov = math.rad(math.clamp(camera.FieldOfView, 10, 100) * 0.5)
+        local fitHeight = (boxSize.Y * 0.52) / math.max(0.05, math.tan(halfFov))
+        local fitWidth = (boxSize.X * 0.58) / math.max(0.05, math.tan(halfFov))
+        local distance = math.max(4.8, fitHeight, fitWidth, boxSize.Z * 1.8)
+        distance = distance * (tonumber(options.DistanceScale) or 1)
+
+        -- Roblox avatars face -Z. Put the kamera on -Z so the avatar faces the user,
+        -- not away from them.
+        camera.CFrame = CFrame.lookAt(
+            focus + Vector3.new(0, boxSize.Y * (tonumber(options.CameraYOffset) or 0.025), -distance),
+            focus,
+            Vector3.new(0, 1, 0)
+        )
+
+        local humanoid = model:FindFirstChildOfClass("Humanoid")
+        local animationAsset = normalizeAnimationAssetId(options.AnimationId)
+        local animated = false
+        if humanoid and animationAsset then
+            local okAnimation = pcall(function()
+                humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+                local animator = humanoid:FindFirstChildOfClass("Animator") or Instance.new("Animator", humanoid)
+                local animation = Instance.new("Animation")
+                animation.Name = "LHAvatarDance"
+                animation.AnimationId = animationAsset
+                local trackObject = animator:LoadAnimation(animation)
+                trackObject.Looped = true
+                trackObject.Priority = Enum.AnimationPriority.Movement
+                trackObject:Play(0.18, 1, tonumber(options.AnimationSpeed) or 0.82)
+                viewport:SetAttribute("LHAnimationId", animationAsset)
+                animated = true
+            end)
+            if not okAnimation then animated = false end
+        end
+
+        if not animated then
+            local started = os.clock()
+            while model.Parent and viewport.Parent do
+                local wave = math.sin((os.clock() - started) * 2.1)
+                pcall(function()
+                    model:PivotTo(CFrame.new(0, wave * 0.045, 0))
+                end)
+                RunService.RenderStepped:Wait()
+            end
+        end
+    end)
+
+    return viewport, fallback
+end
+
 local function refreshShelf()
     if not active or not active.Shelf or not active.Shelf.ItemsHolder then return end
     local shelf = active.Shelf
@@ -1711,80 +1881,119 @@ local function refreshShelf()
 
     local function beginShelfDrag(controlId, row, inputObject)
         if not shelf.Editing or shelf.Dragging or not row.Parent then return end
-        if inputObject.UserInputType ~= Enum.UserInputType.Touch and inputObject.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
+        local isTouch = inputObject.UserInputType == Enum.UserInputType.Touch
+        local isMouse = inputObject.UserInputType == Enum.UserInputType.MouseButton1
+        if not isTouch and not isMouse then return end
 
         local order = getShelfList()
         local originalIndex = shelfIndex(order, controlId)
         if not originalIndex then return end
 
         shelf.Dragging = controlId
+        local sourceScroll = shelf.Scroll
+        local lockedCanvasPosition = sourceScroll and sourceScroll.CanvasPosition or Vector2.new()
+        local oldScrollingEnabled = sourceScroll and sourceScroll.ScrollingEnabled
+        if sourceScroll then
+            sourceScroll.ScrollingEnabled = false
+            sourceScroll.CanvasPosition = lockedCanvasPosition
+        end
+
         local originalAbsolutePosition = row.AbsolutePosition
         local originalAbsoluteSize = row.AbsoluteSize
-        local startPointer = inputObject.Position
+        local startPointer = isTouch and Vector2.new(inputObject.Position.X, inputObject.Position.Y)
+            or UserInputService:GetMouseLocation()
 
         local placeholder = Instance.new("Frame")
         placeholder.Name = "ShelfDragPlaceholder"
         placeholder.Size = UDim2.new(1, 0, 0, math.max(42, originalAbsoluteSize.Y))
-        placeholder.BackgroundTransparency = 0.72
+        placeholder.BackgroundTransparency = 0.58
         placeholder.BorderSizePixel = 0
         placeholder.LayoutOrder = originalIndex
         placeholder.Parent = holder
         bind(placeholder, "BackgroundColor3", "SchemeColor")
         makeCorner(placeholder, 8)
-        local placeholderStroke = makeStroke(placeholder, active.Theme.SchemeColor, 0.32, 1)
+        makeStroke(placeholder, active.Theme.SchemeColor, 0.28, 1)
 
         row.Parent = active.ScreenGui
         row.Position = UDim2.fromOffset(originalAbsolutePosition.X, originalAbsolutePosition.Y)
         row.Size = UDim2.fromOffset(originalAbsoluteSize.X, originalAbsoluteSize.Y)
         row.AnchorPoint = Vector2.new(0, 0)
+        row.ClipsDescendants = false
         setShelfGuiZ(row, 460)
         local dragScale = Instance.new("UIScale")
-        dragScale.Scale = 1.02
+        dragScale.Scale = 1.025
         dragScale.Parent = row
 
         local currentOrder = order
         local ended = false
-        local moveConnection, endConnection
+        local moveConnection, endConnection, stateConnection, ancestryConnection
+
+        local function sameOrder(a, b)
+            if #a ~= #b then return false end
+            for index = 1, #a do
+                if tostring(a[index]) ~= tostring(b[index]) then return false end
+            end
+            return true
+        end
 
         local function applyLayoutOrders()
             for index, savedId in ipairs(currentOrder) do
-                if savedId == controlId then
+                if tostring(savedId) == tostring(controlId) then
                     placeholder.LayoutOrder = index
                 else
-                    local other = shelf.RowMap[savedId]
+                    local other = shelf.RowMap[tostring(savedId)]
                     if other and other.Parent == holder then other.LayoutOrder = index end
                 end
             end
         end
 
-        local function calculateOrder(pointerY)
+        local function calculateOrder(dragCenterY)
             local others = {}
             for _, savedId in ipairs(currentOrder) do
-                if savedId ~= controlId then table.insert(others, savedId) end
+                if tostring(savedId) ~= tostring(controlId) then table.insert(others, tostring(savedId)) end
             end
+
             local insertAt = #others + 1
             for index, savedId in ipairs(others) do
-                local other = shelf.RowMap[savedId]
+                local other = shelf.RowMap[tostring(savedId)]
                 if other and other.Parent == holder then
                     local centerY = other.AbsolutePosition.Y + other.AbsoluteSize.Y * 0.5
-                    if pointerY < centerY then
+                    if dragCenterY < centerY then
                         insertAt = index
                         break
                     end
                 end
             end
+
             local rebuilt = {}
-            for _, savedId in ipairs(others) do table.insert(rebuilt, savedId) end
-            table.insert(rebuilt, insertAt, controlId)
-            currentOrder = rebuilt
-            applyLayoutOrders()
+            for _, savedId in ipairs(others) do table.insert(rebuilt, tostring(savedId)) end
+            table.insert(rebuilt, insertAt, tostring(controlId))
+            if not sameOrder(rebuilt, currentOrder) then
+                currentOrder = rebuilt
+                applyLayoutOrders()
+                placeholder.BackgroundTransparency = 0.42
+                task.delay(0.06, function()
+                    if placeholder and placeholder.Parent then
+                        tween(placeholder, {BackgroundTransparency = 0.58}, 0.10)
+                    end
+                end)
+            end
+        end
+
+        local function disconnectTemporary()
+            for _, connection in ipairs({moveConnection, endConnection, stateConnection, ancestryConnection}) do
+                if connection then pcall(function() connection:Disconnect() end) end
+            end
         end
 
         local function finishDrag()
             if ended then return end
             ended = true
-            if moveConnection then moveConnection:Disconnect() end
-            if endConnection then endConnection:Disconnect() end
+            disconnectTemporary()
+            if sourceScroll and sourceScroll.Parent then
+                sourceScroll.CanvasPosition = lockedCanvasPosition
+                sourceScroll.ScrollingEnabled = oldScrollingEnabled ~= false
+            end
             if row and row.Parent then
                 row.Parent = holder
                 row.Size = UDim2.new(1, 0, 0, 46)
@@ -1799,28 +2008,57 @@ local function refreshShelf()
             refreshShelf()
         end
 
-        moveConnection = UserInputService.InputChanged:Connect(function(changed)
-            if ended then return end
-            local pointer
-            if changed.UserInputType == Enum.UserInputType.Touch then
-                pointer = changed.Position
-            elseif changed.UserInputType == Enum.UserInputType.MouseMovement then
-                pointer = UserInputService:GetMouseLocation()
-            else
+        local function updateDrag()
+            if ended or not row.Parent then return end
+            if sourceScroll and sourceScroll.Parent then
+                sourceScroll.CanvasPosition = lockedCanvasPosition
+            end
+
+            local pointer = isTouch and Vector2.new(inputObject.Position.X, inputObject.Position.Y)
+                or UserInputService:GetMouseLocation()
+            local deltaY = pointer.Y - startPointer.Y
+            local scrollTop = sourceScroll and sourceScroll.AbsolutePosition.Y or 0
+            local scrollBottom = sourceScroll and (sourceScroll.AbsolutePosition.Y + sourceScroll.AbsoluteWindowSize.Y)
+                or viewportSize().Y
+            local minY = math.max(scrollTop + 2, holder.AbsolutePosition.Y)
+            local maxY = math.max(minY, math.min(scrollBottom - originalAbsoluteSize.Y - 2,
+                holder.AbsolutePosition.Y + holder.AbsoluteSize.Y - originalAbsoluteSize.Y))
+            local wantedY = math.clamp(originalAbsolutePosition.Y + deltaY, minY, maxY)
+
+            -- Vertical-only movement prevents the row from sliding sideways or fighting
+            -- the ScrollingFrame on mobile.
+            row.Position = UDim2.fromOffset(originalAbsolutePosition.X, wantedY)
+            calculateOrder(wantedY + originalAbsoluteSize.Y * 0.5)
+        end
+
+        moveConnection = RunService.RenderStepped:Connect(function()
+            if isTouch and (inputObject.UserInputState == Enum.UserInputState.End
+                or inputObject.UserInputState == Enum.UserInputState.Cancel) then
+                finishDrag()
                 return
             end
-            local delta = pointer - startPointer
-            row.Position = UDim2.fromOffset(originalAbsolutePosition.X + delta.X, originalAbsolutePosition.Y + delta.Y)
-            calculateOrder(pointer.Y)
+            updateDrag()
         end)
+
         endConnection = UserInputService.InputEnded:Connect(function(endedInput)
-            if endedInput.UserInputType == Enum.UserInputType.Touch or endedInput.UserInputType == Enum.UserInputType.MouseButton1 then
+            if isTouch then
+                if endedInput == inputObject then finishDrag() end
+            elseif endedInput.UserInputType == Enum.UserInputType.MouseButton1 then
                 finishDrag()
             end
         end)
-        track(row.AncestryChanged:Connect(function(_, parent)
+
+        stateConnection = inputObject.Changed:Connect(function()
+            if inputObject.UserInputState == Enum.UserInputState.End
+                or inputObject.UserInputState == Enum.UserInputState.Cancel then
+                finishDrag()
+            end
+        end)
+
+        ancestryConnection = row.AncestryChanged:Connect(function(_, parent)
             if not parent then finishDrag() end
-        end))
+        end)
+        updateDrag()
     end
 
     for savedIndex, controlId in ipairs(saved) do
@@ -1839,6 +2077,7 @@ local function refreshShelf()
             dragHandle.Size = UDim2.fromOffset(31, 38)
             dragHandle.BackgroundTransparency = 1
             dragHandle.Text = ""
+            dragHandle.Active = true
             dragHandle.Visible = shelf.Editing == true
             dragHandle.ZIndex = 7
             dragHandle.Parent = row
@@ -1950,7 +2189,7 @@ openControlMenu = function(api)
     card.BorderSizePixel = 0
     card.ZIndex = 301
     card.Parent = overlay
-    bind(card, "BackgroundColor3", "Header")
+    bind(card, "BackgroundColor3", "NotificationColor")
     makeCorner(card, 13)
     makeStroke(card, active.Theme.SchemeColor, 0.14, 1.2)
     local cardScale = Instance.new("UIScale", card)
@@ -2152,7 +2391,7 @@ function LULA.CreateLib(kavName, themeInput)
     pages.ClipsDescendants = true
     pages.Parent = main
 
-    local footer = makeText(main, "Lollypop Hub v10.2", 11, Enum.Font.GothamMedium)
+    local footer = makeText(main, "Lollypop Hub v10.3", 11, Enum.Font.GothamMedium)
     footer.Name = "Footer"
     footer.Position = UDim2.new(0, 158, 1, -20)
     footer.Size = UDim2.new(1, -165, 0, 18)
@@ -2178,13 +2417,13 @@ function LULA.CreateLib(kavName, themeInput)
     islandFrame.AnchorPoint = Vector2.new(0.5, 0)
     islandFrame.Position = UDim2.new(0.5, 0, 0, 8)
     islandFrame.Size = UDim2.fromOffset(185, 38)
-    islandFrame.BackgroundColor3 = rgb(8, 8, 10)
-    islandFrame.BackgroundTransparency = 0.03
+    islandFrame.BackgroundTransparency = 0.02
     islandFrame.BorderSizePixel = 0
     islandFrame.GroupTransparency = 1
     islandFrame.Visible = false
     islandFrame.ZIndex = 240
     islandFrame.Parent = screenGui
+    bind(islandFrame, "BackgroundColor3", "NotificationColor")
     makeCorner(islandFrame, 18)
     local islandStroke = makeStroke(islandFrame, theme.SchemeColor, 0.22, 1)
 
@@ -2203,11 +2442,11 @@ function LULA.CreateLib(kavName, themeInput)
     local islandProgress = Instance.new("Frame")
     islandProgress.Position = UDim2.fromOffset(14, 54)
     islandProgress.Size = UDim2.new(1, -28, 0, 5)
-    islandProgress.BackgroundColor3 = rgb(48, 48, 55)
     islandProgress.BorderSizePixel = 0
     islandProgress.Visible = false
     islandProgress.ZIndex = 241
     islandProgress.Parent = islandFrame
+    bind(islandProgress, "BackgroundColor3", "NotificationTrack")
     makeCorner(islandProgress, 3)
     local islandProgressFill = Instance.new("Frame")
     islandProgressFill.Size = UDim2.new(0, 0, 1, 0)
@@ -3437,69 +3676,65 @@ function LULA.CreateLib(kavName, themeInput)
                 local sessionStarted = tonumber(config.SessionStarted) or tonumber(env.LHSessionStart) or (active and active.SessionStarted) or tick()
                 local row = newRow(section, "KreditsCard", 252)
 
-                local avatar = Instance.new("ImageLabel")
-                avatar.AnchorPoint = Vector2.new(0.5, 0)
-                avatar.Position = UDim2.new(0.5, 0, 0, 10)
-                avatar.Size = UDim2.fromOffset(82, 82)
-                avatar.BackgroundTransparency = 1
-                avatar.Parent = row
-                makeCorner(avatar, 41)
-                makeStroke(avatar, rgb(236, 176, 40), 0.12, 2)
-                task.spawn(function()
-                    if thumbnailCache[userId] then
-                        avatar.Image = thumbnailCache[userId]
-                        return
-                    end
-                    local ok, image = pcall(function()
-                        return Players:GetUserThumbnailAsync(userId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size150x150)
-                    end)
-                    if ok then thumbnailCache[userId] = image end
-                    if ok and avatar.Parent then avatar.Image = image end
-                end)
+                local ownerAnimationId = config.AnimationId
+                    or env.LH_OWNER_KREDITS_ANIMATION_ID
+                    or DEFAULT_OWNER_KREDITS_ANIMATION_ID
+                local avatar, avatarFallback = createAnimatedAvatarViewport(row, {
+                    Name = "OwnerKreditsAvatar",
+                    ModelName = "OwnerKreditsAvatarModel",
+                    UserId = userId,
+                    AnimationId = ownerAnimationId,
+                    Position = UDim2.new(0.5, -48, 0, 8),
+                    Width = 96,
+                    Height = 96,
+                    Radius = 48,
+                    FieldOfView = 31,
+                    DistanceScale = 1.03,
+                    AnimationSpeed = 0.82,
+                })
 
                 local welcome = makeText(row, "Welkome to Lollypop Hub, " .. displayName, 15, Enum.Font.GothamBold)
-                welcome.Position = UDim2.fromOffset(12, 99)
+                welcome.Position = UDim2.fromOffset(12, 108)
                 welcome.Size = UDim2.new(1, -24, 0, 24)
                 welcome.TextXAlignment = Enum.TextXAlignment.Center
 
                 local owner = makeText(row, "Owner: @" .. username, 12, Enum.Font.GothamMedium)
-                owner.Position = UDim2.fromOffset(12, 124)
+                owner.Position = UDim2.fromOffset(12, 132)
                 owner.Size = UDim2.new(1, -24, 0, 18)
                 owner.TextXAlignment = Enum.TextXAlignment.Center
                 bind(owner, "TextColor3", "SchemeColor")
 
                 local liveTime = makeText(row, "Live Time: " .. os.date("%I:%M:%S %p"), 12, Enum.Font.Gotham)
-                liveTime.Position = UDim2.fromOffset(14, 148)
+                liveTime.Position = UDim2.fromOffset(14, 154)
                 liveTime.Size = UDim2.new(1, -28, 0, 18)
                 liveTime.TextXAlignment = Enum.TextXAlignment.Left
                 bind(liveTime, "TextColor3", "MutedText")
 
                 local sessionTime = makeText(row, "Session Time: 00:00:00", 12, Enum.Font.Gotham)
-                sessionTime.Position = UDim2.fromOffset(14, 168)
+                sessionTime.Position = UDim2.fromOffset(14, 174)
                 sessionTime.Size = UDim2.new(1, -28, 0, 18)
                 sessionTime.TextXAlignment = Enum.TextXAlignment.Left
                 bind(sessionTime, "TextColor3", "SchemeColor")
 
                 local today = makeText(row, "Today's Date: " .. os.date("%A, %B %d, %Y"), 12, Enum.Font.Gotham)
-                today.Position = UDim2.fromOffset(14, 188)
+                today.Position = UDim2.fromOffset(14, 194)
                 today.Size = UDim2.new(1, -28, 0, 18)
                 today.TextXAlignment = Enum.TextXAlignment.Left
                 bind(today, "TextColor3", "MutedText")
 
                 local lastOnline = makeText(row, "Last Online: " .. tostring(config.LastOnline or "Today"), 12, Enum.Font.Gotham)
-                lastOnline.Position = UDim2.fromOffset(14, 208)
+                lastOnline.Position = UDim2.fromOffset(14, 216)
                 lastOnline.Size = UDim2.new(0.5, -14, 0, 18)
                 lastOnline.TextXAlignment = Enum.TextXAlignment.Left
                 bind(lastOnline, "TextColor3", "MutedText")
 
-    local statusText = online_status or "Online"
+                local statusText = tostring(config.OnlineStatus or online_status or "Online")
                 local statusIcon = statusText:lower() == "offline" and utf8.char(0x1F534) or utf8.char(0x1F7E2)
                 local status = makeText(row, "Online Status: " .. statusText .. " " .. statusIcon, 12, Enum.Font.Gotham)
-                status.Position = UDim2.new(0.5, 0, 0, 208)
+                status.Position = UDim2.new(0.5, 0, 0, 216)
                 status.Size = UDim2.new(0.5, -14, 0, 18)
                 status.TextXAlignment = Enum.TextXAlignment.Right
-                status:SetAttribute("LHForceWhiteText", true)
-                status.TextColor3 = rgb(255, 255, 255)
+                bind(status, "TextColor3", "StatusTextColor")
 
                 task.spawn(function()
                     while row.Parent do
@@ -3526,6 +3761,7 @@ function LULA.CreateLib(kavName, themeInput)
                     Status = status,
                 }
                 api.Avatar = avatar
+                api.AvatarFallback = avatarFallback
                 function api:UpdateRow(key, newValue)
                     if self.Rows[key] then self.Rows[key].Text = tostring(newValue) end
                 end
@@ -3651,34 +3887,19 @@ function LULA.CreateLib(kavName, themeInput)
         profile.BackgroundTransparency = 0.02
         makeStroke(profile, active.Theme.SchemeColor, 0.24, 1)
 
-        local viewport = Instance.new("ViewportFrame")
-        viewport.Name = "ShelfAvatarViewport"
-        viewport.Position = UDim2.fromOffset(12, 12)
-        viewport.Size = UDim2.fromOffset(116, 116)
-        viewport.BackgroundTransparency = 0.05
-        viewport.BorderSizePixel = 0
-        viewport.Ambient = rgb(210, 210, 220)
-        viewport.LightColor = rgb(255, 255, 255)
-        viewport.LightDirection = Vector3.new(-1, -1, -1)
-        viewport.Parent = profile
-        bind(viewport, "BackgroundColor3", "ElementColor")
-        makeCorner(viewport, 58)
-        makeStroke(viewport, active.Theme.SchemeColor, 0.12, 2)
-
-        local world = Instance.new("WorldModel")
-        world.Parent = viewport
-        local camera = Instance.new("Camera")
-        camera.FieldOfView = 32
-        camera.Parent = viewport
-        viewport.CurrentCamera = camera
-
-        local fallbackAvatar = Instance.new("ImageLabel")
-        fallbackAvatar.Position = viewport.Position
-        fallbackAvatar.Size = viewport.Size
-        fallbackAvatar.BackgroundTransparency = 1
-        fallbackAvatar.Visible = false
-        fallbackAvatar.Parent = profile
-        makeCorner(fallbackAvatar, 58)
+        local viewport, fallbackAvatar = createAnimatedAvatarViewport(profile, {
+            Name = "ShelfAvatarViewport",
+            ModelName = "ShelfAvatarModel",
+            UserId = LocalPlayer.UserId,
+            AnimationId = env.LH_MY_SHELF_ANIMATION_ID or DEFAULT_MY_SHELF_ANIMATION_ID,
+            Position = UDim2.fromOffset(12, 12),
+            Width = 116,
+            Height = 116,
+            Radius = 58,
+            FieldOfView = 32,
+            DistanceScale = 1.02,
+            AnimationSpeed = 0.82,
+        })
 
         local hi = makeText(profile, "Hi, my name is " .. tostring(LocalPlayer.DisplayName), 16, Enum.Font.GothamBold)
         hi.Position = UDim2.fromOffset(142, 12)
@@ -3710,81 +3931,6 @@ function LULA.CreateLib(kavName, themeInput)
         about.TextYAlignment = Enum.TextYAlignment.Top
         about.TextWrapped = true
         bind(about, "TextColor3", "MutedText")
-
-        task.spawn(function()
-            local model
-            local okModel = pcall(function()
-                model = Players:CreateHumanoidModelFromUserId(LocalPlayer.UserId)
-            end)
-            if not okModel or not model then
-                local character = LocalPlayer.Character
-                if character then
-                    local oldArchivable = character.Archivable
-                    character.Archivable = true
-                    pcall(function() model = character:Clone() end)
-                    character.Archivable = oldArchivable
-                end
-            end
-
-            if not model or not viewport.Parent then
-                local okThumb, image = pcall(function()
-                    return Players:GetUserThumbnailAsync(LocalPlayer.UserId, Enum.ThumbnailType.AvatarBust, Enum.ThumbnailSize.Size180x180)
-                end)
-                if okThumb and fallbackAvatar.Parent then
-                    fallbackAvatar.Image = image
-                    fallbackAvatar.Visible = true
-                end
-                return
-            end
-
-            for _, descendant in ipairs(model:GetDescendants()) do
-                if descendant:IsA("Script") or descendant:IsA("LocalScript") or descendant:IsA("Tool") then
-                    descendant:Destroy()
-                elseif descendant:IsA("BasePart") then
-                    descendant.Anchored = false
-                    descendant.CanCollide = false
-                end
-            end
-            local avatarRoot = model:FindFirstChild("HumanoidRootPart") or model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart")
-            if avatarRoot then avatarRoot.Anchored = true end
-            model.Name = "ShelfAvatarModel"
-            model.Parent = world
-            pcall(function() model:PivotTo(CFrame.new()) end)
-
-            local boxCFrame, boxSize = model:GetBoundingBox()
-            local focus = boxCFrame.Position + Vector3.new(0, boxSize.Y * 0.04, 0)
-            local distance = math.max(5.5, boxSize.Y * 1.22, boxSize.X * 1.6)
-            camera.CFrame = CFrame.lookAt(focus + Vector3.new(0, boxSize.Y * 0.02, distance), focus)
-
-            local humanoid = model:FindFirstChildOfClass("Humanoid")
-            local animated = false
-            if humanoid then
-                pcall(function()
-                    humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
-                    local animator = humanoid:FindFirstChildOfClass("Animator") or Instance.new("Animator", humanoid)
-                    local animation = Instance.new("Animation")
-                    animation.AnimationId = humanoid.RigType == Enum.HumanoidRigType.R6
-                        and "rbxassetid://182435998"
-                        or "rbxassetid://507771019"
-                    local trackObject = animator:LoadAnimation(animation)
-                    trackObject.Looped = true
-                    trackObject.Priority = Enum.AnimationPriority.Movement
-                    trackObject:Play(0.2, 1, 0.82)
-                    animated = true
-                end)
-            end
-
-            if not animated then
-                local started = os.clock()
-                while model.Parent and viewport.Parent do
-                    local wave = math.sin((os.clock() - started) * 2.2)
-                    pcall(function()
-                        model:PivotTo(CFrame.new(0, wave * 0.05, 0) * CFrame.Angles(0, wave * 0.08, 0))
-                    end)
-                    RunService.RenderStepped:Wait()
-                end
-            end
-        end)
 
         local controlsRow = Instance.new("Frame")
         controlsRow.Name = "ShelfTopControls"
