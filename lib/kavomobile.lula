@@ -27,10 +27,12 @@ if typeof(defaultAccent) ~= "Color3" then
 end;
 
 local online_status = "Offline"
-
--- Easy animation settings. Change only the numeric IDs in the LH main hub.
-local DEFAULT_OWNER_KREDITS_ANIMATION_ID = 507771019
-local DEFAULT_MY_SHELF_ANIMATION_ID = 507771019
+--[[
+add(85612839739153, "ATEEZ - say my name")
+add(113164397821194, "what you saying - lil uzi vert")
+]]--
+local DEFAULT_OWNER_KREDITS_ANIMATION_ID = (113164397821194)
+local DEFAULT_MY_SHELF_ANIMATION_ID = (85612839739153)
 
 local themes = {
     Kandy = {
