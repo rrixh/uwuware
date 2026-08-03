@@ -1,4 +1,4 @@
--- kavo ui v4.4 - white drag glow / red-green toggle visibility build
+-- kavo ui v4.5 - My Shelf toggle colors / delete-all undo build
 local LULA = {}
 local env = (getgenv and getgenv()) or _G
 
@@ -26,13 +26,11 @@ if typeof(defaultAccent) ~= "Color3" then
     defaultAccent = rgb(255, 72, 176)
 end;
 
-local online_status = "Offline"
---[[
-add(85612839739153, "ATEEZ - say my name")
-add(113164397821194, "what you saying - lil uzi vert")
-]]--
-local DEFAULT_OWNER_KREDITS_ANIMATION_ID = (113164397821194)
-local DEFAULT_MY_SHELF_ANIMATION_ID = (85612839739153)
+local online_status = "Online"
+
+-- Easy animation settings. Change only the numeric IDs in the LH main hub.
+local DEFAULT_OWNER_KREDITS_ANIMATION_ID = 507771019
+local DEFAULT_MY_SHELF_ANIMATION_ID = 507771019
 
 local themes = {
     Kandy = {
@@ -1864,12 +1862,77 @@ local function refreshShelf()
     local saved = getShelfList()
     local count = 0
 
+    local deleteAllUndo = shelf.DeleteAllUndo
+    if deleteAllUndo and type(deleteAllUndo.Items) == "table" then
+        if os.clock() >= (tonumber(deleteAllUndo.ExpiresAt) or 0) then
+            shelf.DeleteAllUndo = nil
+        else
+            count = count + 1
+            local undoToken = tostring(deleteAllUndo.Token or "")
+            local undoRow = newRow(holder, "ShelfDeleteAllUndo", 48)
+            undoRow.LayoutOrder = -100000
+            undoRow.BackgroundTransparency = 0.02
+
+            local undoButton = makeKolorButton(undoRow,
+                "Undo Delete All - restore " .. tostring(#deleteAllUndo.Items) .. " skripts",
+                TOGGLE_ON_COLOR)
+            undoButton.Position = UDim2.fromOffset(5, 5)
+            undoButton.Size = UDim2.new(1, -45, 1, -10)
+            undoButton.TextXAlignment = Enum.TextXAlignment.Left
+            undoButton.Text = "  " .. undoButton.Text
+            undoButton.ZIndex = 7
+
+            local closeUndo = makeKolorButton(undoRow, "X", TOGGLE_OFF_COLOR)
+            closeUndo.AnchorPoint = Vector2.new(1, 0.5)
+            closeUndo.Position = UDim2.new(1, -5, 0.5, 0)
+            closeUndo.Size = UDim2.fromOffset(30, 30)
+            closeUndo.ZIndex = 8
+
+            track(undoButton.MouseButton1Click:Connect(function()
+                if not active or not active.Shelf or not active.Shelf.DeleteAllUndo then return end
+                if tostring(active.Shelf.DeleteAllUndo.Token or "") ~= undoToken then return end
+
+                local restored = {}
+                local seen = {}
+                for _, savedId in ipairs(active.Shelf.DeleteAllUndo.Items) do
+                    savedId = tostring(savedId)
+                    if savedId ~= "" and not seen[savedId] then
+                        seen[savedId] = true
+                        table.insert(restored, savedId)
+                    end
+                end
+                -- Keep anything newly added during the seven-second Undo window.
+                for _, savedId in ipairs(getShelfList()) do
+                    savedId = tostring(savedId)
+                    if savedId ~= "" and not seen[savedId] then
+                        seen[savedId] = true
+                        table.insert(restored, savedId)
+                    end
+                end
+
+                active.Shelf.DeleteAllUndo = nil
+                saveShelfList(restored)
+                refreshShelf()
+                LULA:Notify("success", "My Shelf", "Delete All was undone. Your Shelf skripts were restored.", 3, nil, true)
+            end))
+
+            track(closeUndo.MouseButton1Click:Connect(function()
+                if not active or not active.Shelf or not active.Shelf.DeleteAllUndo then return end
+                if tostring(active.Shelf.DeleteAllUndo.Token or "") ~= undoToken then return end
+                active.Shelf.DeleteAllUndo = nil
+                refreshShelf()
+            end))
+        end
+    end
+
     local function launchShelfItem(api, controlId, launch)
         if api.Kind == "button" and type(api.Fire) == "function" then
             api:Fire()
         elseif api.Kind == "toggle" and type(api.GetValue) == "function" and type(api.SetValue) == "function" then
             api:SetValue(not api:GetValue(), true)
-            launch.Text = "  " .. tostring(api.DisplayName or controlId) .. (api:GetValue() and "  [ON]" or "  [OFF]")
+            launch.Text = "  " .. tostring(api.DisplayName or controlId)
+            launch.BackgroundColor3 = api:GetValue() and TOGGLE_ON_COLOR or TOGGLE_OFF_COLOR
+            launch.TextColor3 = rgb(255, 255, 255)
         else
             local sourceTab = findTabByName(api.TabName)
             if sourceTab and active.Window then
@@ -2101,10 +2164,13 @@ local function refreshShelf()
                 makeCorner(line, 1)
             end
 
-            local launch = makeButton(row, "")
+            local isShelfToggle = api.Kind == "toggle" and type(api.GetValue) == "function" and type(api.SetValue) == "function"
+            local launch = isShelfToggle
+                and makeKolorButton(row, "", api:GetValue() and TOGGLE_ON_COLOR or TOGGLE_OFF_COLOR)
+                or makeButton(row, "")
             launch.Position = shelf.Editing and UDim2.fromOffset(35, 0) or UDim2.fromOffset(0, 0)
             launch.Size = shelf.Editing and UDim2.new(1, -76, 1, 0) or UDim2.new(1, -40, 1, 0)
-            launch.BackgroundTransparency = 1
+            launch.BackgroundTransparency = isShelfToggle and 0.06 or 1
             launch.TextXAlignment = Enum.TextXAlignment.Left
             launch.Text = "  " .. tostring(api.DisplayName or api.Name or controlId)
             launch.ZIndex = 5
@@ -2142,8 +2208,9 @@ local function refreshShelf()
                 beginShelfDrag(tostring(controlId), row, inputObject)
             end))
 
-            if api.Kind == "toggle" and type(api.GetValue) == "function" then
-                launch.Text = launch.Text .. (api:GetValue() and "  [ON]" or "  [OFF]")
+            if isShelfToggle then
+                launch.BackgroundColor3 = api:GetValue() and TOGGLE_ON_COLOR or TOGGLE_OFF_COLOR
+                launch.TextColor3 = rgb(255, 255, 255)
             end
         end
     end
@@ -2950,6 +3017,7 @@ function LULA.CreateLib(kavName, themeInput)
                     value = newValue and true or false
                     render(true)
                     if fire ~= false then safeCall("Toggle " .. tostring(name), callback, value) end
+                    queueShelfRefresh()
                 end
                 -- Toggles do not need a separate Reset button; switching OFF is already the reset action.
                 track(hit.MouseButton1Click:Connect(function()
@@ -3994,6 +4062,7 @@ function LULA.CreateLib(kavName, themeInput)
             Editing = false,
             Dragging = nil,
             RowMap = {},
+            DeleteAllUndo = nil,
         }
         active.Shelf = shelfData
 
@@ -4051,7 +4120,7 @@ function LULA.CreateLib(kavName, themeInput)
 
         -- This compact toggle lives in the profile card so users can disable the
         -- hold-to-add pop-up without disabling their saved Shelf items.
-        local holdToggle = makeButton(profile, "Shelf Hold Menu")
+        local holdToggle = makeKolorButton(profile, "Shelf Hold Menu", TOGGLE_OFF_COLOR)
         holdToggle.AnchorPoint = Vector2.new(0, 1)
         holdToggle.Position = UDim2.fromOffset(12, 164)
         holdToggle.Size = UDim2.fromOffset(116, 28)
@@ -4066,8 +4135,10 @@ function LULA.CreateLib(kavName, themeInput)
         makeCorner(holdDot, 5)
         local function renderHoldToggle()
             local enabled = settings.ShelfEnabled ~= false
-            holdToggle.Text = enabled and "Shelf Hold Menu: ON" or "Shelf Hold Menu: OFF"
-            holdDot.BackgroundColor3 = enabled and TOGGLE_ON_COLOR or TOGGLE_OFF_COLOR
+            holdToggle.Text = "Shelf Hold Menu"
+            holdToggle.BackgroundColor3 = enabled and TOGGLE_ON_COLOR or TOGGLE_OFF_COLOR
+            holdToggle.TextColor3 = rgb(255, 255, 255)
+            holdDot.BackgroundColor3 = rgb(255, 255, 255)
         end
         renderHoldToggle()
         track(holdToggle.MouseButton1Click:Connect(function()
@@ -4097,10 +4168,27 @@ function LULA.CreateLib(kavName, themeInput)
                 LULA:ShowIsland("My Shelf", "Your Shelf is already empty.", {Duration = 2.2})
                 return
             end
-            LULA:Confirm("Delete All Shelf Items?", "This removes every saved feature from My Shelf. A confirmation prevents accidental klicks.", function()
+            LULA:Confirm("Delete All Shelf Skripts?", "Are you sure you want to delete all skripts in My Shelf?", function()
+                local snapshot = {}
+                for _, savedId in ipairs(current) do table.insert(snapshot, tostring(savedId)) end
+                local undoToken = tostring(os.clock()) .. ":" .. tostring(math.random(100000, 999999))
+                shelfData.DeleteAllUndo = {
+                    Items = snapshot,
+                    ExpiresAt = os.clock() + 7,
+                    Token = undoToken,
+                }
                 saveShelfList({})
                 refreshShelf()
-                LULA:Notify("success", "My Shelf", "Every Shelf item was deleted.", 3, nil, true)
+                LULA:ShowIsland("My Shelf", "All Shelf skripts were deleted. Undo is available here for 7 seconds.", {Duration = 2.7})
+
+                task.delay(7.05, function()
+                    if not active or active.Shelf ~= shelfData then return end
+                    local pending = shelfData.DeleteAllUndo
+                    if pending and tostring(pending.Token or "") == undoToken then
+                        shelfData.DeleteAllUndo = nil
+                        refreshShelf()
+                    end
+                end)
             end)
         end, true)
 
