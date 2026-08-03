@@ -1,4 +1,4 @@
--- kavo ui v4.1 - LH advanced navigation/session build
+-- kavo ui v4.2 - LH personal shelf / appearance / notification build
 local LULA = {}
 local env = (getgenv and getgenv()) or _G
 
@@ -277,6 +277,9 @@ if settings.CustomCursor == nil then settings.CustomCursor = false end
 if settings.NotificationMuted == nil then settings.NotificationMuted = true end
 if settings.NotificationVolume == nil then settings.NotificationVolume = 0.45 end
 if settings.UIFont == nil then settings.UIFont = "Gotham" end
+if settings.AppearanceMode == nil then settings.AppearanceMode = "Dark" end
+if settings.ShelfEnabled == nil then settings.ShelfEnabled = true end
+if settings.ShelfAutoSave == nil then settings.ShelfAutoSave = false end
 
 local active = nil
 local fontMap = {}
@@ -359,15 +362,28 @@ local function decodeSessionValue(value)
     return nil, false
 end
 
-local function persistUiStateEdit()
-    if not env.LHRuntime then return end
-    if type(env.LHRuntime.SettingChanged) == "function" then
+local function markSettingsDirty()
+    if env.LHRuntime and type(env.LHRuntime.SettingChanged) == "function" then
         pcall(function() env.LHRuntime:SettingChanged() end)
     end
-    -- Shelf changes are permanent preferences even when general Auto Save Edits is off.
-    if type(env.LHRuntime.SaveSettings) == "function" then
+end
+
+local function saveSettingsNow()
+    if env.LHRuntime and type(env.LHRuntime.SaveSettings) == "function" then
         task.defer(function() pcall(function() env.LHRuntime:SaveSettings() end) end)
     end
+end
+
+local function persistUiStateEdit()
+    markSettingsDirty()
+    if settings.ShelfAutoSave == true then saveSettingsNow() end
+end
+
+local function persistIndependentShelfSetting()
+    -- Shelf Auto Save and Shelf Hold Menu remember their own state even when
+    -- the main Save Settings button was not pressed.
+    markSettingsDirty()
+    saveSettingsNow()
 end
 
 local function track(connection)
@@ -478,13 +494,47 @@ local function readableTextColor(color, theme)
     return charcoal
 end
 
+local function blendColor(a, b, amount)
+    amount = math.clamp(tonumber(amount) or 0, 0, 1)
+    return Color3.new(
+        a.R + (b.R - a.R) * amount,
+        a.G + (b.G - a.G) * amount,
+        a.B + (b.B - a.B) * amount
+    )
+end
+
+local function brightenAccent(color, amount)
+    local h, s, v = Color3.toHSV(color)
+    amount = math.clamp(tonumber(amount) or 0.2, 0, 1)
+    return Color3.fromHSV(h, math.clamp(s * 0.94 + 0.03, 0, 1), math.clamp(v + (1 - v) * amount, 0, 1))
+end
+
+local function applyAppearanceMode(theme)
+    theme = cloneTheme(theme)
+    if string.lower(tostring(settings.AppearanceMode or "Dark")) ~= "light" then return theme end
+
+    local white = rgb(255, 255, 255)
+    theme.SchemeColor = brightenAccent(theme.SchemeColor, 0.24)
+    theme.Accent2 = brightenAccent(theme.Accent2, 0.24)
+    theme.Background = blendColor(theme.Background, white, 0.91)
+    theme.Header = blendColor(theme.Header, white, 0.86)
+    theme.ElementColor = blendColor(theme.ElementColor, white, 0.80)
+    theme.TextColor = rgb(39, 40, 48)
+    theme.MutedText = blendColor(theme.SchemeColor, rgb(62, 64, 76), 0.78)
+    theme.Danger = brightenAccent(theme.Danger, 0.16)
+    return theme
+end
+
 local function resolveTheme(theme)
+    local base
     if type(theme) == "string" then
-        return cloneTheme(themes[theme] or themes.Kandy)
+        base = cloneTheme(themes[theme] or themes.Kandy)
     elseif type(theme) == "table" then
-        return cloneTheme(theme)
+        base = cloneTheme(theme)
+    else
+        base = cloneTheme(themes.Kandy)
     end
-    return cloneTheme(themes.Kandy)
+    return applyAppearanceMode(base)
 end
 
 local function bind(object, property, themeKey)
@@ -921,6 +971,7 @@ local function attachTip(row, tip)
             longPressed = true
             row:SetAttribute("LHLongPressTriggered", true)
             hide()
+            if settings.ShelfEnabled == false then return end
             local api = controlFrameRegistry[row]
             if api and type(openControlMenu) == "function" then
                 openControlMenu(api)
@@ -1140,6 +1191,106 @@ function LULA:Notify(kind, title, text, seconds, progress, force)
     return api
 end
 
+function LULA:NotifyAction(kind, title, text, seconds, buttonText, callback)
+    kind = string.lower(tostring(kind or "warning"))
+    title = tostring(title or "Lollypop Hub")
+    text = tostring(text or "")
+    seconds = math.clamp(tonumber(seconds) or 4, 2, 10)
+    buttonText = tostring(buttonText or "Undo")
+
+    table.insert(notificationHistory, 1, {
+        Time = os.time(), Kind = kind, Title = title, Text = text, Action = buttonText,
+    })
+    while #notificationHistory > 100 do table.remove(notificationHistory) end
+    if not active or not active.NotificationHost then return nil end
+
+    local width, cardHeight = 330, 82
+    local holder = Instance.new("Frame")
+    holder.Name = "ActionNotificationHolder"
+    holder.Size = UDim2.fromOffset(width, cardHeight)
+    holder.BackgroundTransparency = 1
+    holder.ClipsDescendants = false
+    holder.ZIndex = 111
+    holder.Parent = active.NotificationHost
+
+    local view = viewportSize()
+    local hostCenter = active.NotificationHost.AbsolutePosition.X + active.NotificationHost.AbsoluteSize.X * 0.5
+    local leavesLeft = hostCenter <= view.X * 0.5
+    local offscreenX = leavesLeft and -(width + 28) or (width + 28)
+
+    local card = Instance.new("CanvasGroup")
+    card.Name = "ActionNotification"
+    card.Size = UDim2.fromScale(1, 1)
+    card.Position = UDim2.fromOffset(offscreenX, 0)
+    card.BackgroundTransparency = 0.03
+    card.GroupTransparency = 0
+    card.BorderSizePixel = 0
+    card.ClipsDescendants = true
+    card.ZIndex = 112
+    card.Parent = holder
+    bind(card, "BackgroundColor3", "Header")
+    makeCorner(card, 11)
+    makeStroke(card, kindColors[kind] or kindColors.warning, 0.12, 1.2)
+
+    local stripe = Instance.new("Frame")
+    stripe.Size = UDim2.new(0, 4, 1, 0)
+    stripe.BorderSizePixel = 0
+    stripe.BackgroundColor3 = kindColors[kind] or kindColors.warning
+    stripe.ZIndex = 113
+    stripe.Parent = card
+
+    local titleLabel = makeText(card, title, 14, Enum.Font.GothamBold)
+    titleLabel.Position = UDim2.fromOffset(14, 8)
+    titleLabel.Size = UDim2.new(1, -120, 0, 20)
+    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    titleLabel.ZIndex = 113
+
+    local body = makeText(card, text, 12, Enum.Font.Gotham)
+    body.Position = UDim2.fromOffset(14, 31)
+    body.Size = UDim2.new(1, -122, 0, 42)
+    body.TextXAlignment = Enum.TextXAlignment.Left
+    body.TextYAlignment = Enum.TextYAlignment.Top
+    body.TextWrapped = true
+    body.ZIndex = 113
+    bind(body, "TextColor3", "MutedText")
+
+    local action = makeButton(card, buttonText)
+    action.AnchorPoint = Vector2.new(1, 0.5)
+    action.Position = UDim2.new(1, -12, 0.5, 0)
+    action.Size = UDim2.fromOffset(92, 34)
+    action.BackgroundTransparency = 0.02
+    action.ZIndex = 114
+    bind(action, "BackgroundColor3", "SchemeColor")
+
+    local dead = false
+    local function dismiss()
+        if dead then return false end
+        dead = true
+        tween(card, {
+            Position = UDim2.fromOffset(offscreenX, 0),
+            GroupTransparency = 1,
+            BackgroundTransparency = 1,
+        }, 0.38, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+        task.delay(duration(0.41), function()
+            if holder and holder.Parent then holder:Destroy() end
+        end)
+        return true
+    end
+
+    track(action.MouseButton1Click:Connect(function()
+        if dead then return end
+        dismiss()
+        if type(callback) == "function" then safeCall("Notification action " .. buttonText, callback) end
+    end))
+
+    tween(card, {Position = UDim2.fromOffset(0, 0)}, 0.24, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+    task.delay(seconds, dismiss)
+
+    local api = {Frame = card, Holder = holder, ActionButton = action}
+    function api:Close() dismiss() end
+    return api
+end
+
 
 --==================================================
 -- DYNAMIC ISLAND / UNDO / PERSONAL SHELF
@@ -1148,33 +1299,52 @@ local function normalizeControlId(value)
     return tostring(value or "kontrol"):gsub("[^%w%-%_:%./ ]", ""):sub(1, 180)
 end
 
-local function shelfContains(controlId)
-    local shelf = env.LHSettings and env.LHSettings.PersonalShelf or settings.PersonalShelf
-    if type(shelf) ~= "table" then return false end
-    for _, savedId in ipairs(shelf) do
-        if tostring(savedId) == tostring(controlId) then return true end
+local function getShelfList()
+    local source = env.LHSettings and env.LHSettings.PersonalShelf or settings.PersonalShelf
+    local copy = {}
+    if type(source) == "table" then
+        for _, savedId in ipairs(source) do table.insert(copy, tostring(savedId)) end
     end
-    return false
+    return copy
+end
+
+local function shelfIndex(list, controlId)
+    for index, savedId in ipairs(type(list) == "table" and list or {}) do
+        if tostring(savedId) == tostring(controlId) then return index end
+    end
+    return nil
+end
+
+local function shelfContains(controlId)
+    return shelfIndex(getShelfList(), controlId) ~= nil
+end
+
+local function saveShelfList(updated)
+    env.LHSettings = env.LHSettings or {}
+    local clean = {}
+    local seen = {}
+    for _, savedId in ipairs(type(updated) == "table" and updated or {}) do
+        savedId = tostring(savedId)
+        if savedId ~= "" and not seen[savedId] then
+            seen[savedId] = true
+            table.insert(clean, savedId)
+        end
+    end
+    env.LHSettings.PersonalShelf = clean
+    settings.PersonalShelf = clean
+    persistUiStateEdit()
+    return clean
 end
 
 local function saveShelf(controlId, shouldPin)
-    env.LHSettings = env.LHSettings or {}
-    local shelf = env.LHSettings.PersonalShelf
-    if type(shelf) ~= "table" then shelf = {} end
-    local updated = {}
-    local found = false
-    for _, savedId in ipairs(shelf) do
-        if tostring(savedId) == tostring(controlId) then
-            found = true
-            if shouldPin then table.insert(updated, tostring(savedId)) end
-        else
-            table.insert(updated, tostring(savedId))
-        end
+    local updated = getShelfList()
+    local index = shelfIndex(updated, controlId)
+    if shouldPin and not index then
+        table.insert(updated, tostring(controlId))
+    elseif not shouldPin and index then
+        table.remove(updated, index)
     end
-    if shouldPin and not found then table.insert(updated, tostring(controlId)) end
-    env.LHSettings.PersonalShelf = updated
-    settings.PersonalShelf = updated
-    persistUiStateEdit()
+    return saveShelfList(updated)
 end
 
 local function updateNavButtons()
@@ -1321,6 +1491,84 @@ function LULA:OpenUndoHistory()
     end))
 end
 
+function LULA:Confirm(titleText, bodyText, onConfirm)
+    if not active or not active.ScreenGui then return false end
+    if active.ContextOverlay then active.ContextOverlay:Destroy(); active.ContextOverlay = nil end
+
+    local overlay = Instance.new("CanvasGroup")
+    overlay.Name = "LHConfirmation"
+    overlay.Size = UDim2.fromScale(1, 1)
+    overlay.BackgroundColor3 = rgb(0, 0, 0)
+    overlay.BackgroundTransparency = 0.48
+    overlay.BorderSizePixel = 0
+    overlay.ZIndex = 320
+    overlay.Parent = active.ScreenGui
+    active.ContextOverlay = overlay
+
+    local dismiss = Instance.new("TextButton")
+    dismiss.Size = UDim2.fromScale(1, 1)
+    dismiss.BackgroundTransparency = 1
+    dismiss.Text = ""
+    dismiss.ZIndex = 320
+    dismiss.Parent = overlay
+
+    local card = Instance.new("Frame")
+    card.AnchorPoint = Vector2.new(0.5, 0.5)
+    card.Position = UDim2.fromScale(0.5, 0.5)
+    card.Size = UDim2.fromOffset(390, 178)
+    card.BorderSizePixel = 0
+    card.ZIndex = 321
+    card.Parent = overlay
+    bind(card, "BackgroundColor3", "Header")
+    makeCorner(card, 14)
+    makeStroke(card, active.Theme.SchemeColor, 0.12, 1.2)
+
+    local scale = Instance.new("UIScale", card)
+    local view = viewportSize()
+    scale.Scale = math.max(0.72, math.min(1, (view.X - 24) / 410, (view.Y - 40) / 200))
+
+    local title = makeText(card, tostring(titleText or "Are you sure?"), 17, Enum.Font.GothamBold)
+    title.Position = UDim2.fromOffset(18, 15)
+    title.Size = UDim2.new(1, -36, 0, 28)
+    title.TextXAlignment = Enum.TextXAlignment.Center
+    title.ZIndex = 322
+
+    local body = makeText(card, tostring(bodyText or "This action cannot be undone."), 13, Enum.Font.GothamMedium)
+    body.Position = UDim2.fromOffset(18, 48)
+    body.Size = UDim2.new(1, -36, 0, 58)
+    body.TextWrapped = true
+    body.TextXAlignment = Enum.TextXAlignment.Center
+    body.TextYAlignment = Enum.TextYAlignment.Center
+    body.ZIndex = 322
+    bind(body, "TextColor3", "MutedText")
+
+    local yes = makeButton(card, "Yes")
+    yes.Position = UDim2.new(0.5, -142, 1, -54)
+    yes.Size = UDim2.fromOffset(130, 38)
+    yes.BackgroundTransparency = 0.02
+    yes.ZIndex = 323
+    yes.BackgroundColor3 = rgb(40, 177, 91)
+
+    local no = makeButton(card, "No")
+    no.Position = UDim2.new(0.5, 12, 1, -54)
+    no.Size = UDim2.fromOffset(130, 38)
+    no.BackgroundTransparency = 0.02
+    no.ZIndex = 323
+    no.BackgroundColor3 = rgb(210, 48, 65)
+
+    local function closePanel()
+        if active and active.ContextOverlay == overlay then active.ContextOverlay = nil end
+        if overlay.Parent then overlay:Destroy() end
+    end
+    track(dismiss.MouseButton1Click:Connect(closePanel))
+    track(no.MouseButton1Click:Connect(closePanel))
+    track(yes.MouseButton1Click:Connect(function()
+        closePanel()
+        if type(onConfirm) == "function" then safeCall("Confirmation", onConfirm) end
+    end))
+    return true
+end
+
 function LULA:ShowIsland(titleText, bodyText, options)
     if not active or not active.Island then return nil end
     options = type(options) == "table" and options or {}
@@ -1384,69 +1632,283 @@ local function findTabByName(name)
     return nil
 end
 
-local function refreshShelf()
-    if not active or not active.Shelf or not active.Shelf.Scroll then return end
-    local shelf = active.Shelf
-    for _, child in ipairs(shelf.Scroll:GetChildren()) do
-        if not child:IsA("UIListLayout") and not child:IsA("UIPadding") and child.Name ~= "ShelfIntro" then child:Destroy() end
+local function makeShelfToolsIcon(parent)
+    local icon = Instance.new("Frame")
+    icon.Name = "ShelfToolsIcon"
+    icon.Size = UDim2.fromOffset(22, 22)
+    icon.BackgroundTransparency = 1
+    icon.Parent = parent
+
+    local function tool(rotation, x)
+        local handle = Instance.new("Frame")
+        handle.AnchorPoint = Vector2.new(0.5, 0.5)
+        handle.Position = UDim2.fromScale(0.5 + x, 0.55)
+        handle.Size = UDim2.fromOffset(4, 18)
+        handle.Rotation = rotation
+        handle.BorderSizePixel = 0
+        handle.Parent = icon
+        bind(handle, "BackgroundColor3", "SchemeColor")
+        makeCorner(handle, 2)
+
+        local head = Instance.new("Frame")
+        head.AnchorPoint = Vector2.new(0.5, 0.5)
+        head.Position = UDim2.new(0.5, 0, 0, 1)
+        head.Size = UDim2.fromOffset(11, 5)
+        head.BorderSizePixel = 0
+        head.Parent = handle
+        bind(head, "BackgroundColor3", "SchemeColor")
+        makeCorner(head, 2)
     end
-    local saved = env.LHSettings and env.LHSettings.PersonalShelf or {}
+    tool(42, -0.08)
+    tool(-42, 0.08)
+    return icon
+end
+
+local function setShelfGuiZ(root, base)
+    if root:IsA("GuiObject") then root.ZIndex = base end
+    for _, descendant in ipairs(root:GetDescendants()) do
+        if descendant:IsA("GuiObject") then descendant.ZIndex = base + 1 end
+    end
+end
+
+local function refreshShelf()
+    if not active or not active.Shelf or not active.Shelf.ItemsHolder then return end
+    local shelf = active.Shelf
+    if shelf.Dragging then return end
+
+    local holder = shelf.ItemsHolder
+    for _, child in ipairs(holder:GetChildren()) do
+        if not child:IsA("UIListLayout") and not child:IsA("UIPadding") then child:Destroy() end
+    end
+    shelf.RowMap = {}
+
+    local saved = getShelfList()
     local count = 0
-    for _, controlId in ipairs(type(saved) == "table" and saved or {}) do
+
+    local function launchShelfItem(api, controlId, launch)
+        if api.Kind == "button" and type(api.Fire) == "function" then
+            api:Fire()
+        elseif api.Kind == "toggle" and type(api.GetValue) == "function" and type(api.SetValue) == "function" then
+            api:SetValue(not api:GetValue(), true)
+            launch.Text = "  " .. tostring(api.DisplayName or controlId) .. (api:GetValue() and "  [ON]" or "  [OFF]")
+        else
+            local sourceTab = findTabByName(api.TabName)
+            if sourceTab and active.Window then
+                active.Window:SelectTab(sourceTab.Name)
+                task.defer(function()
+                    if not active or not api.Frame or not api.Frame.Parent then return end
+                    local scroll = sourceTab.Scroll
+                    local y = math.max(0, api.Frame.AbsolutePosition.Y - scroll.AbsolutePosition.Y + scroll.CanvasPosition.Y - 8)
+                    scroll.CanvasPosition = Vector2.new(0, y)
+                    if api.SetSearchHighlighted then
+                        api:SetSearchHighlighted(true)
+                        task.delay(1.2, function() if api.SetSearchHighlighted then api:SetSearchHighlighted(false) end end)
+                    end
+                end)
+            end
+        end
+    end
+
+    local function beginShelfDrag(controlId, row, inputObject)
+        if not shelf.Editing or shelf.Dragging or not row.Parent then return end
+        if inputObject.UserInputType ~= Enum.UserInputType.Touch and inputObject.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
+
+        local order = getShelfList()
+        local originalIndex = shelfIndex(order, controlId)
+        if not originalIndex then return end
+
+        shelf.Dragging = controlId
+        local originalAbsolutePosition = row.AbsolutePosition
+        local originalAbsoluteSize = row.AbsoluteSize
+        local startPointer = inputObject.Position
+
+        local placeholder = Instance.new("Frame")
+        placeholder.Name = "ShelfDragPlaceholder"
+        placeholder.Size = UDim2.new(1, 0, 0, math.max(42, originalAbsoluteSize.Y))
+        placeholder.BackgroundTransparency = 0.72
+        placeholder.BorderSizePixel = 0
+        placeholder.LayoutOrder = originalIndex
+        placeholder.Parent = holder
+        bind(placeholder, "BackgroundColor3", "SchemeColor")
+        makeCorner(placeholder, 8)
+        local placeholderStroke = makeStroke(placeholder, active.Theme.SchemeColor, 0.32, 1)
+
+        row.Parent = active.ScreenGui
+        row.Position = UDim2.fromOffset(originalAbsolutePosition.X, originalAbsolutePosition.Y)
+        row.Size = UDim2.fromOffset(originalAbsoluteSize.X, originalAbsoluteSize.Y)
+        row.AnchorPoint = Vector2.new(0, 0)
+        setShelfGuiZ(row, 460)
+        local dragScale = Instance.new("UIScale")
+        dragScale.Scale = 1.02
+        dragScale.Parent = row
+
+        local currentOrder = order
+        local ended = false
+        local moveConnection, endConnection
+
+        local function applyLayoutOrders()
+            for index, savedId in ipairs(currentOrder) do
+                if savedId == controlId then
+                    placeholder.LayoutOrder = index
+                else
+                    local other = shelf.RowMap[savedId]
+                    if other and other.Parent == holder then other.LayoutOrder = index end
+                end
+            end
+        end
+
+        local function calculateOrder(pointerY)
+            local others = {}
+            for _, savedId in ipairs(currentOrder) do
+                if savedId ~= controlId then table.insert(others, savedId) end
+            end
+            local insertAt = #others + 1
+            for index, savedId in ipairs(others) do
+                local other = shelf.RowMap[savedId]
+                if other and other.Parent == holder then
+                    local centerY = other.AbsolutePosition.Y + other.AbsoluteSize.Y * 0.5
+                    if pointerY < centerY then
+                        insertAt = index
+                        break
+                    end
+                end
+            end
+            local rebuilt = {}
+            for _, savedId in ipairs(others) do table.insert(rebuilt, savedId) end
+            table.insert(rebuilt, insertAt, controlId)
+            currentOrder = rebuilt
+            applyLayoutOrders()
+        end
+
+        local function finishDrag()
+            if ended then return end
+            ended = true
+            if moveConnection then moveConnection:Disconnect() end
+            if endConnection then endConnection:Disconnect() end
+            if row and row.Parent then
+                row.Parent = holder
+                row.Size = UDim2.new(1, 0, 0, 46)
+                row.Position = UDim2.new()
+                row.LayoutOrder = shelfIndex(currentOrder, controlId) or originalIndex
+                setShelfGuiZ(row, 4)
+            end
+            if dragScale then dragScale:Destroy() end
+            if placeholder then placeholder:Destroy() end
+            shelf.Dragging = nil
+            saveShelfList(currentOrder)
+            refreshShelf()
+        end
+
+        moveConnection = UserInputService.InputChanged:Connect(function(changed)
+            if ended then return end
+            local pointer
+            if changed.UserInputType == Enum.UserInputType.Touch then
+                pointer = changed.Position
+            elseif changed.UserInputType == Enum.UserInputType.MouseMovement then
+                pointer = UserInputService:GetMouseLocation()
+            else
+                return
+            end
+            local delta = pointer - startPointer
+            row.Position = UDim2.fromOffset(originalAbsolutePosition.X + delta.X, originalAbsolutePosition.Y + delta.Y)
+            calculateOrder(pointer.Y)
+        end)
+        endConnection = UserInputService.InputEnded:Connect(function(endedInput)
+            if endedInput.UserInputType == Enum.UserInputType.Touch or endedInput.UserInputType == Enum.UserInputType.MouseButton1 then
+                finishDrag()
+            end
+        end)
+        track(row.AncestryChanged:Connect(function(_, parent)
+            if not parent then finishDrag() end
+        end))
+    end
+
+    for savedIndex, controlId in ipairs(saved) do
         local api = controlIdRegistry[tostring(controlId)]
         if api and api.Frame and api.Frame.Parent then
             count = count + 1
-            local row = newRow(shelf.Scroll, api.DisplayName or api.Name or controlId, 42)
+            local row = newRow(holder, api.DisplayName or api.Name or controlId, 46)
+            row.LayoutOrder = savedIndex
             row.ZIndex = 4
+            row:SetAttribute("LHShelfControlId", tostring(controlId))
+            shelf.RowMap[tostring(controlId)] = row
+
+            local dragHandle = Instance.new("TextButton")
+            dragHandle.Name = "ShelfDragHandle"
+            dragHandle.Position = UDim2.fromOffset(4, 4)
+            dragHandle.Size = UDim2.fromOffset(31, 38)
+            dragHandle.BackgroundTransparency = 1
+            dragHandle.Text = ""
+            dragHandle.Visible = shelf.Editing == true
+            dragHandle.ZIndex = 7
+            dragHandle.Parent = row
+            for lineIndex = 1, 3 do
+                local line = Instance.new("Frame")
+                line.Position = UDim2.fromOffset(7, 9 + (lineIndex - 1) * 7)
+                line.Size = UDim2.fromOffset(17, 2)
+                line.BorderSizePixel = 0
+                line.ZIndex = 8
+                line.Parent = dragHandle
+                bind(line, "BackgroundColor3", "SchemeColor")
+                makeCorner(line, 1)
+            end
+
             local launch = makeButton(row, "")
-            launch.Size = UDim2.new(1, -40, 1, 0)
+            launch.Position = shelf.Editing and UDim2.fromOffset(35, 0) or UDim2.fromOffset(0, 0)
+            launch.Size = shelf.Editing and UDim2.new(1, -76, 1, 0) or UDim2.new(1, -40, 1, 0)
             launch.BackgroundTransparency = 1
             launch.TextXAlignment = Enum.TextXAlignment.Left
             launch.Text = "  " .. tostring(api.DisplayName or api.Name or controlId)
             launch.ZIndex = 5
+
             local remove = makeKolorButton(row, "X", rgb(205, 54, 68))
             remove.AnchorPoint = Vector2.new(1, 0.5)
             remove.Position = UDim2.new(1, -6, 0.5, 0)
             remove.Size = UDim2.fromOffset(29, 29)
-            remove.ZIndex = 6
+            remove.ZIndex = 7
+
             track(remove.MouseButton1Click:Connect(function()
-                saveShelf(controlId, false)
+                local before = getShelfList()
+                local removedIndex = shelfIndex(before, controlId)
+                if not removedIndex then return end
+                local removedName = tostring(api.DisplayName or api.Name or controlId)
+                table.remove(before, removedIndex)
+                saveShelfList(before)
                 refreshShelf()
-                LULA:ShowIsland("My Shelf", "Removed " .. tostring(api.DisplayName or controlId), {Duration = 2.2})
-            end))
-            track(launch.MouseButton1Click:Connect(function()
-                if api.Kind == "button" and type(api.Fire) == "function" then
-                    api:Fire()
-                elseif api.Kind == "toggle" and type(api.GetValue) == "function" and type(api.SetValue) == "function" then
-                    api:SetValue(not api:GetValue(), true)
-                    launch.Text = "  " .. tostring(api.DisplayName or controlId) .. (api:GetValue() and "  [ON]" or "  [OFF]")
-                else
-                    local sourceTab = findTabByName(api.TabName)
-                    if sourceTab and active.Window then
-                        active.Window:SelectTab(sourceTab.Name)
-                        task.defer(function()
-                            if not active or not api.Frame or not api.Frame.Parent then return end
-                            local scroll = sourceTab.Scroll
-                            local y = math.max(0, api.Frame.AbsolutePosition.Y - scroll.AbsolutePosition.Y + scroll.CanvasPosition.Y - 8)
-                            scroll.CanvasPosition = Vector2.new(0, y)
-                            if api.SetSearchHighlighted then
-                                api:SetSearchHighlighted(true)
-                                task.delay(1.2, function() if api.SetSearchHighlighted then api:SetSearchHighlighted(false) end end)
-                            end
-                        end)
+                LULA:NotifyAction("warning", "My Shelf", "Undo delete for " .. removedName .. "?", 4, "Undo", function()
+                    local restored = getShelfList()
+                    if not shelfIndex(restored, controlId) then
+                        table.insert(restored, math.clamp(removedIndex, 1, #restored + 1), tostring(controlId))
+                        saveShelfList(restored)
                     end
-                end
+                    refreshShelf()
+                    LULA:Notify("success", "My Shelf", "Skript deletion was undone: " .. removedName, 3, nil, true)
+                end)
             end))
+
+            track(launch.MouseButton1Click:Connect(function()
+                if shelf.Editing then return end
+                launchShelfItem(api, controlId, launch)
+            end))
+            track(dragHandle.InputBegan:Connect(function(inputObject)
+                beginShelfDrag(tostring(controlId), row, inputObject)
+            end))
+
             if api.Kind == "toggle" and type(api.GetValue) == "function" then
                 launch.Text = launch.Text .. (api:GetValue() and "  [ON]" or "  [OFF]")
             end
         end
     end
+
     if count == 0 then
-        local empty = makeText(shelf.Scroll, "Hold any feature, then choose Add to My Shelf.", 13, Enum.Font.GothamMedium)
-        empty.Size = UDim2.new(1, -8, 0, 62)
+        local empty = makeText(holder, settings.ShelfEnabled == false
+            and "My Shelf adding is disabled. Turn Shelf Hold Menu on above to add features."
+            or "Hold any feature, then choose Add to My Shelf.", 13, Enum.Font.GothamMedium)
+        empty.Name = "ShelfEmpty"
+        empty.Size = UDim2.new(1, -8, 0, 70)
         empty.TextWrapped = true
         empty.ZIndex = 5
+        bind(empty, "TextColor3", "MutedText")
     end
 end
 
@@ -1461,6 +1923,7 @@ local function queueShelfRefresh()
 end
 
 openControlMenu = function(api)
+    if settings.ShelfEnabled == false then return end
     if not active or not api or not api.Frame or not active.ScreenGui then return end
     if active.ContextOverlay then active.ContextOverlay:Destroy(); active.ContextOverlay = nil end
     local overlay = Instance.new("CanvasGroup")
@@ -1689,7 +2152,7 @@ function LULA.CreateLib(kavName, themeInput)
     pages.ClipsDescendants = true
     pages.Parent = main
 
-    local footer = makeText(main, "Lollypop Hub v10.1", 11, Enum.Font.GothamMedium)
+    local footer = makeText(main, "Lollypop Hub v10.2", 11, Enum.Font.GothamMedium)
     footer.Name = "Footer"
     footer.Position = UDim2.new(0, 158, 1, -20)
     footer.Size = UDim2.new(1, -165, 0, 18)
@@ -1771,6 +2234,7 @@ function LULA.CreateLib(kavName, themeInput)
         Pages = pages,
         TabList = tabList,
         Theme = theme,
+        ThemeSource = themeInput,
         MainStroke = mainStroke,
         SideGradient = sideGradient,
         Tooltip = tooltip,
@@ -3180,18 +3644,319 @@ function LULA.CreateLib(kavName, themeInput)
         if active.Shelf then return active.Shelf.Tab end
         local shelfTab = self:NewTab(tabName or "My Shelf")
         shelfTab:EnsureBuilt()
-        local shelfScroll = shelfTab.Scroll
-        local intro = Instance.new("TextLabel")
-        intro.Name = "ShelfIntro"
-        intro.Size = UDim2.new(1, -4, 0, 48)
-        intro.BackgroundTransparency = 1
-        intro.Font = resolveUIFont(Enum.Font.GothamMedium)
-        intro.TextSize = 12
-        intro.TextWrapped = true
-        intro.Text = "Hold any feature to add it here. Buttons and toggles run directly; other items jump to their original kontrol."
-        intro.Parent = shelfScroll
-        bind(intro, "TextColor3", "MutedText")
-        active.Shelf = {Tab = shelfTab, Scroll = shelfScroll, Intro = intro}
+        local scroll = shelfTab.Scroll
+
+        local profile = newRow(scroll, "ShelfProfile", 174)
+        profile.LayoutOrder = -4000
+        profile.BackgroundTransparency = 0.02
+        makeStroke(profile, active.Theme.SchemeColor, 0.24, 1)
+
+        local viewport = Instance.new("ViewportFrame")
+        viewport.Name = "ShelfAvatarViewport"
+        viewport.Position = UDim2.fromOffset(12, 12)
+        viewport.Size = UDim2.fromOffset(116, 116)
+        viewport.BackgroundTransparency = 0.05
+        viewport.BorderSizePixel = 0
+        viewport.Ambient = rgb(210, 210, 220)
+        viewport.LightColor = rgb(255, 255, 255)
+        viewport.LightDirection = Vector3.new(-1, -1, -1)
+        viewport.Parent = profile
+        bind(viewport, "BackgroundColor3", "ElementColor")
+        makeCorner(viewport, 58)
+        makeStroke(viewport, active.Theme.SchemeColor, 0.12, 2)
+
+        local world = Instance.new("WorldModel")
+        world.Parent = viewport
+        local camera = Instance.new("Camera")
+        camera.FieldOfView = 32
+        camera.Parent = viewport
+        viewport.CurrentCamera = camera
+
+        local fallbackAvatar = Instance.new("ImageLabel")
+        fallbackAvatar.Position = viewport.Position
+        fallbackAvatar.Size = viewport.Size
+        fallbackAvatar.BackgroundTransparency = 1
+        fallbackAvatar.Visible = false
+        fallbackAvatar.Parent = profile
+        makeCorner(fallbackAvatar, 58)
+
+        local hi = makeText(profile, "Hi, my name is " .. tostring(LocalPlayer.DisplayName), 16, Enum.Font.GothamBold)
+        hi.Position = UDim2.fromOffset(142, 12)
+        hi.Size = UDim2.new(1, -154, 0, 30)
+        hi.TextXAlignment = Enum.TextXAlignment.Left
+        hi.TextWrapped = true
+
+        local username = makeText(profile, "@" .. tostring(LocalPlayer.Name), 13, Enum.Font.GothamMedium)
+        username.Position = UDim2.fromOffset(142, 45)
+        username.Size = UDim2.new(1, -154, 0, 20)
+        username.TextXAlignment = Enum.TextXAlignment.Left
+        bind(username, "TextColor3", "SchemeColor")
+
+        local details = makeText(profile,
+            "User ID: " .. tostring(LocalPlayer.UserId) .. "  |  Account Age: " .. tostring(LocalPlayer.AccountAge) .. " days",
+            11.5, Enum.Font.Gotham)
+        details.Position = UDim2.fromOffset(142, 68)
+        details.Size = UDim2.new(1, -154, 0, 34)
+        details.TextXAlignment = Enum.TextXAlignment.Left
+        details.TextWrapped = true
+        bind(details, "TextColor3", "MutedText")
+
+        local about = makeText(profile,
+            "This is your personal LH tab. Save your favorite features, launch them fast, delete them with Undo, and rearrange them your way.",
+            11.5, Enum.Font.Gotham)
+        about.Position = UDim2.fromOffset(142, 103)
+        about.Size = UDim2.new(1, -154, 0, 56)
+        about.TextXAlignment = Enum.TextXAlignment.Left
+        about.TextYAlignment = Enum.TextYAlignment.Top
+        about.TextWrapped = true
+        bind(about, "TextColor3", "MutedText")
+
+        task.spawn(function()
+            local model
+            local okModel = pcall(function()
+                model = Players:CreateHumanoidModelFromUserId(LocalPlayer.UserId)
+            end)
+            if not okModel or not model then
+                local character = LocalPlayer.Character
+                if character then
+                    local oldArchivable = character.Archivable
+                    character.Archivable = true
+                    pcall(function() model = character:Clone() end)
+                    character.Archivable = oldArchivable
+                end
+            end
+
+            if not model or not viewport.Parent then
+                local okThumb, image = pcall(function()
+                    return Players:GetUserThumbnailAsync(LocalPlayer.UserId, Enum.ThumbnailType.AvatarBust, Enum.ThumbnailSize.Size180x180)
+                end)
+                if okThumb and fallbackAvatar.Parent then
+                    fallbackAvatar.Image = image
+                    fallbackAvatar.Visible = true
+                end
+                return
+            end
+
+            for _, descendant in ipairs(model:GetDescendants()) do
+                if descendant:IsA("Script") or descendant:IsA("LocalScript") or descendant:IsA("Tool") then
+                    descendant:Destroy()
+                elseif descendant:IsA("BasePart") then
+                    descendant.Anchored = false
+                    descendant.CanCollide = false
+                end
+            end
+            local avatarRoot = model:FindFirstChild("HumanoidRootPart") or model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart")
+            if avatarRoot then avatarRoot.Anchored = true end
+            model.Name = "ShelfAvatarModel"
+            model.Parent = world
+            pcall(function() model:PivotTo(CFrame.new()) end)
+
+            local boxCFrame, boxSize = model:GetBoundingBox()
+            local focus = boxCFrame.Position + Vector3.new(0, boxSize.Y * 0.04, 0)
+            local distance = math.max(5.5, boxSize.Y * 1.22, boxSize.X * 1.6)
+            camera.CFrame = CFrame.lookAt(focus + Vector3.new(0, boxSize.Y * 0.02, distance), focus)
+
+            local humanoid = model:FindFirstChildOfClass("Humanoid")
+            local animated = false
+            if humanoid then
+                pcall(function()
+                    humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+                    local animator = humanoid:FindFirstChildOfClass("Animator") or Instance.new("Animator", humanoid)
+                    local animation = Instance.new("Animation")
+                    animation.AnimationId = humanoid.RigType == Enum.HumanoidRigType.R6
+                        and "rbxassetid://182435998"
+                        or "rbxassetid://507771019"
+                    local trackObject = animator:LoadAnimation(animation)
+                    trackObject.Looped = true
+                    trackObject.Priority = Enum.AnimationPriority.Movement
+                    trackObject:Play(0.2, 1, 0.82)
+                    animated = true
+                end)
+            end
+
+            if not animated then
+                local started = os.clock()
+                while model.Parent and viewport.Parent do
+                    local wave = math.sin((os.clock() - started) * 2.2)
+                    pcall(function()
+                        model:PivotTo(CFrame.new(0, wave * 0.05, 0) * CFrame.Angles(0, wave * 0.08, 0))
+                    end)
+                    RunService.RenderStepped:Wait()
+                end
+            end
+        end)
+
+        local controlsRow = Instance.new("Frame")
+        controlsRow.Name = "ShelfTopControls"
+        controlsRow.LayoutOrder = -3000
+        controlsRow.Size = UDim2.new(1, -4, 0, 62)
+        controlsRow.BackgroundTransparency = 1
+        controlsRow.Parent = scroll
+        local controlsLayout = Instance.new("UIListLayout")
+        controlsLayout.FillDirection = Enum.FillDirection.Horizontal
+        controlsLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+        controlsLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+        controlsLayout.Padding = UDim.new(0, 6)
+        controlsLayout.Parent = controlsRow
+
+        local status = Instance.new("Frame")
+        status.Name = "ShelfEditingStatus"
+        status.LayoutOrder = -2500
+        status.Size = UDim2.new(1, -4, 0, 28)
+        status.BackgroundTransparency = 1
+        status.Visible = false
+        status.Parent = scroll
+        local statusIcon = makeShelfToolsIcon(status)
+        statusIcon.AnchorPoint = Vector2.new(1, 0.5)
+        statusIcon.Position = UDim2.new(0.5, -58, 0.5, 0)
+        local statusText = makeText(status, "in Editing Mode", 12.5, Enum.Font.GothamBold)
+        statusText.Position = UDim2.new(0.5, -52, 0, 0)
+        statusText.Size = UDim2.fromOffset(150, 28)
+        statusText.TextXAlignment = Enum.TextXAlignment.Left
+        bind(statusText, "TextColor3", "SchemeColor")
+
+        local itemsHolder = Instance.new("Frame")
+        itemsHolder.Name = "ShelfItems"
+        itemsHolder.LayoutOrder = 0
+        itemsHolder.Size = UDim2.new(1, -4, 0, 0)
+        itemsHolder.AutomaticSize = Enum.AutomaticSize.Y
+        itemsHolder.BackgroundTransparency = 1
+        itemsHolder.Parent = scroll
+        local itemsLayout = Instance.new("UIListLayout")
+        itemsLayout.Padding = UDim.new(0, 6)
+        itemsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        itemsLayout.Parent = itemsHolder
+        local itemsPadding = Instance.new("UIPadding")
+        itemsPadding.PaddingBottom = UDim.new(0, 8)
+        itemsPadding.Parent = itemsHolder
+
+        local shelfData = {
+            Tab = shelfTab,
+            Scroll = scroll,
+            Profile = profile,
+            ControlsRow = controlsRow,
+            EditingStatus = status,
+            ItemsHolder = itemsHolder,
+            Editing = false,
+            Dragging = nil,
+            RowMap = {},
+        }
+        active.Shelf = shelfData
+
+        local function miniControl(name, isToggle, initialValue, callback, danger)
+            local frame = newRow(controlsRow, name, 54)
+            frame.Size = UDim2.new(1 / 3, -6, 0, 54)
+            frame.BackgroundTransparency = 0.04
+            local label = makeText(frame, name, 11.5, Enum.Font.GothamBold)
+            label.Position = UDim2.fromOffset(7, 4)
+            label.Size = UDim2.new(1, -14, 0, 23)
+            label.TextXAlignment = Enum.TextXAlignment.Center
+            label.TextWrapped = true
+            local hit = makeButton(frame, "")
+            hit.Size = UDim2.fromScale(1, 1)
+            hit.BackgroundTransparency = 1
+            hit.ZIndex = 8
+
+            local api = {Value = initialValue == true, Frame = frame}
+            if isToggle then
+                local pill = Instance.new("Frame")
+                pill.AnchorPoint = Vector2.new(0.5, 1)
+                pill.Position = UDim2.new(0.5, 0, 1, -5)
+                pill.Size = UDim2.fromOffset(34, 18)
+                pill.BorderSizePixel = 0
+                pill.Parent = frame
+                makeCorner(pill, 9)
+                local knob = Instance.new("Frame")
+                knob.Size = UDim2.fromOffset(14, 14)
+                knob.BorderSizePixel = 0
+                knob.BackgroundColor3 = rgb(248, 248, 250)
+                knob.Parent = pill
+                makeCorner(knob, 7)
+                function api:Render()
+                    pill.BackgroundColor3 = self.Value and active.Theme.SchemeColor or rgb(82, 83, 94)
+                    knob.Position = self.Value and UDim2.fromOffset(18, 2) or UDim2.fromOffset(2, 2)
+                end
+                function api:SetValue(value, fire)
+                    self.Value = value == true
+                    self:Render()
+                    if fire ~= false and type(callback) == "function" then callback(self.Value) end
+                end
+                api:Render()
+                track(hit.MouseButton1Click:Connect(function() api:SetValue(not api.Value, true) end))
+            else
+                if danger then
+                    frame.BackgroundColor3 = rgb(102, 31, 40)
+                    label.TextColor3 = rgb(255, 236, 239)
+                end
+                track(hit.MouseButton1Click:Connect(function()
+                    if type(callback) == "function" then callback() end
+                end))
+            end
+            return api
+        end
+
+        -- This compact toggle lives in the profile card so users can disable the
+        -- hold-to-add pop-up without disabling their saved Shelf items.
+        local holdToggle = makeButton(profile, "Shelf Hold Menu")
+        holdToggle.AnchorPoint = Vector2.new(0, 1)
+        holdToggle.Position = UDim2.fromOffset(12, 164)
+        holdToggle.Size = UDim2.fromOffset(116, 28)
+        holdToggle.TextSize = 10.5
+        holdToggle.BackgroundTransparency = 0.08
+        local holdDot = Instance.new("Frame")
+        holdDot.AnchorPoint = Vector2.new(1, 0.5)
+        holdDot.Position = UDim2.new(1, -7, 0.5, 0)
+        holdDot.Size = UDim2.fromOffset(9, 9)
+        holdDot.BorderSizePixel = 0
+        holdDot.Parent = holdToggle
+        makeCorner(holdDot, 5)
+        local function renderHoldToggle()
+            local enabled = settings.ShelfEnabled ~= false
+            holdToggle.Text = enabled and "Shelf Hold Menu: ON" or "Shelf Hold Menu: OFF"
+            holdDot.BackgroundColor3 = enabled and active.Theme.SchemeColor or rgb(100, 101, 112)
+        end
+        renderHoldToggle()
+        track(holdToggle.MouseButton1Click:Connect(function()
+            settings.ShelfEnabled = not (settings.ShelfEnabled ~= false)
+            env.LHSettings = env.LHSettings or {}
+            env.LHSettings.ShelfEnabled = settings.ShelfEnabled
+            env.LHUISettings.ShelfEnabled = settings.ShelfEnabled
+            renderHoldToggle()
+            persistIndependentShelfSetting()
+            refreshShelf()
+            LULA:ShowIsland("My Shelf", settings.ShelfEnabled and "Hold-to-add pop-ups enabled." or "Hold-to-add pop-ups disabled.", {Duration = 2.4})
+        end))
+
+        local autoSaveControl
+        autoSaveControl = miniControl("Auto Save", true, settings.ShelfAutoSave == true, function(value)
+            settings.ShelfAutoSave = value == true
+            env.LHSettings = env.LHSettings or {}
+            env.LHSettings.ShelfAutoSave = settings.ShelfAutoSave
+            env.LHUISettings.ShelfAutoSave = settings.ShelfAutoSave
+            persistIndependentShelfSetting()
+            LULA:ShowIsland("My Shelf Auto Save", value and "Shelf edits save instantly." or "Shelf edits wait for Save Settings.", {Duration = 2.5})
+        end)
+
+        miniControl("Delete All", false, false, function()
+            local current = getShelfList()
+            if #current == 0 then
+                LULA:ShowIsland("My Shelf", "Your Shelf is already empty.", {Duration = 2.2})
+                return
+            end
+            LULA:Confirm("Delete All Shelf Items?", "This removes every saved feature from My Shelf. A confirmation prevents accidental klicks.", function()
+                saveShelfList({})
+                refreshShelf()
+                LULA:Notify("success", "My Shelf", "Every Shelf item was deleted.", 3, nil, true)
+            end)
+        end, true)
+
+        local rearrangeControl
+        rearrangeControl = miniControl("Rearrange", true, false, function(value)
+            shelfData.Editing = value == true
+            status.Visible = shelfData.Editing
+            refreshShelf()
+        end)
+
         refreshShelf()
         task.spawn(function()
             for _, candidate in ipairs(active and active.Tabs or {}) do
@@ -3377,9 +4142,20 @@ end
 
 function LULA:SetTheme(themeInput)
     if not active then return false end
+    active.ThemeSource = themeInput
     active.Theme = resolveTheme(themeInput)
     applyTheme()
     return true
+end
+
+function LULA:SetAppearanceMode(mode)
+    mode = string.lower(tostring(mode or "Dark")) == "light" and "Light" or "Dark"
+    settings.AppearanceMode = mode
+    if active then
+        active.Theme = resolveTheme(active.ThemeSource or "Kandy")
+        applyTheme()
+    end
+    return mode
 end
 
 function LULA:GetThemeNames()
