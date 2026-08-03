@@ -26,11 +26,11 @@ if typeof(defaultAccent) ~= "Color3" then
     defaultAccent = rgb(255, 72, 176)
 end;
 
-local online_status = "Online"
+local online_status = "Offline"
 
 -- Easy animation settings. Change only the numeric IDs in the LH main hub.
-local DEFAULT_OWNER_KREDITS_ANIMATION_ID = 507771019
-local DEFAULT_MY_SHELF_ANIMATION_ID = 507771019
+local DEFAULT_OWNER_KREDITS_ANIMATION_ID = 85612839739153
+local DEFAULT_MY_SHELF_ANIMATION_ID = 113164397821194
 
 local themes = {
     Kandy = {
