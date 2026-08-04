@@ -5394,6 +5394,10 @@ function LULA.CreateLib(kavName, themeInput)
             return table.concat(lines, "\n")
         end
 
+        local originalAnimationsByCharacter = setmetatable({}, {__mode = "k"})
+        local activeBundle = nil
+        local characterAddedConnection = nil
+
         local function getAnimationObject(animateScript, path)
             local current = animateScript
             for segment in tostring(path):gmatch("[^%.]+") do
