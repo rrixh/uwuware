@@ -1,4 +1,3 @@
--- kavo ui v4.6 - Animation Bundles Marketplace / Favorites build
 local LULA = {}
 local env = (getgenv and getgenv()) or _G
 
