@@ -1,5 +1,4 @@
 local LULA = {}
-LULA.Version = "4.7"
 LULA.AnimationMarketplaceVersion = 4
 local env = (getgenv and getgenv()) or _G
 
@@ -4034,7 +4033,7 @@ function LULA.CreateLib(kavName, themeInput)
             if type(synTable) == "table" then table.insert(candidates, synTable.request) end
             local fluxusTable = rawget(env, "fluxus")
             if type(fluxusTable) == "table" then table.insert(candidates, fluxusTable.request) end
-            for _, candidate in pairs(candidates) do
+            for _, candidate in ipairs(candidates) do
                 if typeof(candidate) == "function" then return candidate end
             end
             return nil
@@ -4042,26 +4041,66 @@ function LULA.CreateLib(kavName, themeInput)
 
         local executorRequest = getRequestFunction()
         local function httpGet(url)
-            local ok, body = pcall(function() return game:HttpGet(url, true) end)
-            if ok and type(body) == "string" and #body > 0 then return body end
+            url = tostring(url or "")
+            local failures = {}
+
+            -- Executor request is tried first because it exposes the real status code.
             if executorRequest then
                 local requestOk, response = pcall(executorRequest, {
                     Url = url,
                     Method = "GET",
                     Headers = {
                         ["Accept"] = "application/json",
-                        ["User-Agent"] = "Roblox/LollypopHub-AnimationBundles",
+                        ["User-Agent"] = "Roblox/LollypopHub-AnimationBundles-V4",
                     },
                 })
                 if requestOk and type(response) == "table" then
                     local status = tonumber(response.StatusCode or response.Status or response.status_code or 0) or 0
                     local responseBody = response.Body or response.body
-                    if status >= 200 and status < 300 and type(responseBody) == "string" then
+                    if status >= 200 and status < 300 and type(responseBody) == "string" and #responseBody > 0 then
                         return responseBody
                     end
+                    table.insert(failures, "request HTTP " .. tostring(status > 0 and status or "unknown"))
+                elseif not requestOk then
+                    table.insert(failures, "request error: " .. tostring(response))
                 end
             end
-            error("No working HTTP GET method was available for: " .. tostring(url))
+
+            local ok, body = pcall(function() return game:HttpGet(url, true) end)
+            if ok and type(body) == "string" and #body > 0 then return body end
+            if not ok then table.insert(failures, "game:HttpGet error: " .. tostring(body)) end
+
+            error("HTTP GET failed for " .. url .. (#failures > 0 and (" (" .. table.concat(failures, "; ") .. ")") or ""))
+        end
+
+        local function copyText(text)
+            text = tostring(text or "")
+            local compat = rawget(env, "LHCompat")
+            if type(compat) == "table" and type(compat.SetClipboard) == "function" then
+                local ok, result = pcall(compat.SetClipboard, text)
+                if ok and result ~= false then return true end
+            end
+
+            local candidates = {
+                rawget(env, "setclipboard"),
+                rawget(env, "toclipboard"),
+                rawget(env, "writeclipboard"),
+            }
+            local synTable = rawget(env, "syn")
+            if type(synTable) == "table" then
+                table.insert(candidates, synTable.write_clipboard)
+                table.insert(candidates, synTable.setclipboard)
+            end
+            local clipboardTable = rawget(env, "Clipboard")
+            if type(clipboardTable) == "table" then table.insert(candidates, clipboardTable.set) end
+
+            for _, writer in ipairs(candidates) do
+                if typeof(writer) == "function" then
+                    local ok = pcall(writer, text)
+                    if ok then return true end
+                end
+            end
+            return false
         end
 
         local R15_SLOTS = {
@@ -5341,46 +5380,18 @@ function LULA.CreateLib(kavName, themeInput)
         end
 
         local function quoteLuaString(value)
-            return string.format("%q", tostring(value or ""))
+            return string.format("%q", tostring(value or "Animation Pack"))
         end
 
         local function makePackTable(bundleName, slots)
-            local lines = {
-                "[" .. quoteLuaString(bundleName) .. "] = {"
-            }
+            local lines = {"[" .. quoteLuaString(bundleName) .. "] = {"}
             for index, slot in ipairs(SLOT_ORDER) do
-                local value = slots[slot] and tostring(slots[slot]) or "nil"
+                local value = tonumber(slots and slots[slot]) or 0
                 local suffix = index < #SLOT_ORDER and "," or ""
-                table.insert(lines, string.format("    %s = %s%s", slot, value, suffix))
+                table.insert(lines, string.format("    %s = %d%s", slot, value, suffix))
             end
             table.insert(lines, "},")
             return table.concat(lines, "\n")
-        end
-
-        local function copyToClipboard(text)
-            text = tostring(text or "")
-            if env.LHCompat and type(env.LHCompat.SetClipboard) == "function" then
-                local ok, result, err = pcall(env.LHCompat.SetClipboard, text)
-                if ok and result ~= false then return true end
-                if ok and result == false then return false, err end
-            end
-
-            local clipboardTable = rawget(env, "Clipboard")
-            local synTable = rawget(env, "syn")
-            local candidates = {
-                rawget(env, "setclipboard"),
-                rawget(env, "toclipboard"),
-                rawget(env, "set_clipboard"),
-                type(clipboardTable) == "table" and clipboardTable.set or nil,
-                type(synTable) == "table" and synTable.write_clipboard or nil,
-            }
-            for _, candidate in ipairs(candidates) do
-                if type(candidate) == "function" then
-                    local ok = pcall(candidate, text)
-                    if ok then return true end
-                end
-            end
-            return false, "clipboard unsupported"
         end
 
         local function getAnimationObject(animateScript, path)
@@ -5522,12 +5533,6 @@ function LULA.CreateLib(kavName, themeInput)
             task.wait()
             pcall(function()
                 animateScript.Disabled = false
-            end)
-            -- Force the default Animate script to rebuild its cached tracks after IDs change.
-            task.wait()
-            stopCurrentCharacterTracks(humanoid)
-            pcall(function()
-                humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
             end)
 
             activeBundle = {
@@ -5922,7 +5927,7 @@ function LULA.CreateLib(kavName, themeInput)
         local function resolveItemSlots(item)
             local cached = resolvedSlotsCache[item.Id]
             if cached then
-                return cached.Slots, cached.Details, cached.Sources, cached.Verification, cached.Assets, cached.CatalogSlots
+                return cached.Slots, cached.Details, cached.Assets, cached.SlotSources, cached.Verification, cached.CatalogSlots
             end
             local details = fetchBundleDetails(item)
             local slots, assets, slotSources, verification, catalogSlots = resolveAnimationSlots(details)
@@ -5934,12 +5939,12 @@ function LULA.CreateLib(kavName, themeInput)
             resolvedSlotsCache[item.Id] = {
                 Slots = slots,
                 Details = details,
-                Sources = slotSources or {},
+                Assets = assets,
+                SlotSources = slotSources or {},
                 Verification = verification,
-                Assets = assets or {},
                 CatalogSlots = catalogSlots or {},
             }
-            return slots, details, slotSources or {}, verification, assets or {}, catalogSlots or {}
+            return slots, details, assets, slotSources or {}, verification, catalogSlots or {}
         end
 
         local function toggleBundle(item, switchApi)
@@ -5986,148 +5991,166 @@ function LULA.CreateLib(kavName, themeInput)
             end)
         end
 
+
+
+        -- Marketplace V4 native bundle information overlay. Kept in a nested
+        -- builder so the large Animation Bundles method stays below Luau's active-local limit.
+        local function createAnimationBundleDetailsOverlay()
         local detailsOverlay = Instance.new("Frame")
-        detailsOverlay.Name = "AnimationBundleDetailsOverlay"
+        detailsOverlay.Name = "AnimationBundleDetailsV4"
         detailsOverlay.Size = UDim2.fromScale(1, 1)
-        detailsOverlay.BackgroundColor3 = rgb(0, 0, 0)
-        detailsOverlay.BackgroundTransparency = 0.34
-        detailsOverlay.BorderSizePixel = 0
+        detailsOverlay.BackgroundTransparency = 1
         detailsOverlay.Visible = false
-        detailsOverlay.ZIndex = 700
+        detailsOverlay.ZIndex = 340
         detailsOverlay.Parent = active.ScreenGui
 
+        local detailsShade = Instance.new("TextButton")
+        detailsShade.Name = "Shade"
+        detailsShade.Size = UDim2.fromScale(1, 1)
+        detailsShade.BackgroundColor3 = rgb(0, 0, 0)
+        detailsShade.BackgroundTransparency = 0.34
+        detailsShade.BorderSizePixel = 0
+        detailsShade.AutoButtonColor = false
+        detailsShade.Text = ""
+        detailsShade.ZIndex = 340
+        detailsShade.Parent = detailsOverlay
+
         local detailsPanel = Instance.new("Frame")
-        detailsPanel.Name = "AnimationBundleDetailsPanel"
+        detailsPanel.Name = "Panel"
         detailsPanel.AnchorPoint = Vector2.new(0.5, 0.5)
         detailsPanel.Position = UDim2.fromScale(0.5, 0.5)
-        detailsPanel.Size = UDim2.new(0.92, 0, 0.86, 0)
+        detailsPanel.Size = UDim2.new(0.93, 0, 0.88, 0)
         detailsPanel.BorderSizePixel = 0
         detailsPanel.ClipsDescendants = true
-        detailsPanel.ZIndex = 701
+        detailsPanel.ZIndex = 341
         detailsPanel.Parent = detailsOverlay
         bind(detailsPanel, "BackgroundColor3", "Background")
         makeCorner(detailsPanel, 14)
-        makeStroke(detailsPanel, active.Theme.SchemeColor, 0.16, 1.2)
+        makeStroke(detailsPanel, active.Theme.SchemeColor, 0.22, 1.2)
         local detailsConstraint = Instance.new("UISizeConstraint")
-        detailsConstraint.MinSize = Vector2.new(280, 310)
-        detailsConstraint.MaxSize = Vector2.new(680, 590)
+        detailsConstraint.MaxSize = Vector2.new(740, 620)
+        detailsConstraint.MinSize = Vector2.new(300, 330)
         detailsConstraint.Parent = detailsPanel
 
         local detailsHeader = Instance.new("Frame")
-        detailsHeader.Size = UDim2.new(1, 0, 0, 94)
+        detailsHeader.Size = UDim2.new(1, 0, 0, 112)
         detailsHeader.BorderSizePixel = 0
-        detailsHeader.ZIndex = 702
+        detailsHeader.ZIndex = 342
         detailsHeader.Parent = detailsPanel
         bind(detailsHeader, "BackgroundColor3", "Header")
 
         local detailThumbnail = Instance.new("ImageLabel")
         detailThumbnail.Position = UDim2.fromOffset(10, 10)
-        detailThumbnail.Size = UDim2.fromOffset(74, 74)
+        detailThumbnail.Size = UDim2.fromOffset(90, 90)
         detailThumbnail.BackgroundTransparency = 0.04
         detailThumbnail.BorderSizePixel = 0
         detailThumbnail.ScaleType = Enum.ScaleType.Fit
-        detailThumbnail.ZIndex = 703
+        detailThumbnail.ZIndex = 343
         detailThumbnail.Parent = detailsHeader
         bind(detailThumbnail, "BackgroundColor3", "ElementColor")
         makeCorner(detailThumbnail, 10)
 
-        local detailTitle = makeText(detailsHeader, "Loading bundle...", 14, Enum.Font.GothamBold)
-        detailTitle.Position = UDim2.fromOffset(94, 10)
-        detailTitle.Size = UDim2.new(1, -142, 0, 38)
-        detailTitle.TextWrapped = true
+        local detailTitle = makeText(detailsHeader, "Animation Bundle", 16, Enum.Font.GothamBold)
+        detailTitle.Position = UDim2.fromOffset(111, 11)
+        detailTitle.Size = UDim2.new(1, -162, 0, 45)
         detailTitle.TextXAlignment = Enum.TextXAlignment.Left
         detailTitle.TextYAlignment = Enum.TextYAlignment.Top
-        detailTitle.ZIndex = 703
+        detailTitle.TextWrapped = true
+        detailTitle.ZIndex = 343
 
-        local detailCreator = makeText(detailsHeader, "", 10.5, Enum.Font.GothamMedium)
-        detailCreator.Position = UDim2.fromOffset(94, 49)
-        detailCreator.Size = UDim2.new(1, -142, 0, 16)
+        local detailCreator = makeText(detailsHeader, "", 11.5, Enum.Font.GothamMedium)
+        detailCreator.Position = UDim2.fromOffset(111, 60)
+        detailCreator.Size = UDim2.new(1, -162, 0, 18)
         detailCreator.TextXAlignment = Enum.TextXAlignment.Left
         detailCreator.TextTruncate = Enum.TextTruncate.AtEnd
-        detailCreator.ZIndex = 703
+        detailCreator.ZIndex = 343
         bind(detailCreator, "TextColor3", "MutedText")
 
-        local detailMeta = makeText(detailsHeader, "Animation Bundle", 9.5, Enum.Font.Gotham)
-        detailMeta.Position = UDim2.fromOffset(94, 67)
-        detailMeta.Size = UDim2.new(1, -142, 0, 16)
+        local detailMeta = makeText(detailsHeader, "Animation Bundle", 10, Enum.Font.Gotham)
+        detailMeta.Position = UDim2.fromOffset(111, 81)
+        detailMeta.Size = UDim2.new(1, -162, 0, 19)
         detailMeta.TextXAlignment = Enum.TextXAlignment.Left
         detailMeta.TextTruncate = Enum.TextTruncate.AtEnd
-        detailMeta.ZIndex = 703
+        detailMeta.ZIndex = 343
         bind(detailMeta, "TextColor3", "SchemeColor")
 
-        local detailClose = makeButton(detailsHeader, "X")
-        detailClose.AnchorPoint = Vector2.new(1, 0)
-        detailClose.Position = UDim2.new(1, -8, 0, 8)
-        detailClose.Size = UDim2.fromOffset(32, 32)
-        detailClose.TextSize = 11
-        detailClose.ZIndex = 704
+        local detailCloseTop = makeKolorButton(detailsHeader, "X", rgb(204, 45, 61))
+        detailCloseTop.AnchorPoint = Vector2.new(1, 0)
+        detailCloseTop.Position = UDim2.new(1, -9, 0, 9)
+        detailCloseTop.Size = UDim2.fromOffset(31, 31)
+        detailCloseTop.TextSize = 11
+        detailCloseTop.ZIndex = 344
 
-        local detailSection = makeText(detailsPanel, "Animation IDs + source", 11.5, Enum.Font.GothamBold)
-        detailSection.Position = UDim2.fromOffset(12, 99)
-        detailSection.Size = UDim2.new(1, -24, 0, 22)
-        detailSection.TextXAlignment = Enum.TextXAlignment.Left
-        detailSection.ZIndex = 702
+        local detailSectionLabel = makeText(detailsPanel, "Animation IDs / Character.Animate Paths / Sources", 12.5, Enum.Font.GothamBold)
+        detailSectionLabel.Position = UDim2.fromOffset(13, 119)
+        detailSectionLabel.Size = UDim2.new(1, -26, 0, 23)
+        detailSectionLabel.TextXAlignment = Enum.TextXAlignment.Left
+        detailSectionLabel.ZIndex = 342
 
         local detailScroll = Instance.new("ScrollingFrame")
-        detailScroll.Position = UDim2.fromOffset(10, 123)
-        detailScroll.Size = UDim2.new(1, -20, 1, -215)
+        detailScroll.Name = "AnimationIdRows"
+        detailScroll.Position = UDim2.fromOffset(13, 145)
+        detailScroll.Size = UDim2.new(1, -26, 1, -246)
         detailScroll.BackgroundTransparency = 1
         detailScroll.BorderSizePixel = 0
         detailScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
         detailScroll.CanvasSize = UDim2.new()
         detailScroll.ScrollBarThickness = 4
-        detailScroll.ZIndex = 702
+        detailScroll.ZIndex = 342
         detailScroll.Parent = detailsPanel
         bind(detailScroll, "ScrollBarImageColor3", "SchemeColor")
         local detailList = Instance.new("UIListLayout")
-        detailList.Padding = UDim.new(0, 5)
+        detailList.Padding = UDim.new(0, 6)
         detailList.SortOrder = Enum.SortOrder.LayoutOrder
         detailList.Parent = detailScroll
+
+        local detailLoading = makeText(detailScroll, "Loading Roblox bundle details...", 12, Enum.Font.GothamBold)
+        detailLoading.Name = "Loading"
+        detailLoading.Size = UDim2.new(1, -2, 0, 58)
+        detailLoading.TextWrapped = true
+        detailLoading.TextXAlignment = Enum.TextXAlignment.Center
+        detailLoading.TextYAlignment = Enum.TextYAlignment.Center
+        detailLoading.ZIndex = 343
+        bind(detailLoading, "TextColor3", "SchemeColor")
 
         local detailActions = Instance.new("Frame")
         detailActions.AnchorPoint = Vector2.new(0, 1)
         detailActions.Position = UDim2.fromScale(0, 1)
-        detailActions.Size = UDim2.new(1, 0, 0, 84)
+        detailActions.Size = UDim2.new(1, 0, 0, 94)
         detailActions.BorderSizePixel = 0
-        detailActions.ZIndex = 702
+        detailActions.ZIndex = 342
         detailActions.Parent = detailsPanel
         bind(detailActions, "BackgroundColor3", "Header")
         local detailActionPadding = Instance.new("UIPadding")
-        detailActionPadding.PaddingTop = UDim.new(0, 7)
-        detailActionPadding.PaddingBottom = UDim.new(0, 7)
-        detailActionPadding.PaddingLeft = UDim.new(0, 8)
-        detailActionPadding.PaddingRight = UDim.new(0, 8)
+        detailActionPadding.PaddingTop = UDim.new(0, 8)
+        detailActionPadding.PaddingBottom = UDim.new(0, 8)
+        detailActionPadding.PaddingLeft = UDim.new(0, 9)
+        detailActionPadding.PaddingRight = UDim.new(0, 9)
         detailActionPadding.Parent = detailActions
         local detailActionGrid = Instance.new("UIGridLayout")
-        detailActionGrid.CellSize = UDim2.new(0.5, -4, 0, 31)
-        detailActionGrid.CellPadding = UDim2.fromOffset(8, 8)
+        detailActionGrid.CellPadding = UDim2.fromOffset(7, 7)
+        detailActionGrid.CellSize = UDim2.new(0.5, -4, 0, 35)
         detailActionGrid.FillDirectionMaxCells = 2
         detailActionGrid.SortOrder = Enum.SortOrder.LayoutOrder
         detailActionGrid.Parent = detailActions
 
-        local detailApply = makeButton(detailActions, "Apply + Play")
+        local detailApply = makeKolorButton(detailActions, "Apply + Play", TOGGLE_ON_COLOR)
         detailApply.LayoutOrder = 1
-        detailApply.TextSize = 10.5
-        local detailRestore = makeButton(detailActions, "Restore Original")
+        detailApply.TextSize = 11.5
+        detailApply.ZIndex = 343
+        local detailRestore = makeKolorButton(detailActions, "Restore Original", TOGGLE_OFF_COLOR)
         detailRestore.LayoutOrder = 2
-        detailRestore.TextSize = 10.5
-        local detailCopyTable = makeButton(detailActions, "Kopy Bundle as Table")
+        detailRestore.TextSize = 11.5
+        detailRestore.ZIndex = 343
+        local detailCopyTable = makeButton(detailActions, "Kopy Animation Bundle as Table")
         detailCopyTable.LayoutOrder = 3
-        detailCopyTable.TextSize = 9.5
-        local detailBottomClose = makeButton(detailActions, "Close")
-        detailBottomClose.LayoutOrder = 4
-        detailBottomClose.TextSize = 10.5
-
-        local detailLoading = makeText(detailsPanel, "Loading animation IDs...", 12, Enum.Font.GothamBold)
-        detailLoading.AnchorPoint = Vector2.new(0.5, 0.5)
-        detailLoading.Position = UDim2.fromScale(0.5, 0.53)
-        detailLoading.Size = UDim2.new(1, -34, 0, 70)
-        detailLoading.TextWrapped = true
-        detailLoading.TextXAlignment = Enum.TextXAlignment.Center
-        detailLoading.TextYAlignment = Enum.TextYAlignment.Center
-        detailLoading.Visible = false
-        detailLoading.ZIndex = 710
-        bind(detailLoading, "TextColor3", "SchemeColor")
+        detailCopyTable.TextSize = 10.5
+        detailCopyTable.TextWrapped = true
+        detailCopyTable.ZIndex = 343
+        local detailCloseBottom = makeButton(detailActions, "Close")
+        detailCloseBottom.LayoutOrder = 4
+        detailCloseBottom.TextSize = 11.5
+        detailCloseBottom.ZIndex = 343
 
         local selectedItem = nil
         local selectedDetails = nil
@@ -6141,60 +6164,6 @@ function LULA.CreateLib(kavName, themeInput)
             end
         end
 
-        local function makeDetailRow(slot, id, order, source)
-            local row = Instance.new("Frame")
-            row.LayoutOrder = order
-            row.Size = UDim2.new(1, -2, 0, 52)
-            row.BorderSizePixel = 0
-            row.BackgroundTransparency = 0.03
-            row.ZIndex = 703
-            row.Parent = detailScroll
-            bind(row, "BackgroundColor3", "ElementColor")
-            makeCorner(row, 8)
-            makeStroke(row, active.Theme.SchemeColor, 0.58, 1)
-
-            local slotLabel = makeText(row, SLOT_COPY_NAMES[slot] or slot, 10.5, Enum.Font.GothamBold)
-            slotLabel.Position = UDim2.fromOffset(9, 4)
-            slotLabel.Size = UDim2.new(0.38, -9, 0, 17)
-            slotLabel.TextXAlignment = Enum.TextXAlignment.Left
-            slotLabel.ZIndex = 704
-
-            local sourceLabel = makeText(row, (R15_SLOTS[slot] or slot) .. (source and (" | " .. tostring(source)) or ""), 8.5, Enum.Font.Gotham)
-            sourceLabel.Position = UDim2.fromOffset(9, 23)
-            sourceLabel.Size = UDim2.new(0.62, -9, 0, 22)
-            sourceLabel.TextXAlignment = Enum.TextXAlignment.Left
-            sourceLabel.TextWrapped = true
-            sourceLabel.TextTruncate = Enum.TextTruncate.AtEnd
-            sourceLabel.ZIndex = 704
-            bind(sourceLabel, "TextColor3", "MutedText")
-
-            local idLabel = makeText(row, id and tostring(id) or "Not found", 9.5, Enum.Font.RobotoMono)
-            idLabel.Position = UDim2.new(0.59, 0, 0, 0)
-            idLabel.Size = UDim2.new(0.22, -3, 1, 0)
-            idLabel.TextXAlignment = Enum.TextXAlignment.Right
-            idLabel.TextTruncate = Enum.TextTruncate.AtEnd
-            idLabel.ZIndex = 704
-            if id then bind(idLabel, "TextColor3", "SchemeColor") else idLabel.TextColor3 = active.Theme.Danger end
-
-            local copyId = makeButton(row, "Kopy")
-            copyId.AnchorPoint = Vector2.new(1, 0.5)
-            copyId.Position = UDim2.new(1, -6, 0.5, 0)
-            copyId.Size = UDim2.fromOffset(55, 29)
-            copyId.TextSize = 9.5
-            copyId.Active = id ~= nil
-            copyId.ZIndex = 705
-            if not id then copyId.BackgroundTransparency = 0.55 end
-            if id then
-                track(copyId.MouseButton1Click:Connect(function()
-                    if copyToClipboard(tostring(id)) then
-                        bundleNotify((SLOT_COPY_NAMES[slot] or slot) .. " ID kopied.", "success", 2.2)
-                    else
-                        bundleNotify("Klipboard is not supported by this executor.", "error", 3)
-                    end
-                end))
-            end
-        end
-
         local function closeDetails()
             detailsOverlay.Visible = false
             selectedItem = nil
@@ -6204,32 +6173,70 @@ function LULA.CreateLib(kavName, themeInput)
             selectedVerification = nil
         end
 
-        local function applySelectedDetails()
-            if not selectedItem or not selectedSlots then
-                bundleNotify("Bundle info is still loading.", "warning", 2.5)
-                return
+        local function makeDetailRow(slot, id, order, source)
+            local row = Instance.new("Frame")
+            row.Name = "Slot_" .. tostring(slot)
+            row.LayoutOrder = order
+            row.Size = UDim2.new(1, -2, 0, 57)
+            row.BorderSizePixel = 0
+            row.BackgroundTransparency = 0.02
+            row.ZIndex = 343
+            row.Parent = detailScroll
+            bind(row, "BackgroundColor3", "ElementColor")
+            makeCorner(row, 9)
+            makeStroke(row, active.Theme.SchemeColor, 0.63, 0.8)
+
+            local propertyName = SLOT_COPY_NAMES[slot] or slot
+            local slotLabel = makeText(row, propertyName .. "  [" .. tostring(slot) .. "]", 11.5, Enum.Font.GothamBold)
+            slotLabel.Position = UDim2.fromOffset(10, 5)
+            slotLabel.Size = UDim2.new(0.34, -10, 0, 19)
+            slotLabel.TextXAlignment = Enum.TextXAlignment.Left
+            slotLabel.TextTruncate = Enum.TextTruncate.AtEnd
+            slotLabel.ZIndex = 344
+
+            local pathText = tostring(R15_SLOTS[slot] or slot)
+            if source and tostring(source) ~= "" then pathText = pathText .. " | " .. tostring(source) end
+            local pathLabel = makeText(row, pathText, 9.2, Enum.Font.Gotham)
+            pathLabel.Position = UDim2.fromOffset(10, 27)
+            pathLabel.Size = UDim2.new(0.62, -10, 0, 20)
+            pathLabel.TextXAlignment = Enum.TextXAlignment.Left
+            pathLabel.TextTruncate = Enum.TextTruncate.AtEnd
+            pathLabel.ZIndex = 344
+            bind(pathLabel, "TextColor3", "MutedText")
+
+            local idLabel = makeText(row, id and tostring(id) or "Not found", 10.5, Enum.Font.RobotoMono)
+            idLabel.Position = UDim2.new(0.36, 0, 0, 0)
+            idLabel.Size = UDim2.new(0.42, -4, 1, 0)
+            idLabel.TextXAlignment = Enum.TextXAlignment.Right
+            idLabel.TextTruncate = Enum.TextTruncate.AtEnd
+            idLabel.ZIndex = 344
+            if id then bind(idLabel, "TextColor3", "SchemeColor") else idLabel.TextColor3 = active.Theme.Danger end
+
+            local copyButton = makeButton(row, "Kopy")
+            copyButton.AnchorPoint = Vector2.new(1, 0.5)
+            copyButton.Position = UDim2.new(1, -7, 0.5, 0)
+            copyButton.Size = UDim2.fromOffset(63, 31)
+            copyButton.TextSize = 10.5
+            copyButton.ZIndex = 345
+            copyButton.Active = id ~= nil
+            copyButton.AutoButtonColor = id ~= nil
+            if not id then copyButton.BackgroundTransparency = 0.55 end
+            if id then
+                track(copyButton.MouseButton1Click:Connect(function()
+                    if copyText(tostring(id)) then
+                        bundleNotify(propertyName .. " ID kopied: " .. tostring(id), "success", 2.4)
+                    else
+                        bundleNotify("Clipboard is not supported by this executor.", "error", 3)
+                    end
+                end))
             end
-            state.ToggleSerial = (state.ToggleSerial or 0) + 1
-            local ok, err = pcall(function()
-                restoreOriginalAnimations(true)
-                activeBundle = {Name = selectedItem.Name, Slots = selectedSlots}
-                if not applyAnimationSlots(selectedSlots, true) then
-                    error("Character.Animate could not apply this bundle.")
-                end
-            end)
-            if not ok then
-                state.ActiveId = nil
-                state.ActiveItem = nil
-                state.ActiveSlots = nil
-                refreshToggleVisuals()
-                bundleNotify("Could not play " .. tostring(selectedItem.Name) .. ": " .. tostring(err), "error", 4)
-                return
-            end
-            state.ActiveId = selectedItem.Id
-            state.ActiveItem = selectedItem
-            state.ActiveSlots = selectedSlots
-            refreshToggleVisuals()
-            bundleNotify(tostring(selectedItem.Name) .. " is now active.", "success", 2.7)
+        end
+
+        local detailSwitchApi = {}
+        function detailSwitchApi:SetBusy(value)
+            detailApply.Active = value ~= true
+            detailApply.Text = value == true and "Applying..." or "Apply + Play"
+            detailApply.BackgroundTransparency = value == true and 0.35 or 0
         end
 
         local function openDetails(item)
@@ -6238,85 +6245,99 @@ function LULA.CreateLib(kavName, themeInput)
             selectedSlots = nil
             selectedSlotSources = nil
             selectedVerification = nil
-            clearDetailRows()
             detailsOverlay.Visible = true
-            detailLoading.Text = "Loading animation IDs..."
+            clearDetailRows()
             detailLoading.Visible = true
+            detailLoading.Text = "Loading Roblox bundle details..."
             detailTitle.Text = tostring(item.Name)
             detailCreator.Text = "By " .. tostring(item.CreatorName or "Unknown creator")
             detailMeta.Text = "Animation Bundle | Bundle ID: " .. tostring(item.Id)
             detailThumbnail.Image = "rbxthumb://type=BundleThumbnail&id=" .. tostring(item.Id) .. "&w=420&h=420"
 
             task.spawn(function()
-                local ok, slotsOrError, details, sources, verification = pcall(function()
-                    local slotsValue, detailsValue, sourcesValue, verificationValue = resolveItemSlots(item)
-                    return slotsValue, detailsValue, sourcesValue, verificationValue
-                end)
+                local ok, slotsOrError, details, assets, slotSources, verification, catalogSlots = pcall(resolveItemSlots, item)
                 if not detailsOverlay.Visible or selectedItem ~= item then return end
                 if not ok then
-                    detailLoading.Text = "Failed to resolve animation IDs:\n" .. tostring(slotsOrError)
-                    bundleNotify("The bundle loaded, but its animation slots could not be resolved.", "error", 4)
+                    detailLoading.Visible = true
+                    detailLoading.Text = "Failed to resolve bundle info:\n" .. tostring(slotsOrError)
+                    bundleNotify("Failed to load animation bundle details.", "error", 3.5)
                     return
                 end
 
                 selectedSlots = slotsOrError
                 selectedDetails = details
-                selectedSlotSources = sources or {}
+                selectedSlotSources = slotSources or {}
                 selectedVerification = verification
                 detailTitle.Text = tostring(details.Name or item.Name)
                 detailCreator.Text = "By " .. tostring(details.CreatorName or item.CreatorName or "Unknown creator")
                 local meta = "Animation Bundle | Bundle ID: " .. tostring(details.Id or item.Id)
                 if verification then
-                    meta = meta .. " | Known-ID check: " .. tostring(verification.Matched) .. "/" .. tostring(verification.Total)
+                    meta = meta .. " | Known-ID check: " .. tostring(verification.Matched or 0) .. "/" .. tostring(verification.Total or 9)
+                else
+                    meta = meta .. " | Known-ID check: not a classic reference pack"
                 end
                 detailMeta.Text = meta
-
                 clearDetailRows()
-                local found = 0
                 for index, slot in ipairs(SLOT_ORDER) do
-                    if selectedSlots[slot] then found = found + 1 end
                     makeDetailRow(slot, selectedSlots[slot], index, selectedSlotSources[slot])
                 end
                 detailLoading.Visible = false
 
-                if verification then
-                    if verification.Exact then
-                        bundleNotify("Known original pack check matched all 9 working IDs.", "success", 3.5)
-                    else
-                        bundleNotify("Known original pack check matched " .. tostring(verification.Matched) .. "/" .. tostring(verification.Total) .. " IDs. View Info shows Roblox's resolved IDs.", "warning", 5)
-                    end
-                elseif found < 9 then
-                    bundleNotify("Resolved " .. tostring(found) .. "/9 slots. Missing IDs show as Not found.", "warning", 3.5)
+                local found = 0
+                for _, slot in ipairs(SLOT_ORDER) do if selectedSlots[slot] then found = found + 1 end end
+                if verification and verification.Exact then
+                    bundleNotify("Known original pack check matched all 9 working IDs.", "success", 3.5)
+                elseif verification then
+                    bundleNotify("Known original pack check matched " .. tostring(verification.Matched or 0) .. "/" .. tostring(verification.Total or 9) .. " IDs.", "warning", 4.5)
+                end
+                if found < 9 then
+                    bundleNotify("Resolved " .. tostring(found) .. "/9 slots. Missing IDs show as Not found and copy as 0 in the table.", "warning", 4)
                 end
             end)
         end
 
-        track(detailClose.MouseButton1Click:Connect(closeDetails))
-        track(detailBottomClose.MouseButton1Click:Connect(closeDetails))
-        track(detailApply.MouseButton1Click:Connect(applySelectedDetails))
+        track(detailsShade.MouseButton1Click:Connect(closeDetails))
+        track(detailCloseTop.MouseButton1Click:Connect(closeDetails))
+        track(detailCloseBottom.MouseButton1Click:Connect(closeDetails))
+        track(detailApply.MouseButton1Click:Connect(function()
+            if not selectedItem or not selectedSlots then
+                bundleNotify("Bundle info is still loading.", "warning", 2.5)
+                return
+            end
+            if tonumber(state.ActiveId) == tonumber(selectedItem.Id) then
+                bundleNotify(tostring(selectedItem.Name) .. " is already active.", "info", 2.2)
+                return
+            end
+            toggleBundle(selectedItem, detailSwitchApi)
+        end))
         track(detailRestore.MouseButton1Click:Connect(function()
             state.ToggleSerial = (state.ToggleSerial or 0) + 1
-            restoreOriginalAnimations(false)
+            local restored = restoreOriginalAnimations(true)
             state.ActiveId = nil
             state.ActiveItem = nil
             state.ActiveSlots = nil
             refreshToggleVisuals()
+            bundleNotify(restored and "Original animations restored." or "No stored original animation set was found.", restored and "success" or "warning", 2.8)
         end))
         track(detailCopyTable.MouseButton1Click:Connect(function()
             if not selectedDetails or not selectedSlots then
                 bundleNotify("Bundle info is still loading.", "warning", 2.5)
                 return
             end
-            if copyToClipboard(makePackTable(selectedDetails.Name, selectedSlots)) then
-                bundleNotify("Animation bundle table kopied: " .. tostring(selectedDetails.Name), "success", 3)
+            local snippet = makePackTable(selectedDetails.Name or selectedItem.Name, selectedSlots)
+            if copyText(snippet) then
+                bundleNotify("Animation bundle table kopied: " .. tostring(selectedDetails.Name or selectedItem.Name), "success", 3)
             else
-                bundleNotify("Klipboard is not supported by this executor.", "error", 3)
+                bundleNotify("Clipboard is not supported by this executor.", "error", 3)
             end
         end))
+        return openDetails, closeDetails
+        end
 
-        state.DetailsOverlay = detailsOverlay
+        local openDetails, closeDetails = createAnimationBundleDetailsOverlay()
         state.OpenDetails = openDetails
         state.CloseDetails = closeDetails
+
 
         local renderMarketplace
         local renderFavorites
@@ -6435,15 +6456,15 @@ function LULA.CreateLib(kavName, themeInput)
 
             local nameLabel = makeText(card, tostring(item.Name), 10.2, Enum.Font.GothamBold)
             nameLabel.Position = UDim2.fromOffset(5, 87)
-            nameLabel.Size = UDim2.new(1, -10, 0, 32)
+            nameLabel.Size = UDim2.new(1, -10, 0, 31)
             nameLabel.TextXAlignment = Enum.TextXAlignment.Center
             nameLabel.TextYAlignment = Enum.TextYAlignment.Top
             nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
 
             local infoButton = makeButton(card, "View Info")
-            infoButton.Position = UDim2.fromOffset(6, 121)
-            infoButton.Size = UDim2.new(1, -12, 0, 26)
-            infoButton.TextSize = 9.5
+            infoButton.Position = UDim2.new(0, 6, 0, 121)
+            infoButton.Size = UDim2.new(1, -12, 0, 25)
+            infoButton.TextSize = 10
             track(infoButton.MouseButton1Click:Connect(function() openDetails(item) end))
 
             local switch = makeToggleSwitch(card, item.Id, function(api)
@@ -6456,13 +6477,13 @@ function LULA.CreateLib(kavName, themeInput)
 
         local function createFavoriteRow(item, order)
             resultItemsById[item.Id] = item
-            local row = newRow(favoritesHolder, "FavoriteBundle_" .. tostring(item.Id), 68)
+            local row = newRow(favoritesHolder, "FavoriteBundle_" .. tostring(item.Id), 48)
             row.LayoutOrder = order
             row.BackgroundTransparency = 0.03
 
             local thumbnail = Instance.new("ImageLabel")
             thumbnail.Position = UDim2.fromOffset(5, 5)
-            thumbnail.Size = UDim2.fromOffset(44, 44)
+            thumbnail.Size = UDim2.fromOffset(38, 38)
             thumbnail.BackgroundTransparency = 0.08
             thumbnail.BorderSizePixel = 0
             thumbnail.ScaleType = Enum.ScaleType.Fit
@@ -6472,11 +6493,18 @@ function LULA.CreateLib(kavName, themeInput)
             makeCorner(thumbnail, 7)
 
             local nameLabel = makeText(row, tostring(item.Name), 11, Enum.Font.GothamBold)
-            nameLabel.Position = UDim2.fromOffset(55, 5)
-            nameLabel.Size = UDim2.new(1, -151, 0, 34)
+            nameLabel.Position = UDim2.fromOffset(49, 5)
+            nameLabel.Size = UDim2.new(1, -230, 0, 38)
             nameLabel.TextXAlignment = Enum.TextXAlignment.Left
             nameLabel.TextYAlignment = Enum.TextYAlignment.Center
             nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
+
+            local infoButton = makeButton(row, "Info")
+            infoButton.AnchorPoint = Vector2.new(1, 0.5)
+            infoButton.Position = UDim2.new(1, -84, 0.5, 0)
+            infoButton.Size = UDim2.fromOffset(42, 25)
+            infoButton.TextSize = 9.5
+            track(infoButton.MouseButton1Click:Connect(function() openDetails(item) end))
 
             local remove = makeKolorButton(row, "X", rgb(204, 45, 61))
             remove.AnchorPoint = Vector2.new(1, 0.5)
@@ -6487,17 +6515,11 @@ function LULA.CreateLib(kavName, themeInput)
                 removeFavorite(item, true)
             end))
 
-            local infoButton = makeButton(row, "View Info")
-            infoButton.Position = UDim2.fromOffset(55, 41)
-            infoButton.Size = UDim2.fromOffset(74, 22)
-            infoButton.TextSize = 8.8
-            track(infoButton.MouseButton1Click:Connect(function() openDetails(item) end))
-
             local switch = makeToggleSwitch(row, item.Id, function(api)
                 toggleBundle(item, api)
             end, true)
-            switch.Pill.AnchorPoint = Vector2.new(1, 1)
-            switch.Pill.Position = UDim2.new(1, -35, 1, -6)
+            switch.Pill.AnchorPoint = Vector2.new(1, 0.5)
+            switch.Pill.Position = UDim2.new(1, -35, 0.5, 0)
             return row
         end
 
@@ -6779,7 +6801,6 @@ function LULA.CreateLib(kavName, themeInput)
         end
         state.RestoreOriginal = function()
             state.ToggleSerial = (state.ToggleSerial or 0) + 1
-            if state.CloseDetails then pcall(state.CloseDetails) end
             local restored = restoreOriginalAnimations(true)
             state.ActiveId = nil
             state.ActiveItem = nil
