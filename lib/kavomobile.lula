@@ -1020,9 +1020,63 @@ local function createInfoButton(row, title, tip, xOffset, yOffset)
     infoButton.TextSize = 14
     infoButton.BackgroundTransparency = 0.08
     infoButton.ZIndex = 25
-    makeStroke(infoButton, active and active.Theme and active.Theme.SchemeColor or defaultAccent, 0.48, 1)
+
+    local showToken = 0
     track(infoButton.Activated:Connect(function()
-        LULA:Notify("info", tostring(title or row.Name or "Kontrol Info"), tip, 5, nil, true)
+        showToken = showToken + 1
+        local mine = showToken
+        local previous = row:FindFirstChild("LHInlineKontrolInfo")
+        if previous then previous:Destroy() end
+
+        local availableWidth = math.max(180, row.AbsoluteSize.X > 0 and row.AbsoluteSize.X or 260)
+        local message = tostring(title or row.Name or "Kontrol Info") .. "\n" .. tip
+        local bounds = TextService:GetTextSize(
+            message,
+            11.5,
+            resolveUIFont(Enum.Font.GothamMedium),
+            Vector2.new(math.max(120, availableWidth - 20), 1000)
+        )
+        local overlayHeight = math.clamp(
+            math.max(row.AbsoluteSize.Y, math.ceil(bounds.Y) + 16),
+            34,
+            112
+        )
+
+        local overlay = Instance.new("TextLabel")
+        overlay.Name = "LHInlineKontrolInfo"
+        overlay.AnchorPoint = Vector2.new(0, 0.5)
+        overlay.Position = UDim2.new(0, 0, 0.5, 0)
+        overlay.Size = UDim2.new(1, 0, 0, overlayHeight)
+        overlay.BackgroundTransparency = 1
+        overlay.BorderSizePixel = 0
+        overlay.Font = resolveUIFont(Enum.Font.GothamMedium)
+        overlay.Text = message
+        overlay.TextSize = 11.5
+        overlay.TextWrapped = true
+        overlay.TextXAlignment = Enum.TextXAlignment.Left
+        overlay.TextYAlignment = Enum.TextYAlignment.Center
+        overlay.TextTransparency = 1
+        overlay.ZIndex = 80
+        overlay.Parent = row
+        bind(overlay, "BackgroundColor3", "Header")
+        bind(overlay, "TextColor3", "TextColor")
+        makeCorner(overlay, 6)
+
+        local padding = Instance.new("UIPadding")
+        padding.PaddingLeft = UDim.new(0, 10)
+        padding.PaddingRight = UDim.new(0, 10)
+        padding.PaddingTop = UDim.new(0, 6)
+        padding.PaddingBottom = UDim.new(0, 6)
+        padding.Parent = overlay
+
+        tween(overlay, {BackgroundTransparency = 0.04, TextTransparency = 0}, 0.1)
+        task.delay(4, function()
+            if showToken ~= mine or not overlay.Parent then return end
+            tween(overlay, {BackgroundTransparency = 1, TextTransparency = 1}, 0.18)
+            task.delay(0.2, function()
+                if showToken == mine and overlay.Parent then overlay:Destroy() end
+            end)
+        end)
     end))
     return infoButton
 end
