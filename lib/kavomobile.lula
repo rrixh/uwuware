@@ -2,9 +2,6 @@ local LULA = {}
 LULA.AnimationMarketplaceVersion = 4
 local env = (getgenv and getgenv()) or _G
 
-
--- Central cloned-service access. Supports get.Players, get.ReplicatedStorage,
--- get("Players"), get("ReplicatedStorage"), and every other Roblox service.
 local get = rawget(env, "LHGetService")
 if type(get) ~= "table" then
     local nativeCloneRef = rawget(env, "cloneref") or rawget(env, "clone_ref")
@@ -3916,7 +3913,7 @@ function LULA.CreateLib(kavName, themeInput)
                 lastOnline.TextXAlignment = Enum.TextXAlignment.Left
                 bind(lastOnline, "TextColor3", "MutedText")
 
-                local statusText = tostring(config.OnlineStatus or online_status or "Online")
+                local statusText = tostring(online_status)
                 local statusIcon = statusText:lower() == "offline" and utf8.char(0x1F534) or utf8.char(0x1F7E2)
                 local status = makeText(row, "Online Status: " .. statusText .. " " .. statusIcon, 12, Enum.Font.Gotham)
                 status.Position = UDim2.new(0.5, 0, 0, 216)
