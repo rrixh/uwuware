@@ -2,18 +2,53 @@ local LULA = {}
 LULA.AnimationMarketplaceVersion = 4
 local env = (getgenv and getgenv()) or _G
 
-local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
-local Lighting = game:GetService("Lighting")
-local HttpService = game:GetService("HttpService")
-local TextService = game:GetService("TextService")
-local CoreGui = game:GetService("CoreGui")
-local MarketplaceService = game:GetService("MarketplaceService")
-local AvatarEditorService = game:GetService("AvatarEditorService")
-local AssetService = game:GetService("AssetService")
-local InsertService = game:GetService("InsertService")
+
+-- Central cloned-service access. Supports get.Players, get.ReplicatedStorage,
+-- get("Players"), get("ReplicatedStorage"), and every other Roblox service.
+local get = rawget(env, "LHGetService")
+if type(get) ~= "table" then
+    local nativeCloneRef = rawget(env, "cloneref") or rawget(env, "clone_ref")
+    if type(nativeCloneRef) ~= "function" then
+        nativeCloneRef = function(object) return object end
+        rawset(env, "cloneref", nativeCloneRef)
+    end
+    local serviceCache = {}
+    local function resolveService(serviceName)
+        serviceName = tostring(serviceName or "")
+        if serviceName == "" then error("missing service name", 2) end
+        if serviceCache[serviceName] then return serviceCache[serviceName] end
+        local ok, service = pcall(game.GetService, game, serviceName)
+        if not ok then error(service, 2) end
+        local clonedOk, cloned = pcall(nativeCloneRef, service)
+        service = (clonedOk and cloned) or service
+        serviceCache[serviceName] = service
+        return service
+    end
+    get = setmetatable({}, {
+        __index = function(_, serviceName)
+            return resolveService(serviceName)
+        end,
+        __call = function(_, serviceName)
+            return resolveService(serviceName)
+        end,
+    })
+    rawset(env, "LHGetService", get)
+end
+rawset(env, "get", get)
+
+
+local Players = get.Players
+local TweenService = get.TweenService
+local UserInputService = get.UserInputService
+local RunService = get.RunService
+local Lighting = get.Lighting
+local HttpService = get.HttpService
+local TextService = get.TextService
+local CoreGui = get.CoreGui
+local MarketplaceService = get.MarketplaceService
+local AvatarEditorService = get.AvatarEditorService
+local AssetService = get.AssetService
+local InsertService = get.InsertService
 local LocalPlayer = Players.LocalPlayer
 
 local function rgb(r, g, b)
@@ -972,6 +1007,24 @@ local function createReset(parent, callback)
         end
     end))
     return reset
+end
+
+local function createInfoButton(row, title, tip, xOffset, yOffset)
+    tip = tostring(tip or "")
+    if tip == "" then tip = "No extra information was added for this kontrol yet." end
+    local infoButton = makeButton(row, "...")
+    infoButton.Name = "InfoDots"
+    infoButton.AnchorPoint = Vector2.new(1, 0)
+    infoButton.Position = UDim2.new(1, tonumber(xOffset) or -5, 0, tonumber(yOffset) or 4)
+    infoButton.Size = UDim2.fromOffset(26, 22)
+    infoButton.TextSize = 14
+    infoButton.BackgroundTransparency = 0.08
+    infoButton.ZIndex = 25
+    makeStroke(infoButton, active and active.Theme and active.Theme.SchemeColor or defaultAccent, 0.48, 1)
+    track(infoButton.Activated:Connect(function()
+        LULA:Notify("info", tostring(title or row.Name or "Kontrol Info"), tip, 5, nil, true)
+    end))
+    return infoButton
 end
 
 local function attachTip(row, tip)
@@ -2951,19 +3004,7 @@ function LULA.CreateLib(kavName, themeInput)
                 click.Text = ""
                 click.Size = UDim2.new(1, -34, 1, 0)
                 click.Parent = row
-                local infoButton = makeButton(row, "...")
-                infoButton.Name = "InfoDots"
-                infoButton.AnchorPoint = Vector2.new(1, 0.5)
-                infoButton.Position = UDim2.new(1, -5, 0.5, 0)
-                infoButton.Size = UDim2.fromOffset(28, 25)
-                infoButton.TextSize = 15
-                infoButton.BackgroundTransparency = 1
-                infoButton.ZIndex = 4
-                track(infoButton.MouseButton1Click:Connect(function()
-                    if tostring(tip or "") ~= "" then
-                        LULA:Notify("info", tostring(name), tostring(tip), 5)
-                    end
-                end))
+                createInfoButton(row, name, tip, -5, 5)
                 local busy = false
                 track(click.MouseButton1Click:Connect(function()
                     if row:GetAttribute("LHLongPressTriggered") then
@@ -3038,6 +3079,7 @@ function LULA.CreateLib(kavName, themeInput)
                     set(not value)
                 end))
                 render(false)
+                createInfoButton(row, name, tip, -5, 7)
                 attachTip(row, tip)
                 local api = register({}, row, tostring(name) .. " " .. tostring(tip))
                 api.Kind = "toggle"
@@ -3080,7 +3122,7 @@ function LULA.CreateLib(kavName, themeInput)
                 local function submit()
                     safeCall("TextBox " .. tostring(name), callback, box.Text)
                 end
-                createReset(row, function() box.Text = default; submit() end)
+                createInfoButton(row, name, tip, -5, 3)
                 attachClearX(box)
                 track(box.FocusLost:Connect(function(enterPressed)
                     if enterPressed then submit() end
@@ -3187,6 +3229,7 @@ function LULA.CreateLib(kavName, themeInput)
                 track(valueBox.FocusLost:Connect(function(enterPressed) if enterPressed then set(tonumber(valueBox.Text) or value) end end))
                 local sliderReset = createReset(row, function() set(default) end)
                 sliderReset.Position = UDim2.new(1, -7, 0, 54)
+                createInfoButton(row, name, tip, -35, 4)
                 set(default, false)
                 attachTip(row, tip)
                 local api = register({}, row, tostring(name) .. " " .. tostring(tip))
@@ -3289,7 +3332,9 @@ function LULA.CreateLib(kavName, themeInput)
                         closePopup()
                     end
                 end))
-                createReset(row, function() set(default) end)
+                local dropdownReset = createReset(row, function() set(default) end)
+                dropdownReset.Position = UDim2.new(1, -7, 0, 54)
+                createInfoButton(row, name, tip, -5, 4)
                 attachTip(row, tip)
                 api = register({}, row, tostring(name) .. " " .. tostring(tip) .. " " .. table.concat(list, " "))
                 api.Kind = "dropdown"
@@ -3410,6 +3455,7 @@ function LULA.CreateLib(kavName, themeInput)
                 resetCounter.ZIndex = 7
                 track(resetCounter.MouseButton1Click:Connect(function() set(default) end))
                 set(default, false)
+                createInfoButton(row, name, tip, -5, 3)
                 attachTip(row, tip)
 
                 local api = register({}, row, tostring(name) .. " " .. tostring(tip))
@@ -3478,6 +3524,7 @@ function LULA.CreateLib(kavName, themeInput)
                         safeCall("Keybind " .. tostring(name), callback)
                     end
                 end))
+                createInfoButton(row, name, tip, -35, 13)
                 createReset(row, function()
                     current = default
                     listening = false
@@ -3689,6 +3736,7 @@ function LULA.CreateLib(kavName, themeInput)
                     if rainbow then stopRainbow() else startRainbow() end
                 end))
 
+                createInfoButton(row, name, tip, -5, 4)
                 createReset(row, function()
                     stopRainbow()
                     set(default)
@@ -3963,15 +4011,153 @@ function LULA.CreateLib(kavName, themeInput)
     function window:OpenUndoHistory() return LULA:OpenUndoHistory() end
 
 
+
+    function window:EnableNotificationCenter(tabName)
+        if active.NotificationCenter then return active.NotificationCenter.Tab end
+
+        local notificationTab = self:NewTab(tabName or "Notifications")
+        notificationTab:EnsureBuilt()
+        local scroll = notificationTab.Scroll
+        scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+        scroll.CanvasSize = UDim2.new()
+
+        local clearAll = makeKolorButton(scroll, "Klear All Notifikations", rgb(164, 42, 58))
+        clearAll.Name = "ClearAllNotifications"
+        clearAll.LayoutOrder = -10000
+        clearAll.Size = UDim2.new(1, -4, 0, 36)
+        clearAll.TextSize = 12
+        clearAll.TextColor3 = rgb(248, 248, 252)
+
+        local itemCount = makeText(scroll, "0 items", 12, Enum.Font.GothamBold)
+        itemCount.Name = "NotificationItemCount"
+        itemCount.LayoutOrder = -9990
+        itemCount.Size = UDim2.new(1, -4, 0, 28)
+        itemCount.TextXAlignment = Enum.TextXAlignment.Left
+        bind(itemCount, "TextColor3", "MutedText")
+
+        local holder = Instance.new("Frame")
+        holder.Name = "NotificationHistoryStack"
+        holder.LayoutOrder = -9980
+        holder.Size = UDim2.new(1, -4, 0, 0)
+        holder.AutomaticSize = Enum.AutomaticSize.Y
+        holder.BackgroundTransparency = 1
+        holder.Parent = scroll
+        local holderLayout = Instance.new("UIListLayout")
+        holderLayout.Padding = UDim.new(0, 6)
+        holderLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        holderLayout.Parent = holder
+
+        local state = {Tab = notificationTab, Holder = holder, LastSignature = nil}
+        active.NotificationCenter = state
+
+        local function historySignature()
+            local parts = {tostring(#notificationHistory)}
+            for index, item in ipairs(notificationHistory) do
+                parts[#parts + 1] = table.concat({
+                    tostring(index), tostring(item.Time or ""), tostring(item.Kind or ""),
+                    tostring(item.Title or ""), tostring(item.Text or ""), tostring(item.Action or "")
+                }, "|")
+            end
+            return table.concat(parts, "\n")
+        end
+
+        local function clearRows()
+            for _, child in ipairs(holder:GetChildren()) do
+                if not child:IsA("UIListLayout") and not child:IsA("UIPadding") then child:Destroy() end
+            end
+        end
+
+        local function refresh(force)
+            local signature = historySignature()
+            if not force and signature == state.LastSignature then return end
+            state.LastSignature = signature
+            clearRows()
+
+            local count = #notificationHistory
+            itemCount.Text = tostring(count) .. (count == 1 and " item" or " items")
+            if count == 0 then
+                local empty = newRow(holder, "NotificationHistoryEmpty", 48)
+                empty.LayoutOrder = 1
+                local emptyText = makeText(empty, "No notifikations yet.", 12, Enum.Font.GothamMedium)
+                emptyText.Position = UDim2.fromOffset(10, 0)
+                emptyText.Size = UDim2.new(1, -20, 1, 0)
+                emptyText.TextXAlignment = Enum.TextXAlignment.Center
+                bind(emptyText, "TextColor3", "MutedText")
+                return
+            end
+
+            for index, item in ipairs(notificationHistory) do
+                local bodyText = tostring(item.Text or "")
+                local bodyBounds = TextService:GetTextSize(
+                    bodyText ~= "" and bodyText or " ",
+                    11.5,
+                    resolveUIFont(Enum.Font.Gotham),
+                    Vector2.new(math.max(220, scroll.AbsoluteSize.X - 52), 1000)
+                )
+                local rowHeight = math.clamp(58 + math.ceil(bodyBounds.Y), 72, 150)
+                local row = newRow(holder, "NotificationHistoryItem_" .. tostring(index), rowHeight)
+                row.LayoutOrder = index
+                row.BackgroundTransparency = 0.03
+
+                local stripe = Instance.new("Frame")
+                stripe.Position = UDim2.fromOffset(5, 7)
+                stripe.Size = UDim2.new(0, 4, 1, -14)
+                stripe.BorderSizePixel = 0
+                stripe.BackgroundColor3 = kindColors[string.lower(tostring(item.Kind or "info"))] or kindColors.info
+                stripe.Parent = row
+                makeCorner(stripe, 2)
+
+                local title = makeText(row, tostring(item.Title or "Lollypop Hub"), 12.5, Enum.Font.GothamBold)
+                title.Position = UDim2.fromOffset(16, 7)
+                title.Size = UDim2.new(1, -28, 0, 20)
+                title.TextXAlignment = Enum.TextXAlignment.Left
+
+                local body = makeText(row, bodyText, 11.5, Enum.Font.Gotham)
+                body.Position = UDim2.fromOffset(16, 29)
+                body.Size = UDim2.new(1, -28, 0, math.max(20, math.ceil(bodyBounds.Y) + 4))
+                body.TextXAlignment = Enum.TextXAlignment.Left
+                body.TextYAlignment = Enum.TextYAlignment.Top
+                body.TextWrapped = true
+                bind(body, "TextColor3", "MutedText")
+
+                local timeText = ""
+                if tonumber(item.Time) then
+                    timeText = os.date("%I:%M:%S %p", tonumber(item.Time))
+                end
+                local meta = makeText(row, string.upper(tostring(item.Kind or "info")) .. (timeText ~= "" and ("  |  " .. timeText) or ""), 9.5, Enum.Font.GothamMedium)
+                meta.AnchorPoint = Vector2.new(0, 1)
+                meta.Position = UDim2.new(0, 16, 1, -5)
+                meta.Size = UDim2.new(1, -28, 0, 16)
+                meta.TextXAlignment = Enum.TextXAlignment.Left
+                meta.TextColor3 = stripe.BackgroundColor3
+            end
+        end
+
+        track(clearAll.Activated:Connect(function()
+            table.clear(notificationHistory)
+            refresh(true)
+        end))
+
+        state.Refresh = refresh
+        refresh(true)
+        task.spawn(function()
+            while active and active.NotificationCenter == state and notificationTab.Page.Parent do
+                refresh(false)
+                task.wait(0.5)
+            end
+        end)
+        return notificationTab
+    end
+
     function window:EnableAnimationBundles(tabName)
         if active.AnimationBundles then return active.AnimationBundles.Tab end
 
-        local MarketplaceService = game:GetService("MarketplaceService")
-        local AvatarEditorService = game:GetService("AvatarEditorService")
-        local AssetService = game:GetService("AssetService")
-        local InsertService = game:GetService("InsertService")
+        local MarketplaceService = get.MarketplaceService
+        local AvatarEditorService = get.AvatarEditorService
+        local AssetService = get.AssetService
+        local InsertService = get.InsertService
 
-        local bundleTab = self:NewTab(tabName or "Free Animation Packs")
+        local bundleTab = self:NewTab(tabName or "Free Animations")
         bundleTab:EnsureBuilt()
         local scroll = bundleTab.Scroll
         scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
@@ -3982,6 +4168,16 @@ function LULA.CreateLib(kavName, themeInput)
         local STAR_EMOJI = utf8.char(0x2B50, 0xFE0F)
         local SEARCH_ICON = utf8.char(0x1F50D)
         local YELLOW = rgb(255, 213, 54)
+        local ANIMATION_DARK = rgb(18, 18, 24)
+        local ANIMATION_GREEN = blendColor(TOGGLE_ON_COLOR, ANIMATION_DARK, 0.42)
+        local ANIMATION_RED = blendColor(TOGGLE_OFF_COLOR, ANIMATION_DARK, 0.42)
+        local function animationAccent(color)
+            return blendColor(color, ANIMATION_DARK, 0.48)
+        end
+        local function animationText(button)
+            if button then button.TextColor3 = rgb(248, 248, 252) end
+            return button
+        end
 
         local function trim(value)
             return tostring(value or ""):match("^%s*(.-)%s*$") or ""
@@ -4013,7 +4209,7 @@ function LULA.CreateLib(kavName, themeInput)
 
         local function bundleNotify(message, kind, durationValue)
             kind = tostring(kind or "info")
-            local title = "Free Animation Packs"
+            local title = "Free Animations"
             if kind == "error" then
                 LULA:Notify("error", title, tostring(message), durationValue or 3.5, nil, true)
             elseif kind == "warning" then
@@ -5734,7 +5930,7 @@ function LULA.CreateLib(kavName, themeInput)
 
             function api:Render()
                 local enabled = settings.AnimationBundleAutoSave ~= false
-                pill.BackgroundColor3 = enabled and TOGGLE_ON_COLOR or TOGGLE_OFF_COLOR
+                pill.BackgroundColor3 = enabled and ANIMATION_GREEN or ANIMATION_RED
                 knob.Position = enabled and UDim2.fromOffset(21, 2) or UDim2.fromOffset(2, 2)
             end
 
@@ -5780,7 +5976,7 @@ function LULA.CreateLib(kavName, themeInput)
         noteTitle.Position = UDim2.fromOffset(10, 6)
         noteTitle.Size = UDim2.new(1, -20, 0, 20)
         noteTitle.TextXAlignment = Enum.TextXAlignment.Left
-        local noteBody = makeText(note, "Look up and use your favorite animation bundles directly from Roblox's Marketplace.", 11.5, Enum.Font.GothamMedium)
+        local noteBody = makeText(note, "Look up and use your favorite animation bundles directly from Roblox's Marketplace for free.", 11.5, Enum.Font.GothamMedium)
         noteBody.Position = UDim2.fromOffset(10, 26)
         noteBody.Size = UDim2.new(1, -20, 0, 25)
         noteBody.TextXAlignment = Enum.TextXAlignment.Left
@@ -5797,12 +5993,14 @@ function LULA.CreateLib(kavName, themeInput)
         marketplaceTabButton.Position = UDim2.fromOffset(0, 0)
         marketplaceTabButton.Size = UDim2.new(0.48, 0, 1, 0)
         marketplaceTabButton.TextSize = 12
+        animationText(marketplaceTabButton)
 
         local favoritesTabButton = makeButton(modeRow, STAR_EMOJI .. " Favorites")
         favoritesTabButton.AnchorPoint = Vector2.new(1, 0)
         favoritesTabButton.Position = UDim2.new(1, 0, 0, 0)
         favoritesTabButton.Size = UDim2.new(0.48, 0, 1, 0)
         favoritesTabButton.TextSize = 12
+        animationText(favoritesTabButton)
 
         local searchRow = newRow(scroll, "AnimationBundleSearch", 38)
         searchRow.LayoutOrder = -4800
@@ -5868,7 +6066,7 @@ function LULA.CreateLib(kavName, themeInput)
         resultCount.Size = UDim2.new(1, -100, 1, 0)
         resultCount.TextXAlignment = Enum.TextXAlignment.Left
 
-        local deleteAllButton = makeKolorButton(statusRow, "Delete All", rgb(204, 45, 61))
+        local deleteAllButton = makeKolorButton(statusRow, "Delete All", ANIMATION_RED)
         deleteAllButton.AnchorPoint = Vector2.new(1, 0.5)
         deleteAllButton.Position = UDim2.new(1, -1, 0.5, 0)
         deleteAllButton.Size = UDim2.fromOffset(82, 23)
@@ -5908,6 +6106,14 @@ function LULA.CreateLib(kavName, themeInput)
         track(marketGrid:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
             marketHolder.Size = UDim2.new(1, -4, 0, marketGrid.AbsoluteContentSize.Y)
         end))
+
+        local loadMoreHint = makeText(scroll, "Keep scrolling to load more...", 11.5, Enum.Font.GothamBold)
+        loadMoreHint.Name = "AnimationBundleLoadMoreHint"
+        loadMoreHint.LayoutOrder = 40
+        loadMoreHint.Size = UDim2.new(1, -4, 0, 36)
+        loadMoreHint.TextXAlignment = Enum.TextXAlignment.Center
+        loadMoreHint.Visible = false
+        bind(loadMoreHint, "TextColor3", "MutedText")
 
         local favoritesHolder = Instance.new("Frame")
         favoritesHolder.Name = "AnimationBundleFavoritesList"
@@ -5978,7 +6184,7 @@ function LULA.CreateLib(kavName, themeInput)
             pill.Name = "AnimationBundleToggle"
             pill.Size = UDim2.fromOffset(width, height)
             pill.BorderSizePixel = 0
-            pill.BackgroundColor3 = TOGGLE_OFF_COLOR
+            pill.BackgroundColor3 = ANIMATION_RED
             pill.Parent = parent
             makeCorner(pill, height / 2)
 
@@ -6000,7 +6206,7 @@ function LULA.CreateLib(kavName, themeInput)
             function api:Render(value)
                 if not pill or not pill.Parent then return end
                 value = value == true
-                pill.BackgroundColor3 = value and TOGGLE_ON_COLOR or TOGGLE_OFF_COLOR
+                pill.BackgroundColor3 = value and ANIMATION_GREEN or ANIMATION_RED
                 knob.Position = value and UDim2.fromOffset(width - knobSize - 2, 2) or UDim2.fromOffset(2, 2)
                 pill.BackgroundTransparency = self.Busy and 0.35 or 0
             end
@@ -6194,7 +6400,7 @@ function LULA.CreateLib(kavName, themeInput)
         detailMeta.ZIndex = 9003
         bind(detailMeta, "TextColor3", "SchemeColor")
 
-        local detailCloseTop = makeKolorButton(detailsHeader, "X", rgb(204, 45, 61))
+        local detailCloseTop = makeKolorButton(detailsHeader, "X", ANIMATION_RED)
         detailCloseTop.AnchorPoint = Vector2.new(1, 0)
         detailCloseTop.Position = UDim2.new(1, -9, 0, 9)
         detailCloseTop.Size = UDim2.fromOffset(31, 31)
@@ -6254,20 +6460,22 @@ function LULA.CreateLib(kavName, themeInput)
         detailActionGrid.SortOrder = Enum.SortOrder.LayoutOrder
         detailActionGrid.Parent = detailActions
 
-        local detailApply = makeKolorButton(detailActions, "Apply + Play", TOGGLE_ON_COLOR)
+        local detailApply = makeKolorButton(detailActions, "Apply + Play", ANIMATION_GREEN)
         detailApply.LayoutOrder = 1
         detailApply.TextSize = 11.5
         detailApply.ZIndex = 9003
-        local detailRestore = makeKolorButton(detailActions, "Restore Original", TOGGLE_OFF_COLOR)
+        animationText(detailApply)
+        local detailRestore = makeKolorButton(detailActions, "Restore Original", ANIMATION_RED)
         detailRestore.LayoutOrder = 2
         detailRestore.TextSize = 11.5
         detailRestore.ZIndex = 9003
+        animationText(detailRestore)
         local detailCopyTable = makeButton(detailActions, "Kopy Animation Bundle as Table")
         detailCopyTable.LayoutOrder = 3
         detailCopyTable.TextSize = 10.5
         detailCopyTable.TextWrapped = true
         detailCopyTable.ZIndex = 9003
-        local detailCloseBottom = makeButton(detailActions, "Close")
+        local detailCloseBottom = makeButton(detailActions, "Klose")
         detailCloseBottom.LayoutOrder = 4
         detailCloseBottom.TextSize = 11.5
         detailCloseBottom.ZIndex = 9003
@@ -6651,7 +6859,7 @@ function LULA.CreateLib(kavName, themeInput)
                 task.defer(function() openDetails(item) end)
             end))
 
-            local remove = makeKolorButton(row, "X", rgb(204, 45, 61))
+            local remove = makeKolorButton(row, "X", ANIMATION_RED)
             remove.AnchorPoint = Vector2.new(1, 0.5)
             remove.Position = UDim2.new(1, -5, 0.5, 0)
             remove.Size = UDim2.fromOffset(24, 24)
@@ -6685,6 +6893,8 @@ function LULA.CreateLib(kavName, themeInput)
             updateResultCount(#currentResults)
             emptyLabel.Visible = #currentResults == 0 and not searching
             emptyLabel.Text = #currentResults == 0 and "No animation bundles found. Try another name or a shorter word." or ""
+            loadMoreHint.Visible = #currentResults > 0 and currentHasMore == true and not searching
+            loadMoreHint.Text = "Keep scrolling to load more..."
             refreshToggleVisuals()
             refreshStarVisuals()
         end
@@ -6840,6 +7050,8 @@ function LULA.CreateLib(kavName, themeInput)
             if loadingMore or searching or currentMode ~= "marketplace" then return end
             if not currentHasMore or typeof(currentNextPage) ~= "function" then return end
             loadingMore = true
+            loadMoreHint.Visible = true
+            loadMoreHint.Text = "Loading more animations..."
             loadingLabel.Text = "Loading more animation bundles..."
             loadingLabel.Visible = true
             task.spawn(function()
@@ -6853,6 +7065,8 @@ function LULA.CreateLib(kavName, themeInput)
                 end
                 loadingMore = false
                 loadingLabel.Visible = searching
+                loadMoreHint.Visible = currentMode == "marketplace" and #currentResults > 0 and currentHasMore == true
+                loadMoreHint.Text = "Keep scrolling to load more..."
             end)
         end
 
@@ -6870,10 +7084,11 @@ function LULA.CreateLib(kavName, themeInput)
             currentMode = mode == "favorites" and "favorites" or "marketplace"
             state.Mode = currentMode
             local marketplaceActive = currentMode == "marketplace"
-            marketplaceTabButton.BackgroundColor3 = marketplaceActive and active.Theme.SchemeColor or active.Theme.ElementColor
-            favoritesTabButton.BackgroundColor3 = marketplaceActive and active.Theme.ElementColor or active.Theme.SchemeColor
+            marketplaceTabButton.BackgroundColor3 = marketplaceActive and animationAccent(active.Theme.SchemeColor) or active.Theme.ElementColor
+            favoritesTabButton.BackgroundColor3 = marketplaceActive and active.Theme.ElementColor or animationAccent(active.Theme.SchemeColor)
             deleteAllButton.Visible = not marketplaceActive
             favoriteSaveControls:SetVisible(not marketplaceActive)
+            loadMoreHint.Visible = marketplaceActive and #currentResults > 0 and currentHasMore == true
             suggestion.Visible = marketplaceActive and currentOriginalQuery ~= nil
             if marketplaceActive then
                 marketHolder.Visible = true
@@ -6933,9 +7148,13 @@ function LULA.CreateLib(kavName, themeInput)
 
         state.RefreshTheme = function()
             local marketplaceActive = currentMode == "marketplace"
-            marketplaceTabButton.BackgroundColor3 = marketplaceActive and active.Theme.SchemeColor or active.Theme.ElementColor
-            favoritesTabButton.BackgroundColor3 = marketplaceActive and active.Theme.ElementColor or active.Theme.SchemeColor
+            marketplaceTabButton.BackgroundColor3 = marketplaceActive and animationAccent(active.Theme.SchemeColor) or active.Theme.ElementColor
+            favoritesTabButton.BackgroundColor3 = marketplaceActive and active.Theme.ElementColor or animationAccent(active.Theme.SchemeColor)
             favoriteSaveControls:Render()
+            animationText(marketplaceTabButton)
+            animationText(favoritesTabButton)
+            animationText(detailApply)
+            animationText(detailRestore)
             refreshStarVisuals()
             refreshToggleVisuals()
         end
