@@ -2541,7 +2541,7 @@ function LULA.CreateLib(kavName, themeInput)
     bind(islandProgressFill, "BackgroundColor3", "SchemeColor")
     makeCorner(islandProgressFill, 3)
 
-    local resize = makeButton(main, "//")
+    local resize = makeButton(main, "")
     resize.Name = "ResizeHandle"
     resize.AnchorPoint = Vector2.new(1, 1)
     resize.Position = UDim2.new(1, -3, 1, -3)
@@ -6119,8 +6119,9 @@ function LULA.CreateLib(kavName, themeInput)
         detailsOverlay.Name = "AnimationBundleDetailsV4"
         detailsOverlay.Size = UDim2.fromScale(1, 1)
         detailsOverlay.BackgroundTransparency = 1
+        detailsOverlay.Active = true
         detailsOverlay.Visible = false
-        detailsOverlay.ZIndex = 340
+        detailsOverlay.ZIndex = 9000
         detailsOverlay.Parent = active.ScreenGui
 
         local detailsShade = Instance.new("TextButton")
@@ -6131,7 +6132,7 @@ function LULA.CreateLib(kavName, themeInput)
         detailsShade.BorderSizePixel = 0
         detailsShade.AutoButtonColor = false
         detailsShade.Text = ""
-        detailsShade.ZIndex = 340
+        detailsShade.ZIndex = 9000
         detailsShade.Parent = detailsOverlay
 
         local detailsPanel = Instance.new("Frame")
@@ -6141,7 +6142,7 @@ function LULA.CreateLib(kavName, themeInput)
         detailsPanel.Size = UDim2.new(0.93, 0, 0.88, 0)
         detailsPanel.BorderSizePixel = 0
         detailsPanel.ClipsDescendants = true
-        detailsPanel.ZIndex = 341
+        detailsPanel.ZIndex = 9001
         detailsPanel.Parent = detailsOverlay
         bind(detailsPanel, "BackgroundColor3", "Background")
         makeCorner(detailsPanel, 14)
@@ -6154,7 +6155,7 @@ function LULA.CreateLib(kavName, themeInput)
         local detailsHeader = Instance.new("Frame")
         detailsHeader.Size = UDim2.new(1, 0, 0, 112)
         detailsHeader.BorderSizePixel = 0
-        detailsHeader.ZIndex = 342
+        detailsHeader.ZIndex = 9002
         detailsHeader.Parent = detailsPanel
         bind(detailsHeader, "BackgroundColor3", "Header")
 
@@ -6164,7 +6165,7 @@ function LULA.CreateLib(kavName, themeInput)
         detailThumbnail.BackgroundTransparency = 0.04
         detailThumbnail.BorderSizePixel = 0
         detailThumbnail.ScaleType = Enum.ScaleType.Fit
-        detailThumbnail.ZIndex = 343
+        detailThumbnail.ZIndex = 9003
         detailThumbnail.Parent = detailsHeader
         bind(detailThumbnail, "BackgroundColor3", "ElementColor")
         makeCorner(detailThumbnail, 10)
@@ -6175,14 +6176,14 @@ function LULA.CreateLib(kavName, themeInput)
         detailTitle.TextXAlignment = Enum.TextXAlignment.Left
         detailTitle.TextYAlignment = Enum.TextYAlignment.Top
         detailTitle.TextWrapped = true
-        detailTitle.ZIndex = 343
+        detailTitle.ZIndex = 9003
 
         local detailCreator = makeText(detailsHeader, "", 11.5, Enum.Font.GothamMedium)
         detailCreator.Position = UDim2.fromOffset(111, 60)
         detailCreator.Size = UDim2.new(1, -162, 0, 18)
         detailCreator.TextXAlignment = Enum.TextXAlignment.Left
         detailCreator.TextTruncate = Enum.TextTruncate.AtEnd
-        detailCreator.ZIndex = 343
+        detailCreator.ZIndex = 9003
         bind(detailCreator, "TextColor3", "MutedText")
 
         local detailMeta = makeText(detailsHeader, "Animation Bundle", 10, Enum.Font.Gotham)
@@ -6190,7 +6191,7 @@ function LULA.CreateLib(kavName, themeInput)
         detailMeta.Size = UDim2.new(1, -162, 0, 19)
         detailMeta.TextXAlignment = Enum.TextXAlignment.Left
         detailMeta.TextTruncate = Enum.TextTruncate.AtEnd
-        detailMeta.ZIndex = 343
+        detailMeta.ZIndex = 9003
         bind(detailMeta, "TextColor3", "SchemeColor")
 
         local detailCloseTop = makeKolorButton(detailsHeader, "X", rgb(204, 45, 61))
@@ -6198,13 +6199,13 @@ function LULA.CreateLib(kavName, themeInput)
         detailCloseTop.Position = UDim2.new(1, -9, 0, 9)
         detailCloseTop.Size = UDim2.fromOffset(31, 31)
         detailCloseTop.TextSize = 11
-        detailCloseTop.ZIndex = 344
+        detailCloseTop.ZIndex = 9004
 
         local detailSectionLabel = makeText(detailsPanel, "Animation IDs / Character.Animate Paths / Sources", 12.5, Enum.Font.GothamBold)
         detailSectionLabel.Position = UDim2.fromOffset(13, 119)
         detailSectionLabel.Size = UDim2.new(1, -26, 0, 23)
         detailSectionLabel.TextXAlignment = Enum.TextXAlignment.Left
-        detailSectionLabel.ZIndex = 342
+        detailSectionLabel.ZIndex = 9002
 
         local detailScroll = Instance.new("ScrollingFrame")
         detailScroll.Name = "AnimationIdRows"
@@ -6215,7 +6216,7 @@ function LULA.CreateLib(kavName, themeInput)
         detailScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
         detailScroll.CanvasSize = UDim2.new()
         detailScroll.ScrollBarThickness = 4
-        detailScroll.ZIndex = 342
+        detailScroll.ZIndex = 9002
         detailScroll.Parent = detailsPanel
         bind(detailScroll, "ScrollBarImageColor3", "SchemeColor")
         local detailList = Instance.new("UIListLayout")
@@ -6229,7 +6230,7 @@ function LULA.CreateLib(kavName, themeInput)
         detailLoading.TextWrapped = true
         detailLoading.TextXAlignment = Enum.TextXAlignment.Center
         detailLoading.TextYAlignment = Enum.TextYAlignment.Center
-        detailLoading.ZIndex = 343
+        detailLoading.ZIndex = 9003
         bind(detailLoading, "TextColor3", "SchemeColor")
 
         local detailActions = Instance.new("Frame")
@@ -6237,7 +6238,7 @@ function LULA.CreateLib(kavName, themeInput)
         detailActions.Position = UDim2.fromScale(0, 1)
         detailActions.Size = UDim2.new(1, 0, 0, 94)
         detailActions.BorderSizePixel = 0
-        detailActions.ZIndex = 342
+        detailActions.ZIndex = 9002
         detailActions.Parent = detailsPanel
         bind(detailActions, "BackgroundColor3", "Header")
         local detailActionPadding = Instance.new("UIPadding")
@@ -6256,20 +6257,20 @@ function LULA.CreateLib(kavName, themeInput)
         local detailApply = makeKolorButton(detailActions, "Apply + Play", TOGGLE_ON_COLOR)
         detailApply.LayoutOrder = 1
         detailApply.TextSize = 11.5
-        detailApply.ZIndex = 343
+        detailApply.ZIndex = 9003
         local detailRestore = makeKolorButton(detailActions, "Restore Original", TOGGLE_OFF_COLOR)
         detailRestore.LayoutOrder = 2
         detailRestore.TextSize = 11.5
-        detailRestore.ZIndex = 343
+        detailRestore.ZIndex = 9003
         local detailCopyTable = makeButton(detailActions, "Kopy Animation Bundle as Table")
         detailCopyTable.LayoutOrder = 3
         detailCopyTable.TextSize = 10.5
         detailCopyTable.TextWrapped = true
-        detailCopyTable.ZIndex = 343
+        detailCopyTable.ZIndex = 9003
         local detailCloseBottom = makeButton(detailActions, "Close")
         detailCloseBottom.LayoutOrder = 4
         detailCloseBottom.TextSize = 11.5
-        detailCloseBottom.ZIndex = 343
+        detailCloseBottom.ZIndex = 9003
 
         local selectedItem = nil
         local selectedDetails = nil
@@ -6284,6 +6285,7 @@ function LULA.CreateLib(kavName, themeInput)
         end
 
         local function closeDetails()
+            detailsShade.Active = false
             detailsOverlay.Visible = false
             selectedItem = nil
             selectedDetails = nil
@@ -6299,7 +6301,7 @@ function LULA.CreateLib(kavName, themeInput)
             row.Size = UDim2.new(1, -2, 0, 57)
             row.BorderSizePixel = 0
             row.BackgroundTransparency = 0.02
-            row.ZIndex = 343
+            row.ZIndex = 9003
             row.Parent = detailScroll
             bind(row, "BackgroundColor3", "ElementColor")
             makeCorner(row, 9)
@@ -6311,7 +6313,7 @@ function LULA.CreateLib(kavName, themeInput)
             slotLabel.Size = UDim2.new(0.34, -10, 0, 19)
             slotLabel.TextXAlignment = Enum.TextXAlignment.Left
             slotLabel.TextTruncate = Enum.TextTruncate.AtEnd
-            slotLabel.ZIndex = 344
+            slotLabel.ZIndex = 9004
 
             local pathText = tostring(R15_SLOTS[slot] or slot)
             if source and tostring(source) ~= "" then pathText = pathText .. " | " .. tostring(source) end
@@ -6320,7 +6322,7 @@ function LULA.CreateLib(kavName, themeInput)
             pathLabel.Size = UDim2.new(0.62, -10, 0, 20)
             pathLabel.TextXAlignment = Enum.TextXAlignment.Left
             pathLabel.TextTruncate = Enum.TextTruncate.AtEnd
-            pathLabel.ZIndex = 344
+            pathLabel.ZIndex = 9004
             bind(pathLabel, "TextColor3", "MutedText")
 
             local idLabel = makeText(row, id and tostring(id) or "Not found", 10.5, Enum.Font.RobotoMono)
@@ -6328,7 +6330,7 @@ function LULA.CreateLib(kavName, themeInput)
             idLabel.Size = UDim2.new(0.42, -4, 1, 0)
             idLabel.TextXAlignment = Enum.TextXAlignment.Right
             idLabel.TextTruncate = Enum.TextTruncate.AtEnd
-            idLabel.ZIndex = 344
+            idLabel.ZIndex = 9004
             if id then bind(idLabel, "TextColor3", "SchemeColor") else idLabel.TextColor3 = active.Theme.Danger end
 
             local copyButton = makeButton(row, "Kopy")
@@ -6336,7 +6338,7 @@ function LULA.CreateLib(kavName, themeInput)
             copyButton.Position = UDim2.new(1, -7, 0.5, 0)
             copyButton.Size = UDim2.fromOffset(63, 31)
             copyButton.TextSize = 10.5
-            copyButton.ZIndex = 345
+            copyButton.ZIndex = 9005
             copyButton.Active = id ~= nil
             copyButton.AutoButtonColor = id ~= nil
             if not id then copyButton.BackgroundTransparency = 0.55 end
@@ -6359,12 +6361,27 @@ function LULA.CreateLib(kavName, themeInput)
         end
 
         local function openDetails(item)
+            if type(item) ~= "table" then
+                bundleNotify("Animation pack info was unavailable.", "error", 3)
+                return
+            end
+
             selectedItem = item
             selectedDetails = nil
             selectedSlots = nil
             selectedSlotSources = nil
             selectedVerification = nil
+
+            -- Prevent the same mobile tap from opening and instantly closing the panel.
+            detailsShade.Active = false
+            detailsOverlay.Parent = active.ScreenGui
             detailsOverlay.Visible = true
+            task.delay(0.22, function()
+                if detailsOverlay.Visible and selectedItem == item then
+                    detailsShade.Active = true
+                end
+            end)
+
             clearDetailRows()
             detailLoading.Visible = true
             detailLoading.Text = "Loading Roblox bundle details..."
@@ -6374,6 +6391,9 @@ function LULA.CreateLib(kavName, themeInput)
             detailThumbnail.Image = "rbxthumb://type=BundleThumbnail&id=" .. tostring(item.Id) .. "&w=420&h=420"
 
             task.spawn(function()
+                -- Render the panel/loading text before the heavier bundle lookup begins.
+                RunService.RenderStepped:Wait()
+                RunService.Heartbeat:Wait()
                 local ok, slotsOrError, details, assets, slotSources, verification, catalogSlots = pcall(resolveItemSlots, item)
                 if not detailsOverlay.Visible or selectedItem ~= item then return end
                 if not ok then
@@ -6415,9 +6435,11 @@ function LULA.CreateLib(kavName, themeInput)
             end)
         end
 
-        track(detailsShade.MouseButton1Click:Connect(closeDetails))
-        track(detailCloseTop.MouseButton1Click:Connect(closeDetails))
-        track(detailCloseBottom.MouseButton1Click:Connect(closeDetails))
+        track(detailsShade.Activated:Connect(function()
+            if detailsShade.Active then closeDetails() end
+        end))
+        track(detailCloseTop.Activated:Connect(closeDetails))
+        track(detailCloseBottom.Activated:Connect(closeDetails))
         track(detailApply.MouseButton1Click:Connect(function()
             if not selectedItem or not selectedSlots then
                 bundleNotify("Bundle info is still loading.", "warning", 2.5)
@@ -6584,7 +6606,9 @@ function LULA.CreateLib(kavName, themeInput)
             infoButton.Position = UDim2.new(0, 6, 0, 121)
             infoButton.Size = UDim2.new(1, -12, 0, 25)
             infoButton.TextSize = 10
-            track(infoButton.MouseButton1Click:Connect(function() openDetails(item) end))
+            track(infoButton.Activated:Connect(function()
+                task.defer(function() openDetails(item) end)
+            end))
 
             local switch = makeToggleSwitch(card, item.Id, function(api)
                 toggleBundle(item, api)
@@ -6623,7 +6647,9 @@ function LULA.CreateLib(kavName, themeInput)
             infoButton.Position = UDim2.new(1, -84, 0.5, 0)
             infoButton.Size = UDim2.fromOffset(42, 25)
             infoButton.TextSize = 9.5
-            track(infoButton.MouseButton1Click:Connect(function() openDetails(item) end))
+            track(infoButton.Activated:Connect(function()
+                task.defer(function() openDetails(item) end)
+            end))
 
             local remove = makeKolorButton(row, "X", rgb(204, 45, 61))
             remove.AnchorPoint = Vector2.new(1, 0.5)
