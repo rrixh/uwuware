@@ -293,6 +293,7 @@ if settings.AppearanceMode == nil then settings.AppearanceMode = "Dark" end
 if settings.ShelfEnabled == nil then settings.ShelfEnabled = true end
 if settings.ShelfAutoSave == nil then settings.ShelfAutoSave = false end
 if type(settings.AnimationBundleFavorites) ~= "table" then settings.AnimationBundleFavorites = {} end
+if settings.AnimationBundleAutoSave == nil then settings.AnimationBundleAutoSave = true end
 
 local active = nil
 local fontMap = {}
@@ -1669,6 +1670,7 @@ end
 local function findTabByName(name)
     if not active then return nil end
     local needle = string.lower(tostring(name or ""))
+    if needle == "animation bundles" then needle = "free animation packs" end
     for _, tab in ipairs(active.Tabs) do
         if string.lower(tab.Name) == needle then return tab end
     end
@@ -3969,7 +3971,7 @@ function LULA.CreateLib(kavName, themeInput)
         local AssetService = game:GetService("AssetService")
         local InsertService = game:GetService("InsertService")
 
-        local bundleTab = self:NewTab(tabName or "Animation Bundles")
+        local bundleTab = self:NewTab(tabName or "Free Animation Packs")
         bundleTab:EnsureBuilt()
         local scroll = bundleTab.Scroll
         scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
@@ -4011,7 +4013,7 @@ function LULA.CreateLib(kavName, themeInput)
 
         local function bundleNotify(message, kind, durationValue)
             kind = tostring(kind or "info")
-            local title = "Animation Bundles"
+            local title = "Free Animation Packs"
             if kind == "error" then
                 LULA:Notify("error", title, tostring(message), durationValue or 3.5, nil, true)
             elseif kind == "warning" then
@@ -5655,7 +5657,7 @@ function LULA.CreateLib(kavName, themeInput)
             return output
         end
 
-        local function saveFavorites(updated)
+        local function saveFavorites(updated, forceSave)
             local clean = {}
             local seen = {}
             for _, raw in ipairs(updated or {}) do
@@ -5671,7 +5673,9 @@ function LULA.CreateLib(kavName, themeInput)
             env.LHSettings.AnimationBundleFavorites = clean
             env.LHUISettings.AnimationBundleFavorites = clean
             markSettingsDirty()
-            saveSettingsNow()
+            if forceSave == true or settings.AnimationBundleAutoSave ~= false then
+                saveSettingsNow()
+            end
             return clean
         end
 
@@ -5682,6 +5686,92 @@ function LULA.CreateLib(kavName, themeInput)
             end
             return nil
         end
+
+        -- Kept in a nested builder so the large Marketplace method stays under
+        -- Luau's active-local limit while still providing mobile-sized controls.
+        local function createFavoriteSaveControls()
+            local api = {}
+            local row = Instance.new("Frame")
+            row.Name = "AnimationBundleFavoriteSaveControls"
+            row.LayoutOrder = -4850
+            row.Size = UDim2.new(1, -4, 0, 36)
+            row.BackgroundTransparency = 1
+            row.Visible = false
+            row.Parent = scroll
+
+            local autoSaveHit = makeButton(row, "")
+            autoSaveHit.Position = UDim2.fromOffset(0, 0)
+            autoSaveHit.Size = UDim2.new(0.57, -3, 1, 0)
+            autoSaveHit.Text = ""
+            autoSaveHit.BackgroundTransparency = 0.04
+
+            local autoSaveLabel = makeText(autoSaveHit, "Auto Save Favorites", 10.5, Enum.Font.GothamBold)
+            autoSaveLabel.Position = UDim2.fromOffset(9, 0)
+            autoSaveLabel.Size = UDim2.new(1, -59, 1, 0)
+            autoSaveLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+            local pill = Instance.new("Frame")
+            pill.AnchorPoint = Vector2.new(1, 0.5)
+            pill.Position = UDim2.new(1, -8, 0.5, 0)
+            pill.Size = UDim2.fromOffset(39, 20)
+            pill.BorderSizePixel = 0
+            pill.Parent = autoSaveHit
+            makeCorner(pill, 10)
+
+            local knob = Instance.new("Frame")
+            knob.Size = UDim2.fromOffset(16, 16)
+            knob.BorderSizePixel = 0
+            knob.BackgroundColor3 = rgb(250, 250, 252)
+            knob.Parent = pill
+            makeCorner(knob, 8)
+
+            local saveButton = makeButton(row, "Save Favorites")
+            saveButton.AnchorPoint = Vector2.new(1, 0)
+            saveButton.Position = UDim2.new(1, 0, 0, 0)
+            saveButton.Size = UDim2.new(0.43, -3, 1, 0)
+            saveButton.TextSize = 10.5
+            saveButton.BackgroundTransparency = 0.04
+
+            function api:Render()
+                local enabled = settings.AnimationBundleAutoSave ~= false
+                pill.BackgroundColor3 = enabled and TOGGLE_ON_COLOR or TOGGLE_OFF_COLOR
+                knob.Position = enabled and UDim2.fromOffset(21, 2) or UDim2.fromOffset(2, 2)
+            end
+
+            function api:SetVisible(value)
+                row.Visible = value == true
+            end
+
+            track(autoSaveHit.MouseButton1Click:Connect(function()
+                settings.AnimationBundleAutoSave = not (settings.AnimationBundleAutoSave ~= false)
+                env.LHSettings = env.LHSettings or {}
+                env.LHUISettings = env.LHUISettings or settings
+                env.LHSettings.AnimationBundleAutoSave = settings.AnimationBundleAutoSave
+                env.LHUISettings.AnimationBundleAutoSave = settings.AnimationBundleAutoSave
+                api:Render()
+
+                -- The autosave preference remembers itself immediately. Enabling it
+                -- also commits any pending favorite edits made while it was disabled.
+                saveFavorites(getFavorites(), true)
+                bundleNotify(
+                    settings.AnimationBundleAutoSave
+                        and "Favorite edits now save automatically."
+                        or "Favorite edits now wait for Save Settings or Save Favorites.",
+                    "success",
+                    3
+                )
+            end))
+
+            track(saveButton.MouseButton1Click:Connect(function()
+                saveFavorites(getFavorites(), true)
+                bundleNotify("Animation favorites saved.", "success", 2.4)
+            end))
+
+            api:Render()
+            return api
+        end
+
+        local favoriteSaveControls = createFavoriteSaveControls()
 
         local note = newRow(scroll, "AnimationBundlesNote", 58)
         note.LayoutOrder = -5000
@@ -5965,11 +6055,27 @@ function LULA.CreateLib(kavName, themeInput)
             end
 
             switchApi:SetBusy(true)
-            bundleNotify("Loading " .. tostring(item.Name) .. "...", "info", 2.2)
+            local loadingHandle = LULA:ShowIsland(
+                "Free Animation Packs",
+                "Loading Animation...",
+                {Progress = 5}
+            )
+
             task.spawn(function()
+                -- Give mobile clients two render opportunities before Roblox's
+                -- synchronous bundle/detail calls begin, so the loading state is visible.
+                RunService.RenderStepped:Wait()
+                RunService.Heartbeat:Wait()
+                if loadingHandle then
+                    loadingHandle:SetProgress(24, "Loading Animation...")
+                end
+
                 local ok, slotsOrError = pcall(function()
                     local slots = resolveItemSlots(item)
                     if toggleSerial ~= state.ToggleSerial then return nil end
+                    if loadingHandle then
+                        loadingHandle:SetProgress(76, "Applying Animation...")
+                    end
                     restoreOriginalAnimations(true)
                     activeBundle = {Name = item.Name, Slots = slots}
                     if not applyAnimationSlots(slots, true) then
@@ -5977,7 +6083,16 @@ function LULA.CreateLib(kavName, themeInput)
                     end
                     return slots
                 end)
+
                 switchApi:SetBusy(false)
+
+                if loadingHandle then
+                    loadingHandle:SetProgress(ok and 100 or 0, ok and "Animation Loaded." or "Animation Failed.")
+                    task.delay(0.22, function()
+                        pcall(function() loadingHandle:Close() end)
+                    end)
+                end
+
                 if toggleSerial ~= state.ToggleSerial then return end
                 if not ok then
                     state.ActiveId = nil
@@ -6732,6 +6847,7 @@ function LULA.CreateLib(kavName, themeInput)
             marketplaceTabButton.BackgroundColor3 = marketplaceActive and active.Theme.SchemeColor or active.Theme.ElementColor
             favoritesTabButton.BackgroundColor3 = marketplaceActive and active.Theme.ElementColor or active.Theme.SchemeColor
             deleteAllButton.Visible = not marketplaceActive
+            favoriteSaveControls:SetVisible(not marketplaceActive)
             suggestion.Visible = marketplaceActive and currentOriginalQuery ~= nil
             if marketplaceActive then
                 marketHolder.Visible = true
@@ -6793,6 +6909,7 @@ function LULA.CreateLib(kavName, themeInput)
             local marketplaceActive = currentMode == "marketplace"
             marketplaceTabButton.BackgroundColor3 = marketplaceActive and active.Theme.SchemeColor or active.Theme.ElementColor
             favoritesTabButton.BackgroundColor3 = marketplaceActive and active.Theme.ElementColor or active.Theme.SchemeColor
+            favoriteSaveControls:Render()
             refreshStarVisuals()
             refreshToggleVisuals()
         end
@@ -7138,7 +7255,7 @@ function LULA.CreateLib(kavName, themeInput)
         end
         local tabStates = type(state.Tabs) == "table" and state.Tabs or {}
         for _, tab in ipairs(active.Tabs) do
-            local saved = tabStates[tab.Name]
+            local saved = tabStates[tab.Name] or (tab.Name == "Free Animation Packs" and tabStates["Animation Bundles"])
             if type(saved) == "table" and type(saved.Scroll) == "table" then
                 tab.LastCanvasPosition = Vector2.new(tonumber(saved.Scroll[1]) or 0, tonumber(saved.Scroll[2]) or 0)
             end
@@ -7163,7 +7280,12 @@ function LULA.CreateLib(kavName, themeInput)
                         if api and isToggle == togglePass and type(api.SetValue) == "function" then
                             local decoded, valid = decodeSessionValue(encoded)
                             if valid and (api.Kind ~= "dropdown" or type(api.ContainsValue) ~= "function" or api:ContainsValue(decoded)) then
-                                pcall(function() api:SetValue(decoded, true) end)
+                                -- Action dropdowns are selectors, not persistent toggles.
+                                -- Restore their displayed value without auto-running old
+                                -- remote loaders at startup. Other kontroller callbacks
+                                -- still restore normally, and toggles remain the final pass.
+                                local fireOnRestore = api.Kind ~= "dropdown"
+                                pcall(function() api:SetValue(decoded, fireOnRestore) end)
                             end
                         end
                     end
@@ -7175,7 +7297,7 @@ function LULA.CreateLib(kavName, themeInput)
             end
 
             for _, tab in ipairs(active.Tabs) do
-                local saved = tabStates[tab.Name]
+                local saved = tabStates[tab.Name] or (tab.Name == "Free Animation Packs" and tabStates["Animation Bundles"])
                 if type(saved) == "table" then
                     if saved.Search and saved.Search ~= "" then
                         tab:EnsureBuilt()
