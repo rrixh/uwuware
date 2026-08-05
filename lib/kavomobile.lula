@@ -65,7 +65,12 @@ if typeof(defaultAccent) ~= "Color3" then
     defaultAccent = rgb(255, 72, 176)
 end;
 
-local online_status = "Offline"
+local function normalizeOnlineStatus(value)
+    if value == true then return "Online" end
+    local normalized = tostring(value or ""):match("^%s*(.-)%s*$"):lower()
+    return normalized == "online" and "Online" or "Offline"
+end
+local online_status = normalizeOnlineStatus(env.LH_ONLINE_STATUS)
 
 local DEFAULT_OWNER_KREDITS_ANIMATION_ID = 85612839739153;
 local DEFAULT_MY_SHELF_ANIMATION_ID = 113164397821194;
@@ -364,6 +369,8 @@ local sectionControlRegistry = setmetatable({}, {__mode = "k"})
 local controlFrameRegistry = setmetatable({}, {__mode = "k"})
 local controlIdRegistry = {}
 local openControlMenu = nil
+local activeInlineInfo = nil
+local activeInlineInfoToken = 0
 
 local function shallowCopyArray(source)
     local result = {}
@@ -740,6 +747,7 @@ local function makeLollyActionIcon(parent)
 end
 
 local function createButtonRipple(button, inputObject)
+    if button and button:GetAttribute("LHNoRipple") == true then return end
     if settings.ReducedMotion or settings.LowPerformance then return end
     if not button or not button.Parent then return end
     local absoluteSize = button.AbsoluteSize
@@ -1009,6 +1017,38 @@ local function createReset(parent, callback)
     return reset
 end
 
+local function dismissInlineInfo(instant)
+    local overlay = activeInlineInfo
+    if not overlay then return end
+    activeInlineInfo = nil
+    activeInlineInfoToken = activeInlineInfoToken + 1
+
+    if not overlay.Parent then return end
+    if instant then
+        overlay:Destroy()
+        return
+    end
+
+    tween(overlay, {BackgroundTransparency = 1, TextTransparency = 1}, 0.12)
+    task.delay(0.14, function()
+        if overlay and overlay.Parent then overlay:Destroy() end
+    end)
+end
+
+-- Any new interaction closes the current explanation immediately. The
+-- four-sekond timer is only a fallback for users who do nothing else.
+track(UserInputService.InputBegan:Connect(function()
+    if activeInlineInfo then dismissInlineInfo(false) end
+end))
+track(UserInputService.InputChanged:Connect(function(inputObject)
+    if not activeInlineInfo then return end
+    if inputObject.UserInputType == Enum.UserInputType.MouseWheel
+        or inputObject.KeyCode == Enum.KeyCode.Thumbstick1
+        or inputObject.KeyCode == Enum.KeyCode.Thumbstick2 then
+        dismissInlineInfo(false)
+    end
+end))
+
 local function createInfoButton(row, title, tip, xOffset, yOffset)
     tip = tostring(tip or "")
     if tip == "" then tip = "No extra information was added for this kontrol yet." end
@@ -1020,13 +1060,13 @@ local function createInfoButton(row, title, tip, xOffset, yOffset)
     infoButton.TextSize = 14
     infoButton.BackgroundTransparency = 0.08
     infoButton.ZIndex = 25
+    infoButton.Selectable = false
+    infoButton:SetAttribute("LHNoRipple", true)
 
-    local showToken = 0
     track(infoButton.Activated:Connect(function()
-        showToken = showToken + 1
-        local mine = showToken
-        local previous = row:FindFirstChild("LHInlineKontrolInfo")
-        if previous then previous:Destroy() end
+        dismissInlineInfo(true)
+        activeInlineInfoToken = activeInlineInfoToken + 1
+        local mine = activeInlineInfoToken
 
         local availableWidth = math.max(180, row.AbsoluteSize.X > 0 and row.AbsoluteSize.X or 260)
         local message = tostring(title or row.Name or "Kontrol Info") .. "\n" .. tip
@@ -1057,6 +1097,7 @@ local function createInfoButton(row, title, tip, xOffset, yOffset)
         overlay.TextYAlignment = Enum.TextYAlignment.Center
         overlay.TextTransparency = 1
         overlay.ZIndex = 80
+        overlay.Active = false
         overlay.Parent = row
         bind(overlay, "BackgroundColor3", "Header")
         bind(overlay, "TextColor3", "TextColor")
@@ -1069,13 +1110,11 @@ local function createInfoButton(row, title, tip, xOffset, yOffset)
         padding.PaddingBottom = UDim.new(0, 6)
         padding.Parent = overlay
 
+        activeInlineInfo = overlay
         tween(overlay, {BackgroundTransparency = 0.04, TextTransparency = 0}, 0.1)
         task.delay(4, function()
-            if showToken ~= mine or not overlay.Parent then return end
-            tween(overlay, {BackgroundTransparency = 1, TextTransparency = 1}, 0.18)
-            task.delay(0.2, function()
-                if showToken == mine and overlay.Parent then overlay:Destroy() end
-            end)
+            if activeInlineInfo ~= overlay or activeInlineInfoToken ~= mine or not overlay.Parent then return end
+            dismissInlineInfo(false)
         end)
     end))
     return infoButton
@@ -3916,8 +3955,8 @@ function LULA.CreateLib(kavName, themeInput)
                 lastOnline.TextXAlignment = Enum.TextXAlignment.Left
                 bind(lastOnline, "TextColor3", "MutedText")
 
-                local statusText = tostring(config.OnlineStatus or online_status or "Online")
-                local statusIcon = statusText:lower() == "offline" and utf8.char(0x1F534) or utf8.char(0x1F7E2)
+                local statusText = normalizeOnlineStatus(env.LH_ONLINE_STATUS or config.OnlineStatus or online_status)
+                local statusIcon = statusText == "Offline" and utf8.char(0x1F534) or utf8.char(0x1F7E2)
                 local status = makeText(row, "Online Status: " .. statusText .. " " .. statusIcon, 12, Enum.Font.Gotham)
                 status.Position = UDim2.new(0.5, 0, 0, 216)
                 status.Size = UDim2.new(0.5, -14, 0, 18)
@@ -3933,6 +3972,12 @@ function LULA.CreateLib(kavName, themeInput)
                         liveTime.Text = "Live Time: " .. os.date("%I:%M:%S %p")
                         sessionTime.Text = string.format("Session Time: %02d:%02d:%02d", hours, minutes, seconds)
                         today.Text = "Today's Date: " .. os.date("%A, %B %d, %Y")
+                        local refreshedStatus = normalizeOnlineStatus(env.LH_ONLINE_STATUS or config.OnlineStatus or online_status)
+                        if refreshedStatus ~= statusText then
+                            statusText = refreshedStatus
+                            statusIcon = statusText == "Offline" and utf8.char(0x1F534) or utf8.char(0x1F7E2)
+                            status.Text = "Online Status: " .. statusText .. " " .. statusIcon
+                        end
                         task.wait(1)
                     end
                 end)
