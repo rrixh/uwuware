@@ -2665,7 +2665,7 @@ function LULA.CreateLib(kavName, themeInput)
     pages.ClipsDescendants = true
     pages.Parent = main
 
-    local footer = makeText(main, "Lollypop Hub v10.2.0", 11, Enum.Font.GothamMedium)
+    local footer = makeText(main, "Lollypop Hub v10.2.1", 11, Enum.Font.GothamMedium)
     footer.Name = "Footer"
     footer.Position = UDim2.new(0, 158, 1, -20)
     footer.Size = UDim2.new(1, -165, 0, 18)
@@ -7445,6 +7445,7 @@ function LULA.CreateLib(kavName, themeInput)
                 Track = nil,
                 Animation = nil,
                 StoppedConnection = nil,
+                KeepAliveConnection = nil,
                 Serial = 0,
                 PlayableId = nil,
             },
@@ -8270,7 +8271,7 @@ function LULA.CreateLib(kavName, themeInput)
             if not trackObject then return nil end
 
             trackObject.Looped = true
-            pcall(function() trackObject.Priority = Enum.AnimationPriority.Action end)
+            pcall(function() trackObject.Priority = Enum.AnimationPriority.Action4 end)
             pcall(function() trackObject:AdjustSpeed(speed) end)
             local sanitizedId = rememberTrackAnimationId(item, trackObject)
             return trackObject, sanitizedId or marketplaceId, "Roblox emote player"
@@ -8323,7 +8324,7 @@ function LULA.CreateLib(kavName, themeInput)
             if not newTrack then return nil end
 
             newTrack.Looped = true
-            pcall(function() newTrack.Priority = Enum.AnimationPriority.Action end)
+            pcall(function() newTrack.Priority = Enum.AnimationPriority.Action4 end)
             pcall(function() newTrack:AdjustSpeed(speed) end)
             local sanitizedId = rememberTrackAnimationId(item, newTrack)
             return newTrack, sanitizedId or marketplaceId, "Humanoid emote"
@@ -8393,6 +8394,10 @@ function LULA.CreateLib(kavName, themeInput)
                 pcall(function() state.Active.StoppedConnection:Disconnect() end)
             end
             state.Active.StoppedConnection = nil
+            if state.Active.KeepAliveConnection then
+                pcall(function() state.Active.KeepAliveConnection:Disconnect() end)
+            end
+            state.Active.KeepAliveConnection = nil
             if state.Active.Track then
                 pcall(function() state.Active.Track:Stop(0) end)
             end
@@ -8467,7 +8472,7 @@ function LULA.CreateLib(kavName, themeInput)
                         end
 
                         trackObject.Looped = true
-                        pcall(function() trackObject.Priority = Enum.AnimationPriority.Action end)
+                        pcall(function() trackObject.Priority = Enum.AnimationPriority.Action4 end)
                         trackObject:Play()
                         pcall(function() trackObject:AdjustSpeed(speed) end)
                         playableId = resolvedId
@@ -8503,17 +8508,41 @@ function LULA.CreateLib(kavName, themeInput)
                 state.Active.Track = result.Track
                 state.Active.Animation = result.Animation
                 state.Active.PlayableId = result.PlayableId
-                state.Active.StoppedConnection = result.Track.Stopped:Connect(function()
+
+                local function restartActiveTrack()
                     if serial ~= state.Active.Serial then return end
-                    state.Active.Id = nil
-                    state.Active.Item = nil
-                    state.Active.Track = nil
-                    state.Active.Animation = nil
-                    state.Active.PlayableId = nil
-                    state.Active.StoppedConnection = nil
-                    refreshToggleVisuals()
+                    if state.Active.Track ~= result.Track then return end
+
+                    local currentSpeed = getSpeed(item.Id)
+                    pcall(function()
+                        result.Track.Looped = true
+                        result.Track.Priority = Enum.AnimationPriority.Action4
+                        if not result.Track.IsPlaying then
+                            result.Track:Play(0, 1, currentSpeed)
+                        end
+                        result.Track:AdjustSpeed(currentSpeed)
+                    end)
+                end
+
+                state.Active.StoppedConnection = result.Track.Stopped:Connect(function()
+                    -- Walking, jumping or a game's Animate skript may stop the track.
+                    -- Restart it unless stopActiveEmote() already changed the serial.
+                    if serial ~= state.Active.Serial then return end
+                    task.defer(restartActiveTrack)
                 end)
                 track(state.Active.StoppedConnection)
+
+                local keepAliveElapsed = 0
+                state.Active.KeepAliveConnection = RunService.Heartbeat:Connect(function(deltaTime)
+                    if serial ~= state.Active.Serial or state.Active.Track ~= result.Track then return end
+                    keepAliveElapsed = keepAliveElapsed + (tonumber(deltaTime) or 0)
+                    if keepAliveElapsed < 0.10 then return end
+                    keepAliveElapsed = 0
+                    restartActiveTrack()
+                end)
+                track(state.Active.KeepAliveConnection)
+
+                restartActiveTrack()
                 refreshToggleVisuals()
                 if loading then
                     loading:SetProgress(100, tostring(item.Name) .. " is playing.")
