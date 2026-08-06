@@ -8001,48 +8001,124 @@ function LULA.CreateLib(kavName, themeInput)
             return trim(text)
         end
 
-        local function findAnimationInObject(root)
+        local function findAnimationInObject(root, fallbackId)
             if not root then return nil end
-            if root:IsA("Animation") then
-                local direct = extractNumericId(root.AnimationId)
-                if direct then return direct end
+            local candidates = {}
+
+            local function inspect(object)
+                if object and object:IsA("Animation") then
+                    local id = extractNumericId(object.AnimationId)
+                    if id then table.insert(candidates, id) end
+                end
             end
+
+            inspect(root)
             for _, descendant in ipairs(root:GetDescendants()) do
-                if descendant:IsA("Animation") then
-                    local id = extractNumericId(descendant.AnimationId)
-                    if id then return id end
+                inspect(descendant)
+            end
+
+            -- Marketplace emote IDs can wrap a different sanitized animation ID.
+            -- Always prefer an inner ID that differs from the Marketplace ID.
+            for _, id in ipairs(candidates) do
+                if id ~= tonumber(fallbackId) then return id end
+            end
+            return candidates[1]
+        end
+
+        local function destroyLoadedAsset(result)
+            if typeof(result) == "Instance" then
+                pcall(function() result:Destroy() end)
+            elseif type(result) == "table" then
+                for _, object in ipairs(result) do
+                    if typeof(object) == "Instance" then
+                        pcall(function() object:Destroy() end)
+                    end
+                end
+            end
+        end
+
+        local function inspectLoadedAsset(result, fallbackId)
+            if typeof(result) == "Instance" then
+                return findAnimationInObject(result, fallbackId)
+            end
+            if type(result) == "table" then
+                for _, object in ipairs(result) do
+                    if typeof(object) == "Instance" then
+                        local found = findAnimationInObject(object, fallbackId)
+                        if found and found ~= tonumber(fallbackId) then return found end
+                    end
+                end
+                for _, object in ipairs(result) do
+                    if typeof(object) == "Instance" then
+                        local found = findAnimationInObject(object, fallbackId)
+                        if found then return found end
+                    end
                 end
             end
             return nil
         end
 
         local function inspectAsset(assetId)
-            local objectsOk, objects = pcall(function()
-                return game:GetObjects(animationUri(assetId))
-            end)
-            if objectsOk and type(objects) == "table" then
-                for _, object in ipairs(objects) do
-                    local found = findAnimationInObject(object)
-                    pcall(function() object:Destroy() end)
-                    if found then return found, "Roblox asset" end
+            assetId = tonumber(assetId)
+            if not assetId then return nil end
+
+            local attempts = {
+                {
+                    Name = "AssetService inner AnimationId",
+                    Load = function()
+                        return AssetService:LoadAssetAsync(assetId)
+                    end,
+                },
+                {
+                    Name = "InsertService inner AnimationId",
+                    Load = function()
+                        return InsertService:LoadAsset(assetId)
+                    end,
+                },
+                {
+                    Name = "GetObjects inner AnimationId",
+                    Load = function()
+                        return game:GetObjects(animationUri(assetId))
+                    end,
+                },
+            }
+
+            for _, attempt in ipairs(attempts) do
+                local ok, loaded = pcall(attempt.Load)
+                if ok and loaded then
+                    local found = inspectLoadedAsset(loaded, assetId)
+                    destroyLoadedAsset(loaded)
+                    if found and found ~= assetId then
+                        return found, attempt.Name
+                    end
                 end
             end
-
-            local insertOk, container = pcall(InsertService.LoadAsset, InsertService, tonumber(assetId))
-            if insertOk and container then
-                local found = findAnimationInObject(container)
-                pcall(function() container:Destroy() end)
-                if found then return found, "Roblox asset" end
-            end
             return nil
+        end
+
+        local function storePlayableId(item, marketplaceId, playableId, sourceName, wrapperOnly)
+            cache.Playable[marketplaceId] = {
+                Id = playableId,
+                Source = sourceName,
+                WrapperOnly = wrapperOnly == true,
+            }
+            item.PlayableAnimationId = playableId
+            item.PlayableSource = sourceName
+
+            local details = cache.Details[marketplaceId]
+            if type(details) == "table" then
+                details.PlayableAnimationId = playableId
+                details.PlayableSource = sourceName
+            end
         end
 
         local function resolvePlayableAnimationId(item)
             local marketplaceId = extractNumericId(item and item.Id)
             if not marketplaceId then error("This emote did not contain a valid ID.") end
-            if cache.Playable[marketplaceId] then
-                local saved = cache.Playable[marketplaceId]
-                return saved.Id, saved.Source
+
+            local cached = cache.Playable[marketplaceId]
+            if cached then
+                return cached.Id, cached.Source, cached.WrapperOnly == true
             end
 
             local raw = type(item.Raw) == "table" and item.Raw or {}
@@ -8054,36 +8130,157 @@ function LULA.CreateLib(kavName, themeInput)
                 raw.PlayableAnimationId,
                 raw.playableAnimationId,
             }
+
             for _, candidate in ipairs(candidates) do
                 local id = extractNumericId(candidate)
-                if id then
-                    cache.Playable[marketplaceId] = {Id = id, Source = "Marketplace"}
-                    item.PlayableAnimationId = id
-                    return id, "Marketplace"
+                if id and id ~= marketplaceId then
+                    storePlayableId(item, marketplaceId, id, "Marketplace metadata", false)
+                    return id, "Marketplace metadata", false
                 end
             end
 
             local creatorText = lower(item.CreatorName)
             local known = KNOWN_ROBLOX_EMOTES[canonicalName(item.Name)]
-            local official = tonumber(item.CreatorId) == 1 or creatorText:find("roblox", 1, true) ~= nil
+            local official = tonumber(item.CreatorId) == 1
+                or creatorText:find("roblox", 1, true) ~= nil
+
             if known and (official or known == marketplaceId) then
-                cache.Playable[marketplaceId] = {Id = known, Source = "Verified Roblox emote"}
-                item.PlayableAnimationId = known
-                return known, "Verified Roblox emote"
+                storePlayableId(item, marketplaceId, known, "Verified Roblox emote", false)
+                return known, "Verified Roblox emote", false
             end
 
-            if tonumber(item.AssetType) ~= 61 then
-                local inspected, sourceName = inspectAsset(marketplaceId)
-                if inspected then
-                    cache.Playable[marketplaceId] = {Id = inspected, Source = sourceName}
-                    item.PlayableAnimationId = inspected
-                    return inspected, sourceName
+            -- This inspection used to be skipped for AssetType 61. That caused the
+            -- Marketplace wrapper ID to be cached as the playable animation ID.
+            local inspected, sourceName = inspectAsset(marketplaceId)
+            if inspected then
+                storePlayableId(item, marketplaceId, inspected, sourceName, false)
+                return inspected, sourceName, false
+            end
+
+            -- Keep the Marketplace ID for Roblox's native emote player, but mark it
+            -- as a wrapper so manual LoadAnimation never receives it by mistake.
+            storePlayableId(item, marketplaceId, marketplaceId, "Roblox emote player", true)
+            return marketplaceId, "Roblox emote player", true
+        end
+
+        local function withRobloxIdentity(callback)
+            local setter = rawget(env, "setthreadidentity")
+                or rawget(env, "set_thread_identity")
+                or rawget(env, "setidentity")
+            local getter = rawget(env, "getthreadidentity")
+                or rawget(env, "get_thread_identity")
+                or rawget(env, "getidentity")
+
+            local previous
+            if type(getter) == "function" then
+                pcall(function() previous = getter() end)
+            end
+            if type(setter) == "function" then
+                pcall(setter, 8)
+            end
+
+            local ok, packed = pcall(function()
+                return table.pack(callback())
+            end)
+
+            if type(setter) == "function" and previous ~= nil then
+                pcall(setter, previous)
+            end
+            return ok, packed
+        end
+
+        local function findAnimationTrack(values)
+            if type(values) ~= "table" then return nil end
+            for index = 1, values.n or #values do
+                local value = values[index]
+                if typeof(value) == "Instance" and value:IsA("AnimationTrack") then
+                    return value
                 end
             end
+            return nil
+        end
 
-            cache.Playable[marketplaceId] = {Id = marketplaceId, Source = "Emote animation"}
-            item.PlayableAnimationId = marketplaceId
-            return marketplaceId, "Emote animation"
+        local function rememberTrackAnimationId(item, trackObject)
+            local marketplaceId = extractNumericId(item and item.Id)
+            local animationObject
+            pcall(function() animationObject = trackObject.Animation end)
+            local sanitizedId = animationObject and extractNumericId(animationObject.AnimationId)
+            if marketplaceId and sanitizedId and sanitizedId ~= marketplaceId then
+                storePlayableId(item, marketplaceId, sanitizedId, "Roblox sanitized emote", false)
+            end
+            return sanitizedId
+        end
+
+        local function tryNativeMarketplaceEmote(humanoid, item, speed)
+            local marketplaceId = extractNumericId(item and item.Id)
+            if not humanoid or not marketplaceId then return nil end
+
+            local ok, packed = withRobloxIdentity(function()
+                return humanoid:PlayEmoteAndGetAnimTrackById(marketplaceId)
+            end)
+            if not ok then return nil end
+
+            local trackObject = findAnimationTrack(packed)
+            if not trackObject then return nil end
+
+            trackObject.Looped = true
+            pcall(function() trackObject.Priority = Enum.AnimationPriority.Action end)
+            pcall(function() trackObject:AdjustSpeed(speed) end)
+            local sanitizedId = rememberTrackAnimationId(item, trackObject)
+            return trackObject, sanitizedId or marketplaceId, "Roblox emote player"
+        end
+
+        local function tryLocalDescriptionEmote(humanoid, animator, item, speed)
+            local character = LocalPlayer.Character
+            if not humanoid or not character or humanoid.Parent ~= character then return nil end
+
+            local marketplaceId = extractNumericId(item and item.Id)
+            if not marketplaceId then return nil end
+
+            local before = {}
+            pcall(function()
+                for _, trackObject in ipairs(animator:GetPlayingAnimationTracks()) do
+                    before[trackObject] = true
+                end
+            end)
+
+            local emoteName = "LH_FreeEmote"
+            local appliedOk, played = pcall(function()
+                local description = humanoid:GetAppliedDescription()
+                pcall(function() description:RemoveEmote(emoteName) end)
+                description:AddEmote(emoteName, marketplaceId)
+
+                local applyOk = pcall(function()
+                    humanoid:ApplyDescriptionAsync(description)
+                end)
+                if not applyOk then
+                    humanoid:ApplyDescription(description)
+                end
+
+                if humanoid.PlayEmoteAsync then
+                    return humanoid:PlayEmoteAsync(emoteName)
+                end
+                return humanoid:PlayEmote(emoteName)
+            end)
+            if not appliedOk or played ~= true then return nil end
+
+            RunService.Heartbeat:Wait()
+            local newTrack
+            pcall(function()
+                for _, trackObject in ipairs(animator:GetPlayingAnimationTracks()) do
+                    if not before[trackObject] then
+                        newTrack = trackObject
+                        break
+                    end
+                end
+            end)
+            if not newTrack then return nil end
+
+            newTrack.Looped = true
+            pcall(function() newTrack.Priority = Enum.AnimationPriority.Action end)
+            pcall(function() newTrack:AdjustSpeed(speed) end)
+            local sanitizedId = rememberTrackAnimationId(item, newTrack)
+            return newTrack, sanitizedId or marketplaceId, "Humanoid emote"
         end
 
         local function fetchDetails(item)
@@ -8184,40 +8381,57 @@ function LULA.CreateLib(kavName, themeInput)
             task.spawn(function()
                 RunService.RenderStepped:Wait()
                 local ok, result = pcall(function()
-                    if loading then loading:SetProgress(32, "Resolving animation ID...") end
-                    local playableId = resolvePlayableAnimationId(item)
-                    if serial ~= state.Active.Serial then return nil end
-
                     local _, humanoid, animator = getCharacterAnimationLoader()
                     if serial ~= state.Active.Serial then return nil end
-                    if loading then loading:SetProgress(68, "Loading emote animation...") end
 
-                    local animation = Instance.new("Animation")
-                    animation.Name = "LH_FreeEmote_" .. tostring(playableId)
-                    animation.AnimationId = animationUri(playableId)
+                    local speed = getSpeed(item.Id)
+                    if loading then loading:SetProgress(28, "Opening Roblox emote...") end
 
-                    local loadOk, trackObject = pcall(function()
-                        return humanoid:LoadAnimation(animation)
-                    end)
-                    if not loadOk or not trackObject then
+                    local trackObject, playableId = tryNativeMarketplaceEmote(humanoid, item, speed)
+                    local animation
+
+                    if not trackObject then
+                        if loading then loading:SetProgress(45, "Preparing your emote...") end
+                        trackObject, playableId = tryLocalDescriptionEmote(humanoid, animator, item, speed)
+                    end
+
+                    if not trackObject then
+                        if loading then loading:SetProgress(58, "Resolving animation ID...") end
+                        local resolvedId, _, wrapperOnly = resolvePlayableAnimationId(item)
+                        if wrapperOnly then
+                            error("Roblox did not expose this Marketplace emote's playable animation.")
+                        end
+
+                        animation = Instance.new("Animation")
+                        animation.Name = "LH_FreeEmote_" .. tostring(resolvedId)
+                        animation.AnimationId = animationUri(resolvedId)
+
+                        local loadOk
                         loadOk, trackObject = pcall(function()
-                            return animator:LoadAnimation(animation)
+                            return humanoid:LoadAnimation(animation)
                         end)
-                    end
-                    if not loadOk or not trackObject then
-                        pcall(function() animation:Destroy() end)
-                        error("Roblox did not allow this emote to load.")
+                        if not loadOk or not trackObject then
+                            loadOk, trackObject = pcall(function()
+                                return animator:LoadAnimation(animation)
+                            end)
+                        end
+                        if not loadOk or not trackObject then
+                            pcall(function() animation:Destroy() end)
+                            error("Roblox did not allow this emote to load.")
+                        end
+
+                        trackObject.Looped = true
+                        pcall(function() trackObject.Priority = Enum.AnimationPriority.Action end)
+                        trackObject:Play()
+                        pcall(function() trackObject:AdjustSpeed(speed) end)
+                        playableId = resolvedId
                     end
 
-                    trackObject.Looped = true
-                    pcall(function() trackObject.Priority = Enum.AnimationPriority.Action end)
-                    trackObject:Play()
-                    pcall(function() trackObject:AdjustSpeed(getSpeed(item.Id)) end)
-
+                    if loading then loading:SetProgress(82, "Starting emote...") end
                     return {
                         Track = trackObject,
                         Animation = animation,
-                        PlayableId = playableId,
+                        PlayableId = playableId or item.Id,
                     }
                 end)
 
@@ -8278,8 +8492,8 @@ function LULA.CreateLib(kavName, themeInput)
         end
 
         local function createAvatarPreview(parent, item, compact)
-            local api = {Dead = false, Track = nil, Animation = nil, Model = nil, Viewport = viewport}
             local viewport = Instance.new("ViewportFrame")
+            local api = {Dead = false, Track = nil, Animation = nil, Model = nil, Viewport = viewport}
             viewport.Name = "EmoteAvatarPreview"
             viewport.Size = UDim2.fromScale(1, 1)
             viewport.BackgroundTransparency = 0.04
@@ -8338,12 +8552,6 @@ function LULA.CreateLib(kavName, themeInput)
             end))
 
             task.spawn(function()
-                local ok, playableId = pcall(resolvePlayableAnimationId, item)
-                if not ok or api.Dead or not viewport.Parent then
-                    loadingText.Text = "Preview unavailable"
-                    return
-                end
-
                 local model
                 local modelOk = pcall(function()
                     model = Players:CreateHumanoidModelFromUserId(LocalPlayer.UserId)
@@ -8408,25 +8616,41 @@ function LULA.CreateLib(kavName, themeInput)
                 pcall(function() humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None end)
 
                 local animator = humanoid:FindFirstChildOfClass("Animator") or Instance.new("Animator", humanoid)
-                local animation = Instance.new("Animation")
-                animation.Name = "LH_EmoteCardPreview"
-                animation.AnimationId = animationUri(playableId)
-                local loadOk, trackObject = pcall(function() return humanoid:LoadAnimation(animation) end)
-                if not loadOk or not trackObject then
-                    loadOk, trackObject = pcall(function() return animator:LoadAnimation(animation) end)
+                local speed = getSpeed(item.Id)
+                local trackObject, playableId = tryNativeMarketplaceEmote(humanoid, item, speed)
+                local animation
+
+                if not trackObject then
+                    local resolvedId, _, wrapperOnly = resolvePlayableAnimationId(item)
+                    if not wrapperOnly then
+                        playableId = resolvedId
+                        animation = Instance.new("Animation")
+                        animation.Name = "LH_EmoteCardPreview"
+                        animation.AnimationId = animationUri(resolvedId)
+
+                        -- Match the animated avatar cards already used by Home/My Shelf.
+                        local loadOk
+                        loadOk, trackObject = pcall(function()
+                            return animator:LoadAnimation(animation)
+                        end)
+                        if loadOk and trackObject then
+                            trackObject.Looped = true
+                            pcall(function() trackObject.Priority = Enum.AnimationPriority.Movement end)
+                            trackObject:Play(0.18, 1, speed)
+                        end
+                    end
                 end
-                if not loadOk or not trackObject or api.Dead then
-                    pcall(function() animation:Destroy() end)
+
+                if not trackObject or api.Dead then
+                    if animation then pcall(function() animation:Destroy() end) end
                     loadingText.Text = "Avatar thumbnail"
                     return
                 end
 
-                trackObject.Looped = true
-                pcall(function() trackObject.Priority = Enum.AnimationPriority.Action end)
-                trackObject:Play()
-                pcall(function() trackObject:AdjustSpeed(getSpeed(item.Id)) end)
+                pcall(function() trackObject:AdjustSpeed(speed) end)
                 api.Track = trackObject
                 api.Animation = animation
+                api.PlayableId = playableId
                 fallback.Visible = false
                 loadingText.Visible = false
             end)
