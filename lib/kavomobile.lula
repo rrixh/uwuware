@@ -1,11 +1,10 @@
+--kavo ui 4.3
 local LULA = {}
 LULA.AnimationMarketplaceVersion = 4
 LULA.EmoteMarketplaceVersion = 1
 local env = (getgenv and getgenv()) or _G
 
-
--- Central cloned-service access. Supports get.Players, get.ReplicatedStorage,
--- get("Players"), get("ReplicatedStorage"), and every other Roblox service.
+--kr
 local get = rawget(env, "LHGetService")
 if type(get) ~= "table" then
     local nativeCloneRef = rawget(env, "cloneref") or rawget(env, "clone_ref")
@@ -2666,7 +2665,7 @@ function LULA.CreateLib(kavName, themeInput)
     pages.ClipsDescendants = true
     pages.Parent = main
 
-    local footer = makeText(main, "Lollypop Hub v10.5.1", 11, Enum.Font.GothamMedium)
+    local footer = makeText(main, "Lollypop Hub v10.2.0", 11, Enum.Font.GothamMedium)
     footer.Name = "Footer"
     footer.Position = UDim2.new(0, 158, 1, -20)
     footer.Size = UDim2.new(1, -165, 0, 18)
