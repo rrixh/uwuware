@@ -1853,12 +1853,16 @@ end
 
 local function findTabByName(name)
     if not active then return nil end
+    local filledStar = utf8.char(0x2605)
     local needle = string.lower(tostring(name or ""))
+    needle = needle:gsub("^" .. filledStar .. "%s*", "")
     if needle == "animation bundles" or needle == "free animation packs" then
         needle = "free animations"
     end
     for _, tab in ipairs(active.Tabs) do
-        if string.lower(tab.Name) == needle then return tab end
+        local candidate = string.lower(tostring(tab.Name or ""))
+        candidate = candidate:gsub("^" .. filledStar .. "%s*", "")
+        if candidate == needle then return tab end
     end
     return nil
 end
@@ -4297,7 +4301,7 @@ function LULA.CreateLib(kavName, themeInput)
         local AssetService = get.AssetService
         local InsertService = get.InsertService
 
-        local bundleTab = self:NewTab(tabName or "Free Animations")
+        local bundleTab = self:NewTab(tabName or (utf8.char(0x2605) .. " Free Animations"))
         bundleTab:EnsureBuilt()
         local scroll = bundleTab.Scroll
         scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
@@ -5964,6 +5968,9 @@ function LULA.CreateLib(kavName, themeInput)
         local searchSerial = 0
         local searching = false
         local loadingMore = false
+        local displayCount = 0
+        local displayStep = 9
+        local renderedCount = 0
 
         local function cleanFavorite(raw)
             if type(raw) ~= "table" then return nil end
@@ -6865,83 +6872,82 @@ function LULA.CreateLib(kavName, themeInput)
 
         local function addFavorite(item)
             if favoriteIndex(item.Id) then
-                bundleNotify(tostring(item.Name) .. " is already in favorites.", "info", 2.2)
+                LULA:Notify("info", "Free Animations", tostring(item.Name) .. " is already in Favorites.", 2.3, nil, true)
                 return
             end
-            LULA:Confirm("Add to favorites?", "Add \"" .. tostring(item.Name) .. "\" to Animation Bundle Favorites?", function()
-                local favorites = getFavorites()
-                table.insert(favorites, {
-                    Id = item.Id,
-                    Name = item.Name,
-                    CreatorName = item.CreatorName,
-                    Description = item.Description,
-                })
-                saveFavorites(favorites)
-                refreshStarVisuals()
-                if currentMode == "favorites" and renderFavorites then renderFavorites(favoriteSearchBox.Text) end
-                bundleNotify(tostring(item.Name) .. " was added to favorites.", "success", 2.8)
-            end)
+            local favorites = getFavorites()
+            local saved = cleanFavorite(item)
+            if not saved then return end
+            table.insert(favorites, saved)
+            saveFavorites(favorites)
+            refreshStarVisuals()
+            LULA:Notify("success", "Free Animations", tostring(item.Name) .. " was added to Favorites.", 2.5, nil, true)
+            if currentMode == "favorites" and renderFavorites then
+                renderFavorites(favoriteSearchBox.Text)
+            end
         end
 
         local function removeFavorite(item, allowUndo)
             local favorites = getFavorites()
-            local removedIndex = nil
-            local removedItem = nil
-            for index, favorite in ipairs(favorites) do
-                if tonumber(favorite.Id) == tonumber(item.Id) then
-                    removedIndex = index
-                    removedItem = table.remove(favorites, index)
-                    break
-                end
-            end
-            if not removedItem then return end
+            local index = favoriteIndex(item.Id)
+            if not index then return end
+
+            local removed = table.remove(favorites, index)
             saveFavorites(favorites)
             refreshStarVisuals()
             if currentMode == "favorites" and renderFavorites then
                 renderFavorites(favoriteSearchBox.Text)
-            else
-                refreshStarVisuals()
             end
 
             if allowUndo ~= false then
-                LULA:NotifyAction("warning", "Animation Favorites", tostring(removedItem.Name) .. " was removed from favorites.", 3, "Undo", function()
-                    local restored = getFavorites()
-                    if not favoriteIndex(removedItem.Id) then
-                        table.insert(restored, math.clamp(removedIndex or (#restored + 1), 1, #restored + 1), removedItem)
-                        saveFavorites(restored)
-                    end
-                    refreshStarVisuals()
-                    if currentMode == "favorites" and renderFavorites then
-                        renderFavorites(favoriteSearchBox.Text)
-                    else
+                LULA:NotifyAction(
+                    "warning",
+                    "Animation Favorites",
+                    tostring(removed.Name) .. " was removed from Favorites.",
+                    4,
+                    "Undo",
+                    function()
+                        local restored = getFavorites()
+                        if not favoriteIndex(removed.Id) then
+                            table.insert(restored, math.min(index, #restored + 1), removed)
+                            saveFavorites(restored)
+                        end
                         refreshStarVisuals()
+                        if currentMode == "favorites" and renderFavorites then
+                            renderFavorites(favoriteSearchBox.Text)
+                        end
                     end
-                    bundleNotify(tostring(removedItem.Name) .. " was restored to favorites.", "success", 2.4)
-                end)
+                )
+            end
+        end
+
+        local function toggleFavorite(item)
+            if favoriteIndex(item.Id) then
+                removeFavorite(item, true)
+            else
+                addFavorite(item)
             end
         end
 
         local function makeStarButton(parent, item)
             local star = makeButton(parent, STAR_EMPTY)
-            star.Name = "FavoriteStar"
+            star.Name = "AnimationBundleFavoriteStar"
             star.Size = UDim2.fromOffset(24, 24)
             star.TextSize = 20
+            star.TextColor3 = YELLOW
             star.BackgroundTransparency = 0.08
             star.ZIndex = 8
+
             local api = {}
             function api:Render(saved)
                 star.Text = saved and STAR_FILLED or STAR_EMPTY
-                star.TextColor3 = saved and YELLOW or rgb(225, 225, 235)
+                star.TextColor3 = YELLOW
             end
-            track(star.MouseButton1Click:Connect(function()
-                if favoriteIndex(item.Id) then
-                    LULA:Confirm("Remove from favorites?", "Remove \"" .. tostring(item.Name) .. "\" from Animation Bundle Favorites?", function()
-                        removeFavorite(item, true)
-                    end)
-                else
-                    addFavorite(item)
-                end
+
+            track(star.Activated:Connect(function()
+                toggleFavorite(item)
             end))
+
             registerStar(item.Id, api)
             api:Render(favoriteIndex(item.Id) ~= nil)
             return star
@@ -7053,25 +7059,37 @@ function LULA.CreateLib(kavName, themeInput)
             resultCount.Text = tostring(count) .. (count == 1 and " animation bundle found" or " animation bundles found")
         end
 
-        renderMarketplace = function()
-            clearChildren(marketHolder)
-            toggleApisById = {}
-            starApisById = {}
-            for index, item in ipairs(currentResults) do
-                createMarketplaceCard(item, index)
+        renderMarketplace = function(reset)
+            if reset == true then
+                clearChildren(marketHolder)
+                toggleApisById = {}
+                starApisById = {}
+                renderedCount = 0
             end
+
+            local shown = math.min(displayCount, #currentResults)
+            for index = renderedCount + 1, shown do
+                createMarketplaceCard(currentResults[index], index)
+            end
+            renderedCount = shown
+
             marketHolder.Visible = true
             favoritesHolder.Visible = false
             updateResultCount(#currentResults)
             emptyLabel.Visible = #currentResults == 0 and not searching
-            emptyLabel.Text = #currentResults == 0 and "No animation bundles found. Try another name or a shorter word." or ""
-            loadMoreHint.Visible = #currentResults > 0 and currentHasMore == true and not searching
-            loadMoreHint.Text = "Load More"
+            emptyLabel.Text = #currentResults == 0
+                and "No animation bundles found. Try another name or a shorter word."
+                or ""
+            loadMoreHint.Visible = not searching
+                and (displayCount < #currentResults or currentHasMore == true)
+            loadMoreHint.Text = loadingMore and "Loading..." or "Load More"
             refreshToggleVisuals()
             refreshStarVisuals()
         end
 
         renderFavorites = function(query)
+            clearChildren(marketHolder)
+            renderedCount = 0
             clearChildren(favoritesHolder)
             toggleApisById = {}
             starApisById = {}
@@ -7136,7 +7154,6 @@ function LULA.CreateLib(kavName, themeInput)
                 end
             end
             sortResults(currentResults, currentEffectiveQuery)
-            renderMarketplace()
         end
 
         local function bestResultScore(results, query)
@@ -7154,6 +7171,11 @@ function LULA.CreateLib(kavName, themeInput)
             setSearching(true, "Searching Roblox Marketplace...")
             setSuggestion(nil, nil)
             currentOriginalQuery = nil
+            displayCount = 0
+            renderedCount = 0
+            clearChildren(marketHolder)
+            toggleApisById = {}
+            starApisById = {}
 
             task.spawn(function()
                 local ok, results, nextPage, hasMore = pcall(function()
@@ -7165,8 +7187,10 @@ function LULA.CreateLib(kavName, themeInput)
                     currentResultIds = {}
                     currentNextPage = nil
                     currentHasMore = false
+                    displayCount = 0
+                    renderedCount = 0
                     setSearching(false)
-                    renderMarketplace()
+                    renderMarketplace(true)
                     emptyLabel.Visible = true
                     emptyLabel.Text = "Marketplace search failed: " .. tostring(results)
                     bundleNotify("Roblox Marketplace search failed.", "error", 3.5)
@@ -7214,33 +7238,54 @@ function LULA.CreateLib(kavName, themeInput)
                 currentEffectiveQuery = finalQuery
                 currentNextPage = finalNext
                 currentHasMore = finalHasMore == true
+                displayCount = 0
+                renderedCount = 0
                 appendResults(finalResults)
+                displayCount = math.min(displayStep, #currentResults)
                 setSearching(false)
+                renderMarketplace(true)
                 if currentOriginalQuery then setSuggestion(finalQuery, currentOriginalQuery) end
             end)
         end
 
         local function loadMoreResults()
             if loadingMore or searching or currentMode ~= "marketplace" then return end
-            if not currentHasMore or typeof(currentNextPage) ~= "function" then return end
+
+            if displayCount < #currentResults then
+                displayCount = math.min(#currentResults, displayCount + displayStep)
+                renderMarketplace(false)
+                return
+            end
+
+            if not currentHasMore or typeof(currentNextPage) ~= "function" then
+                loadMoreHint.Visible = false
+                return
+            end
+
             loadingMore = true
             loadMoreHint.Visible = true
             loadMoreHint.Text = "Loading..."
             loadingLabel.Text = "Loading more animation bundles..."
             loadingLabel.Visible = true
+
             task.spawn(function()
+                local before = #currentResults
                 local ok, page, hasMore = pcall(currentNextPage)
                 if ok then
                     currentHasMore = hasMore == true
                     appendResults(page)
+                    displayCount = math.min(
+                        #currentResults,
+                        math.max(displayCount + displayStep, before + displayStep)
+                    )
                 else
                     currentHasMore = false
                     bundleNotify("Could not load the next Marketplace page.", "error", 3)
                 end
+
                 loadingMore = false
                 loadingLabel.Visible = searching
-                loadMoreHint.Visible = currentMode == "marketplace" and #currentResults > 0 and currentHasMore == true
-                loadMoreHint.Text = "Load More"
+                renderMarketplace(true)
             end)
         end
 
@@ -7268,7 +7313,9 @@ function LULA.CreateLib(kavName, themeInput)
             favoriteSaveControls:SetVisible(not marketplaceActive)
             marketSearchRow.Visible = marketplaceActive
             favoriteSearchRow.Visible = not marketplaceActive
-            loadMoreHint.Visible = marketplaceActive and #currentResults > 0 and currentHasMore == true
+            loadMoreHint.Visible = marketplaceActive
+                and not searching
+                and (displayCount < #currentResults or currentHasMore == true)
             suggestion.Visible = marketplaceActive and currentOriginalQuery ~= nil
             if marketplaceActive then
                 marketHolder.Visible = true
@@ -7276,7 +7323,7 @@ function LULA.CreateLib(kavName, themeInput)
                 if #currentResults == 0 and not searching then
                     performMarketplaceSearch(marketSearchBox.Text, false)
                 else
-                    renderMarketplace()
+                    renderMarketplace(false)
                 end
             else
                 renderFavorites(favoriteSearchBox.Text)
@@ -7372,7 +7419,7 @@ function LULA.CreateLib(kavName, themeInput)
     function window:EnableFreeEmotes(tabName)
         if active.FreeEmotes then return active.FreeEmotes.Tab end
 
-        local emoteTab = self:NewTab(tabName or "Free Emotes")
+        local emoteTab = self:NewTab(tabName or (utf8.char(0x2605) .. " Free Emotes"))
         emoteTab:EnsureBuilt()
         local scroll = emoteTab.Scroll
         scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
@@ -9970,7 +10017,12 @@ function LULA.CreateLib(kavName, themeInput)
         end
         local tabStates = type(state.Tabs) == "table" and state.Tabs or {}
         for _, tab in ipairs(active.Tabs) do
-            local saved = tabStates[tab.Name] or (tab.Name == "Free Animations" and (tabStates["Free Animation Packs"] or tabStates["Animation Bundles"]))
+            local animationTabName = utf8.char(0x2605) .. " Free Animations"
+            local emoteTabName = utf8.char(0x2605) .. " Free Emotes"
+            local saved = tabStates[tab.Name]
+                or ((tab.Name == animationTabName or tab.Name == "Free Animations")
+                    and (tabStates["Free Animations"] or tabStates["Free Animation Packs"] or tabStates["Animation Bundles"]))
+                or ((tab.Name == emoteTabName or tab.Name == "Free Emotes") and tabStates["Free Emotes"])
             if type(saved) == "table" and type(saved.Scroll) == "table" then
                 tab.LastCanvasPosition = Vector2.new(tonumber(saved.Scroll[1]) or 0, tonumber(saved.Scroll[2]) or 0)
             end
@@ -10012,7 +10064,12 @@ function LULA.CreateLib(kavName, themeInput)
             end
 
             for _, tab in ipairs(active.Tabs) do
-                local saved = tabStates[tab.Name] or (tab.Name == "Free Animations" and (tabStates["Free Animation Packs"] or tabStates["Animation Bundles"]))
+                local animationTabName = utf8.char(0x2605) .. " Free Animations"
+            local emoteTabName = utf8.char(0x2605) .. " Free Emotes"
+            local saved = tabStates[tab.Name]
+                or ((tab.Name == animationTabName or tab.Name == "Free Animations")
+                    and (tabStates["Free Animations"] or tabStates["Free Animation Packs"] or tabStates["Animation Bundles"]))
+                or ((tab.Name == emoteTabName or tab.Name == "Free Emotes") and tabStates["Free Emotes"])
                 if type(saved) == "table" then
                     if saved.Search and saved.Search ~= "" then
                         tab:EnsureBuilt()
