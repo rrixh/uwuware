@@ -1,5 +1,6 @@
 local LULA = {}
 LULA.AnimationMarketplaceVersion = 4
+LULA.EmoteMarketplaceVersion = 1
 local env = (getgenv and getgenv()) or _G
 
 
@@ -334,6 +335,9 @@ if settings.ShelfEnabled == nil then settings.ShelfEnabled = true end
 if settings.ShelfAutoSave == nil then settings.ShelfAutoSave = false end
 if type(settings.AnimationBundleFavorites) ~= "table" then settings.AnimationBundleFavorites = {} end
 if settings.AnimationBundleAutoSave == nil then settings.AnimationBundleAutoSave = true end
+if type(settings.FreeEmoteFavorites) ~= "table" then settings.FreeEmoteFavorites = {} end
+if settings.FreeEmoteAutoSave == nil then settings.FreeEmoteAutoSave = true end
+if type(settings.FreeEmoteSpeeds) ~= "table" then settings.FreeEmoteSpeeds = {} end
 
 local active = nil
 local fontMap = {}
@@ -650,6 +654,9 @@ local function applyTheme()
     if active.Island and active.Island.Stroke then active.Island.Stroke.Color = active.Theme.SchemeColor end
     if active.AnimationBundles and type(active.AnimationBundles.RefreshTheme) == "function" then
         pcall(active.AnimationBundles.RefreshTheme)
+    end
+    if active.FreeEmotes and type(active.FreeEmotes.RefreshTheme) == "function" then
+        pcall(active.FreeEmotes.RefreshTheme)
     end
 end
 
@@ -1226,22 +1233,47 @@ local function setGlassBlur(_enabled)
     if active then active.Blur = nil end
 end
 
-local function createNotificationHost(screenGui)
+local function createNotificationHost(screenGui, actionHost)
     local host = Instance.new("Frame")
-    host.Name = "NotificationHost"
-    host.AnchorPoint = Vector2.new(0, 1)
-    host.Position = UDim2.new(0, 12, 1, -12)
-    host.Size = UDim2.fromOffset(320, 500)
+    host.Name = actionHost and "ActionNotificationHost" or "NotificationHost"
+    if actionHost then
+        host.AnchorPoint = Vector2.new(0, 1)
+        host.Position = UDim2.new(0, 12, 1, -12)
+        host.Size = UDim2.fromOffset(340, 500)
+    else
+        host.AnchorPoint = Vector2.new(1, 0)
+        host.Position = UDim2.new(1, -12, 0, 12)
+        host.Size = UDim2.fromOffset(320, 500)
+    end
     host.BackgroundTransparency = 1
-    host.ZIndex = 100
+    host.ZIndex = actionHost and 110 or 100
     host.Parent = screenGui
+
     local layout = Instance.new("UIListLayout")
-    layout.HorizontalAlignment = Enum.HorizontalAlignment.Left
-    layout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+    layout.HorizontalAlignment = actionHost and Enum.HorizontalAlignment.Left or Enum.HorizontalAlignment.Right
+    layout.VerticalAlignment = actionHost and Enum.VerticalAlignment.Bottom or Enum.VerticalAlignment.Top
     layout.SortOrder = Enum.SortOrder.LayoutOrder
     layout.Padding = UDim.new(0, 8)
     layout.Parent = host
     return host
+end
+
+local notificationDedup = {}
+local function isDuplicateNotification(channel, kind, title, text, actionText)
+    local key = table.concat({
+        tostring(channel or "normal"),
+        tostring(kind or "info"),
+        tostring(title or ""),
+        tostring(text or ""),
+        tostring(actionText or ""),
+    }, "\31")
+    local now = os.clock()
+    local previous = notificationDedup[key]
+    notificationDedup[key] = now
+    for oldKey, timestamp in pairs(notificationDedup) do
+        if now - timestamp > 8 then notificationDedup[oldKey] = nil end
+    end
+    return previous ~= nil and now - previous < 1.25
 end
 
 local kindColors = {
@@ -1259,6 +1291,9 @@ function LULA:Notify(kind, title, text, seconds, progress, force)
         seconds = math.clamp(tonumber(seconds) or 8, 2, 15)
     else
         seconds = math.clamp(tonumber(seconds) or 3, 1.5, 3.5)
+    end
+    if isDuplicateNotification("normal", kind, title, text, progress ~= nil and tostring(progress) or "") then
+        return nil
     end
     table.insert(notificationHistory, 1, {
         Time = os.time(), Kind = kind, Title = title, Text = text, Progress = progress,
@@ -1387,12 +1422,15 @@ function LULA:NotifyAction(kind, title, text, seconds, buttonText, callback)
     text = tostring(text or "")
     seconds = math.clamp(tonumber(seconds) or 4, 2, 10)
     buttonText = tostring(buttonText or "Undo")
+    if isDuplicateNotification("action", kind, title, text, buttonText) then
+        return nil
+    end
 
     table.insert(notificationHistory, 1, {
         Time = os.time(), Kind = kind, Title = title, Text = text, Action = buttonText,
     })
     while #notificationHistory > 100 do table.remove(notificationHistory) end
-    if not active or not active.NotificationHost then return nil end
+    if not active or not active.ActionNotificationHost then return nil end
 
     local width, cardHeight = 330, 82
     local holder = Instance.new("Frame")
@@ -1401,10 +1439,10 @@ function LULA:NotifyAction(kind, title, text, seconds, buttonText, callback)
     holder.BackgroundTransparency = 1
     holder.ClipsDescendants = false
     holder.ZIndex = 111
-    holder.Parent = active.NotificationHost
+    holder.Parent = active.ActionNotificationHost
 
     local view = viewportSize()
-    local hostCenter = active.NotificationHost.AbsolutePosition.X + active.NotificationHost.AbsoluteSize.X * 0.5
+    local hostCenter = active.ActionNotificationHost.AbsolutePosition.X + active.ActionNotificationHost.AbsoluteSize.X * 0.5
     local leavesLeft = hostCenter <= view.X * 0.5
     local offscreenX = leavesLeft and -(width + 28) or (width + 28)
 
@@ -1816,7 +1854,9 @@ end
 local function findTabByName(name)
     if not active then return nil end
     local needle = string.lower(tostring(name or ""))
-    if needle == "animation bundles" then needle = "free animation packs" end
+    if needle == "animation bundles" or needle == "free animation packs" then
+        needle = "free animations"
+    end
     for _, tab in ipairs(active.Tabs) do
         if string.lower(tab.Name) == needle then return tab end
     end
@@ -2708,7 +2748,8 @@ function LULA.CreateLib(kavName, themeInput)
         MainStroke = mainStroke,
         SideGradient = sideGradient,
         Tooltip = tooltip,
-        NotificationHost = createNotificationHost(screenGui),
+        NotificationHost = createNotificationHost(screenGui, false),
+        ActionNotificationHost = createNotificationHost(screenGui, true),
         Tabs = {},
         SelectedTab = nil,
         Scale = scale,
@@ -6075,7 +6116,7 @@ function LULA.CreateLib(kavName, themeInput)
         noteTitle.Position = UDim2.fromOffset(10, 6)
         noteTitle.Size = UDim2.new(1, -20, 0, 20)
         noteTitle.TextXAlignment = Enum.TextXAlignment.Left
-        local noteBody = makeText(note, "Look up and use your favorite animation bundles directly from Roblox's Marketplace for free.", 11.5, Enum.Font.GothamMedium)
+        local noteBody = makeText(note, "Look up and use your favorite animation packs direktly from Roblox's Marketplace for free. Tap Load More for more results.", 11.5, Enum.Font.GothamMedium)
         noteBody.Position = UDim2.fromOffset(10, 26)
         noteBody.Size = UDim2.new(1, -20, 0, 25)
         noteBody.TextXAlignment = Enum.TextXAlignment.Left
@@ -6101,42 +6142,72 @@ function LULA.CreateLib(kavName, themeInput)
         favoritesTabButton.TextSize = 12
         animationText(favoritesTabButton)
 
-        local searchRow = newRow(scroll, "AnimationBundleSearch", 38)
-        searchRow.LayoutOrder = -4800
-        searchRow.BackgroundTransparency = 0.04
+        local marketSearchRow = newRow(scroll, "AnimationBundleMarketplaceSearch", 38)
+        marketSearchRow.LayoutOrder = -4800
+        marketSearchRow.BackgroundTransparency = 0.04
 
-        local searchBox = Instance.new("TextBox")
-        searchBox.Name = "AnimationBundleSearchBox"
-        searchBox.Position = UDim2.fromOffset(5, 4)
-        searchBox.Size = UDim2.new(1, -45, 0, 30)
-        searchBox.BackgroundTransparency = 0.08
-        searchBox.BorderSizePixel = 0
-        searchBox.ClearTextOnFocus = false
-        searchBox.Font = resolveUIFont(Enum.Font.GothamMedium)
-        searchBox.Text = ""
-        searchBox.PlaceholderText = "Search Roblox Animation Bundles..."
-        searchBox.PlaceholderColor3 = rgb(155, 155, 168)
-        searchBox.TextSize = 11.5
-        searchBox.TextXAlignment = Enum.TextXAlignment.Left
-        searchBox.Parent = searchRow
-        bind(searchBox, "BackgroundColor3", "Header")
-        bind(searchBox, "TextColor3", "TextColor")
-        makeCorner(searchBox, 7)
-        local searchPadding = Instance.new("UIPadding")
-        searchPadding.PaddingLeft = UDim.new(0, 9)
-        searchPadding.PaddingRight = UDim.new(0, 27)
-        searchPadding.Parent = searchBox
+        local marketSearchBox = Instance.new("TextBox")
+        marketSearchBox.Name = "AnimationBundleMarketplaceSearchBox"
+        marketSearchBox.Position = UDim2.fromOffset(5, 4)
+        marketSearchBox.Size = UDim2.new(1, -45, 0, 30)
+        marketSearchBox.BackgroundTransparency = 0.08
+        marketSearchBox.BorderSizePixel = 0
+        marketSearchBox.ClearTextOnFocus = false
+        marketSearchBox.Font = resolveUIFont(Enum.Font.GothamMedium)
+        marketSearchBox.Text = ""
+        marketSearchBox.PlaceholderText = "Search Roblox Animation Bundles..."
+        marketSearchBox.PlaceholderColor3 = rgb(155, 155, 168)
+        marketSearchBox.TextSize = 11.5
+        marketSearchBox.TextXAlignment = Enum.TextXAlignment.Left
+        marketSearchBox.Parent = marketSearchRow
+        bind(marketSearchBox, "BackgroundColor3", "Header")
+        bind(marketSearchBox, "TextColor3", "TextColor")
+        makeCorner(marketSearchBox, 7)
+        local marketSearchPadding = Instance.new("UIPadding")
+        marketSearchPadding.PaddingLeft = UDim.new(0, 9)
+        marketSearchPadding.PaddingRight = UDim.new(0, 27)
+        marketSearchPadding.Parent = marketSearchBox
 
-        local searchButton = makeButton(searchRow, SEARCH_ICON)
-        searchButton.AnchorPoint = Vector2.new(1, 0.5)
-        searchButton.Position = UDim2.new(1, -5, 0.5, 0)
-        searchButton.Size = UDim2.fromOffset(32, 30)
-        searchButton.TextSize = 14
-        attachClearX(searchBox, function()
-            if currentMode == "favorites" then
-                -- Render is defined below and called through the deferred dispatcher.
-            end
-        end)
+        local marketSearchButton = makeButton(marketSearchRow, SEARCH_ICON)
+        marketSearchButton.AnchorPoint = Vector2.new(1, 0.5)
+        marketSearchButton.Position = UDim2.new(1, -5, 0.5, 0)
+        marketSearchButton.Size = UDim2.fromOffset(32, 30)
+        marketSearchButton.TextSize = 14
+        attachClearX(marketSearchBox)
+
+        local favoriteSearchRow = newRow(scroll, "AnimationBundleFavoriteSearch", 38)
+        favoriteSearchRow.LayoutOrder = -4800
+        favoriteSearchRow.BackgroundTransparency = 0.04
+        favoriteSearchRow.Visible = false
+
+        local favoriteSearchBox = Instance.new("TextBox")
+        favoriteSearchBox.Name = "AnimationBundleFavoriteSearchBox"
+        favoriteSearchBox.Position = UDim2.fromOffset(5, 4)
+        favoriteSearchBox.Size = UDim2.new(1, -45, 0, 30)
+        favoriteSearchBox.BackgroundTransparency = 0.08
+        favoriteSearchBox.BorderSizePixel = 0
+        favoriteSearchBox.ClearTextOnFocus = false
+        favoriteSearchBox.Font = resolveUIFont(Enum.Font.GothamMedium)
+        favoriteSearchBox.Text = ""
+        favoriteSearchBox.PlaceholderText = "Search saved animation favorites..."
+        favoriteSearchBox.PlaceholderColor3 = rgb(155, 155, 168)
+        favoriteSearchBox.TextSize = 11.5
+        favoriteSearchBox.TextXAlignment = Enum.TextXAlignment.Left
+        favoriteSearchBox.Parent = favoriteSearchRow
+        bind(favoriteSearchBox, "BackgroundColor3", "Header")
+        bind(favoriteSearchBox, "TextColor3", "TextColor")
+        makeCorner(favoriteSearchBox, 7)
+        local favoriteSearchPadding = Instance.new("UIPadding")
+        favoriteSearchPadding.PaddingLeft = UDim.new(0, 9)
+        favoriteSearchPadding.PaddingRight = UDim.new(0, 27)
+        favoriteSearchPadding.Parent = favoriteSearchBox
+
+        local favoriteSearchButton = makeButton(favoriteSearchRow, SEARCH_ICON)
+        favoriteSearchButton.AnchorPoint = Vector2.new(1, 0.5)
+        favoriteSearchButton.Position = UDim2.new(1, -5, 0.5, 0)
+        favoriteSearchButton.Size = UDim2.fromOffset(32, 30)
+        favoriteSearchButton.TextSize = 14
+        attachClearX(favoriteSearchBox)
 
         local suggestion = newRow(scroll, "AnimationBundleSuggestion", 42)
         suggestion.LayoutOrder = -4750
@@ -6206,13 +6277,15 @@ function LULA.CreateLib(kavName, themeInput)
             marketHolder.Size = UDim2.new(1, -4, 0, marketGrid.AbsoluteContentSize.Y)
         end))
 
-        local loadMoreHint = makeText(scroll, "Keep scrolling to load more...", 11.5, Enum.Font.GothamBold)
-        loadMoreHint.Name = "AnimationBundleLoadMoreHint"
+        local loadMoreHint = makeButton(scroll, "Load More")
+        loadMoreHint.Name = "AnimationBundleLoadMoreButton"
         loadMoreHint.LayoutOrder = 40
-        loadMoreHint.Size = UDim2.new(1, -4, 0, 36)
-        loadMoreHint.TextXAlignment = Enum.TextXAlignment.Center
+        loadMoreHint.Size = UDim2.new(1, -4, 0, 34)
+        loadMoreHint.TextSize = 11.5
         loadMoreHint.Visible = false
-        bind(loadMoreHint, "TextColor3", "MutedText")
+        loadMoreHint.BackgroundTransparency = 0.04
+        bind(loadMoreHint, "BackgroundColor3", "ElementColor")
+        bind(loadMoreHint, "TextColor3", "TextColor")
 
         local favoritesHolder = Instance.new("Frame")
         favoritesHolder.Name = "AnimationBundleFavoritesList"
@@ -6361,7 +6434,7 @@ function LULA.CreateLib(kavName, themeInput)
 
             switchApi:SetBusy(true)
             local loadingHandle = LULA:ShowIsland(
-                "Free Animation Packs",
+                "Free Animations",
                 "Loading Animation...",
                 {Progress = 5}
             )
@@ -6805,7 +6878,7 @@ function LULA.CreateLib(kavName, themeInput)
                 })
                 saveFavorites(favorites)
                 refreshStarVisuals()
-                if currentMode == "favorites" and renderFavorites then renderFavorites(searchBox.Text) end
+                if currentMode == "favorites" and renderFavorites then renderFavorites(favoriteSearchBox.Text) end
                 bundleNotify(tostring(item.Name) .. " was added to favorites.", "success", 2.8)
             end)
         end
@@ -6825,7 +6898,7 @@ function LULA.CreateLib(kavName, themeInput)
             saveFavorites(favorites)
             refreshStarVisuals()
             if currentMode == "favorites" and renderFavorites then
-                renderFavorites(searchBox.Text)
+                renderFavorites(favoriteSearchBox.Text)
             else
                 refreshStarVisuals()
             end
@@ -6839,7 +6912,7 @@ function LULA.CreateLib(kavName, themeInput)
                     end
                     refreshStarVisuals()
                     if currentMode == "favorites" and renderFavorites then
-                        renderFavorites(searchBox.Text)
+                        renderFavorites(favoriteSearchBox.Text)
                     else
                         refreshStarVisuals()
                     end
@@ -6993,7 +7066,7 @@ function LULA.CreateLib(kavName, themeInput)
             emptyLabel.Visible = #currentResults == 0 and not searching
             emptyLabel.Text = #currentResults == 0 and "No animation bundles found. Try another name or a shorter word." or ""
             loadMoreHint.Visible = #currentResults > 0 and currentHasMore == true and not searching
-            loadMoreHint.Text = "Keep scrolling to load more..."
+            loadMoreHint.Text = "Load More"
             refreshToggleVisuals()
             refreshStarVisuals()
         end
@@ -7048,8 +7121,10 @@ function LULA.CreateLib(kavName, themeInput)
             searching = value == true
             loadingLabel.Visible = searching
             if message then loadingLabel.Text = tostring(message) end
-            searchButton.Active = not searching
-            searchBox.TextEditable = not searching
+            marketSearchButton.Active = not searching
+            marketSearchBox.TextEditable = not searching
+            favoriteSearchButton.Active = not searching
+            favoriteSearchBox.TextEditable = not searching
             if currentMode == "marketplace" then emptyLabel.Visible = false end
         end
 
@@ -7150,7 +7225,7 @@ function LULA.CreateLib(kavName, themeInput)
             if not currentHasMore or typeof(currentNextPage) ~= "function" then return end
             loadingMore = true
             loadMoreHint.Visible = true
-            loadMoreHint.Text = "Loading more animations..."
+            loadMoreHint.Text = "Loading..."
             loadingLabel.Text = "Loading more animation bundles..."
             loadingLabel.Visible = true
             task.spawn(function()
@@ -7165,17 +7240,21 @@ function LULA.CreateLib(kavName, themeInput)
                 loadingMore = false
                 loadingLabel.Visible = searching
                 loadMoreHint.Visible = currentMode == "marketplace" and #currentResults > 0 and currentHasMore == true
-                loadMoreHint.Text = "Keep scrolling to load more..."
+                loadMoreHint.Text = "Load More"
             end)
         end
+
+        track(loadMoreHint.MouseButton1Click:Connect(function()
+            loadMoreResults()
+        end))
 
         local function runCurrentSearch(forceOriginal)
             if currentMode == "favorites" then
                 searchSerial = searchSerial + 1
                 setSuggestion(nil, nil)
-                renderFavorites(searchBox.Text)
+                renderFavorites(favoriteSearchBox.Text)
             else
-                performMarketplaceSearch(searchBox.Text, forceOriginal == true)
+                performMarketplaceSearch(marketSearchBox.Text, forceOriginal == true)
             end
         end
 
@@ -7187,41 +7266,55 @@ function LULA.CreateLib(kavName, themeInput)
             favoritesTabButton.BackgroundColor3 = marketplaceActive and active.Theme.ElementColor or animationAccent(active.Theme.SchemeColor)
             deleteAllButton.Visible = not marketplaceActive
             favoriteSaveControls:SetVisible(not marketplaceActive)
+            marketSearchRow.Visible = marketplaceActive
+            favoriteSearchRow.Visible = not marketplaceActive
             loadMoreHint.Visible = marketplaceActive and #currentResults > 0 and currentHasMore == true
             suggestion.Visible = marketplaceActive and currentOriginalQuery ~= nil
             if marketplaceActive then
                 marketHolder.Visible = true
                 favoritesHolder.Visible = false
                 if #currentResults == 0 and not searching then
-                    performMarketplaceSearch(searchBox.Text, false)
+                    performMarketplaceSearch(marketSearchBox.Text, false)
                 else
                     renderMarketplace()
                 end
             else
-                renderFavorites(searchBox.Text)
+                renderFavorites(favoriteSearchBox.Text)
             end
             task.defer(function() scroll.CanvasPosition = Vector2.new(0, 0) end)
         end
 
         track(marketplaceTabButton.MouseButton1Click:Connect(function() setMode("marketplace") end))
         track(favoritesTabButton.MouseButton1Click:Connect(function() setMode("favorites") end))
-        track(searchButton.MouseButton1Click:Connect(function() runCurrentSearch(false) end))
-        track(searchBox.FocusLost:Connect(function(enterPressed)
+        track(marketSearchButton.MouseButton1Click:Connect(function() runCurrentSearch(false) end))
+        track(favoriteSearchButton.MouseButton1Click:Connect(function() runCurrentSearch(false) end))
+        track(marketSearchBox.FocusLost:Connect(function(enterPressed)
+            if enterPressed then runCurrentSearch(false) end
+        end))
+        track(favoriteSearchBox.FocusLost:Connect(function(enterPressed)
             if enterPressed then runCurrentSearch(false) end
         end))
         track(originalSearchButton.MouseButton1Click:Connect(function()
             if currentOriginalQuery then
-                searchBox.Text = currentOriginalQuery
+                marketSearchBox.Text = currentOriginalQuery
                 runCurrentSearch(true)
             end
         end))
 
-        -- The clear X should leave the TextBox blank while showing featured
-        -- Marketplace results or the full local Favorites list.
-        local clearButton = searchRow:FindFirstChild("AnimationBundleSearchBox_ClearTextX")
-        if clearButton then
-            track(clearButton.MouseButton1Click:Connect(function()
-                task.defer(function() runCurrentSearch(false) end)
+        local marketClearButton = marketSearchRow:FindFirstChild("AnimationBundleMarketplaceSearchBox_ClearTextX")
+        if marketClearButton then
+            track(marketClearButton.MouseButton1Click:Connect(function()
+                task.defer(function()
+                    if currentMode == "marketplace" then runCurrentSearch(false) end
+                end)
+            end))
+        end
+        local favoriteClearButton = favoriteSearchRow:FindFirstChild("AnimationBundleFavoriteSearchBox_ClearTextX")
+        if favoriteClearButton then
+            track(favoriteClearButton.MouseButton1Click:Connect(function()
+                task.defer(function()
+                    if currentMode == "favorites" then renderFavorites(favoriteSearchBox.Text) end
+                end)
             end))
         end
 
@@ -7234,15 +7327,9 @@ function LULA.CreateLib(kavName, themeInput)
             LULA:Confirm("Delete all favorites?", "Are you sure you want to delete every saved animation bundle from Favorites?", function()
                 saveFavorites({})
                 refreshStarVisuals()
-                renderFavorites(searchBox.Text)
+                renderFavorites(favoriteSearchBox.Text)
                 bundleNotify("All animation bundle favorites were deleted.", "success", 2.7)
             end)
-        end))
-
-        track(scroll:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
-            if currentMode ~= "marketplace" or searching or loadingMore then return end
-            local remaining = scroll.AbsoluteCanvasSize.Y - (scroll.CanvasPosition.Y + scroll.AbsoluteWindowSize.Y)
-            if remaining < 90 then loadMoreResults() end
         end))
 
         state.RefreshTheme = function()
@@ -7258,10 +7345,11 @@ function LULA.CreateLib(kavName, themeInput)
             refreshToggleVisuals()
         end
         state.Refresh = function()
-            if currentMode == "favorites" then renderFavorites(searchBox.Text) else renderMarketplace() end
+            if currentMode == "favorites" then renderFavorites(favoriteSearchBox.Text) else renderMarketplace() end
         end
         state.Search = function(query)
-            searchBox.Text = tostring(query or "")
+            marketSearchBox.Text = tostring(query or "")
+            setMode("marketplace")
             runCurrentSearch(false)
         end
         state.RestoreOriginal = function()
@@ -7278,6 +7366,2065 @@ function LULA.CreateLib(kavName, themeInput)
         setMode("marketplace")
         SearchService:BuildFuzzyIndex(false)
         return bundleTab
+    end
+
+
+    function window:EnableFreeEmotes(tabName)
+        if active.FreeEmotes then return active.FreeEmotes.Tab end
+
+        local emoteTab = self:NewTab(tabName or "Free Emotes")
+        emoteTab:EnsureBuilt()
+        local scroll = emoteTab.Scroll
+        scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+        scroll.CanvasSize = UDim2.new()
+
+        local UI = {}
+        local state = {
+            Tab = emoteTab,
+            Scroll = scroll,
+            Mode = "marketplace",
+            Results = {},
+            ResultIds = {},
+            DisplayCount = 0,
+            DisplayStep = 9,
+            RenderedCount = 0,
+            NextPage = nil,
+            HasMore = false,
+            Searching = false,
+            LoadingMore = false,
+            SearchSerial = 0,
+            Active = {
+                Id = nil,
+                Item = nil,
+                Track = nil,
+                Animation = nil,
+                StoppedConnection = nil,
+                Serial = 0,
+                PlayableId = nil,
+            },
+            DetailItem = nil,
+            DetailPreview = nil,
+        }
+        local cache = {
+            Details = {},
+            Playable = {},
+            Fuzzy = {},
+        }
+        local registry = {
+            Toggles = {},
+            Stars = {},
+            Speeds = {},
+            Previews = {},
+        }
+        active.FreeEmotes = state
+
+        local STAR_EMPTY = utf8.char(0x2606)
+        local STAR_FILLED = utf8.char(0x2605)
+        local STAR_EMOJI = utf8.char(0x2B50, 0xFE0F)
+        local SEARCH_ICON = utf8.char(0x1F50D)
+        local YELLOW = rgb(255, 213, 54)
+        local EMOTE_DARK = rgb(18, 18, 24)
+        local EMOTE_GREEN = blendColor(TOGGLE_ON_COLOR, EMOTE_DARK, 0.42)
+        local EMOTE_RED = blendColor(TOGGLE_OFF_COLOR, EMOTE_DARK, 0.42)
+
+        local function emoteAccent(color)
+            return blendColor(color, EMOTE_DARK, 0.48)
+        end
+
+        local function trim(value)
+            return tostring(value or ""):match("^%s*(.-)%s*$") or ""
+        end
+
+        local function lower(value)
+            return string.lower(tostring(value or ""))
+        end
+
+        local function normalizeWords(value)
+            local text = lower(value)
+            text = text:gsub("_", " ")
+            text = text:gsub("[^%w%s]", " ")
+            text = text:gsub("%s+", " ")
+            return trim(text)
+        end
+
+        local function tokenize(value)
+            local output = {}
+            for token in normalizeWords(value):gmatch("%S+") do
+                table.insert(output, token)
+            end
+            return output
+        end
+
+        local function containsPlain(haystack, needle)
+            return string.find(lower(haystack), lower(needle), 1, true) ~= nil
+        end
+
+        local function emoteNotify(message, kind, seconds)
+            kind = tostring(kind or "info")
+            LULA:Notify(kind, "Free Emotes", tostring(message), seconds or 3, nil, true)
+        end
+
+        local function getRequestFunction()
+            local candidates = {
+                rawget(env, "request"),
+                rawget(env, "http_request"),
+                rawget(env, "httprequest"),
+            }
+            local synTable = rawget(env, "syn")
+            if type(synTable) == "table" then table.insert(candidates, synTable.request) end
+            local fluxusTable = rawget(env, "fluxus")
+            if type(fluxusTable) == "table" then table.insert(candidates, fluxusTable.request) end
+            for _, candidate in ipairs(candidates) do
+                if typeof(candidate) == "function" then return candidate end
+            end
+            return nil
+        end
+
+        local executorRequest = getRequestFunction()
+
+        local function httpGet(url)
+            local failures = {}
+            if executorRequest then
+                local ok, response = pcall(executorRequest, {
+                    Url = tostring(url),
+                    Method = "GET",
+                    Headers = {
+                        ["Accept"] = "application/json",
+                        ["User-Agent"] = "Roblox/LollypopHub-FreeEmotes",
+                    },
+                })
+                if ok and type(response) == "table" then
+                    local status = tonumber(response.StatusCode or response.Status or response.status_code or 0) or 0
+                    local body = response.Body or response.body
+                    if status >= 200 and status < 300 and type(body) == "string" and #body > 0 then
+                        return body
+                    end
+                    table.insert(failures, "request HTTP " .. tostring(status > 0 and status or "unknown"))
+                elseif not ok then
+                    table.insert(failures, tostring(response))
+                end
+            end
+
+            local ok, body = pcall(function() return game:HttpGet(tostring(url), true) end)
+            if ok and type(body) == "string" and #body > 0 then return body end
+            if not ok then table.insert(failures, tostring(body)) end
+            error("HTTP GET failed" .. (#failures > 0 and (": " .. table.concat(failures, "; ")) or ""))
+        end
+
+        local function copyText(text)
+            text = tostring(text or "")
+            local compat = rawget(env, "LHCompat")
+            if type(compat) == "table" and type(compat.SetClipboard) == "function" then
+                local ok, result = pcall(compat.SetClipboard, text)
+                if ok and result ~= false then return true end
+            end
+            local candidates = {
+                rawget(env, "setclipboard"),
+                rawget(env, "toclipboard"),
+                rawget(env, "writeclipboard"),
+            }
+            local synTable = rawget(env, "syn")
+            if type(synTable) == "table" then
+                table.insert(candidates, synTable.write_clipboard)
+                table.insert(candidates, synTable.setclipboard)
+            end
+            for _, writer in ipairs(candidates) do
+                if typeof(writer) == "function" and pcall(writer, text) then return true end
+            end
+            return false
+        end
+
+        local function isFiniteNumber(value)
+            return type(value) == "number"
+                and value == value
+                and value ~= math.huge
+                and value ~= -math.huge
+        end
+
+        local function formatSpeed(value)
+            value = tonumber(value) or 1
+            if value == 0 then return "0" end
+            local absolute = math.abs(value)
+            if absolute >= 1000000 or absolute < 0.0001 then
+                return string.format("%.6g", value)
+            end
+            local text = string.format("%.3f", value)
+            text = text:gsub("0+$", ""):gsub("%.$", "")
+            if text == "-0" then text = "0" end
+            return text
+        end
+
+        local function getSpeed(emoteId)
+            local key = tostring(emoteId)
+            local saved = settings.FreeEmoteSpeeds[key]
+            saved = tonumber(saved)
+            if not isFiniteNumber(saved) then
+                saved = 1
+                settings.FreeEmoteSpeeds[key] = saved
+            end
+            return saved
+        end
+
+        local function persistEmoteSettings()
+            env.LHSettings = env.LHSettings or {}
+            env.LHUISettings = env.LHUISettings or settings
+            env.LHSettings.FreeEmoteFavorites = settings.FreeEmoteFavorites
+            env.LHSettings.FreeEmoteAutoSave = settings.FreeEmoteAutoSave
+            env.LHSettings.FreeEmoteSpeeds = settings.FreeEmoteSpeeds
+            env.LHUISettings.FreeEmoteFavorites = settings.FreeEmoteFavorites
+            env.LHUISettings.FreeEmoteAutoSave = settings.FreeEmoteAutoSave
+            env.LHUISettings.FreeEmoteSpeeds = settings.FreeEmoteSpeeds
+            markSettingsDirty()
+        end
+
+        local function refreshSpeedControls(emoteId)
+            local list = registry.Speeds[tonumber(emoteId)] or {}
+            local value = getSpeed(emoteId)
+            for _, api in ipairs(list) do
+                if api and api.Render then api:Render(value) end
+            end
+        end
+
+        local function refreshPreviewSpeeds(emoteId)
+            local list = registry.Previews[tonumber(emoteId)] or {}
+            local value = getSpeed(emoteId)
+            for _, api in ipairs(list) do
+                if api and api.SetSpeed then api:SetSpeed(value) end
+            end
+        end
+
+        local function setSpeed(emoteId, value)
+            value = tonumber(value)
+            if not isFiniteNumber(value) then return false end
+            settings.FreeEmoteSpeeds[tostring(emoteId)] = value
+            persistEmoteSettings()
+            refreshSpeedControls(emoteId)
+            refreshPreviewSpeeds(emoteId)
+            if tonumber(state.Active.Id) == tonumber(emoteId) and state.Active.Track then
+                pcall(function() state.Active.Track:AdjustSpeed(value) end)
+            end
+            return true
+        end
+
+        local function bindHoldRepeat(button, callback)
+            local token = 0
+            local lastPointerStart = 0
+
+            local function stop()
+                token = token + 1
+            end
+
+            track(button.InputBegan:Connect(function(input)
+                local pointer = input.UserInputType == Enum.UserInputType.MouseButton1
+                    or input.UserInputType == Enum.UserInputType.Touch
+                if not pointer then return end
+                token = token + 1
+                local mine = token
+                lastPointerStart = os.clock()
+                callback()
+                task.delay(0.34, function()
+                    while mine == token and button.Parent do
+                        callback()
+                        task.wait(0.055)
+                    end
+                end)
+            end))
+
+            track(button.InputEnded:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1
+                    or input.UserInputType == Enum.UserInputType.Touch then
+                    stop()
+                end
+            end))
+
+            track(button.Activated:Connect(function()
+                if os.clock() - lastPointerStart > 0.18 then callback() end
+            end))
+        end
+
+        local function makeSpeedControl(parent, emoteId, compact)
+            local api = {}
+            local height = compact and 22 or 24
+            local row = Instance.new("Frame")
+            row.Name = "EmoteSpeedControl"
+            row.Size = UDim2.new(1, 0, 0, height)
+            row.BackgroundTransparency = 1
+            row.Parent = parent
+
+            local minus = makeButton(row, "-")
+            minus.Position = UDim2.fromOffset(0, 0)
+            minus.Size = UDim2.fromOffset(height, height)
+            minus.TextSize = compact and 12 or 14
+
+            local plus = makeButton(row, "+")
+            plus.AnchorPoint = Vector2.new(1, 0)
+            plus.Position = UDim2.new(1, 0, 0, 0)
+            plus.Size = UDim2.fromOffset(height, height)
+            plus.TextSize = compact and 12 or 14
+
+            local box = Instance.new("TextBox")
+            box.Name = "EmoteSpeedBox"
+            box.Position = UDim2.fromOffset(height + 3, 0)
+            box.Size = UDim2.new(1, -(height * 2 + 6), 1, 0)
+            box.BackgroundTransparency = 0.05
+            box.BorderSizePixel = 0
+            box.ClearTextOnFocus = false
+            box.Font = resolveUIFont(Enum.Font.GothamBold)
+            box.TextSize = compact and 9.5 or 10.5
+            box.TextXAlignment = Enum.TextXAlignment.Center
+            box.Parent = row
+            bind(box, "BackgroundColor3", "Header")
+            bind(box, "TextColor3", "TextColor")
+            makeCorner(box, 5)
+
+            function api:Render(value)
+                if box and box.Parent and not box:IsFocused() then
+                    box.Text = formatSpeed(value)
+                end
+            end
+
+            local function change(delta)
+                setSpeed(emoteId, getSpeed(emoteId) + delta)
+            end
+
+            bindHoldRepeat(minus, function() change(-0.1) end)
+            bindHoldRepeat(plus, function() change(0.1) end)
+            track(box.FocusLost:Connect(function()
+                local value = tonumber(trim(box.Text))
+                if not isFiniteNumber(value) then
+                    box.Text = formatSpeed(getSpeed(emoteId))
+                    emoteNotify("Type a valid animation speed.", "warning", 2.4)
+                    return
+                end
+                setSpeed(emoteId, value)
+            end))
+
+            registry.Speeds[tonumber(emoteId)] = registry.Speeds[tonumber(emoteId)] or {}
+            table.insert(registry.Speeds[tonumber(emoteId)], api)
+            api:Render(getSpeed(emoteId))
+            api.Row = row
+            api.Box = box
+            return api
+        end
+
+        local function cleanFavorite(raw)
+            if type(raw) ~= "table" then return nil end
+            local id = tonumber(raw.Id or raw.id)
+            local name = raw.Name or raw.name
+            if not id or type(name) ~= "string" then return nil end
+            return {
+                Id = id,
+                Name = name,
+                Description = raw.Description or raw.description or "",
+                CreatorName = raw.CreatorName or raw.creatorName or "Unknown creator",
+                CreatorId = tonumber(raw.CreatorId or raw.creatorId),
+                AssetType = tonumber(raw.AssetType or raw.assetType) or 61,
+                Price = tonumber(raw.Price or raw.price),
+                PlayableAnimationId = tonumber(raw.PlayableAnimationId or raw.playableAnimationId),
+            }
+        end
+
+        local function getFavorites()
+            local clean = {}
+            local seen = {}
+            for _, raw in ipairs(settings.FreeEmoteFavorites or {}) do
+                local favorite = cleanFavorite(raw)
+                if favorite and not seen[favorite.Id] then
+                    seen[favorite.Id] = true
+                    table.insert(clean, favorite)
+                end
+            end
+            return clean
+        end
+
+        local function saveFavorites(updated, forceSave)
+            local clean = {}
+            local seen = {}
+            for _, raw in ipairs(updated or {}) do
+                local favorite = cleanFavorite(raw)
+                if favorite and not seen[favorite.Id] then
+                    seen[favorite.Id] = true
+                    table.insert(clean, favorite)
+                end
+            end
+            settings.FreeEmoteFavorites = clean
+            persistEmoteSettings()
+            if forceSave == true or settings.FreeEmoteAutoSave ~= false then
+                saveSettingsNow()
+            end
+            return clean
+        end
+
+        local function favoriteIndex(emoteId)
+            emoteId = tonumber(emoteId)
+            for index, favorite in ipairs(getFavorites()) do
+                if tonumber(favorite.Id) == emoteId then return index end
+            end
+            return nil
+        end
+
+        local function isEmoteAssetType(value)
+            if typeof(value) == "EnumItem" then value = value.Name end
+            if type(value) == "number" then return value == 61 end
+            return lower(value):find("emote", 1, true) ~= nil
+        end
+
+        local function normalizeCatalogItem(raw, trusted)
+            if type(raw) ~= "table" then return nil end
+            local id = tonumber(raw.Id or raw.id or raw.AssetId or raw.assetId)
+            local name = raw.Name or raw.name
+            if not id or type(name) ~= "string" then return nil end
+
+            local itemType = raw.ItemType or raw.itemType or raw.Type or raw.type
+            local assetType = raw.AssetType or raw.assetType or raw.AssetTypeId or raw.assetTypeId
+            if typeof(itemType) == "EnumItem" then itemType = itemType.Name end
+            if itemType ~= nil then
+                local itemText = lower(itemType)
+                if itemText:find("bundle", 1, true) or tonumber(itemType) == 2 then return nil end
+            end
+            if assetType ~= nil and not isEmoteAssetType(assetType) then return nil end
+            if assetType == nil and trusted ~= true then
+                local productType = tonumber(raw.AssetTypeId or raw.assetTypeId)
+                if productType and productType ~= 61 then return nil end
+            end
+
+            local creator = raw.Creator or raw.creator
+            local creatorName = raw.CreatorName or raw.creatorName
+            local creatorId = raw.CreatorId or raw.creatorId or raw.CreatorTargetId or raw.creatorTargetId
+            if type(creator) == "table" then
+                creatorName = creatorName or creator.Name or creator.name
+                creatorId = creatorId or creator.Id or creator.id or creator.CreatorTargetId
+            end
+
+            return {
+                Id = id,
+                Name = name,
+                Description = raw.Description or raw.description or "",
+                CreatorName = creatorName or "Unknown creator",
+                CreatorId = tonumber(creatorId),
+                AssetType = tonumber(assetType) or 61,
+                Price = tonumber(raw.Price or raw.price or raw.LowestPrice or raw.lowestPrice),
+                Raw = raw,
+            }
+        end
+
+        local function normalizePage(page, trusted)
+            local output = {}
+            local seen = {}
+            for _, raw in ipairs(page or {}) do
+                local item = normalizeCatalogItem(raw, trusted)
+                if item and not seen[item.Id] then
+                    seen[item.Id] = true
+                    table.insert(output, item)
+                end
+            end
+            return output
+        end
+
+        local function addFuzzyItems(items)
+            local seen = {}
+            for _, old in ipairs(cache.Fuzzy) do seen[tonumber(old.Id)] = true end
+            for _, item in ipairs(items or {}) do
+                if item and not seen[tonumber(item.Id)] then
+                    seen[tonumber(item.Id)] = true
+                    table.insert(cache.Fuzzy, item)
+                end
+            end
+            while #cache.Fuzzy > 360 do table.remove(cache.Fuzzy, 1) end
+        end
+
+        local function mergeResults(items)
+            for _, item in ipairs(items or {}) do
+                if item and not state.ResultIds[item.Id] then
+                    state.ResultIds[item.Id] = true
+                    table.insert(state.Results, item)
+                end
+            end
+            addFuzzyItems(items)
+        end
+
+        local function editDistance(a, b)
+            a, b = normalizeWords(a), normalizeWords(b)
+            if a == b then return 0 end
+            if #a == 0 then return #b end
+            if #b == 0 then return #a end
+            local previous = {}
+            for j = 0, #b do previous[j] = j end
+            for i = 1, #a do
+                local current = {[0] = i}
+                local ac = a:sub(i, i)
+                for j = 1, #b do
+                    local cost = ac == b:sub(j, j) and 0 or 1
+                    current[j] = math.min(
+                        current[j - 1] + 1,
+                        previous[j] + 1,
+                        previous[j - 1] + cost
+                    )
+                end
+                previous = current
+            end
+            return previous[#b]
+        end
+
+        local function findCorrection(query)
+            query = normalizeWords(query)
+            if query == "" then return nil end
+            local bestName, bestDistance, bestRatio = nil, math.huge, 0
+            for _, item in ipairs(cache.Fuzzy) do
+                local candidate = normalizeWords(item.Name)
+                if candidate ~= "" then
+                    local distance = editDistance(query, candidate)
+                    local ratio = 1 - distance / math.max(#query, #candidate, 1)
+                    if ratio > bestRatio or (ratio == bestRatio and distance < bestDistance) then
+                        bestName, bestDistance, bestRatio = candidate, distance, ratio
+                    end
+                end
+            end
+            if bestName and bestRatio >= 0.57 then return bestName end
+            return nil
+        end
+
+        local function fetchDirectEmote(assetId)
+            local ok, info = pcall(MarketplaceService.GetProductInfo, MarketplaceService, tonumber(assetId), Enum.InfoType.Asset)
+            if not ok or type(info) ~= "table" then return nil end
+            local assetType = tonumber(info.AssetTypeId or info.AssetType)
+            if assetType and assetType ~= 61 then return nil end
+            return normalizeCatalogItem({
+                Id = tonumber(info.AssetId or assetId),
+                Name = info.Name or ("Emote " .. tostring(assetId)),
+                Description = info.Description or "",
+                Creator = info.Creator,
+                AssetTypeId = assetType or 61,
+                Price = info.PriceInRobux,
+            }, true)
+        end
+
+        local function createEngineSearch(query)
+            local params = CatalogSearchParams.new()
+            params.SearchKeyword = tostring(query or "")
+            params.AssetTypes = {Enum.AvatarAssetType.EmoteAnimation}
+            params.IncludeOffSale = true
+            params.Limit = 30
+            pcall(function() params.SortType = Enum.CatalogSortType.Relevance end)
+            pcall(function() params.SortAggregation = Enum.CatalogSortAggregation.AllTime end)
+            pcall(function() params.CategoryFilter = Enum.CatalogCategoryFilter.AvatarAnimations end)
+
+            local pages = AvatarEditorService:SearchCatalogAsync(params)
+            local first = normalizePage(pages:GetCurrentPage(), true)
+
+            local function nextPage()
+                local finished = false
+                pcall(function() finished = pages.IsFinished end)
+                if finished then return {}, false end
+                pages:AdvanceToNextPageAsync()
+                local page = normalizePage(pages:GetCurrentPage(), true)
+                pcall(function() finished = pages.IsFinished end)
+                return page, not finished
+            end
+
+            local finished = false
+            pcall(function() finished = pages.IsFinished end)
+            return first, nextPage, not finished
+        end
+
+        local function createHttpSearch(query, cursor)
+            local url = "https://catalog.roblox.com/v1/search/items/details?Category=12&Subcategory=39&Limit=30&SortType=3"
+            if trim(query) ~= "" then
+                url = url .. "&Keyword=" .. HttpService:UrlEncode(trim(query))
+            end
+            if trim(cursor) ~= "" then
+                url = url .. "&Cursor=" .. HttpService:UrlEncode(trim(cursor))
+            end
+            local decoded = HttpService:JSONDecode(httpGet(url))
+            local items = normalizePage(decoded.data or decoded.Data or {}, true)
+            local nextCursor = decoded.nextPageCursor or decoded.NextPageCursor
+
+            local function nextPage()
+                if not nextCursor then return {}, false end
+                local nextItems, nextFunction, hasMore = createHttpSearch(query, nextCursor)
+                return nextItems, hasMore, nextFunction
+            end
+
+            return items, nextPage, nextCursor ~= nil
+        end
+
+        local function startSearchBackend(query)
+            local numericId = trim(query):match("^%d+$")
+            if numericId then
+                local direct = fetchDirectEmote(numericId)
+                if direct then return {direct}, nil, false end
+            end
+
+            local ok, items, nextFunction, hasMore = pcall(createEngineSearch, query)
+            if ok and type(items) == "table" then
+                return items, nextFunction, hasMore == true
+            end
+
+            local httpOk, httpItems, httpNext, httpMore = pcall(createHttpSearch, query, nil)
+            if httpOk and type(httpItems) == "table" then
+                return httpItems, httpNext, httpMore == true
+            end
+
+            error("Roblox Marketplace search was unavailable.")
+        end
+
+        local KNOWN_ROBLOX_EMOTES = {
+            ["elton john still standing"] = 11444443576,
+            ["old town road lil nas x"] = 10714391240,
+            ["shuffle"] = 10714371274,
+            ["sleep"] = 10714360343,
+            ["godlike"] = 10714347256,
+            ["the floss"] = 10714340543,
+            ["dizzy"] = 10714066964,
+            ["festive dance"] = 15679621440,
+            ["nicki minaj starships"] = 15571453761,
+            ["cuco levitate"] = 15698404340,
+            ["elton john heart skip"] = 11309255148,
+            ["flex walk"] = 15505459811,
+        }
+
+        local function extractNumericId(value)
+            if type(value) == "number" then return math.floor(value) end
+            local digits = tostring(value or ""):match("(%d+)")
+            return digits and tonumber(digits) or nil
+        end
+
+        local function animationUri(value)
+            local id = extractNumericId(value)
+            if not id then error("Invalid animation ID.") end
+            return "rbxassetid://" .. tostring(id)
+        end
+
+        local function canonicalName(value)
+            local text = normalizeWords(value)
+            text = text:gsub("%s+roblox%s*$", "")
+            return trim(text)
+        end
+
+        local function findAnimationInObject(root)
+            if not root then return nil end
+            if root:IsA("Animation") then
+                local direct = extractNumericId(root.AnimationId)
+                if direct then return direct end
+            end
+            for _, descendant in ipairs(root:GetDescendants()) do
+                if descendant:IsA("Animation") then
+                    local id = extractNumericId(descendant.AnimationId)
+                    if id then return id end
+                end
+            end
+            return nil
+        end
+
+        local function inspectAsset(assetId)
+            local objectsOk, objects = pcall(function()
+                return game:GetObjects(animationUri(assetId))
+            end)
+            if objectsOk and type(objects) == "table" then
+                for _, object in ipairs(objects) do
+                    local found = findAnimationInObject(object)
+                    pcall(function() object:Destroy() end)
+                    if found then return found, "Roblox asset" end
+                end
+            end
+
+            local insertOk, container = pcall(InsertService.LoadAsset, InsertService, tonumber(assetId))
+            if insertOk and container then
+                local found = findAnimationInObject(container)
+                pcall(function() container:Destroy() end)
+                if found then return found, "Roblox asset" end
+            end
+            return nil
+        end
+
+        local function resolvePlayableAnimationId(item)
+            local marketplaceId = extractNumericId(item and item.Id)
+            if not marketplaceId then error("This emote did not contain a valid ID.") end
+            if cache.Playable[marketplaceId] then
+                local saved = cache.Playable[marketplaceId]
+                return saved.Id, saved.Source
+            end
+
+            local raw = type(item.Raw) == "table" and item.Raw or {}
+            local candidates = {
+                item.PlayableAnimationId,
+                item.AnimationId,
+                raw.AnimationId,
+                raw.animationId,
+                raw.PlayableAnimationId,
+                raw.playableAnimationId,
+            }
+            for _, candidate in ipairs(candidates) do
+                local id = extractNumericId(candidate)
+                if id then
+                    cache.Playable[marketplaceId] = {Id = id, Source = "Marketplace"}
+                    item.PlayableAnimationId = id
+                    return id, "Marketplace"
+                end
+            end
+
+            local creatorText = lower(item.CreatorName)
+            local known = KNOWN_ROBLOX_EMOTES[canonicalName(item.Name)]
+            local official = tonumber(item.CreatorId) == 1 or creatorText:find("roblox", 1, true) ~= nil
+            if known and (official or known == marketplaceId) then
+                cache.Playable[marketplaceId] = {Id = known, Source = "Verified Roblox emote"}
+                item.PlayableAnimationId = known
+                return known, "Verified Roblox emote"
+            end
+
+            if tonumber(item.AssetType) ~= 61 then
+                local inspected, sourceName = inspectAsset(marketplaceId)
+                if inspected then
+                    cache.Playable[marketplaceId] = {Id = inspected, Source = sourceName}
+                    item.PlayableAnimationId = inspected
+                    return inspected, sourceName
+                end
+            end
+
+            cache.Playable[marketplaceId] = {Id = marketplaceId, Source = "Emote animation"}
+            item.PlayableAnimationId = marketplaceId
+            return marketplaceId, "Emote animation"
+        end
+
+        local function fetchDetails(item)
+            if cache.Details[item.Id] then return cache.Details[item.Id] end
+            local output = {
+                Id = item.Id,
+                Name = item.Name,
+                Description = item.Description or "",
+                CreatorName = item.CreatorName or "Unknown creator",
+                CreatorId = item.CreatorId,
+                AssetType = item.AssetType or 61,
+                Price = item.Price,
+            }
+            local ok, info = pcall(MarketplaceService.GetProductInfo, MarketplaceService, tonumber(item.Id), Enum.InfoType.Asset)
+            if ok and type(info) == "table" then
+                output.Name = info.Name or output.Name
+                output.Description = info.Description or output.Description
+                output.CreatorName = type(info.Creator) == "table" and (info.Creator.Name or output.CreatorName) or output.CreatorName
+                output.CreatorId = type(info.Creator) == "table" and tonumber(info.Creator.Id or info.Creator.CreatorTargetId) or output.CreatorId
+                output.AssetType = tonumber(info.AssetTypeId) or output.AssetType
+                output.Price = tonumber(info.PriceInRobux) or output.Price
+            end
+            local playableId, sourceName = resolvePlayableAnimationId(item)
+            output.PlayableAnimationId = playableId
+            output.PlayableSource = sourceName
+            output.Raw = item.Raw
+            cache.Details[item.Id] = output
+            return output
+        end
+
+        local function getCharacterAnimationLoader()
+            local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+            local humanoid = character:FindFirstChildOfClass("Humanoid") or character:WaitForChild("Humanoid", 8)
+            if not humanoid then error("Your avatar does not have a Humanoid.") end
+            local animator = humanoid:FindFirstChildOfClass("Animator")
+            if not animator then
+                animator = Instance.new("Animator")
+                animator.Parent = humanoid
+            end
+            return character, humanoid, animator
+        end
+
+        local function refreshToggleVisuals()
+            for emoteId, apis in pairs(registry.Toggles) do
+                local enabled = tonumber(state.Active.Id) == tonumber(emoteId)
+                for _, api in ipairs(apis) do
+                    if api and api.Render then api:Render(enabled) end
+                end
+            end
+        end
+
+        local function refreshStarVisuals()
+            for emoteId, apis in pairs(registry.Stars) do
+                local saved = favoriteIndex(emoteId) ~= nil
+                for _, api in ipairs(apis) do
+                    if api and api.Render then api:Render(saved) end
+                end
+            end
+        end
+
+        local function stopActiveEmote(silent)
+            state.Active.Serial = state.Active.Serial + 1
+            if state.Active.StoppedConnection then
+                pcall(function() state.Active.StoppedConnection:Disconnect() end)
+            end
+            state.Active.StoppedConnection = nil
+            if state.Active.Track then
+                pcall(function() state.Active.Track:Stop(0) end)
+            end
+            if state.Active.Animation then
+                pcall(function() state.Active.Animation:Destroy() end)
+            end
+            local previousName = state.Active.Item and state.Active.Item.Name
+            state.Active.Id = nil
+            state.Active.Item = nil
+            state.Active.Track = nil
+            state.Active.Animation = nil
+            state.Active.PlayableId = nil
+            refreshToggleVisuals()
+            if not silent and previousName then
+                emoteNotify(tostring(previousName) .. " stopped.", "info", 2.3)
+            end
+            return true
+        end
+
+        local function playEmote(item, toggleApi)
+            if tonumber(state.Active.Id) == tonumber(item.Id) then
+                stopActiveEmote(false)
+                return
+            end
+
+            stopActiveEmote(true)
+            state.Active.Serial = state.Active.Serial + 1
+            local serial = state.Active.Serial
+            if toggleApi and toggleApi.SetBusy then toggleApi:SetBusy(true) end
+            local loading = LULA:ShowIsland("Free Emotes", "Loading Emote...", {Progress = 8})
+
+            task.spawn(function()
+                RunService.RenderStepped:Wait()
+                local ok, result = pcall(function()
+                    if loading then loading:SetProgress(32, "Resolving animation ID...") end
+                    local playableId = resolvePlayableAnimationId(item)
+                    if serial ~= state.Active.Serial then return nil end
+
+                    local _, humanoid, animator = getCharacterAnimationLoader()
+                    if serial ~= state.Active.Serial then return nil end
+                    if loading then loading:SetProgress(68, "Loading emote animation...") end
+
+                    local animation = Instance.new("Animation")
+                    animation.Name = "LH_FreeEmote_" .. tostring(playableId)
+                    animation.AnimationId = animationUri(playableId)
+
+                    local loadOk, trackObject = pcall(function()
+                        return humanoid:LoadAnimation(animation)
+                    end)
+                    if not loadOk or not trackObject then
+                        loadOk, trackObject = pcall(function()
+                            return animator:LoadAnimation(animation)
+                        end)
+                    end
+                    if not loadOk or not trackObject then
+                        pcall(function() animation:Destroy() end)
+                        error("Roblox did not allow this emote to load.")
+                    end
+
+                    trackObject.Looped = true
+                    pcall(function() trackObject.Priority = Enum.AnimationPriority.Action end)
+                    trackObject:Play()
+                    pcall(function() trackObject:AdjustSpeed(getSpeed(item.Id)) end)
+
+                    return {
+                        Track = trackObject,
+                        Animation = animation,
+                        PlayableId = playableId,
+                    }
+                end)
+
+                if toggleApi and toggleApi.SetBusy then toggleApi:SetBusy(false) end
+                if serial ~= state.Active.Serial then
+                    if ok and result then
+                        pcall(function() result.Track:Stop(0) end)
+                        pcall(function() result.Animation:Destroy() end)
+                    end
+                    if loading then loading:Close() end
+                    return
+                end
+
+                if not ok or not result then
+                    if loading then loading:Close() end
+                    refreshToggleVisuals()
+                    emoteNotify("Could not play " .. tostring(item.Name) .. ": " .. tostring(result), "error", 4)
+                    return
+                end
+
+                state.Active.Id = item.Id
+                state.Active.Item = item
+                state.Active.Track = result.Track
+                state.Active.Animation = result.Animation
+                state.Active.PlayableId = result.PlayableId
+                state.Active.StoppedConnection = result.Track.Stopped:Connect(function()
+                    if serial ~= state.Active.Serial then return end
+                    state.Active.Id = nil
+                    state.Active.Item = nil
+                    state.Active.Track = nil
+                    state.Active.Animation = nil
+                    state.Active.PlayableId = nil
+                    state.Active.StoppedConnection = nil
+                    refreshToggleVisuals()
+                end)
+                track(state.Active.StoppedConnection)
+                refreshToggleVisuals()
+                if loading then
+                    loading:SetProgress(100, tostring(item.Name) .. " is playing.")
+                    task.delay(0.35, function() pcall(function() loading:Close() end) end)
+                end
+            end)
+        end
+
+        local function registerPreview(emoteId, api)
+            emoteId = tonumber(emoteId)
+            registry.Previews[emoteId] = registry.Previews[emoteId] or {}
+            table.insert(registry.Previews[emoteId], api)
+        end
+
+        local function clearPreviews()
+            for _, list in pairs(registry.Previews) do
+                for _, api in ipairs(list) do
+                    if api and api.Destroy then api:Destroy() end
+                end
+            end
+            registry.Previews = {}
+        end
+
+        local function createAvatarPreview(parent, item, compact)
+            local api = {Dead = false, Track = nil, Animation = nil, Model = nil, Viewport = viewport}
+            local viewport = Instance.new("ViewportFrame")
+            viewport.Name = "EmoteAvatarPreview"
+            viewport.Size = UDim2.fromScale(1, 1)
+            viewport.BackgroundTransparency = 0.04
+            viewport.BorderSizePixel = 0
+            viewport.Ambient = rgb(220, 220, 228)
+            viewport.LightColor = rgb(255, 255, 255)
+            viewport.LightDirection = Vector3.new(-1, -1, -1)
+            viewport.Parent = parent
+            bind(viewport, "BackgroundColor3", "Header")
+            makeCorner(viewport, compact and 7 or 9)
+
+            local fallback = Instance.new("ImageLabel")
+            fallback.Name = "AvatarThumbnailFallback"
+            fallback.Size = UDim2.fromScale(1, 1)
+            fallback.BackgroundTransparency = 1
+            fallback.ScaleType = Enum.ScaleType.Crop
+            fallback.Parent = viewport
+            makeCorner(fallback, compact and 7 or 9)
+
+            local loadingText = makeText(viewport, "Loading avatar preview...", compact and 8.5 or 9.5, Enum.Font.GothamMedium)
+            loadingText.Size = UDim2.new(1, -10, 0, 28)
+            loadingText.AnchorPoint = Vector2.new(0.5, 1)
+            loadingText.Position = UDim2.new(0.5, 0, 1, -4)
+            loadingText.TextWrapped = true
+            loadingText.ZIndex = 6
+            bind(loadingText, "TextColor3", "MutedText")
+
+            task.spawn(function()
+                local okThumb, image = pcall(function()
+                    return Players:GetUserThumbnailAsync(
+                        LocalPlayer.UserId,
+                        Enum.ThumbnailType.AvatarBust,
+                        Enum.ThumbnailSize.Size180x180
+                    )
+                end)
+                if okThumb and fallback.Parent then fallback.Image = image end
+            end)
+
+            function api:SetSpeed(value)
+                if self.Track then pcall(function() self.Track:AdjustSpeed(value) end) end
+            end
+
+            function api:Destroy()
+                if self.Dead then return end
+                self.Dead = true
+                if self.Track then pcall(function() self.Track:Stop(0) end) end
+                if self.Animation then pcall(function() self.Animation:Destroy() end) end
+                if self.Model then pcall(function() self.Model:Destroy() end) end
+                if self.Viewport then pcall(function() self.Viewport:Destroy() end) end
+                self.Track, self.Animation, self.Model, self.Viewport = nil, nil, nil, nil
+            end
+
+            registerPreview(item.Id, api)
+            track(parent.AncestryChanged:Connect(function(_, newParent)
+                if not newParent then api:Destroy() end
+            end))
+
+            task.spawn(function()
+                local ok, playableId = pcall(resolvePlayableAnimationId, item)
+                if not ok or api.Dead or not viewport.Parent then
+                    loadingText.Text = "Preview unavailable"
+                    return
+                end
+
+                local model
+                local modelOk = pcall(function()
+                    model = Players:CreateHumanoidModelFromUserId(LocalPlayer.UserId)
+                end)
+                if (not modelOk or not model) and LocalPlayer.Character then
+                    local oldArchivable = LocalPlayer.Character.Archivable
+                    LocalPlayer.Character.Archivable = true
+                    pcall(function() model = LocalPlayer.Character:Clone() end)
+                    LocalPlayer.Character.Archivable = oldArchivable
+                end
+                if not model or api.Dead or not viewport.Parent then
+                    loadingText.Text = "Avatar thumbnail"
+                    return
+                end
+
+                for _, descendant in ipairs(model:GetDescendants()) do
+                    if descendant:IsA("Script") or descendant:IsA("LocalScript") or descendant:IsA("Tool") then
+                        descendant:Destroy()
+                    elseif descendant:IsA("BasePart") then
+                        descendant.Anchored = false
+                        descendant.CanCollide = false
+                        descendant.Massless = true
+                    end
+                end
+
+                local world = Instance.new("WorldModel")
+                world.Name = "EmoteAvatarWorld"
+                world.Parent = viewport
+
+                local camera = Instance.new("Camera")
+                camera.FieldOfView = compact and 34 or 30
+                camera.Parent = viewport
+                viewport.CurrentCamera = camera
+
+                model.Name = "LocalAvatarEmotePreview"
+                model.Parent = world
+                pcall(function() model:PivotTo(CFrame.new()) end)
+                api.Model = model
+
+                local root = model:FindFirstChild("HumanoidRootPart") or model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart")
+                if root then root.Anchored = true end
+
+                local boxCFrame, boxSize = model:GetBoundingBox()
+                local focus = boxCFrame.Position + Vector3.new(0, boxSize.Y * 0.03, 0)
+                local halfFov = math.rad(camera.FieldOfView * 0.5)
+                local distance = math.max(
+                    4.5,
+                    (boxSize.Y * 0.56) / math.max(0.05, math.tan(halfFov)),
+                    (boxSize.X * 0.62) / math.max(0.05, math.tan(halfFov))
+                )
+                camera.CFrame = CFrame.lookAt(
+                    focus + Vector3.new(0, boxSize.Y * 0.02, -distance),
+                    focus,
+                    Vector3.new(0, 1, 0)
+                )
+
+                local humanoid = model:FindFirstChildOfClass("Humanoid")
+                if not humanoid then
+                    loadingText.Text = "Avatar thumbnail"
+                    return
+                end
+                pcall(function() humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None end)
+
+                local animator = humanoid:FindFirstChildOfClass("Animator") or Instance.new("Animator", humanoid)
+                local animation = Instance.new("Animation")
+                animation.Name = "LH_EmoteCardPreview"
+                animation.AnimationId = animationUri(playableId)
+                local loadOk, trackObject = pcall(function() return humanoid:LoadAnimation(animation) end)
+                if not loadOk or not trackObject then
+                    loadOk, trackObject = pcall(function() return animator:LoadAnimation(animation) end)
+                end
+                if not loadOk or not trackObject or api.Dead then
+                    pcall(function() animation:Destroy() end)
+                    loadingText.Text = "Avatar thumbnail"
+                    return
+                end
+
+                trackObject.Looped = true
+                pcall(function() trackObject.Priority = Enum.AnimationPriority.Action end)
+                trackObject:Play()
+                pcall(function() trackObject:AdjustSpeed(getSpeed(item.Id)) end)
+                api.Track = trackObject
+                api.Animation = animation
+                fallback.Visible = false
+                loadingText.Visible = false
+            end)
+
+            return api
+        end
+
+        local function clearHolder(holder, keepClass)
+            for _, child in ipairs(holder:GetChildren()) do
+                local keep = keepClass and child:IsA(keepClass)
+                if not keep and not child:IsA("UIPadding") then child:Destroy() end
+            end
+        end
+
+        local function makeToggleSwitch(parent, emoteId, callback, compact)
+            local width = compact and 44 or 50
+            local height = compact and 20 or 22
+            local pill = Instance.new("Frame")
+            pill.Name = "FreeEmoteToggle"
+            pill.Size = UDim2.fromOffset(width, height)
+            pill.BorderSizePixel = 0
+            pill.BackgroundColor3 = EMOTE_RED
+            pill.Parent = parent
+            makeCorner(pill, height / 2)
+
+            local knobSize = height - 4
+            local knob = Instance.new("Frame")
+            knob.Size = UDim2.fromOffset(knobSize, knobSize)
+            knob.Position = UDim2.fromOffset(2, 2)
+            knob.BorderSizePixel = 0
+            knob.BackgroundColor3 = rgb(255, 255, 255)
+            knob.Parent = pill
+            makeCorner(knob, knobSize / 2)
+
+            local hit = makeButton(pill, "")
+            hit.Size = UDim2.fromScale(1, 1)
+            hit.BackgroundTransparency = 1
+            hit.ZIndex = 7
+
+            local api = {Pill = pill, Knob = knob, Busy = false}
+            function api:Render(value)
+                if not pill.Parent then return end
+                value = value == true
+                pill.BackgroundColor3 = value and EMOTE_GREEN or EMOTE_RED
+                knob.Position = value and UDim2.fromOffset(width - knobSize - 2, 2) or UDim2.fromOffset(2, 2)
+                pill.BackgroundTransparency = self.Busy and 0.35 or 0
+            end
+            function api:SetBusy(value)
+                self.Busy = value == true
+                self:Render(tonumber(state.Active.Id) == tonumber(emoteId))
+            end
+            track(hit.Activated:Connect(function()
+                if not api.Busy and type(callback) == "function" then callback(api) end
+            end))
+            registry.Toggles[tonumber(emoteId)] = registry.Toggles[tonumber(emoteId)] or {}
+            table.insert(registry.Toggles[tonumber(emoteId)], api)
+            api:Render(tonumber(state.Active.Id) == tonumber(emoteId))
+            return api
+        end
+
+        local renderFavorites
+
+        local function addFavorite(item)
+            if favoriteIndex(item.Id) then
+                emoteNotify(tostring(item.Name) .. " is already in Favorites.", "info", 2.3)
+                return
+            end
+            local favorites = getFavorites()
+            local saved = cleanFavorite(item)
+            if not saved then return end
+            local ok, playableId = pcall(resolvePlayableAnimationId, item)
+            if ok then saved.PlayableAnimationId = playableId end
+            table.insert(favorites, saved)
+            saveFavorites(favorites)
+            refreshStarVisuals()
+            emoteNotify(tostring(item.Name) .. " was added to Favorites.", "success", 2.5)
+            if state.Mode == "favorites" and renderFavorites then
+                renderFavorites(UI.FavoriteSearchBox.Text)
+            end
+        end
+
+        local function removeFavorite(item, allowUndo)
+            local favorites = getFavorites()
+            local index = favoriteIndex(item.Id)
+            if not index then return end
+            local removed = table.remove(favorites, index)
+            saveFavorites(favorites)
+            refreshStarVisuals()
+            if state.Mode == "favorites" and renderFavorites then
+                renderFavorites(UI.FavoriteSearchBox.Text)
+            end
+
+            if allowUndo ~= false then
+                LULA:NotifyAction("warning", "Emote Favorites", tostring(removed.Name) .. " was removed from Favorites.", 4, "Undo", function()
+                    local restored = getFavorites()
+                    if not favoriteIndex(removed.Id) then
+                        table.insert(restored, math.min(index, #restored + 1), removed)
+                        saveFavorites(restored)
+                    end
+                    refreshStarVisuals()
+                    if state.Mode == "favorites" and renderFavorites then
+                        renderFavorites(UI.FavoriteSearchBox.Text)
+                    end
+                end)
+            end
+        end
+
+        local function toggleFavorite(item)
+            if favoriteIndex(item.Id) then
+                removeFavorite(item, true)
+            else
+                addFavorite(item)
+            end
+        end
+
+        local function makeStarButton(parent, item)
+            local button = makeButton(parent, STAR_EMPTY)
+            button.Name = "FreeEmoteFavoriteStar"
+            button.Size = UDim2.fromOffset(30, 28)
+            button.TextSize = 18
+            button.TextColor3 = YELLOW
+            button.BackgroundTransparency = 0.06
+            button.ZIndex = 10
+            local api = {}
+            function api:Render(saved)
+                button.Text = saved and STAR_FILLED or STAR_EMPTY
+                button.TextColor3 = YELLOW
+            end
+            track(button.Activated:Connect(function() toggleFavorite(item) end))
+            registry.Stars[tonumber(item.Id)] = registry.Stars[tonumber(item.Id)] or {}
+            table.insert(registry.Stars[tonumber(item.Id)], api)
+            api:Render(favoriteIndex(item.Id) ~= nil)
+            api.Button = button
+            return api
+        end
+
+        local function createFavoriteSaveControls()
+            local row = Instance.new("Frame")
+            row.Name = "FreeEmoteFavoriteSaveControls"
+            row.LayoutOrder = -4750
+            row.Size = UDim2.new(1, -4, 0, 36)
+            row.BackgroundTransparency = 1
+            row.Visible = false
+            row.Parent = scroll
+
+            local autoSave = makeButton(row, "")
+            autoSave.Position = UDim2.fromOffset(0, 0)
+            autoSave.Size = UDim2.new(0.57, -3, 1, 0)
+            autoSave.Text = ""
+            autoSave.BackgroundTransparency = 0.04
+
+            local label = makeText(autoSave, "Auto Save Favorites", 10.5, Enum.Font.GothamBold)
+            label.Position = UDim2.fromOffset(9, 0)
+            label.Size = UDim2.new(1, -59, 1, 0)
+            label.TextXAlignment = Enum.TextXAlignment.Left
+
+            local pill = Instance.new("Frame")
+            pill.AnchorPoint = Vector2.new(1, 0.5)
+            pill.Position = UDim2.new(1, -8, 0.5, 0)
+            pill.Size = UDim2.fromOffset(39, 20)
+            pill.BorderSizePixel = 0
+            pill.Parent = autoSave
+            makeCorner(pill, 10)
+
+            local knob = Instance.new("Frame")
+            knob.Size = UDim2.fromOffset(16, 16)
+            knob.BorderSizePixel = 0
+            knob.BackgroundColor3 = rgb(250, 250, 252)
+            knob.Parent = pill
+            makeCorner(knob, 8)
+
+            local save = makeButton(row, "Save Favorites")
+            save.AnchorPoint = Vector2.new(1, 0)
+            save.Position = UDim2.new(1, 0, 0, 0)
+            save.Size = UDim2.new(0.43, -3, 1, 0)
+            save.TextSize = 10.5
+            save.BackgroundTransparency = 0.04
+
+            local api = {Row = row}
+            function api:Render()
+                local enabled = settings.FreeEmoteAutoSave ~= false
+                pill.BackgroundColor3 = enabled and EMOTE_GREEN or EMOTE_RED
+                knob.Position = enabled and UDim2.fromOffset(21, 2) or UDim2.fromOffset(2, 2)
+            end
+            function api:SetVisible(value) row.Visible = value == true end
+
+            track(autoSave.Activated:Connect(function()
+                settings.FreeEmoteAutoSave = not (settings.FreeEmoteAutoSave ~= false)
+                persistEmoteSettings()
+                saveFavorites(getFavorites(), true)
+                api:Render()
+                emoteNotify(
+                    settings.FreeEmoteAutoSave
+                        and "Favorite edits now save automatically."
+                        or "Favorite edits now wait for Save Settings or Save Favorites.",
+                    "success",
+                    2.8
+                )
+            end))
+            track(save.Activated:Connect(function()
+                saveFavorites(getFavorites(), true)
+                emoteNotify("Emote favorites saved.", "success", 2.4)
+            end))
+            api:Render()
+            return api
+        end
+
+        UI.Note = newRow(scroll, "FreeEmotesNote", 58)
+        UI.Note.LayoutOrder = -5000
+        UI.Note.BackgroundTransparency = 0.04
+        UI.NoteTitle = makeText(UI.Note, "Roblox Emote Marketplace", 14, Enum.Font.GothamBold)
+        UI.NoteTitle.Position = UDim2.fromOffset(10, 6)
+        UI.NoteTitle.Size = UDim2.new(1, -20, 0, 20)
+        UI.NoteTitle.TextXAlignment = Enum.TextXAlignment.Left
+        UI.NoteBody = makeText(UI.Note, "Look up, preview and use your favorite emotes direktly from Roblox's Marketplace for free.", 11.5, Enum.Font.GothamMedium)
+        UI.NoteBody.Position = UDim2.fromOffset(10, 26)
+        UI.NoteBody.Size = UDim2.new(1, -20, 0, 25)
+        UI.NoteBody.TextXAlignment = Enum.TextXAlignment.Left
+        bind(UI.NoteBody, "TextColor3", "MutedText")
+
+        UI.ModeRow = Instance.new("Frame")
+        UI.ModeRow.Name = "FreeEmoteModes"
+        UI.ModeRow.LayoutOrder = -4900
+        UI.ModeRow.Size = UDim2.new(1, -4, 0, 34)
+        UI.ModeRow.BackgroundTransparency = 1
+        UI.ModeRow.Parent = scroll
+
+        UI.MarketplaceMode = makeButton(UI.ModeRow, "Marketplace")
+        UI.MarketplaceMode.Position = UDim2.fromOffset(0, 0)
+        UI.MarketplaceMode.Size = UDim2.new(0.48, 0, 1, 0)
+        UI.MarketplaceMode.TextSize = 12
+
+        UI.FavoritesMode = makeButton(UI.ModeRow, STAR_EMOJI .. " Favorites")
+        UI.FavoritesMode.AnchorPoint = Vector2.new(1, 0)
+        UI.FavoritesMode.Position = UDim2.new(1, 0, 0, 0)
+        UI.FavoritesMode.Size = UDim2.new(0.48, 0, 1, 0)
+        UI.FavoritesMode.TextSize = 12
+
+        local function createSearchRow(name, placeholder)
+            local row = newRow(scroll, name, 38)
+            row.LayoutOrder = -4800
+            row.BackgroundTransparency = 0.04
+            local box = Instance.new("TextBox")
+            box.Name = name .. "Box"
+            box.Position = UDim2.fromOffset(5, 4)
+            box.Size = UDim2.new(1, -45, 0, 30)
+            box.BackgroundTransparency = 0.08
+            box.BorderSizePixel = 0
+            box.ClearTextOnFocus = false
+            box.Font = resolveUIFont(Enum.Font.GothamMedium)
+            box.Text = ""
+            box.PlaceholderText = placeholder
+            box.PlaceholderColor3 = rgb(155, 155, 168)
+            box.TextSize = 11.5
+            box.TextXAlignment = Enum.TextXAlignment.Left
+            box.Parent = row
+            bind(box, "BackgroundColor3", "Header")
+            bind(box, "TextColor3", "TextColor")
+            makeCorner(box, 7)
+            local padding = Instance.new("UIPadding")
+            padding.PaddingLeft = UDim.new(0, 9)
+            padding.PaddingRight = UDim.new(0, 27)
+            padding.Parent = box
+            local searchButton = makeButton(row, SEARCH_ICON)
+            searchButton.AnchorPoint = Vector2.new(1, 0.5)
+            searchButton.Position = UDim2.new(1, -5, 0.5, 0)
+            searchButton.Size = UDim2.fromOffset(32, 30)
+            searchButton.TextSize = 14
+            attachClearX(box)
+            return row, box, searchButton
+        end
+
+        UI.MarketSearchRow, UI.MarketSearchBox, UI.MarketSearchButton = createSearchRow(
+            "FreeEmoteMarketplaceSearch",
+            "Search Roblox Emotes..."
+        )
+        UI.FavoriteSearchRow, UI.FavoriteSearchBox, UI.FavoriteSearchButton = createSearchRow(
+            "FreeEmoteFavoriteSearch",
+            "Search saved emote favorites..."
+        )
+        UI.FavoriteSearchRow.Visible = false
+
+        UI.Suggestion = newRow(scroll, "FreeEmoteSuggestion", 42)
+        UI.Suggestion.LayoutOrder = -4775
+        UI.Suggestion.BackgroundTransparency = 0.04
+        UI.Suggestion.Visible = false
+        UI.SuggestionText = makeText(UI.Suggestion, "", 10.5, Enum.Font.GothamMedium)
+        UI.SuggestionText.Position = UDim2.fromOffset(8, 3)
+        UI.SuggestionText.Size = UDim2.new(1, -16, 0, 17)
+        UI.SuggestionText.TextXAlignment = Enum.TextXAlignment.Left
+        bind(UI.SuggestionText, "TextColor3", "MutedText")
+        UI.OriginalSearch = makeButton(UI.Suggestion, "")
+        UI.OriginalSearch.Position = UDim2.fromOffset(6, 21)
+        UI.OriginalSearch.Size = UDim2.new(1, -12, 0, 18)
+        UI.OriginalSearch.TextSize = 9.5
+        UI.OriginalSearch.BackgroundTransparency = 0.16
+
+        UI.FavoriteSaveControls = createFavoriteSaveControls()
+
+        UI.Status = Instance.new("Frame")
+        UI.Status.Name = "FreeEmoteStatus"
+        UI.Status.LayoutOrder = -4700
+        UI.Status.Size = UDim2.new(1, -4, 0, 25)
+        UI.Status.BackgroundTransparency = 1
+        UI.Status.Parent = scroll
+
+        UI.ResultCount = makeText(UI.Status, "0 emotes found", 11.5, Enum.Font.GothamBold)
+        UI.ResultCount.Position = UDim2.fromOffset(2, 0)
+        UI.ResultCount.Size = UDim2.new(1, -100, 1, 0)
+        UI.ResultCount.TextXAlignment = Enum.TextXAlignment.Left
+
+        UI.DeleteAll = makeKolorButton(UI.Status, "Delete All", EMOTE_RED)
+        UI.DeleteAll.AnchorPoint = Vector2.new(1, 0.5)
+        UI.DeleteAll.Position = UDim2.new(1, -1, 0.5, 0)
+        UI.DeleteAll.Size = UDim2.fromOffset(82, 23)
+        UI.DeleteAll.TextSize = 9.5
+        UI.DeleteAll.Visible = false
+
+        UI.Loading = makeText(scroll, "Searching Roblox Marketplace...", 12, Enum.Font.GothamBold)
+        UI.Loading.Name = "FreeEmoteLoading"
+        UI.Loading.LayoutOrder = -4600
+        UI.Loading.Size = UDim2.new(1, -4, 0, 34)
+        UI.Loading.TextXAlignment = Enum.TextXAlignment.Center
+        UI.Loading.Visible = false
+        bind(UI.Loading, "TextColor3", "SchemeColor")
+
+        UI.Empty = makeText(scroll, "", 11.5, Enum.Font.GothamMedium)
+        UI.Empty.Name = "FreeEmoteEmpty"
+        UI.Empty.LayoutOrder = 50
+        UI.Empty.Size = UDim2.new(1, -4, 0, 44)
+        UI.Empty.TextXAlignment = Enum.TextXAlignment.Center
+        UI.Empty.TextYAlignment = Enum.TextYAlignment.Center
+        UI.Empty.Visible = false
+        bind(UI.Empty, "TextColor3", "MutedText")
+
+        UI.MarketHolder = Instance.new("Frame")
+        UI.MarketHolder.Name = "FreeEmoteMarketplaceGrid"
+        UI.MarketHolder.LayoutOrder = 0
+        UI.MarketHolder.Size = UDim2.new(1, -4, 0, 0)
+        UI.MarketHolder.BackgroundTransparency = 1
+        UI.MarketHolder.Parent = scroll
+        UI.MarketGrid = Instance.new("UIGridLayout")
+        UI.MarketGrid.CellSize = UDim2.new(1 / 3, -5, 0, 252)
+        UI.MarketGrid.CellPadding = UDim2.fromOffset(6, 6)
+        UI.MarketGrid.FillDirectionMaxCells = 3
+        UI.MarketGrid.SortOrder = Enum.SortOrder.LayoutOrder
+        UI.MarketGrid.HorizontalAlignment = Enum.HorizontalAlignment.Center
+        UI.MarketGrid.Parent = UI.MarketHolder
+        track(UI.MarketGrid:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+            UI.MarketHolder.Size = UDim2.new(1, -4, 0, UI.MarketGrid.AbsoluteContentSize.Y)
+        end))
+
+        UI.LoadMore = makeButton(scroll, "Load More")
+        UI.LoadMore.Name = "FreeEmoteLoadMore"
+        UI.LoadMore.LayoutOrder = 40
+        UI.LoadMore.Size = UDim2.new(1, -4, 0, 34)
+        UI.LoadMore.TextSize = 11.5
+        UI.LoadMore.Visible = false
+        UI.LoadMore.BackgroundTransparency = 0.04
+
+        UI.FavoritesHolder = Instance.new("Frame")
+        UI.FavoritesHolder.Name = "FreeEmoteFavoritesList"
+        UI.FavoritesHolder.LayoutOrder = 0
+        UI.FavoritesHolder.Size = UDim2.new(1, -4, 0, 0)
+        UI.FavoritesHolder.AutomaticSize = Enum.AutomaticSize.Y
+        UI.FavoritesHolder.BackgroundTransparency = 1
+        UI.FavoritesHolder.Visible = false
+        UI.FavoritesHolder.Parent = scroll
+        UI.FavoritesLayout = Instance.new("UIListLayout")
+        UI.FavoritesLayout.Padding = UDim.new(0, 5)
+        UI.FavoritesLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        UI.FavoritesLayout.Parent = UI.FavoritesHolder
+
+        local function updateGrid()
+            local width = UI.MarketHolder.AbsoluteSize.X
+            if width <= 0 then return end
+            local columns = width >= 510 and 3 or (width >= 320 and 2 or 1)
+            local gap = 6
+            local usable = width - gap * (columns - 1)
+            local cellWidth = math.max(132, math.floor(usable / columns))
+            UI.MarketGrid.FillDirectionMaxCells = columns
+            UI.MarketGrid.CellPadding = UDim2.fromOffset(gap, gap)
+            UI.MarketGrid.CellSize = UDim2.fromOffset(cellWidth, 252)
+        end
+        track(UI.MarketHolder:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateGrid))
+        task.defer(updateGrid)
+
+        local function createDetailsOverlay()
+            UI.DetailsOverlay = Instance.new("Frame")
+            UI.DetailsOverlay.Name = "FreeEmoteDetailsOverlay"
+            UI.DetailsOverlay.Size = UDim2.fromScale(1, 1)
+            UI.DetailsOverlay.BackgroundTransparency = 1
+            UI.DetailsOverlay.Visible = false
+            UI.DetailsOverlay.Active = true
+            UI.DetailsOverlay.ZIndex = 9000
+            UI.DetailsOverlay.ClipsDescendants = true
+            UI.DetailsOverlay.Parent = active.Main
+
+            UI.DetailsShade = makeButton(UI.DetailsOverlay, "")
+            UI.DetailsShade.Size = UDim2.fromScale(1, 1)
+            UI.DetailsShade.BackgroundColor3 = rgb(0, 0, 0)
+            UI.DetailsShade.BackgroundTransparency = 0.34
+            UI.DetailsShade.ZIndex = 9001
+
+            UI.DetailsPanel = Instance.new("Frame")
+            UI.DetailsPanel.AnchorPoint = Vector2.new(0.5, 0.5)
+            UI.DetailsPanel.Position = UDim2.fromScale(0.5, 0.5)
+            UI.DetailsPanel.Size = UDim2.new(0.94, 0, 0.92, 0)
+            UI.DetailsPanel.BackgroundTransparency = 0.01
+            UI.DetailsPanel.BorderSizePixel = 0
+            UI.DetailsPanel.ClipsDescendants = true
+            UI.DetailsPanel.ZIndex = 9002
+            UI.DetailsPanel.Parent = UI.DetailsOverlay
+            bind(UI.DetailsPanel, "BackgroundColor3", "Background")
+            makeCorner(UI.DetailsPanel, 11)
+            local constraint = Instance.new("UISizeConstraint")
+            constraint.MaxSize = Vector2.new(620, 520)
+            constraint.MinSize = Vector2.new(280, 260)
+            constraint.Parent = UI.DetailsPanel
+
+            UI.DetailsTitle = makeText(UI.DetailsPanel, "Emote Info", 15, Enum.Font.GothamBold)
+            UI.DetailsTitle.Position = UDim2.fromOffset(12, 7)
+            UI.DetailsTitle.Size = UDim2.new(1, -52, 0, 25)
+            UI.DetailsTitle.TextXAlignment = Enum.TextXAlignment.Left
+            UI.DetailsTitle.ZIndex = 9004
+
+            UI.DetailsClose = makeKolorButton(UI.DetailsPanel, "X", EMOTE_RED)
+            UI.DetailsClose.AnchorPoint = Vector2.new(1, 0)
+            UI.DetailsClose.Position = UDim2.new(1, -8, 0, 7)
+            UI.DetailsClose.Size = UDim2.fromOffset(28, 26)
+            UI.DetailsClose.TextSize = 11
+            UI.DetailsClose.ZIndex = 9005
+
+            UI.DetailsScroll = Instance.new("ScrollingFrame")
+            UI.DetailsScroll.Position = UDim2.fromOffset(10, 39)
+            UI.DetailsScroll.Size = UDim2.new(1, -20, 1, -49)
+            UI.DetailsScroll.BackgroundTransparency = 1
+            UI.DetailsScroll.BorderSizePixel = 0
+            UI.DetailsScroll.ScrollBarThickness = 4
+            UI.DetailsScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+            UI.DetailsScroll.CanvasSize = UDim2.new()
+            UI.DetailsScroll.ZIndex = 9003
+            UI.DetailsScroll.Parent = UI.DetailsPanel
+            UI.DetailsLayout = Instance.new("UIListLayout")
+            UI.DetailsLayout.Padding = UDim.new(0, 7)
+            UI.DetailsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+            UI.DetailsLayout.Parent = UI.DetailsScroll
+
+            UI.DetailsPreview = newRow(UI.DetailsScroll, "FreeEmoteDetailsPreview", 170)
+            UI.DetailsPreview.LayoutOrder = 1
+            UI.DetailsPreview.ZIndex = 9004
+            UI.DetailsPreview.BackgroundTransparency = 0.04
+
+            UI.DetailsCreator = makeText(UI.DetailsScroll, "", 11.5, Enum.Font.GothamMedium)
+            UI.DetailsCreator.LayoutOrder = 2
+            UI.DetailsCreator.Size = UDim2.new(1, -4, 0, 22)
+            UI.DetailsCreator.TextXAlignment = Enum.TextXAlignment.Left
+            UI.DetailsCreator.ZIndex = 9004
+            bind(UI.DetailsCreator, "TextColor3", "MutedText")
+
+            UI.DetailsMeta = makeText(UI.DetailsScroll, "", 10.5, Enum.Font.GothamMedium)
+            UI.DetailsMeta.LayoutOrder = 3
+            UI.DetailsMeta.Size = UDim2.new(1, -4, 0, 38)
+            UI.DetailsMeta.TextXAlignment = Enum.TextXAlignment.Left
+            UI.DetailsMeta.TextWrapped = true
+            UI.DetailsMeta.ZIndex = 9004
+            bind(UI.DetailsMeta, "TextColor3", "MutedText")
+
+            UI.DetailsDescription = makeText(UI.DetailsScroll, "", 11, Enum.Font.Gotham)
+            UI.DetailsDescription.LayoutOrder = 4
+            UI.DetailsDescription.Size = UDim2.new(1, -4, 0, 72)
+            UI.DetailsDescription.TextXAlignment = Enum.TextXAlignment.Left
+            UI.DetailsDescription.TextYAlignment = Enum.TextYAlignment.Top
+            UI.DetailsDescription.TextWrapped = true
+            UI.DetailsDescription.ZIndex = 9004
+
+            UI.DetailsSpeedRow = newRow(UI.DetailsScroll, "FreeEmoteDetailsSpeed", 34)
+            UI.DetailsSpeedRow.LayoutOrder = 5
+            UI.DetailsSpeedRow.ZIndex = 9004
+            UI.DetailsSpeedLabel = makeText(UI.DetailsSpeedRow, "Animation Speed", 10.5, Enum.Font.GothamBold)
+            UI.DetailsSpeedLabel.Position = UDim2.fromOffset(8, 0)
+            UI.DetailsSpeedLabel.Size = UDim2.new(0.45, -8, 1, 0)
+            UI.DetailsSpeedLabel.TextXAlignment = Enum.TextXAlignment.Left
+            UI.DetailsSpeedHolder = Instance.new("Frame")
+            UI.DetailsSpeedHolder.Position = UDim2.new(0.45, 0, 0.5, -12)
+            UI.DetailsSpeedHolder.Size = UDim2.new(0.55, -8, 0, 24)
+            UI.DetailsSpeedHolder.BackgroundTransparency = 1
+            UI.DetailsSpeedHolder.Parent = UI.DetailsSpeedRow
+
+            UI.DetailsActions = Instance.new("Frame")
+            UI.DetailsActions.LayoutOrder = 6
+            UI.DetailsActions.Size = UDim2.new(1, -4, 0, 76)
+            UI.DetailsActions.BackgroundTransparency = 1
+            UI.DetailsActions.ZIndex = 9004
+            UI.DetailsActions.Parent = UI.DetailsScroll
+            UI.DetailsActionGrid = Instance.new("UIGridLayout")
+            UI.DetailsActionGrid.CellSize = UDim2.new(0.5, -4, 0, 34)
+            UI.DetailsActionGrid.CellPadding = UDim2.fromOffset(7, 7)
+            UI.DetailsActionGrid.FillDirectionMaxCells = 2
+            UI.DetailsActionGrid.SortOrder = Enum.SortOrder.LayoutOrder
+            UI.DetailsActionGrid.Parent = UI.DetailsActions
+
+            UI.DetailsPlay = makeButton(UI.DetailsActions, "Play Emote")
+            UI.DetailsPlay.LayoutOrder = 1
+            UI.DetailsStop = makeButton(UI.DetailsActions, "Stop Emote")
+            UI.DetailsStop.LayoutOrder = 2
+            UI.DetailsCopy = makeButton(UI.DetailsActions, "Kopy Animation ID")
+            UI.DetailsCopy.LayoutOrder = 3
+            UI.DetailsFavorite = makeButton(UI.DetailsActions, "Add Favorite")
+            UI.DetailsFavorite.LayoutOrder = 4
+        end
+        createDetailsOverlay()
+
+        local function raiseDetailsZ()
+            if not UI.DetailsPanel then return end
+            for _, descendant in ipairs(UI.DetailsPanel:GetDescendants()) do
+                if descendant:IsA("GuiObject") then
+                    descendant.ZIndex = math.max(descendant.ZIndex, 9004)
+                end
+            end
+            UI.DetailsShade.ZIndex = 9001
+            UI.DetailsPanel.ZIndex = 9002
+            UI.DetailsScroll.ZIndex = 9003
+        end
+        raiseDetailsZ()
+
+        local function closeDetails()
+            UI.DetailsShade.Active = false
+            UI.DetailsOverlay.Visible = false
+            state.DetailItem = nil
+            if state.DetailPreview then state.DetailPreview:Destroy() end
+            state.DetailPreview = nil
+            clearHolder(UI.DetailsSpeedHolder)
+        end
+
+        local function openDetails(item)
+            if type(item) ~= "table" then return end
+            closeDetails()
+            state.DetailItem = item
+            UI.DetailsOverlay.Visible = true
+            UI.DetailsShade.Active = false
+            UI.DetailsTitle.Text = tostring(item.Name)
+            UI.DetailsCreator.Text = "By " .. tostring(item.CreatorName or "Unknown creator")
+            UI.DetailsMeta.Text = "Marketplace ID: " .. tostring(item.Id) .. " | Resolving animation ID..."
+            UI.DetailsDescription.Text = trim(item.Description) ~= "" and item.Description or "No description was provided."
+            UI.DetailsFavorite.Text = favoriteIndex(item.Id) and "Remove Favorite" or "Add Favorite"
+            state.DetailPreview = createAvatarPreview(UI.DetailsPreview, item, false)
+            makeSpeedControl(UI.DetailsSpeedHolder, item.Id, false)
+            raiseDetailsZ()
+
+            task.delay(0.22, function()
+                if UI.DetailsOverlay.Visible and state.DetailItem == item then
+                    UI.DetailsShade.Active = true
+                end
+            end)
+
+            task.spawn(function()
+                local ok, details = pcall(fetchDetails, item)
+                if not ok or not UI.DetailsOverlay.Visible or state.DetailItem ~= item then return end
+                UI.DetailsTitle.Text = tostring(details.Name)
+                UI.DetailsCreator.Text = "By " .. tostring(details.CreatorName or "Unknown creator")
+                UI.DetailsMeta.Text = "Marketplace ID: " .. tostring(details.Id)
+                    .. " | Animation ID: " .. tostring(details.PlayableAnimationId)
+                    .. " | " .. tostring(details.PlayableSource or "Roblox")
+                if details.Price then
+                    UI.DetailsMeta.Text = UI.DetailsMeta.Text .. " | " .. tostring(details.Price) .. " Robux"
+                end
+                UI.DetailsDescription.Text = trim(details.Description) ~= "" and details.Description or "No description was provided."
+            end)
+        end
+
+        track(UI.DetailsShade.Activated:Connect(function()
+            if UI.DetailsShade.Active then closeDetails() end
+        end))
+        track(UI.DetailsClose.Activated:Connect(closeDetails))
+        track(UI.DetailsPlay.Activated:Connect(function()
+            if state.DetailItem then playEmote(state.DetailItem) end
+        end))
+        track(UI.DetailsStop.Activated:Connect(function() stopActiveEmote(false) end))
+        track(UI.DetailsCopy.Activated:Connect(function()
+            if not state.DetailItem then return end
+            local ok, playableId = pcall(resolvePlayableAnimationId, state.DetailItem)
+            if not ok then
+                emoteNotify("Could not resolve this emote's animation ID.", "error", 3)
+                return
+            end
+            if copyText(playableId) then
+                emoteNotify("Animation ID kopied: " .. tostring(playableId), "success", 2.5)
+            else
+                emoteNotify("Clipboard is not supported by this executor.", "error", 3)
+            end
+        end))
+        track(UI.DetailsFavorite.Activated:Connect(function()
+            if not state.DetailItem then return end
+            toggleFavorite(state.DetailItem)
+            UI.DetailsFavorite.Text = favoriteIndex(state.DetailItem.Id) and "Remove Favorite" or "Add Favorite"
+        end))
+
+        local function makeMarketplaceCard(item, order)
+            local card = newRow(UI.MarketHolder, "FreeEmote_" .. tostring(item.Id), 252)
+            card.LayoutOrder = order
+            card.Size = UDim2.new()
+            card.ClipsDescendants = true
+            makeStroke(card, active.Theme.SchemeColor, 0.25, 1)
+
+            local preview = Instance.new("Frame")
+            preview.Position = UDim2.fromOffset(7, 7)
+            preview.Size = UDim2.new(1, -14, 0, 100)
+            preview.BackgroundTransparency = 1
+            preview.Parent = card
+            createAvatarPreview(preview, item, false)
+
+            local star = makeStarButton(card, item)
+            star.Button.AnchorPoint = Vector2.new(1, 0)
+            star.Button.Position = UDim2.new(1, -9, 0, 9)
+
+            local name = makeText(card, tostring(item.Name), 11.5, Enum.Font.GothamBold)
+            name.Position = UDim2.fromOffset(7, 111)
+            name.Size = UDim2.new(1, -14, 0, 31)
+            name.TextWrapped = true
+            name.TextXAlignment = Enum.TextXAlignment.Center
+
+            local creator = makeText(card, "By " .. tostring(item.CreatorName or "Unknown creator"), 9.5, Enum.Font.GothamMedium)
+            creator.Position = UDim2.fromOffset(7, 142)
+            creator.Size = UDim2.new(1, -14, 0, 15)
+            creator.TextXAlignment = Enum.TextXAlignment.Center
+            creator.TextTruncate = Enum.TextTruncate.AtEnd
+            bind(creator, "TextColor3", "MutedText")
+
+            local info = makeButton(card, "View Info")
+            info.Position = UDim2.fromOffset(7, 160)
+            info.Size = UDim2.new(1, -14, 0, 25)
+            info.TextSize = 10
+            info.BackgroundTransparency = 0.08
+            track(info.Activated:Connect(function()
+                task.defer(function() openDetails(item) end)
+            end))
+
+            local speedLabel = makeText(card, "Speed", 9.5, Enum.Font.GothamBold)
+            speedLabel.Position = UDim2.fromOffset(7, 188)
+            speedLabel.Size = UDim2.new(0, 42, 0, 20)
+            speedLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+            local speedHolder = Instance.new("Frame")
+            speedHolder.Position = UDim2.fromOffset(48, 187)
+            speedHolder.Size = UDim2.new(1, -55, 0, 22)
+            speedHolder.BackgroundTransparency = 1
+            speedHolder.Parent = card
+            makeSpeedControl(speedHolder, item.Id, true)
+
+            local toggleHolder = Instance.new("Frame")
+            toggleHolder.AnchorPoint = Vector2.new(0.5, 0)
+            toggleHolder.Position = UDim2.new(0.5, 0, 0, 218)
+            toggleHolder.Size = UDim2.fromOffset(50, 22)
+            toggleHolder.BackgroundTransparency = 1
+            toggleHolder.Parent = card
+            makeToggleSwitch(toggleHolder, item.Id, function(api) playEmote(item, api) end, false)
+            return card
+        end
+
+        local function makeFavoriteRow(item, order)
+            local row = newRow(UI.FavoritesHolder, "FreeEmoteFavorite_" .. tostring(item.Id), 94)
+            row.LayoutOrder = order
+            row.ClipsDescendants = true
+
+            local preview = Instance.new("Frame")
+            preview.Position = UDim2.fromOffset(5, 5)
+            preview.Size = UDim2.fromOffset(82, 84)
+            preview.BackgroundTransparency = 1
+            preview.Parent = row
+            createAvatarPreview(preview, item, true)
+
+            local name = makeText(row, tostring(item.Name), 11.5, Enum.Font.GothamBold)
+            name.Position = UDim2.fromOffset(94, 5)
+            name.Size = UDim2.new(1, -230, 0, 25)
+            name.TextXAlignment = Enum.TextXAlignment.Left
+            name.TextTruncate = Enum.TextTruncate.AtEnd
+
+            local creator = makeText(row, "By " .. tostring(item.CreatorName or "Unknown creator"), 9.5, Enum.Font.GothamMedium)
+            creator.Position = UDim2.fromOffset(94, 28)
+            creator.Size = UDim2.new(1, -230, 0, 16)
+            creator.TextXAlignment = Enum.TextXAlignment.Left
+            creator.TextTruncate = Enum.TextTruncate.AtEnd
+            bind(creator, "TextColor3", "MutedText")
+
+            local info = makeButton(row, "Info")
+            info.Position = UDim2.fromOffset(94, 51)
+            info.Size = UDim2.fromOffset(48, 28)
+            info.TextSize = 9.5
+            track(info.Activated:Connect(function()
+                task.defer(function() openDetails(item) end)
+            end))
+
+            local speedHolder = Instance.new("Frame")
+            speedHolder.Position = UDim2.fromOffset(148, 54)
+            speedHolder.Size = UDim2.new(1, -288, 0, 22)
+            speedHolder.BackgroundTransparency = 1
+            speedHolder.Parent = row
+            makeSpeedControl(speedHolder, item.Id, true)
+
+            local toggleHolder = Instance.new("Frame")
+            toggleHolder.AnchorPoint = Vector2.new(1, 0)
+            toggleHolder.Position = UDim2.new(1, -43, 0, 51)
+            toggleHolder.Size = UDim2.fromOffset(44, 20)
+            toggleHolder.BackgroundTransparency = 1
+            toggleHolder.Parent = row
+            makeToggleSwitch(toggleHolder, item.Id, function(api) playEmote(item, api) end, true)
+
+            local remove = makeKolorButton(row, "X", EMOTE_RED)
+            remove.AnchorPoint = Vector2.new(1, 0)
+            remove.Position = UDim2.new(1, -5, 0, 5)
+            remove.Size = UDim2.fromOffset(30, 28)
+            remove.TextSize = 10
+            track(remove.Activated:Connect(function() removeFavorite(item, true) end))
+            return row
+        end
+
+        local function resetRegistries()
+            registry.Toggles = {}
+            registry.Stars = {}
+            registry.Speeds = {}
+            clearPreviews()
+        end
+
+        local function renderMarketplace(reset)
+            UI.MarketHolder.Visible = true
+            UI.FavoritesHolder.Visible = false
+            if reset == true then
+                clearHolder(UI.MarketHolder, "UIGridLayout")
+                resetRegistries()
+                state.RenderedCount = 0
+            end
+
+            local shown = math.min(state.DisplayCount, #state.Results)
+            for index = state.RenderedCount + 1, shown do
+                makeMarketplaceCard(state.Results[index], index)
+            end
+            state.RenderedCount = shown
+
+            UI.ResultCount.Text = tostring(#state.Results) .. " emotes found"
+                .. (shown < #state.Results and (" - showing " .. tostring(shown)) or "")
+            UI.Empty.Visible = shown == 0 and not state.Searching
+            UI.Empty.Text = trim(UI.MarketSearchBox.Text) == ""
+                and "No emotes were returned by Roblox."
+                or "No emotes matched this search."
+            UI.LoadMore.Visible = not state.Searching
+                and (state.DisplayCount < #state.Results or state.HasMore == true)
+            UI.LoadMore.Text = state.LoadingMore and "Loading..." or "Load More"
+            task.defer(updateGrid)
+        end
+
+        renderFavorites = function(query)
+            UI.MarketHolder.Visible = false
+            UI.FavoritesHolder.Visible = true
+            clearHolder(UI.MarketHolder, "UIGridLayout")
+            state.RenderedCount = 0
+            clearHolder(UI.FavoritesHolder, "UIListLayout")
+            resetRegistries()
+
+            local filtered = {}
+            local normalizedQuery = normalizeWords(query)
+            for _, item in ipairs(getFavorites()) do
+                if normalizedQuery == ""
+                    or containsPlain(item.Name, normalizedQuery)
+                    or containsPlain(item.CreatorName, normalizedQuery)
+                    or tostring(item.Id):find(normalizedQuery, 1, true) then
+                    table.insert(filtered, item)
+                end
+            end
+            table.sort(filtered, function(a, b) return lower(a.Name) < lower(b.Name) end)
+            for index, item in ipairs(filtered) do makeFavoriteRow(item, index) end
+
+            UI.ResultCount.Text = tostring(#filtered) .. " favorite emotes"
+            UI.Empty.Visible = #filtered == 0
+            UI.Empty.Text = #getFavorites() == 0
+                and "No favorite emotes saved yet."
+                or "No favorite emotes matched this search."
+            UI.LoadMore.Visible = false
+        end
+
+        local function setSearching(value, message)
+            state.Searching = value == true
+            UI.Loading.Visible = state.Searching
+            if message then UI.Loading.Text = tostring(message) end
+            UI.MarketSearchButton.Active = not state.Searching
+            UI.MarketSearchBox.TextEditable = not state.Searching
+        end
+
+        local function setSuggestion(corrected, original)
+            state.CorrectedQuery = corrected
+            state.OriginalQuery = original
+            UI.Suggestion.Visible = state.Mode == "marketplace" and corrected ~= nil and original ~= nil
+            if UI.Suggestion.Visible then
+                UI.SuggestionText.Text = "Showing results for \"" .. tostring(corrected) .. "\""
+                UI.OriginalSearch.Text = "Search original: \"" .. tostring(original) .. "\""
+            end
+        end
+
+        local function performSearch(query, forceOriginal)
+            query = trim(query)
+            state.SearchSerial = state.SearchSerial + 1
+            local serial = state.SearchSerial
+            setSuggestion(nil, nil)
+            setSearching(true, "Searching Roblox Marketplace...")
+            state.Results = {}
+            state.ResultIds = {}
+            state.DisplayCount = 0
+            state.NextPage = nil
+            state.HasMore = false
+            state.RenderedCount = 0
+            renderMarketplace(true)
+
+            task.spawn(function()
+                local ok, results, nextPage, hasMore = pcall(startSearchBackend, query)
+                local finalQuery = query
+                if ok and #results == 0 and query ~= "" and forceOriginal ~= true then
+                    local correction = findCorrection(query)
+                    if correction and correction ~= normalizeWords(query) then
+                        local correctedOk, correctedResults, correctedNext, correctedMore = pcall(startSearchBackend, correction)
+                        if correctedOk and #correctedResults > 0 then
+                            ok = true
+                            results = correctedResults
+                            nextPage = correctedNext
+                            hasMore = correctedMore
+                            finalQuery = correction
+                            setSuggestion(correction, query)
+                        end
+                    end
+                end
+
+                if serial ~= state.SearchSerial then return end
+                if not ok then
+                    setSearching(false)
+                    renderMarketplace(true)
+                    emoteNotify(tostring(results), "error", 4)
+                    return
+                end
+
+                state.Results = {}
+                state.ResultIds = {}
+                state.NextPage = nextPage
+                state.HasMore = hasMore == true
+                mergeResults(results)
+                state.DisplayCount = math.min(state.DisplayStep, #state.Results)
+                if finalQuery ~= query and state.OriginalQuery == nil then
+                    setSuggestion(finalQuery, query)
+                end
+                setSearching(false)
+                renderMarketplace(true)
+                task.defer(function() scroll.CanvasPosition = Vector2.new(0, 0) end)
+            end)
+        end
+
+        local function loadMore()
+            if state.Mode ~= "marketplace" or state.Searching or state.LoadingMore then return end
+
+            if state.DisplayCount < #state.Results then
+                state.DisplayCount = math.min(#state.Results, state.DisplayCount + state.DisplayStep)
+                renderMarketplace(false)
+                return
+            end
+
+            if not state.HasMore or typeof(state.NextPage) ~= "function" then
+                UI.LoadMore.Visible = false
+                return
+            end
+
+            state.LoadingMore = true
+            UI.LoadMore.Text = "Loading..."
+            task.spawn(function()
+                local ok, page, hasMore, nextFunction = pcall(state.NextPage)
+                if ok then
+                    if type(nextFunction) == "function" then state.NextPage = nextFunction end
+                    state.HasMore = hasMore == true
+                    local before = #state.Results
+                    mergeResults(page)
+                    state.DisplayCount = math.min(#state.Results, math.max(state.DisplayCount + state.DisplayStep, before + state.DisplayStep))
+                else
+                    state.HasMore = false
+                    emoteNotify("Could not load more Marketplace emotes.", "error", 3.5)
+                end
+                state.LoadingMore = false
+                renderMarketplace(false)
+            end)
+        end
+
+        local function setMode(mode)
+            local previousMode = state.Mode
+            state.Mode = mode == "favorites" and "favorites" or "marketplace"
+            local marketplaceActive = state.Mode == "marketplace"
+            UI.MarketplaceMode.BackgroundColor3 = marketplaceActive and emoteAccent(active.Theme.SchemeColor) or active.Theme.ElementColor
+            UI.FavoritesMode.BackgroundColor3 = marketplaceActive and active.Theme.ElementColor or emoteAccent(active.Theme.SchemeColor)
+            UI.MarketSearchRow.Visible = marketplaceActive
+            UI.FavoriteSearchRow.Visible = not marketplaceActive
+            UI.DeleteAll.Visible = not marketplaceActive
+            UI.FavoriteSaveControls:SetVisible(not marketplaceActive)
+            UI.Suggestion.Visible = marketplaceActive and state.CorrectedQuery ~= nil
+            if marketplaceActive then
+                if previousMode == "favorites" then
+                    clearHolder(UI.FavoritesHolder, "UIListLayout")
+                    resetRegistries()
+                    state.RenderedCount = 0
+                end
+                if #state.Results == 0 and not state.Searching then
+                    performSearch(UI.MarketSearchBox.Text, false)
+                else
+                    renderMarketplace(false)
+                end
+            else
+                renderFavorites(UI.FavoriteSearchBox.Text)
+            end
+            task.defer(function() scroll.CanvasPosition = Vector2.new(0, 0) end)
+        end
+
+        track(UI.MarketplaceMode.Activated:Connect(function() setMode("marketplace") end))
+        track(UI.FavoritesMode.Activated:Connect(function() setMode("favorites") end))
+        track(UI.MarketSearchButton.Activated:Connect(function() performSearch(UI.MarketSearchBox.Text, false) end))
+        track(UI.FavoriteSearchButton.Activated:Connect(function() renderFavorites(UI.FavoriteSearchBox.Text) end))
+        track(UI.MarketSearchBox.FocusLost:Connect(function(enterPressed)
+            if enterPressed then performSearch(UI.MarketSearchBox.Text, false) end
+        end))
+        track(UI.FavoriteSearchBox.FocusLost:Connect(function(enterPressed)
+            if enterPressed then renderFavorites(UI.FavoriteSearchBox.Text) end
+        end))
+        track(UI.OriginalSearch.Activated:Connect(function()
+            if state.OriginalQuery then
+                UI.MarketSearchBox.Text = state.OriginalQuery
+                performSearch(state.OriginalQuery, true)
+            end
+        end))
+
+        local marketClear = UI.MarketSearchRow:FindFirstChild("FreeEmoteMarketplaceSearchBox_ClearTextX")
+        if marketClear then
+            track(marketClear.Activated:Connect(function()
+                task.defer(function()
+                    if state.Mode == "marketplace" then performSearch("", false) end
+                end)
+            end))
+        end
+        local favoriteClear = UI.FavoriteSearchRow:FindFirstChild("FreeEmoteFavoriteSearchBox_ClearTextX")
+        if favoriteClear then
+            track(favoriteClear.Activated:Connect(function()
+                task.defer(function()
+                    if state.Mode == "favorites" then renderFavorites("") end
+                end)
+            end))
+        end
+
+        track(UI.LoadMore.Activated:Connect(loadMore))
+        track(UI.DeleteAll.Activated:Connect(function()
+            local favorites = getFavorites()
+            if #favorites == 0 then
+                emoteNotify("Favorites is already empty.", "info", 2.2)
+                return
+            end
+            LULA:Confirm("Delete all emote favorites?", "Are you sure you want to delete every saved emote from Favorites?", function()
+                local backup = favorites
+                saveFavorites({})
+                refreshStarVisuals()
+                renderFavorites(UI.FavoriteSearchBox.Text)
+                LULA:NotifyAction("warning", "Emote Favorites", "All emote favorites were deleted.", 7, "Undo", function()
+                    saveFavorites(backup)
+                    refreshStarVisuals()
+                    if state.Mode == "favorites" then renderFavorites(UI.FavoriteSearchBox.Text) end
+                end)
+            end)
+        end))
+
+        state.RefreshTheme = function()
+            local marketplaceActive = state.Mode == "marketplace"
+            UI.MarketplaceMode.BackgroundColor3 = marketplaceActive and emoteAccent(active.Theme.SchemeColor) or active.Theme.ElementColor
+            UI.FavoritesMode.BackgroundColor3 = marketplaceActive and active.Theme.ElementColor or emoteAccent(active.Theme.SchemeColor)
+            UI.FavoriteSaveControls:Render()
+            refreshStarVisuals()
+            refreshToggleVisuals()
+        end
+        state.Refresh = function()
+            if state.Mode == "favorites" then
+                renderFavorites(UI.FavoriteSearchBox.Text)
+            else
+                renderMarketplace(false)
+            end
+        end
+        state.Search = function(query)
+            UI.MarketSearchBox.Text = tostring(query or "")
+            setMode("marketplace")
+            performSearch(UI.MarketSearchBox.Text, false)
+        end
+        state.Stop = function() return stopActiveEmote(true) end
+
+        track(LocalPlayer.CharacterAdded:Connect(function()
+            stopActiveEmote(true)
+        end))
+
+        settings.FreeEmoteFavorites = saveFavorites(getFavorites())
+        persistEmoteSettings()
+        setMode("marketplace")
+        return emoteTab
     end
 
     function window:EnablePersonalShelf(tabName)
@@ -7599,7 +9746,7 @@ function LULA.CreateLib(kavName, themeInput)
         end
         local tabStates = type(state.Tabs) == "table" and state.Tabs or {}
         for _, tab in ipairs(active.Tabs) do
-            local saved = tabStates[tab.Name] or (tab.Name == "Free Animation Packs" and tabStates["Animation Bundles"])
+            local saved = tabStates[tab.Name] or (tab.Name == "Free Animations" and (tabStates["Free Animation Packs"] or tabStates["Animation Bundles"]))
             if type(saved) == "table" and type(saved.Scroll) == "table" then
                 tab.LastCanvasPosition = Vector2.new(tonumber(saved.Scroll[1]) or 0, tonumber(saved.Scroll[2]) or 0)
             end
@@ -7641,7 +9788,7 @@ function LULA.CreateLib(kavName, themeInput)
             end
 
             for _, tab in ipairs(active.Tabs) do
-                local saved = tabStates[tab.Name] or (tab.Name == "Free Animation Packs" and tabStates["Animation Bundles"])
+                local saved = tabStates[tab.Name] or (tab.Name == "Free Animations" and (tabStates["Free Animation Packs"] or tabStates["Animation Bundles"]))
                 if type(saved) == "table" then
                     if saved.Search and saved.Search ~= "" then
                         tab:EnsureBuilt()
@@ -7821,6 +9968,9 @@ function LULA:Destroy()
     if not active then return end
     if active.AnimationBundles and type(active.AnimationBundles.RestoreOriginal) == "function" then
         pcall(active.AnimationBundles.RestoreOriginal)
+    end
+    if active.FreeEmotes and type(active.FreeEmotes.Stop) == "function" then
+        pcall(active.FreeEmotes.Stop)
     end
     pcall(function() UserInputService.MouseIconEnabled = true end)
     disconnectAll()
