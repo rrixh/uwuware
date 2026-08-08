@@ -1,8 +1,7 @@
---kavo ui 4.4
 local LULA = {}
 LULA.AnimationMarketplaceVersion = 4
 LULA.EmoteMarketplaceVersion = 1
-LULA.AvatarMarketplaceVersion = 1
+LULA.AvatarMarketplaceVersion = 2
 local env = (getgenv and getgenv()) or _G
 
 --kr
@@ -337,6 +336,7 @@ if type(settings.AnimationBundleFavorites) ~= "table" then settings.AnimationBun
 if settings.AnimationBundleAutoSave == nil then settings.AnimationBundleAutoSave = true end
 if type(settings.FreeEmoteFavorites) ~= "table" then settings.FreeEmoteFavorites = {} end
 if settings.FreeEmoteAutoSave == nil then settings.FreeEmoteAutoSave = true end
+if type(settings.AvatarKreatorFavorites) ~= "table" then settings.AvatarKreatorFavorites = {} end
 if type(settings.FreeEmoteSpeeds) ~= "table" then settings.FreeEmoteSpeeds = {} end
 
 local active = nil
@@ -2669,7 +2669,7 @@ function LULA.CreateLib(kavName, themeInput)
     pages.ClipsDescendants = true
     pages.Parent = main
 
-    local footer = makeText(main, "Lollypop Hub v10.2.1", 11, Enum.Font.GothamMedium)
+    local footer = makeText(main, "Lollypop Hub v10.2.3", 11, Enum.Font.GothamMedium)
     footer.Name = "Footer"
     footer.Position = UDim2.new(0, 158, 1, -20)
     footer.Size = UDim2.new(1, -165, 0, 18)
@@ -2903,23 +2903,6 @@ function LULA.CreateLib(kavName, themeInput)
             end
         end
         active.SelectedTab = tab
-
-        -- Ava Kreator needs more visual room than normal kontrol tabs. Expand only while
-        -- this tab is open, then restore the user's exact previous LH size on exit.
-        if tab.Name == "Ava Kreator" then
-            if not active.AvatarKreatorPreviousMainSize then
-                active.AvatarKreatorPreviousMainSize = main.Size
-            end
-            local currentWidth = tonumber(main.Size.X.Offset) or 0
-            local currentHeight = tonumber(main.Size.Y.Offset) or 0
-            local targetWidth = math.clamp(math.max(currentWidth, 650), 420, 760)
-            local targetHeight = math.clamp(math.max(currentHeight, 480), 250, 520)
-            tween(main, {Size = UDim2.fromOffset(targetWidth, targetHeight)}, 0.16)
-        elseif old and old.Name == "Ava Kreator" and active.AvatarKreatorPreviousMainSize then
-            local previousSize = active.AvatarKreatorPreviousMainSize
-            active.AvatarKreatorPreviousMainSize = nil
-            tween(main, {Size = previousSize}, 0.16)
-        end
 
         if old then
             tween(old.Page, {Position = UDim2.new(-0.04, 0, 0, 0), GroupTransparency = 1}, 0.12)
@@ -9751,13 +9734,13 @@ function LULA.CreateLib(kavName, themeInput)
 
 
     --==================================================
-    -- AVA KREATOR - ROBLOX AVATAR MARKETPLACE
+    -- AVATAR KREATOR - ROBLOX AVATAR MARKETPLACE
     -- Integrated from the verified V4 standalone test.
     --==================================================
     function window:EnableAvatarKreator(tabName)
         if active.AvatarKreator then return active.AvatarKreator.Tab end
 
-        local avatarTab = self:NewTab(tabName or "Ava Kreator")
+        local avatarTab = self:NewTab(tabName or (utf8.char(0x2605) .. " Avatar Kreator"))
         avatarTab:EnsureBuilt()
         avatarTab.Scroll.Visible = false
         avatarTab.Scroll.ScrollingEnabled = false
@@ -10277,6 +10260,7 @@ function LULA.CreateLib(kavName, themeInput)
             CurrentNextPage = nil,
             CurrentHasMore = false,
             CurrentQuery = "",
+            Mode = "marketplace",
             Loading = false,
             EquippedBySlot = {},
             ItemStacking = false,
@@ -10335,7 +10319,7 @@ function LULA.CreateLib(kavName, themeInput)
             Name = "Topbar",
             BackgroundColor3 = PANEL,
             BorderSizePixel = 0,
-            Size = UDim2.new(1, 0, 0, 56),
+            Size = UDim2.new(1, 0, 0, 40),
             ZIndex = 3
         })
         Topbar.Parent = Main
@@ -10351,13 +10335,13 @@ function LULA.CreateLib(kavName, themeInput)
         TopbarBottom.Parent = Topbar
 
         local Logo = create("Frame", {
-            Position = UDim2.fromOffset(14, 12),
-            Size = UDim2.fromOffset(32, 32),
+            Position = UDim2.fromOffset(8, 6),
+            Size = UDim2.fromOffset(28, 28),
             BackgroundColor3 = ACCENT,
             BorderSizePixel = 0,
             ZIndex = 4
         })
-        addCorner(Logo, 10)
+        addCorner(Logo, 8)
         Logo.Parent = Topbar
 
         local LogoText = create("TextLabel", {
@@ -10366,32 +10350,34 @@ function LULA.CreateLib(kavName, themeInput)
             Font = Enum.Font.GothamBold,
             Text = "A",
             TextColor3 = Color3.new(1, 1, 1),
-            TextSize = 17,
+            TextSize = 14,
             ZIndex = 5
         })
         LogoText.Parent = Logo
 
         local Title = create("TextLabel", {
-            Position = UDim2.fromOffset(56, 8),
-            Size = UDim2.new(1, -165, 0, 23),
+            Position = UDim2.fromOffset(43, 2),
+            Size = UDim2.new(1, -132, 0, 20),
             BackgroundTransparency = 1,
             Font = Enum.Font.GothamBold,
-            Text = "Ava Kreator",
+            Text = "Avatar Katalog Kreator",
             TextColor3 = TEXT,
-            TextSize = 17,
+            TextSize = 13.5,
+            TextTruncate = Enum.TextTruncate.AtEnd,
             TextXAlignment = Enum.TextXAlignment.Left,
             ZIndex = 4
         })
         Title.Parent = Topbar
 
         local Subtitle = create("TextLabel", {
-            Position = UDim2.fromOffset(56, 30),
-            Size = UDim2.new(1, -165, 0, 17),
+            Position = UDim2.fromOffset(43, 20),
+            Size = UDim2.new(1, -132, 0, 15),
             BackgroundTransparency = 1,
             Font = Enum.Font.Gotham,
             Text = "Try on Roblox klothing locally",
             TextColor3 = MUTED,
-            TextSize = 11,
+            TextSize = 9,
+            TextTruncate = Enum.TextTruncate.AtEnd,
             TextXAlignment = Enum.TextXAlignment.Left,
             ZIndex = 4
         })
@@ -10399,90 +10385,126 @@ function LULA.CreateLib(kavName, themeInput)
 
         local OutfitButton = create("TextButton", {
             AnchorPoint = Vector2.new(1, 0.5),
-            Position = UDim2.new(1, -12, 0.5, 0),
-            Size = UDim2.fromOffset(86, 34),
+            Position = UDim2.new(1, -8, 0.5, 0),
+            Size = UDim2.fromOffset(76, 28),
             BackgroundColor3 = PANEL_2,
             AutoButtonColor = false,
             Font = Enum.Font.GothamBold,
             Text = "Outfit 0",
             TextColor3 = TEXT,
-            TextSize = 11,
+            TextSize = 9.5,
             ZIndex = 5
         })
-        addCorner(OutfitButton, 10)
+        addCorner(OutfitButton, 8)
         addStroke(OutfitButton, STROKE, 1, 0.25)
         OutfitButton.Parent = Topbar
 
         local MinimizeButton = create("TextButton", {
             AnchorPoint = Vector2.new(1, 0.5),
             Position = UDim2.new(1, -52, 0.5, 0),
-            Size = UDim2.fromOffset(34, 34),
+            Size = UDim2.fromOffset(30, 28),
             BackgroundColor3 = PANEL_2,
             AutoButtonColor = false,
             Font = Enum.Font.GothamBold,
             Text = "-",
             TextColor3 = TEXT,
-            TextSize = 19,
-            ZIndex = 5
+            TextSize = 17,
+            ZIndex = 5,
+            Visible = false
         })
-        addCorner(MinimizeButton, 10)
+        addCorner(MinimizeButton, 8)
         addStroke(MinimizeButton, STROKE, 1, 0.25)
         MinimizeButton.Parent = Topbar
-        MinimizeButton.Visible = false
 
         local CloseButton = create("TextButton", {
             AnchorPoint = Vector2.new(1, 0.5),
-            Position = UDim2.new(1, -12, 0.5, 0),
-            Size = UDim2.fromOffset(34, 34),
+            Position = UDim2.new(1, -8, 0.5, 0),
+            Size = UDim2.fromOffset(30, 28),
             BackgroundColor3 = PANEL_2,
             AutoButtonColor = false,
             Font = Enum.Font.GothamBold,
             Text = "x",
             TextColor3 = TEXT,
-            TextSize = 17,
-            ZIndex = 5
+            TextSize = 15,
+            ZIndex = 5,
+            Visible = false
         })
-        addCorner(CloseButton, 10)
+        addCorner(CloseButton, 8)
         addStroke(CloseButton, STROKE, 1, 0.25)
         CloseButton.Parent = Topbar
-        CloseButton.Visible = false
 
         local Controls = create("Frame", {
             Name = "Controls",
-            Position = UDim2.fromOffset(0, 56),
-            Size = UDim2.new(1, 0, 0, 96),
+            Position = UDim2.fromOffset(0, 40),
+            Size = UDim2.new(1, 0, 0, 88),
             BackgroundColor3 = BACKGROUND,
             BorderSizePixel = 0,
             ZIndex = 3
         })
         Controls.Parent = Main
 
+        local ModeRow = create("Frame", {
+            Position = UDim2.new(0, 8, 0, 2),
+            Size = UDim2.new(1, -16, 0, 24),
+            BackgroundTransparency = 1,
+            ZIndex = 4
+        })
+        ModeRow.Parent = Controls
+
+        local MarketplaceModeButton = create("TextButton", {
+            Size = UDim2.new(0.49, 0, 1, 0),
+            BackgroundColor3 = ACCENT,
+            AutoButtonColor = false,
+            Font = Enum.Font.GothamBold,
+            Text = "Marketplace",
+            TextColor3 = Color3.new(1, 1, 1),
+            TextSize = 9.5,
+            ZIndex = 5
+        })
+        addCorner(MarketplaceModeButton, 7)
+        MarketplaceModeButton.Parent = ModeRow
+
+        local FavoritesModeButton = create("TextButton", {
+            AnchorPoint = Vector2.new(1, 0),
+            Position = UDim2.fromScale(1, 0),
+            Size = UDim2.new(0.49, 0, 1, 0),
+            BackgroundColor3 = PANEL_2,
+            AutoButtonColor = false,
+            Font = Enum.Font.GothamBold,
+            Text = utf8.char(0x2605) .. " Favorites",
+            TextColor3 = MUTED,
+            TextSize = 9.5,
+            ZIndex = 5
+        })
+        addCorner(FavoritesModeButton, 7)
+        FavoritesModeButton.Parent = ModeRow
+
         local SearchShell = create("Frame", {
-            Position = UDim2.new(0, 14, 0, 8),
-            Size = UDim2.new(1, -28, 0, 40),
+            Position = UDim2.new(0, 8, 0, 30),
+            Size = UDim2.new(1, -16, 0, 30),
             BackgroundColor3 = PANEL_2,
             BorderSizePixel = 0,
             ZIndex = 4
         })
-        addCorner(SearchShell, 12)
+        addCorner(SearchShell, 9)
         local SearchStroke = addStroke(SearchShell, STROKE, 1, 0.1)
         SearchShell.Parent = Controls
 
         local SearchIcon = create("TextLabel", {
-            Position = UDim2.fromOffset(12, 0),
-            Size = UDim2.fromOffset(25, 40),
+            Position = UDim2.fromOffset(7, 0),
+            Size = UDim2.fromOffset(20, 30),
             BackgroundTransparency = 1,
             Font = Enum.Font.GothamBold,
             Text = "S",
             TextColor3 = MUTED,
-            TextSize = 14,
+            TextSize = 11,
             ZIndex = 5
         })
         SearchIcon.Parent = SearchShell
 
         local SearchBox = create("TextBox", {
-            Position = UDim2.fromOffset(40, 0),
-            Size = UDim2.new(1, -142, 1, 0),
+            Position = UDim2.fromOffset(27, 0),
+            Size = UDim2.new(1, -105, 1, 0),
             BackgroundTransparency = 1,
             ClearTextOnFocus = false,
             Font = Enum.Font.Gotham,
@@ -10490,7 +10512,7 @@ function LULA.CreateLib(kavName, themeInput)
             PlaceholderColor3 = MUTED,
             Text = "",
             TextColor3 = TEXT,
-            TextSize = 14,
+            TextSize = 11,
             TextXAlignment = Enum.TextXAlignment.Left,
             ZIndex = 5
         })
@@ -10498,23 +10520,23 @@ function LULA.CreateLib(kavName, themeInput)
 
         local SearchButton = create("TextButton", {
             AnchorPoint = Vector2.new(1, 0.5),
-            Position = UDim2.new(1, -5, 0.5, 0),
-            Size = UDim2.fromOffset(94, 34),
+            Position = UDim2.new(1, -3, 0.5, 0),
+            Size = UDim2.fromOffset(68, 26),
             BackgroundColor3 = ACCENT,
             AutoButtonColor = false,
             Font = Enum.Font.GothamBold,
             Text = "Search",
             TextColor3 = Color3.new(1, 1, 1),
-            TextSize = 13,
-            ZIndex = 5
+            TextSize = 10,
+            ZIndex = 6
         })
-        addCorner(SearchButton, 10)
+        addCorner(SearchButton, 8)
         SearchButton.Parent = SearchShell
 
         local CategoryScroll = create("ScrollingFrame", {
             Name = "Categories",
-            Position = UDim2.new(0, 14, 0, 54),
-            Size = UDim2.new(1, -28, 0, 34),
+            Position = UDim2.new(0, 8, 0, 64),
+            Size = UDim2.new(1, -16, 0, 22),
             BackgroundTransparency = 1,
             BorderSizePixel = 0,
             CanvasSize = UDim2.fromOffset(0, 0),
@@ -10527,7 +10549,7 @@ function LULA.CreateLib(kavName, themeInput)
 
         local CategoryLayout = create("UIListLayout", {
             FillDirection = Enum.FillDirection.Horizontal,
-            Padding = UDim.new(0, 8),
+            Padding = UDim.new(0, 5),
             SortOrder = Enum.SortOrder.LayoutOrder,
             VerticalAlignment = Enum.VerticalAlignment.Center
         })
@@ -10535,28 +10557,29 @@ function LULA.CreateLib(kavName, themeInput)
 
         local ResultsArea = create("Frame", {
             Name = "ResultsArea",
-            Position = UDim2.fromOffset(0, 152),
-            Size = UDim2.new(1, 0, 1, -152),
+            Position = UDim2.fromOffset(0, 128),
+            Size = UDim2.new(1, 0, 1, -128),
             BackgroundTransparency = 1,
             ZIndex = 3
         })
         ResultsArea.Parent = Main
 
         local ResultsHeader = create("Frame", {
-            Position = UDim2.fromOffset(14, 0),
-            Size = UDim2.new(1, -28, 0, 30),
+            Position = UDim2.fromOffset(8, 0),
+            Size = UDim2.new(1, -16, 0, 22),
             BackgroundTransparency = 1,
             ZIndex = 3
         })
         ResultsHeader.Parent = ResultsArea
 
         local ResultsTitle = create("TextLabel", {
-            Size = UDim2.new(0.40, 0, 1, 0),
+            Size = UDim2.new(0.62, 0, 1, 0),
             BackgroundTransparency = 1,
             Font = Enum.Font.GothamBold,
             Text = "Marketplace",
             TextColor3 = TEXT,
-            TextSize = 15,
+            TextSize = 11,
+            TextTruncate = Enum.TextTruncate.AtEnd,
             TextXAlignment = Enum.TextXAlignment.Left,
             ZIndex = 4
         })
@@ -10565,42 +10588,27 @@ function LULA.CreateLib(kavName, themeInput)
         local ResultsCount = create("TextLabel", {
             AnchorPoint = Vector2.new(1, 0),
             Position = UDim2.fromScale(1, 0),
-            Size = UDim2.new(0.25, 0, 1, 0),
+            Size = UDim2.new(0.38, 0, 1, 0),
             BackgroundTransparency = 1,
             Font = Enum.Font.Gotham,
             Text = "",
             TextColor3 = MUTED,
-            TextSize = 11,
+            TextSize = 8.5,
+            TextTruncate = Enum.TextTruncate.AtEnd,
             TextXAlignment = Enum.TextXAlignment.Right,
             ZIndex = 4
         })
         ResultsCount.Parent = ResultsHeader
 
-        local StackingButton = create("TextButton", {
-            AnchorPoint = Vector2.new(0.5, 0.5),
-            Position = UDim2.new(0.58, 0, 0.5, 0),
-            Size = UDim2.new(0.30, 0, 0, 26),
-            BackgroundColor3 = PANEL_2,
-            AutoButtonColor = false,
-            Font = Enum.Font.GothamBold,
-            Text = "Item Stacking: OFF",
-            TextColor3 = MUTED,
-            TextSize = 10,
-            ZIndex = 5
-        })
-        addCorner(StackingButton, 8)
-        addStroke(StackingButton, STROKE, 1, 0.2)
-        StackingButton.Parent = ResultsHeader
-
         local ResultsScroll = create("ScrollingFrame", {
             Name = "ResultsScroll",
-            Position = UDim2.new(0, 14, 0, 30),
-            Size = UDim2.new(1, -28, 1, -70),
+            Position = UDim2.new(0, 8, 0, 24),
+            Size = UDim2.new(1, -16, 1, -58),
             BackgroundTransparency = 1,
             BorderSizePixel = 0,
             CanvasSize = UDim2.fromOffset(0, 0),
             AutomaticCanvasSize = Enum.AutomaticSize.Y,
-            ScrollBarThickness = 4,
+            ScrollBarThickness = 3,
             ScrollBarImageColor3 = ACCENT,
             ScrollingDirection = Enum.ScrollingDirection.Y,
             ZIndex = 3
@@ -10608,44 +10616,77 @@ function LULA.CreateLib(kavName, themeInput)
         ResultsScroll.Parent = ResultsArea
 
         local Grid = create("UIGridLayout", {
-            CellPadding = UDim2.fromOffset(10, 10),
-            CellSize = UDim2.fromOffset(190, 246),
+            CellPadding = UDim2.fromOffset(7, 7),
+            CellSize = UDim2.fromOffset(160, 194),
             FillDirection = Enum.FillDirection.Horizontal,
-            FillDirectionMaxCells = 4,
+            FillDirectionMaxCells = 2,
             HorizontalAlignment = Enum.HorizontalAlignment.Left,
             SortOrder = Enum.SortOrder.LayoutOrder
         })
         Grid.Parent = ResultsScroll
 
         local ResultsPadding = create("UIPadding", {
-            PaddingBottom = UDim.new(0, 8),
-            PaddingLeft = UDim.new(0, 2),
-            PaddingRight = UDim.new(0, 2),
-            PaddingTop = UDim.new(0, 2)
+            PaddingBottom = UDim.new(0, 6),
+            PaddingLeft = UDim.new(0, 1),
+            PaddingRight = UDim.new(0, 1),
+            PaddingTop = UDim.new(0, 1)
         })
         ResultsPadding.Parent = ResultsScroll
 
-        local LoadMoreButton = create("TextButton", {
-            AnchorPoint = Vector2.new(0.5, 1),
-            Position = UDim2.new(0.5, 0, 1, -5),
-            Size = UDim2.fromOffset(150, 32),
+        local StackingButton = create("TextButton", {
+            AnchorPoint = Vector2.new(0, 1),
+            Position = UDim2.new(0, 8, 1, -3),
+            Size = UDim2.fromOffset(110, 28),
             BackgroundColor3 = PANEL_2,
             AutoButtonColor = false,
             Font = Enum.Font.GothamBold,
-            Text = "Load more",
-            TextColor3 = TEXT,
-            TextSize = 12,
-            Visible = false,
-            ZIndex = 4
+            Text = "Item Stacking: OFF",
+            TextColor3 = MUTED,
+            TextSize = 8.5,
+            ZIndex = 5
         })
-        addCorner(LoadMoreButton, 10)
+        addCorner(StackingButton, 8)
+        addStroke(StackingButton, STROKE, 1, 0.2)
+        StackingButton.Parent = ResultsArea
+
+        local LoadMoreButton = create("TextButton", {
+            AnchorPoint = Vector2.new(0.5, 1),
+            Position = UDim2.new(0.5, 0, 1, -3),
+            Size = UDim2.fromOffset(94, 28),
+            BackgroundColor3 = PANEL_2,
+            AutoButtonColor = false,
+            Font = Enum.Font.GothamBold,
+            Text = "Load More",
+            TextColor3 = TEXT,
+            TextSize = 9.5,
+            Visible = false,
+            ZIndex = 5
+        })
+        addCorner(LoadMoreButton, 8)
         addStroke(LoadMoreButton, STROKE, 1, 0.1)
         LoadMoreButton.Parent = ResultsArea
 
+        local BackToTopButton = create("TextButton", {
+            AnchorPoint = Vector2.new(1, 1),
+            Position = UDim2.new(1, -8, 1, -3),
+            Size = UDim2.fromOffset(86, 28),
+            BackgroundColor3 = PANEL_2,
+            AutoButtonColor = false,
+            Font = Enum.Font.GothamBold,
+            Text = "Back to Top",
+            TextColor3 = TEXT,
+            TextSize = 8.5,
+            Visible = false,
+            ZIndex = 5
+        })
+        addCorner(BackToTopButton, 8)
+        addStroke(BackToTopButton, STROKE, 1, 0.1)
+        BackToTopButton.Parent = ResultsArea
+
         local EmptyState = create("Frame", {
             AnchorPoint = Vector2.new(0.5, 0.5),
-            Position = UDim2.fromScale(0.5, 0.5),
-            Size = UDim2.new(1, -40, 0, 130),
+            Position = UDim2.fromScale(0.5, 0.48),
+            Size = UDim2.new(1, -24, 0, 76),
             BackgroundTransparency = 1,
             Visible = false,
             ZIndex = 5
@@ -10653,32 +10694,32 @@ function LULA.CreateLib(kavName, themeInput)
         EmptyState.Parent = ResultsArea
 
         local EmptyTitle = create("TextLabel", {
-            Size = UDim2.new(1, 0, 0, 38),
+            Size = UDim2.new(1, 0, 0, 26),
             BackgroundTransparency = 1,
             Font = Enum.Font.GothamBold,
             Text = "No avatar items found",
             TextColor3 = TEXT,
-            TextSize = 18,
+            TextSize = 13,
             ZIndex = 6
         })
         EmptyTitle.Parent = EmptyState
 
         local EmptyText = create("TextLabel", {
-            Position = UDim2.fromOffset(0, 40),
-            Size = UDim2.new(1, 0, 0, 56),
+            Position = UDim2.fromOffset(0, 27),
+            Size = UDim2.new(1, 0, 0, 42),
             BackgroundTransparency = 1,
             Font = Enum.Font.Gotham,
             Text = "Try another name, another kategory, or paste an asset ID.",
             TextColor3 = MUTED,
-            TextSize = 13,
+            TextSize = 10,
             TextWrapped = true,
             ZIndex = 6
         })
         EmptyText.Parent = EmptyState
 
         local LoadingOverlay = create("Frame", {
-            Position = UDim2.new(0, 14, 0, 30),
-            Size = UDim2.new(1, -28, 1, -36),
+            Position = UDim2.new(0, 8, 0, 24),
+            Size = UDim2.new(1, -16, 1, -58),
             BackgroundColor3 = BACKGROUND,
             BackgroundTransparency = 0.08,
             BorderSizePixel = 0,
@@ -10729,7 +10770,7 @@ function LULA.CreateLib(kavName, themeInput)
 
             if type(LULA.Notify) == "function" then
                 local delivered = pcall(function()
-                    LULA:Notify(kind, "Ava Kreator", tostring(message), duration, nil, true)
+                    LULA:Notify(kind, "Avatar Kreator", tostring(message), duration, nil, true)
                 end)
                 if delivered then return end
             end
@@ -10832,6 +10873,7 @@ function LULA.CreateLib(kavName, themeInput)
         bindButtonVisual(MinimizeButton, PANEL_2, PANEL_3)
         bindButtonVisual(CloseButton, PANEL_2, PANEL_3)
         bindButtonVisual(LoadMoreButton, PANEL_2, PANEL_3)
+        bindButtonVisual(BackToTopButton, PANEL_2, PANEL_3)
 
         track(SearchBox.Focused:Connect(function()
             tween(SearchStroke, 0.15, {Color = ACCENT, Transparency = 0.15})
@@ -10843,8 +10885,8 @@ function LULA.CreateLib(kavName, themeInput)
 
         local DetailsOverlay = create("Frame", {
             Name = "DetailsOverlay",
-            Position = UDim2.fromOffset(0, 56),
-            Size = UDim2.new(1, 0, 1, -56),
+            Position = UDim2.fromOffset(0, 40),
+            Size = UDim2.new(1, 0, 1, -40),
             BackgroundColor3 = BACKGROUND,
             BorderSizePixel = 0,
             Visible = false,
@@ -10853,7 +10895,7 @@ function LULA.CreateLib(kavName, themeInput)
         DetailsOverlay.Parent = Main
 
         local DetailsHeader = create("Frame", {
-            Size = UDim2.new(1, 0, 0, 52),
+            Size = UDim2.new(1, 0, 0, 44),
             BackgroundColor3 = PANEL,
             BorderSizePixel = 0,
             ZIndex = 41
@@ -10861,8 +10903,8 @@ function LULA.CreateLib(kavName, themeInput)
         DetailsHeader.Parent = DetailsOverlay
 
         local DetailsBack = create("TextButton", {
-            Position = UDim2.fromOffset(12, 9),
-            Size = UDim2.fromOffset(72, 34),
+            Position = UDim2.fromOffset(8, 7),
+            Size = UDim2.fromOffset(64, 30),
             BackgroundColor3 = PANEL_2,
             AutoButtonColor = false,
             Font = Enum.Font.GothamBold,
@@ -10877,8 +10919,8 @@ function LULA.CreateLib(kavName, themeInput)
         bindButtonVisual(DetailsBack, PANEL_2, PANEL_3)
 
         local DetailsHeaderTitle = create("TextLabel", {
-            Position = UDim2.fromOffset(96, 0),
-            Size = UDim2.new(1, -108, 1, 0),
+            Position = UDim2.fromOffset(82, 0),
+            Size = UDim2.new(1, -90, 1, 0),
             BackgroundTransparency = 1,
             Font = Enum.Font.GothamBold,
             Text = "Item Details",
@@ -10890,8 +10932,8 @@ function LULA.CreateLib(kavName, themeInput)
         DetailsHeaderTitle.Parent = DetailsHeader
 
         local DetailsScroll = create("ScrollingFrame", {
-            Position = UDim2.fromOffset(0, 52),
-            Size = UDim2.new(1, 0, 1, -52),
+            Position = UDim2.fromOffset(0, 44),
+            Size = UDim2.new(1, 0, 1, -44),
             BackgroundTransparency = 1,
             BorderSizePixel = 0,
             CanvasSize = UDim2.fromOffset(0, 0),
@@ -10917,7 +10959,7 @@ function LULA.CreateLib(kavName, themeInput)
         DetailsLayout.Parent = DetailsScroll
 
         local DetailsHero = create("Frame", {
-            Size = UDim2.new(1, 0, 0, 220),
+            Size = UDim2.new(1, 0, 0, 170),
             BackgroundColor3 = PANEL,
             BorderSizePixel = 0,
             LayoutOrder = 1,
@@ -10928,8 +10970,8 @@ function LULA.CreateLib(kavName, themeInput)
         DetailsHero.Parent = DetailsScroll
 
         local DetailsImageShell = create("Frame", {
-            Position = UDim2.fromOffset(12, 12),
-            Size = UDim2.fromOffset(196, 196),
+            Position = UDim2.fromOffset(8, 8),
+            Size = UDim2.fromOffset(120, 120),
             BackgroundColor3 = PANEL_2,
             BorderSizePixel = 0,
             ZIndex = 43
@@ -10938,8 +10980,8 @@ function LULA.CreateLib(kavName, themeInput)
         DetailsImageShell.Parent = DetailsHero
 
         local DetailsImage = create("ImageLabel", {
-            Position = UDim2.fromOffset(6, 6),
-            Size = UDim2.new(1, -12, 1, -12),
+            Position = UDim2.fromOffset(4, 4),
+            Size = UDim2.new(1, -8, 1, -8),
             BackgroundTransparency = 1,
             Image = "",
             ScaleType = Enum.ScaleType.Fit,
@@ -10948,13 +10990,13 @@ function LULA.CreateLib(kavName, themeInput)
         DetailsImage.Parent = DetailsImageShell
 
         local DetailsName = create("TextLabel", {
-            Position = UDim2.fromOffset(224, 16),
-            Size = UDim2.new(1, -240, 0, 58),
+            Position = UDim2.fromOffset(140, 8),
+            Size = UDim2.new(1, -148, 0, 42),
             BackgroundTransparency = 1,
             Font = Enum.Font.GothamBold,
             Text = "",
             TextColor3 = TEXT,
-            TextSize = 18,
+            TextSize = 13,
             TextWrapped = true,
             TextXAlignment = Enum.TextXAlignment.Left,
             TextYAlignment = Enum.TextYAlignment.Top,
@@ -10963,13 +11005,13 @@ function LULA.CreateLib(kavName, themeInput)
         DetailsName.Parent = DetailsHero
 
         local DetailsCreator = create("TextLabel", {
-            Position = UDim2.fromOffset(224, 78),
-            Size = UDim2.new(1, -240, 0, 24),
+            Position = UDim2.fromOffset(140, 52),
+            Size = UDim2.new(1, -148, 0, 18),
             BackgroundTransparency = 1,
             Font = Enum.Font.Gotham,
             Text = "",
             TextColor3 = MUTED,
-            TextSize = 12,
+            TextSize = 9.5,
             TextTruncate = Enum.TextTruncate.AtEnd,
             TextXAlignment = Enum.TextXAlignment.Left,
             ZIndex = 43
@@ -10977,13 +11019,13 @@ function LULA.CreateLib(kavName, themeInput)
         DetailsCreator.Parent = DetailsHero
 
         local DetailsMeta = create("TextLabel", {
-            Position = UDim2.fromOffset(224, 106),
-            Size = UDim2.new(1, -240, 0, 52),
+            Position = UDim2.fromOffset(140, 72),
+            Size = UDim2.new(1, -148, 0, 48),
             BackgroundTransparency = 1,
             Font = Enum.Font.GothamMedium,
             Text = "",
             TextColor3 = Color3.fromRGB(205, 214, 255),
-            TextSize = 12,
+            TextSize = 9,
             TextWrapped = true,
             TextXAlignment = Enum.TextXAlignment.Left,
             TextYAlignment = Enum.TextYAlignment.Top,
@@ -10993,14 +11035,14 @@ function LULA.CreateLib(kavName, themeInput)
 
         local DetailsTryButton = create("TextButton", {
             AnchorPoint = Vector2.new(0, 1),
-            Position = UDim2.new(0, 224, 1, -12),
-            Size = UDim2.new(1, -346, 0, 38),
+            Position = UDim2.new(0, 140, 1, -8),
+            Size = UDim2.new(1, -242, 0, 32),
             BackgroundColor3 = ACCENT,
             AutoButtonColor = false,
             Font = Enum.Font.GothamBold,
             Text = "Try On",
             TextColor3 = Color3.new(1, 1, 1),
-            TextSize = 13,
+            TextSize = 10,
             ZIndex = 43
         })
         addCorner(DetailsTryButton, 10)
@@ -11009,14 +11051,14 @@ function LULA.CreateLib(kavName, themeInput)
 
         local DetailsCopyButton = create("TextButton", {
             AnchorPoint = Vector2.new(1, 1),
-            Position = UDim2.new(1, -12, 1, -12),
-            Size = UDim2.fromOffset(104, 38),
+            Position = UDim2.new(1, -8, 1, -8),
+            Size = UDim2.fromOffset(86, 32),
             BackgroundColor3 = PANEL_2,
             AutoButtonColor = false,
             Font = Enum.Font.GothamBold,
             Text = "Kopy ID",
             TextColor3 = TEXT,
-            TextSize = 12,
+            TextSize = 9.5,
             ZIndex = 43
         })
         addCorner(DetailsCopyButton, 10)
@@ -11078,8 +11120,8 @@ function LULA.CreateLib(kavName, themeInput)
 
         local OutfitOverlay = create("Frame", {
             Name = "OutfitOverlay",
-            Position = UDim2.fromOffset(0, 56),
-            Size = UDim2.new(1, 0, 1, -56),
+            Position = UDim2.fromOffset(0, 40),
+            Size = UDim2.new(1, 0, 1, -40),
             BackgroundColor3 = BACKGROUND,
             BorderSizePixel = 0,
             Visible = false,
@@ -11088,7 +11130,7 @@ function LULA.CreateLib(kavName, themeInput)
         OutfitOverlay.Parent = Main
 
         local OutfitHeader = create("Frame", {
-            Size = UDim2.new(1, 0, 0, 52),
+            Size = UDim2.new(1, 0, 0, 44),
             BackgroundColor3 = PANEL,
             BorderSizePixel = 0,
             ZIndex = 51
@@ -11096,8 +11138,8 @@ function LULA.CreateLib(kavName, themeInput)
         OutfitHeader.Parent = OutfitOverlay
 
         local OutfitBack = create("TextButton", {
-            Position = UDim2.fromOffset(12, 9),
-            Size = UDim2.fromOffset(72, 34),
+            Position = UDim2.fromOffset(8, 7),
+            Size = UDim2.fromOffset(64, 30),
             BackgroundColor3 = PANEL_2,
             AutoButtonColor = false,
             Font = Enum.Font.GothamBold,
@@ -11112,8 +11154,8 @@ function LULA.CreateLib(kavName, themeInput)
         bindButtonVisual(OutfitBack, PANEL_2, PANEL_3)
 
         local OutfitTitle = create("TextLabel", {
-            Position = UDim2.fromOffset(96, 0),
-            Size = UDim2.new(1, -226, 1, 0),
+            Position = UDim2.fromOffset(82, 0),
+            Size = UDim2.new(1, -198, 1, 0),
             BackgroundTransparency = 1,
             Font = Enum.Font.GothamBold,
             Text = "Current Local Outfit",
@@ -11126,8 +11168,8 @@ function LULA.CreateLib(kavName, themeInput)
 
         local ResetAllButton = create("TextButton", {
             AnchorPoint = Vector2.new(1, 0.5),
-            Position = UDim2.new(1, -12, 0.5, 0),
-            Size = UDim2.fromOffset(112, 34),
+            Position = UDim2.new(1, -8, 0.5, 0),
+            Size = UDim2.fromOffset(102, 30),
             BackgroundColor3 = Color3.fromRGB(78, 38, 48),
             AutoButtonColor = false,
             Font = Enum.Font.GothamBold,
@@ -11142,8 +11184,8 @@ function LULA.CreateLib(kavName, themeInput)
         bindButtonVisual(ResetAllButton, Color3.fromRGB(78, 38, 48), Color3.fromRGB(95, 44, 56))
 
         local OutfitScroll = create("ScrollingFrame", {
-            Position = UDim2.fromOffset(14, 66),
-            Size = UDim2.new(1, -28, 1, -80),
+            Position = UDim2.fromOffset(8, 52),
+            Size = UDim2.new(1, -16, 1, -60),
             BackgroundTransparency = 1,
             BorderSizePixel = 0,
             CanvasSize = UDim2.fromOffset(0, 0),
@@ -11258,6 +11300,89 @@ function LULA.CreateLib(kavName, themeInput)
                 FavoriteCount = tonumber(raw.FavoriteCount or raw.favoriteCount),
                 Raw = raw
             }
+        end
+
+        local STAR_EMPTY = utf8.char(0x2606)
+        local STAR_FILLED = utf8.char(0x2605)
+        local FAVORITE_YELLOW = Color3.fromRGB(255, 213, 54)
+
+        local function favoriteSerializable(item)
+            return {
+                ItemType = "Asset",
+                Id = tonumber(item.Id),
+                Name = tostring(item.Name or ("Asset " .. tostring(item.Id))),
+                Description = tostring(item.Description or ""),
+                CreatorName = tostring(item.CreatorName or "Unknown creator"),
+                CreatorId = tonumber(item.CreatorId),
+                CreatorType = tostring(item.CreatorType or ""),
+                AssetTypeId = tonumber(item.AssetTypeId),
+                AssetTypeName = tostring(item.AssetTypeName or "Avatar Item"),
+                Price = tonumber(item.Price),
+                PriceStatus = item.PriceStatus,
+                FavoriteCount = tonumber(item.FavoriteCount)
+            }
+        end
+
+        local function getFavorites()
+            local output, seen = {}, {}
+            for _, raw in ipairs(settings.AvatarKreatorFavorites or {}) do
+                local item = normalizeCatalogItem(raw)
+                if item and item.Id and not seen[item.Id] then
+                    seen[item.Id] = true
+                    output[#output + 1] = item
+                end
+            end
+            return output
+        end
+
+        local function saveFavorites(items)
+            local clean, seen = {}, {}
+            for _, item in ipairs(items or {}) do
+                local id = tonumber(item and item.Id)
+                if id and not seen[id] then
+                    seen[id] = true
+                    clean[#clean + 1] = favoriteSerializable(item)
+                end
+            end
+            settings.AvatarKreatorFavorites = clean
+            if type(env.LHUISettings) == "table" then env.LHUISettings.AvatarKreatorFavorites = clean end
+            if type(env.LHSettings) == "table" then env.LHSettings.AvatarKreatorFavorites = clean end
+            markSettingsDirty()
+            saveSettingsNow()
+            return clean
+        end
+
+        local function isFavorite(item)
+            local wanted = tonumber(item and item.Id)
+            if not wanted then return false end
+            for _, favorite in ipairs(settings.AvatarKreatorFavorites or {}) do
+                if tonumber(favorite.Id or favorite.id) == wanted then return true end
+            end
+            return false
+        end
+
+        local renderFavorites
+        local refreshFavoriteVisuals
+
+        local function toggleFavorite(item)
+            if not item or not item.Id then return end
+            local favorites = getFavorites()
+            local wanted = tonumber(item.Id)
+            local removed = false
+            for index = #favorites, 1, -1 do
+                if tonumber(favorites[index].Id) == wanted then
+                    table.remove(favorites, index)
+                    removed = true
+                    break
+                end
+            end
+            if not removed then favorites[#favorites + 1] = item end
+            saveFavorites(favorites)
+            if state.Mode == "favorites" and renderFavorites then
+                renderFavorites(SearchBox.Text)
+            elseif refreshFavoriteVisuals then
+                refreshFavoriteVisuals()
+            end
         end
 
         local function itemAllowed(item, category)
@@ -12544,9 +12669,6 @@ function LULA.CreateLib(kavName, themeInput)
             end
 
             state.EquippedBySlot[slot] = selected
-            if not silent then
-                notify("Wearing " .. tostring(item.Name) .. " [" .. tostring(methodName) .. "]", "success", 4)
-            end
             return true
         end
 
@@ -12573,9 +12695,6 @@ function LULA.CreateLib(kavName, themeInput)
             end
 
             state.EquippedBySlot[slot] = #selected > 0 and selected or nil
-            if not silent then
-                notify("Took off " .. tostring(item.Name) .. " [" .. tostring(methodName) .. "]", "success", 3.5)
-            end
             return true
         end
 
@@ -12588,9 +12707,6 @@ function LULA.CreateLib(kavName, themeInput)
                 return false
             end
             state.EquippedBySlot[slot] = nil
-            if not silent then
-                notify("Restored your original " .. tostring(slot) .. " item [" .. tostring(methodName) .. "]", "success", 3.5)
-            end
             return true
         end
 
@@ -12636,7 +12752,6 @@ function LULA.CreateLib(kavName, themeInput)
             for _, slot in ipairs(slots) do removeSlot(slot, true) end
             state.EquippedBySlot = {}
             refreshSelectedUi()
-            if not silent then notify("Restored your original local avatar items.", "success") end
         end
 
         local function formatPrice(item)
@@ -12827,8 +12942,15 @@ function LULA.CreateLib(kavName, themeInput)
         end))
 
         track(ResetAllButton.MouseButton1Click:Connect(function()
-            resetAllItems(false)
-            rebuildOutfitList()
+            if countEquipped() <= 0 then return end
+            LULA:Confirm(
+                "Remove all klothing?",
+                "Are you sure you want to remove all klothing?",
+                function()
+                    resetAllItems(true)
+                    rebuildOutfitList()
+                end
+            )
         end))
 
         track(StackingButton.MouseButton1Click:Connect(function()
@@ -12836,11 +12958,7 @@ function LULA.CreateLib(kavName, themeInput)
             StackingButton.Text = state.ItemStacking and "Item Stacking: ON" or "Item Stacking: OFF"
             StackingButton.BackgroundColor3 = state.ItemStacking and ACCENT or PANEL_2
             StackingButton.TextColor3 = state.ItemStacking and Color3.new(1, 1, 1) or MUTED
-            if state.ItemStacking then
-                notify("Item Stacking ON: matching accessory types kan stack past normal katalog limits.", "success", 3.5)
-            else
-                notify("Item Stacking OFF: the next matching item type will replace that type.", "info", 3.5)
-            end
+            -- The button itself shows the state; no extra toast needed.
         end))
 
         local function clearResultCards()
@@ -12869,6 +12987,11 @@ function LULA.CreateLib(kavName, themeInput)
                 record.Stroke.Color = STROKE
                 record.Stroke.Transparency = 0.25
             end
+            if record.StarButton then
+                local favorite = isFavorite(record.Item)
+                record.StarButton.Text = favorite and STAR_FILLED or STAR_EMPTY
+                record.StarButton.TextColor3 = favorite and FAVORITE_YELLOW or MUTED
+            end
         end
 
         refreshAllCardStates = function()
@@ -12879,6 +13002,10 @@ function LULA.CreateLib(kavName, themeInput)
             end
         end
 
+        refreshFavoriteVisuals = function()
+            refreshAllCardStates()
+        end
+
         local function createResultCard(item, order)
             local card = create("Frame", {
                 Name = "ResultCard",
@@ -12887,23 +13014,23 @@ function LULA.CreateLib(kavName, themeInput)
                 LayoutOrder = order,
                 ZIndex = 4
             })
-            addCorner(card, 13)
+            addCorner(card, 11)
             local cardStroke = addStroke(card, STROKE, 1, 0.25)
             card.Parent = ResultsScroll
 
             local imageShell = create("Frame", {
-                Position = UDim2.fromOffset(10, 10),
-                Size = UDim2.new(1, -20, 0, 130),
+                Position = UDim2.fromOffset(7, 7),
+                Size = UDim2.new(1, -14, 0, 106),
                 BackgroundColor3 = PANEL_2,
                 BorderSizePixel = 0,
                 ZIndex = 5
             })
-            addCorner(imageShell, 11)
+            addCorner(imageShell, 9)
             imageShell.Parent = card
 
             local image = create("ImageLabel", {
-                Position = UDim2.fromOffset(6, 6),
-                Size = UDim2.new(1, -12, 1, -12),
+                Position = UDim2.fromOffset(4, 4),
+                Size = UDim2.new(1, -8, 1, -8),
                 BackgroundTransparency = 1,
                 Image = thumbnailFor(item.Id),
                 ScaleType = Enum.ScaleType.Fit,
@@ -12912,44 +13039,60 @@ function LULA.CreateLib(kavName, themeInput)
             image.Parent = imageShell
 
             local typeBadge = create("TextLabel", {
-                Position = UDim2.fromOffset(7, 7),
-                Size = UDim2.new(0.58, -6, 0, 24),
+                Position = UDim2.fromOffset(5, 5),
+                Size = UDim2.new(0.44, 0, 0, 20),
                 BackgroundColor3 = Color3.fromRGB(18, 20, 31),
                 BackgroundTransparency = 0.08,
                 Font = Enum.Font.GothamBold,
                 Text = item.AssetTypeName or "Avatar Item",
                 TextColor3 = Color3.fromRGB(205, 214, 255),
-                TextSize = 9,
+                TextSize = 7.5,
                 TextTruncate = Enum.TextTruncate.AtEnd,
                 ZIndex = 7
             })
-            addCorner(typeBadge, 8)
+            addCorner(typeBadge, 6)
             typeBadge.Parent = imageShell
 
             local priceBadge = create("TextLabel", {
                 AnchorPoint = Vector2.new(1, 0),
-                Position = UDim2.new(1, -7, 0, 7),
-                Size = UDim2.new(0.36, 0, 0, 24),
+                Position = UDim2.new(1, -33, 0, 5),
+                Size = UDim2.new(0.30, 0, 0, 20),
                 BackgroundColor3 = Color3.fromRGB(18, 20, 31),
                 BackgroundTransparency = 0.08,
                 Font = Enum.Font.GothamBold,
                 Text = formatPrice(item),
                 TextColor3 = TEXT,
-                TextSize = 9,
+                TextSize = 7.5,
                 TextTruncate = Enum.TextTruncate.AtEnd,
                 ZIndex = 7
             })
-            addCorner(priceBadge, 8)
+            addCorner(priceBadge, 6)
             priceBadge.Parent = imageShell
 
+            local starButton = create("TextButton", {
+                AnchorPoint = Vector2.new(1, 0),
+                Position = UDim2.new(1, -4, 0, 4),
+                Size = UDim2.fromOffset(26, 24),
+                BackgroundColor3 = PANEL_3,
+                BackgroundTransparency = 0.05,
+                AutoButtonColor = false,
+                Font = Enum.Font.GothamBold,
+                Text = STAR_EMPTY,
+                TextColor3 = MUTED,
+                TextSize = 16,
+                ZIndex = 8
+            })
+            addCorner(starButton, 7)
+            starButton.Parent = imageShell
+
             local nameLabel = create("TextLabel", {
-                Position = UDim2.fromOffset(10, 148),
-                Size = UDim2.new(1, -20, 0, 30),
+                Position = UDim2.fromOffset(7, 117),
+                Size = UDim2.new(1, -14, 0, 23),
                 BackgroundTransparency = 1,
                 Font = Enum.Font.GothamBold,
                 Text = item.Name,
                 TextColor3 = TEXT,
-                TextSize = 12,
+                TextSize = 9.5,
                 TextWrapped = true,
                 TextTruncate = Enum.TextTruncate.AtEnd,
                 TextXAlignment = Enum.TextXAlignment.Left,
@@ -12959,13 +13102,13 @@ function LULA.CreateLib(kavName, themeInput)
             nameLabel.Parent = card
 
             local creatorLabel = create("TextLabel", {
-                Position = UDim2.fromOffset(10, 180),
-                Size = UDim2.new(1, -20, 0, 16),
+                Position = UDim2.fromOffset(7, 141),
+                Size = UDim2.new(1, -14, 0, 13),
                 BackgroundTransparency = 1,
                 Font = Enum.Font.Gotham,
                 Text = item.CreatorName,
                 TextColor3 = MUTED,
-                TextSize = 10,
+                TextSize = 8,
                 TextTruncate = Enum.TextTruncate.AtEnd,
                 TextXAlignment = Enum.TextXAlignment.Left,
                 ZIndex = 5
@@ -12974,36 +13117,37 @@ function LULA.CreateLib(kavName, themeInput)
 
             local tryButton = create("TextButton", {
                 AnchorPoint = Vector2.new(0, 1),
-                Position = UDim2.new(0, 9, 1, -9),
-                Size = UDim2.new(0.66, -5, 0, 32),
+                Position = UDim2.new(0, 7, 1, -7),
+                Size = UDim2.new(0.66, -4, 0, 27),
                 BackgroundColor3 = ACCENT,
                 AutoButtonColor = false,
                 Font = Enum.Font.GothamBold,
                 Text = "Try On",
                 TextColor3 = Color3.new(1, 1, 1),
-                TextSize = 11,
+                TextSize = 9,
                 ZIndex = 6
             })
-            addCorner(tryButton, 9)
+            addCorner(tryButton, 7)
             tryButton.Parent = card
 
             local infoButton = create("TextButton", {
                 AnchorPoint = Vector2.new(1, 1),
-                Position = UDim2.new(1, -9, 1, -9),
-                Size = UDim2.new(0.34, -5, 0, 32),
+                Position = UDim2.new(1, -7, 1, -7),
+                Size = UDim2.new(0.34, -4, 0, 27),
                 BackgroundColor3 = PANEL_3,
                 AutoButtonColor = false,
                 Font = Enum.Font.GothamBold,
                 Text = "Info",
                 TextColor3 = TEXT,
-                TextSize = 11,
+                TextSize = 9,
                 ZIndex = 6
             })
-            addCorner(infoButton, 9)
+            addCorner(infoButton, 7)
             infoButton.Parent = card
 
             bindButtonVisual(tryButton, ACCENT, ACCENT_HOVER)
-            bindButtonVisual(infoButton, PANEL_3, Color3.fromRGB(45, 49, 66))
+            bindButtonVisual(infoButton, PANEL_3, blendColor(PANEL_3, TEXT, 0.08))
+            bindButtonVisual(starButton, PANEL_3, blendColor(PANEL_3, TEXT, 0.08))
 
             card.MouseEnter:Connect(function()
                 tween(card, 0.14, {BackgroundColor3 = PANEL_2})
@@ -13017,6 +13161,7 @@ function LULA.CreateLib(kavName, themeInput)
                 updateCardRecord({
                     Item = item,
                     TryButton = tryButton,
+                    StarButton = starButton,
                     Stroke = cardStroke
                 })
             end)
@@ -13029,11 +13174,16 @@ function LULA.CreateLib(kavName, themeInput)
                 openDetails(item)
             end)
 
+            starButton.MouseButton1Click:Connect(function()
+                toggleFavorite(item)
+            end)
+
             state.CardRecords[item.Id] = state.CardRecords[item.Id] or {}
             local record = {
                 Item = item,
                 Card = card,
                 TryButton = tryButton,
+                StarButton = starButton,
                 Stroke = cardStroke
             }
             table.insert(state.CardRecords[item.Id], record)
@@ -13117,6 +13267,79 @@ function LULA.CreateLib(kavName, themeInput)
             end)
         end
 
+        renderFavorites = function(rawQuery)
+            local query = trim(rawQuery)
+            clearResultCards()
+            state.CurrentQuery = query
+            state.CurrentNextPage = nil
+            state.CurrentHasMore = false
+            LoadMoreButton.Visible = false
+
+            local filtered = {}
+            local needle = lower(query)
+            for _, item in ipairs(getFavorites()) do
+                if itemAllowed(item, state.CurrentCategory) then
+                    local searchable = lower(table.concat({
+                        tostring(item.Name or ""),
+                        tostring(item.CreatorName or ""),
+                        tostring(item.AssetTypeName or ""),
+                        tostring(item.Id or "")
+                    }, " "))
+                    if needle == "" or string.find(searchable, needle, 1, true) then
+                        filtered[#filtered + 1] = item
+                    end
+                end
+            end
+            sortResults(filtered, query)
+
+            local title = utf8.char(0x2605) .. " Favorites"
+            if query ~= "" then title = title .. " - " .. query end
+            ResultsTitle.Text = title
+            appendResults(filtered)
+            ResultsCount.Text = tostring(#filtered) .. " saved"
+            EmptyTitle.Text = "No saved avatar favorites"
+            EmptyText.Text = "Star Marketplace items to save them here."
+        end
+
+        local function updateModeVisuals()
+            local marketplace = state.Mode == "marketplace"
+            MarketplaceModeButton.BackgroundColor3 = marketplace and ACCENT or PANEL_2
+            MarketplaceModeButton.TextColor3 = marketplace and Color3.new(1, 1, 1) or MUTED
+            FavoritesModeButton.BackgroundColor3 = marketplace and PANEL_2 or ACCENT
+            FavoritesModeButton.TextColor3 = marketplace and MUTED or Color3.new(1, 1, 1)
+            SearchBox.PlaceholderText = marketplace
+                and "Search Roblox avatar items or paste an ID..."
+                or "Search saved avatar favorites..."
+            if not marketplace then LoadMoreButton.Visible = false end
+        end
+
+        local function runActiveSearch()
+            ResultsScroll.CanvasPosition = Vector2.zero
+            if state.Mode == "favorites" then
+                renderFavorites(SearchBox.Text)
+            else
+                EmptyTitle.Text = "No avatar items found"
+                EmptyText.Text = "Try another name, another kategory, or paste an asset ID."
+                performSearch(SearchBox.Text)
+            end
+        end
+
+        local function setMode(mode)
+            mode = mode == "favorites" and "favorites" or "marketplace"
+            if mode == "favorites" then
+                state.SearchSerial = state.SearchSerial + 1
+                setLoading(false)
+            end
+            if state.Mode == mode then
+                updateModeVisuals()
+                runActiveSearch()
+                return
+            end
+            state.Mode = mode
+            updateModeVisuals()
+            runActiveSearch()
+        end
+
         local function updateCategoryVisuals()
             for key, button in pairs(state.CategoryButtons) do
                 local selected = key == state.CurrentCategory.Key
@@ -13126,20 +13349,20 @@ function LULA.CreateLib(kavName, themeInput)
         end
 
         for index, category in ipairs(CATEGORIES) do
-            local width = math.max(68, 26 + (#category.Name * 7))
+            local width = math.max(52, 18 + (#category.Name * 5.4))
             local button = create("TextButton", {
                 Name = category.Key,
-                Size = UDim2.fromOffset(width, 32),
+                Size = UDim2.fromOffset(width, 22),
                 BackgroundColor3 = category == state.CurrentCategory and ACCENT or PANEL_2,
                 AutoButtonColor = false,
                 Font = Enum.Font.GothamBold,
                 Text = category.Name,
                 TextColor3 = category == state.CurrentCategory and Color3.new(1, 1, 1) or MUTED,
-                TextSize = 11,
+                TextSize = 8.5,
                 LayoutOrder = index,
                 ZIndex = 5
             })
-            addCorner(button, 10)
+            addCorner(button, 7)
             addStroke(button, STROKE, 1, 0.25)
             button.Parent = CategoryScroll
             state.CategoryButtons[category.Key] = button
@@ -13158,22 +13381,43 @@ function LULA.CreateLib(kavName, themeInput)
                 end
                 state.CurrentCategory = category
                 updateCategoryVisuals()
-                performSearch(SearchBox.Text)
+                runActiveSearch()
             end)
         end
 
-        track(SearchButton.MouseButton1Click:Connect(function()
-            performSearch(SearchBox.Text)
+        track(MarketplaceModeButton.MouseButton1Click:Connect(function()
+            setMode("marketplace")
         end))
 
+        track(FavoritesModeButton.MouseButton1Click:Connect(function()
+            setMode("favorites")
+        end))
+
+        track(SearchButton.MouseButton1Click:Connect(runActiveSearch))
+
         track(SearchBox.FocusLost:Connect(function(enterPressed)
-            if enterPressed then
-                performSearch(SearchBox.Text)
-            end
+            if enterPressed then runActiveSearch() end
+        end))
+
+        local SearchClearButton = attachClearX(SearchBox, function()
+            runActiveSearch()
+        end)
+        if SearchClearButton then
+            SearchClearButton.Position = UDim2.new(1, -76, 0.5, 0)
+            SearchClearButton.Size = UDim2.fromOffset(18, 18)
+            SearchClearButton.TextSize = 9
+        end
+
+        track(ResultsScroll:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
+            BackToTopButton.Visible = ResultsScroll.CanvasPosition.Y > 48
+        end))
+        track(BackToTopButton.MouseButton1Click:Connect(function()
+            tween(ResultsScroll, 0.18, {CanvasPosition = Vector2.zero})
         end))
 
         track(LoadMoreButton.MouseButton1Click:Connect(function()
-            if state.Loading
+            if state.Mode ~= "marketplace"
+                or state.Loading
                 or not state.CurrentHasMore
                 or typeof(state.CurrentNextPage) ~= "function" then
                 return
@@ -13207,21 +13451,20 @@ function LULA.CreateLib(kavName, themeInput)
             local width = ResultsScroll.AbsoluteSize.X
             if width <= 0 then return end
 
-            local viewport = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(800, 600)
             local columns
-            if width < 300 then
+            if width < 285 then
                 columns = 1
-            elseif width < 560 then
-                columns = 2
-            else
+            elseif width >= 530 then
                 columns = 3
+            else
+                columns = 2
             end
 
-            local padding = 10
-            local available = width - 4 - (padding * (columns - 1))
+            local padding = 7
+            local available = width - 2 - (padding * (columns - 1))
             local cellWidth = math.floor(available / columns)
             Grid.FillDirectionMaxCells = columns
-            Grid.CellSize = UDim2.fromOffset(math.max(126, cellWidth), 246)
+            Grid.CellSize = UDim2.fromOffset(math.max(118, cellWidth), 194)
         end
 
         track(ResultsScroll:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateGrid))
@@ -13252,7 +13495,7 @@ function LULA.CreateLib(kavName, themeInput)
                 Subtitle.Visible = false
                 OutfitButton.Visible = false
 
-                Title.Text = "Ava Kreator"
+                Title.Text = "Avatar Katalog Kreator"
                 Title.Size = UDim2.new(1, -144, 1, 0)
                 Title.Position = UDim2.fromOffset(56, 0)
                 Title.TextSize = 15
@@ -13272,7 +13515,7 @@ function LULA.CreateLib(kavName, themeInput)
                 Subtitle.Visible = true
                 OutfitButton.Visible = true
 
-                Title.Text = "Ava Kreator"
+                Title.Text = "Avatar Katalog Kreator"
                 Title.Size = UDim2.new(1, -270, 0, 23)
                 Title.Position = UDim2.fromOffset(56, 8)
                 Title.TextSize = 17
@@ -13307,7 +13550,6 @@ function LULA.CreateLib(kavName, themeInput)
             end
             state.Reapplying = false
             refreshSelectedUi()
-            notify("Reapplied the local test outfit after respawn.", "success", 3)
         end)
 
         local function runtimeCleanup(restoreAvatar)
@@ -13374,15 +13616,16 @@ function LULA.CreateLib(kavName, themeInput)
 
         task.defer(function()
             SearchBox.Text = ""
-            performSearch("")
+            updateModeVisuals()
+            runActiveSearch()
         end)
 
         state.Search = function(query)
             SearchBox.Text = tostring(query or "")
-            performSearch(SearchBox.Text)
+            runActiveSearch()
         end
         state.Refresh = function()
-            performSearch(state.CurrentQuery or SearchBox.Text)
+            runActiveSearch()
         end
         return avatarTab
     end
