@@ -1,7 +1,8 @@
---kavo ui 4.3
+--kavo ui 4.4
 local LULA = {}
 LULA.AnimationMarketplaceVersion = 4
 LULA.EmoteMarketplaceVersion = 1
+LULA.AvatarMarketplaceVersion = 1
 local env = (getgenv and getgenv()) or _G
 
 --kr
@@ -656,6 +657,9 @@ local function applyTheme()
     end
     if active.FreeEmotes and type(active.FreeEmotes.RefreshTheme) == "function" then
         pcall(active.FreeEmotes.RefreshTheme)
+    end
+    if active.AvatarKreator and type(active.AvatarKreator.RefreshTheme) == "function" then
+        pcall(active.AvatarKreator.RefreshTheme)
     end
 end
 
@@ -2899,6 +2903,24 @@ function LULA.CreateLib(kavName, themeInput)
             end
         end
         active.SelectedTab = tab
+
+        -- Ava Kreator needs more visual room than normal kontrol tabs. Expand only while
+        -- this tab is open, then restore the user's exact previous LH size on exit.
+        if tab.Name == "Ava Kreator" then
+            if not active.AvatarKreatorPreviousMainSize then
+                active.AvatarKreatorPreviousMainSize = main.Size
+            end
+            local currentWidth = tonumber(main.Size.X.Offset) or 0
+            local currentHeight = tonumber(main.Size.Y.Offset) or 0
+            local targetWidth = math.clamp(math.max(currentWidth, 650), 420, 760)
+            local targetHeight = math.clamp(math.max(currentHeight, 480), 250, 520)
+            tween(main, {Size = UDim2.fromOffset(targetWidth, targetHeight)}, 0.16)
+        elseif old and old.Name == "Ava Kreator" and active.AvatarKreatorPreviousMainSize then
+            local previousSize = active.AvatarKreatorPreviousMainSize
+            active.AvatarKreatorPreviousMainSize = nil
+            tween(main, {Size = previousSize}, 0.16)
+        end
+
         if old then
             tween(old.Page, {Position = UDim2.new(-0.04, 0, 0, 0), GroupTransparency = 1}, 0.12)
             task.delay(duration(0.13), function()
@@ -9726,6 +9748,3645 @@ function LULA.CreateLib(kavName, themeInput)
         return emoteTab
     end
 
+
+
+    --==================================================
+    -- AVA KREATOR - ROBLOX AVATAR MARKETPLACE
+    -- Integrated from the verified V4 standalone test.
+    --==================================================
+    function window:EnableAvatarKreator(tabName)
+        if active.AvatarKreator then return active.AvatarKreator.Tab end
+
+        local avatarTab = self:NewTab(tabName or "Ava Kreator")
+        avatarTab:EnsureBuilt()
+        avatarTab.Scroll.Visible = false
+        avatarTab.Scroll.ScrollingEnabled = false
+
+        local Players = game:GetService("Players")
+        local TweenService = game:GetService("TweenService")
+        local UserInputService = game:GetService("UserInputService")
+        local HttpService = game:GetService("HttpService")
+        local MarketplaceService = game:GetService("MarketplaceService")
+        local AvatarEditorService = game:GetService("AvatarEditorService")
+        local AssetService = game:GetService("AssetService")
+        local InsertService = game:GetService("InsertService")
+        local CoreGui = game:GetService("CoreGui")
+        local RunService = game:GetService("RunService")
+        local TextService = game:GetService("TextService")
+
+        local LocalPlayer = Players.LocalPlayer
+        while not LocalPlayer do
+            Players:GetPropertyChangedSignal("LocalPlayer"):Wait()
+            LocalPlayer = Players.LocalPlayer
+        end
+
+        local GUI_NAME = "LH_AvatarKreatorIntegrated"
+        local RUNTIME_KEY = "LHAvatarKreatorRuntimeCleanup"
+
+        local ACCENT = active.Theme.SchemeColor
+        local ACCENT_HOVER = blendColor(active.Theme.SchemeColor, Color3.new(1, 1, 1), 0.14)
+        local BACKGROUND = active.Theme.Background
+        local PANEL = active.Theme.Header
+        local PANEL_2 = active.Theme.ElementColor
+        local PANEL_3 = blendColor(active.Theme.ElementColor, Color3.new(1, 1, 1), 0.08)
+        local TEXT = active.Theme.TextColor
+        local MUTED = active.Theme.MutedText
+        local STROKE = blendColor(active.Theme.ElementColor, active.Theme.TextColor, 0.18)
+        local SUCCESS = Color3.fromRGB(86, 213, 145)
+        local WARNING = Color3.fromRGB(255, 190, 80)
+        local ERROR_COLOR = active.Theme.Danger or Color3.fromRGB(255, 101, 116)
+
+        local function getEnvironment()
+            if typeof(getgenv) == "function" then
+                local ok, env = pcall(getgenv)
+                if ok and type(env) == "table" then
+                    return env
+                end
+            end
+            return _G
+        end
+
+        local ENV = getEnvironment()
+
+        local previousCleanup = ENV[RUNTIME_KEY]
+        if typeof(previousCleanup) == "function" then
+            pcall(previousCleanup)
+        end
+
+        local function getGlobal(name)
+            local value = rawget(ENV, name)
+            if value ~= nil then
+                return value
+            end
+            return rawget(_G, name)
+        end
+
+        local function getGuiParent()
+            local gethuiFn = getGlobal("gethui")
+            if typeof(gethuiFn) == "function" then
+                local ok, result = pcall(gethuiFn)
+                if ok and result then
+                    return result
+                end
+            end
+
+            local canUseCoreGui = pcall(function()
+                local test = Instance.new("Folder")
+                test.Name = "__LHAvatarGuiTest"
+                test.Parent = CoreGui
+                test:Destroy()
+            end)
+
+            if canUseCoreGui then
+                return CoreGui
+            end
+
+            return LocalPlayer:WaitForChild("PlayerGui")
+        end
+
+        local GuiParent = getGuiParent()
+        local oldGui = GuiParent:FindFirstChild(GUI_NAME)
+        if oldGui then
+            oldGui:Destroy()
+        end
+
+        local function create(className, properties, children)
+            local object = Instance.new(className)
+            for property, value in pairs(properties or {}) do
+                object[property] = value
+            end
+            for _, child in ipairs(children or {}) do
+                child.Parent = object
+            end
+            return object
+        end
+
+        local function addCorner(parent, radius)
+            local corner = create("UICorner", {
+                CornerRadius = UDim.new(0, radius or 10)
+            })
+            corner.Parent = parent
+            return corner
+        end
+
+        local function addStroke(parent, color, thickness, transparency)
+            local stroke = create("UIStroke", {
+                Color = color or STROKE,
+                Thickness = thickness or 1,
+                Transparency = transparency or 0
+            })
+            stroke.Parent = parent
+            return stroke
+        end
+
+        local function tween(object, duration, properties, style, direction)
+            local animation = TweenService:Create(
+                object,
+                TweenInfo.new(
+                    duration or 0.18,
+                    style or Enum.EasingStyle.Quad,
+                    direction or Enum.EasingDirection.Out
+                ),
+                properties
+            )
+            animation:Play()
+            return animation
+        end
+
+        local function trim(value)
+            return tostring(value or ""):match("^%s*(.-)%s*$")
+        end
+
+        local function lower(value)
+            return string.lower(tostring(value or ""))
+        end
+
+        local function containsPlain(haystack, needle)
+            return string.find(lower(haystack), lower(needle), 1, true) ~= nil
+        end
+
+        local function extractNumericId(value)
+            if type(value) == "number" then
+                return math.floor(value)
+            end
+            local digits = tostring(value or ""):match("(%d+)")
+            return digits and tonumber(digits) or nil
+        end
+
+        local function safeDisconnect(connection)
+            if connection and typeof(connection) == "RBXScriptConnection" then
+                pcall(function()
+                    connection:Disconnect()
+                end)
+            end
+        end
+
+        local function resolveRequestFunction()
+            local candidates = {
+                getGlobal("request"),
+                getGlobal("http_request"),
+                getGlobal("httprequest")
+            }
+
+            local synTable = getGlobal("syn")
+            if type(synTable) == "table" then
+                table.insert(candidates, synTable.request)
+            end
+
+            local fluxusTable = getGlobal("fluxus")
+            if type(fluxusTable) == "table" then
+                table.insert(candidates, fluxusTable.request)
+            end
+
+            for _, candidate in ipairs(candidates) do
+                if typeof(candidate) == "function" then
+                    return candidate
+                end
+            end
+
+            return nil
+        end
+
+        local executorRequest = resolveRequestFunction()
+
+        local function httpGet(url)
+            local ok, result = pcall(function()
+                return game:HttpGet(url, true)
+            end)
+            if ok and type(result) == "string" and #result > 0 then
+                return result
+            end
+
+            if executorRequest then
+                local requestOk, response = pcall(executorRequest, {
+                    Url = url,
+                    Method = "GET",
+                    Headers = {
+                        ["Accept"] = "application/json",
+                        ["User-Agent"] = "Roblox/LH-AvatarMarketplace"
+                    }
+                })
+
+                if requestOk and type(response) == "table" then
+                    local status = tonumber(
+                        response.StatusCode
+                        or response.Status
+                        or response.status_code
+                        or 0
+                    ) or 0
+                    local body = response.Body or response.body
+                    if status >= 200 and status < 300 and type(body) == "string" then
+                        return body
+                    end
+                end
+            end
+
+            error("No working HTTP GET method was available.")
+        end
+
+        local function resolveClipboardWriter()
+            local candidates = {
+                getGlobal("setclipboard"),
+                getGlobal("toclipboard"),
+                getGlobal("writeclipboard")
+            }
+
+            local synTable = getGlobal("syn")
+            if type(synTable) == "table" then
+                table.insert(candidates, synTable.write_clipboard)
+                table.insert(candidates, synTable.setclipboard)
+            end
+
+            return function(text)
+                for _, writer in ipairs(candidates) do
+                    if typeof(writer) == "function" then
+                        local ok = pcall(writer, tostring(text))
+                        if ok then
+                            return true
+                        end
+                    end
+                end
+                return false
+            end
+        end
+
+        local copyToClipboard = resolveClipboardWriter()
+
+        local function avatarAssetType(name)
+            local ok, result = pcall(function()
+                return Enum.AvatarAssetType[name]
+            end)
+            if ok then
+                return result
+            end
+            return nil
+        end
+
+        local function accessoryType(name)
+            local ok, result = pcall(function()
+                return Enum.AccessoryType[name]
+            end)
+            if ok then
+                return result
+            end
+            return nil
+        end
+
+        local ASSET_TYPE_NAMES = {
+            [2] = "Klassic T-Shirt",
+            [8] = "Hat",
+            [11] = "Klassic Shirt",
+            [12] = "Klassic Pants",
+            [18] = "Face",
+            [41] = "Hair",
+            [42] = "Face Accessory",
+            [43] = "Neck Accessory",
+            [44] = "Shoulder Accessory",
+            [45] = "Front Accessory",
+            [46] = "Back Accessory",
+            [47] = "Waist Accessory",
+            [64] = "Layered T-Shirt",
+            [65] = "Layered Shirt",
+            [66] = "Layered Pants",
+            [67] = "Jacket",
+            [68] = "Sweater",
+            [69] = "Shorts",
+            [70] = "Left Shoe",
+            [71] = "Right Shoe",
+            [72] = "Dress / Skirt",
+            [76] = "Eyebrow",
+            [77] = "Eyelash"
+        }
+
+        local ASSET_TYPE_TO_SLOT = {
+            [2] = "ClassicTShirt",
+            [8] = "Hat",
+            [11] = "ClassicShirt",
+            [12] = "ClassicPants",
+            [18] = "FaceDecal",
+            [41] = "Hair",
+            [42] = "FaceAccessory",
+            [43] = "Neck",
+            [44] = "Shoulder",
+            [45] = "Front",
+            [46] = "Back",
+            [47] = "Waist",
+            [64] = "LayeredTShirt",
+            [65] = "LayeredShirt",
+            [66] = "LayeredPants",
+            [67] = "Jacket",
+            [68] = "Sweater",
+            [69] = "Shorts",
+            [70] = "LeftShoe",
+            [71] = "RightShoe",
+            [72] = "DressSkirt",
+            [76] = "Eyebrow",
+            [77] = "Eyelash"
+        }
+
+        local ASSET_TYPE_TO_ACCESSORY_TYPE = {
+            [8] = accessoryType("Hat"),
+            [41] = accessoryType("Hair"),
+            [42] = accessoryType("Face"),
+            [43] = accessoryType("Neck"),
+            [44] = accessoryType("Shoulder"),
+            [45] = accessoryType("Front"),
+            [46] = accessoryType("Back"),
+            [47] = accessoryType("Waist"),
+            [64] = accessoryType("TShirt"),
+            [65] = accessoryType("Shirt"),
+            [66] = accessoryType("Pants"),
+            [67] = accessoryType("Jacket"),
+            [68] = accessoryType("Sweater"),
+            [69] = accessoryType("Shorts"),
+            [70] = accessoryType("LeftShoe"),
+            [71] = accessoryType("RightShoe"),
+            [72] = accessoryType("DressSkirt"),
+            [76] = accessoryType("Eyebrow"),
+            [77] = accessoryType("Eyelash")
+        }
+
+        local ACCESSORY_NAME_TO_SLOT = {
+            Hat = "Hat",
+            Hair = "Hair",
+            Face = "FaceAccessory",
+            Neck = "Neck",
+            Shoulder = "Shoulder",
+            Front = "Front",
+            Back = "Back",
+            Waist = "Waist",
+            TShirt = "LayeredTShirt",
+            Shirt = "LayeredShirt",
+            Pants = "LayeredPants",
+            Jacket = "Jacket",
+            Sweater = "Sweater",
+            Shorts = "Shorts",
+            LeftShoe = "LeftShoe",
+            RightShoe = "RightShoe",
+            DressSkirt = "DressSkirt",
+            Eyebrow = "Eyebrow",
+            Eyelash = "Eyelash"
+        }
+
+        local ACCESSORY_ATTACHMENT_TO_SLOT = {
+            HairAttachment = "Hair",
+            HatAttachment = "Hat",
+            FaceFrontAttachment = "FaceAccessory",
+            FaceCenterAttachment = "FaceAccessory",
+            NeckAttachment = "Neck",
+            BodyBackAttachment = "Back",
+            BodyFrontAttachment = "Front",
+            WaistFrontAttachment = "Waist",
+            WaistCenterAttachment = "Waist",
+            WaistBackAttachment = "Waist",
+            RightShoulderAttachment = "Shoulder",
+            LeftShoulderAttachment = "Shoulder",
+            RightCollarAttachment = "Shoulder",
+            LeftCollarAttachment = "Shoulder"
+        }
+
+        local ALL_ASSET_TYPE_IDS = {}
+        for assetTypeId in pairs(ASSET_TYPE_TO_SLOT) do
+            ALL_ASSET_TYPE_IDS[assetTypeId] = true
+        end
+
+        local function enumList(names)
+            local output = {}
+            for _, name in ipairs(names) do
+                local enumItem = avatarAssetType(name)
+                if enumItem then
+                    table.insert(output, enumItem)
+                end
+            end
+            return output
+        end
+
+        local function idSet(ids)
+            local set = {}
+            for _, id in ipairs(ids) do
+                set[id] = true
+            end
+            return set
+        end
+
+        local CATEGORIES = {
+            {
+                Key = "all",
+                Name = "All",
+                EngineTypes = enumList({
+                    "TShirt", "Shirt", "Pants", "Hat", "Face",
+                    "HairAccessory", "FaceAccessory", "NeckAccessory",
+                    "ShoulderAccessory", "FrontAccessory", "BackAccessory",
+                    "WaistAccessory", "TShirtAccessory", "ShirtAccessory",
+                    "PantsAccessory", "JacketAccessory", "SweaterAccessory",
+                    "ShortsAccessory", "LeftShoeAccessory", "RightShoeAccessory",
+                    "DressSkirtAccessory", "EyebrowAccessory", "EyelashAccessory"
+                }),
+                AllowedIds = ALL_ASSET_TYPE_IDS,
+                HttpCategory = 1,
+                HttpSubcategory = 1
+            },
+            {
+                Key = "classic",
+                Name = "Klassic",
+                EngineTypes = enumList({"TShirt", "Shirt", "Pants"}),
+                AllowedIds = idSet({2, 11, 12}),
+                HttpCategory = 3,
+                HttpSubcategory = 3
+            },
+            {
+                Key = "tops",
+                Name = "Tops",
+                EngineTypes = enumList({
+                    "TShirtAccessory", "ShirtAccessory",
+                    "JacketAccessory", "SweaterAccessory"
+                }),
+                AllowedIds = idSet({64, 65, 67, 68}),
+                HttpCategory = 3,
+                HttpSubcategory = 3
+            },
+            {
+                Key = "bottoms",
+                Name = "Bottoms",
+                EngineTypes = enumList({
+                    "PantsAccessory", "ShortsAccessory", "DressSkirtAccessory"
+                }),
+                AllowedIds = idSet({66, 69, 72}),
+                HttpCategory = 3,
+                HttpSubcategory = 3
+            },
+            {
+                Key = "shoes",
+                Name = "Shoes",
+                EngineTypes = enumList({"LeftShoeAccessory", "RightShoeAccessory"}),
+                AllowedIds = idSet({70, 71}),
+                HttpCategory = 3,
+                HttpSubcategory = 64
+            },
+            {
+                Key = "hats",
+                Name = "Hats",
+                EngineTypes = enumList({"Hat"}),
+                AllowedIds = idSet({8}),
+                HttpCategory = 11,
+                HttpSubcategory = 9
+            },
+            {
+                Key = "hair",
+                Name = "Hair",
+                EngineTypes = enumList({"HairAccessory"}),
+                AllowedIds = idSet({41}),
+                HttpCategory = 11,
+                HttpSubcategory = 20
+            },
+            {
+                Key = "face",
+                Name = "Face",
+                EngineTypes = enumList({
+                    "Face", "FaceAccessory", "EyebrowAccessory", "EyelashAccessory"
+                }),
+                AllowedIds = idSet({18, 42, 76, 77}),
+                HttpCategory = 11,
+                HttpSubcategory = 21
+            },
+            {
+                Key = "accessories",
+                Name = "Accessories",
+                EngineTypes = enumList({
+                    "FaceAccessory", "NeckAccessory", "ShoulderAccessory",
+                    "FrontAccessory", "BackAccessory", "WaistAccessory"
+                }),
+                AllowedIds = idSet({42, 43, 44, 45, 46, 47}),
+                HttpCategory = 11,
+                HttpSubcategory = 19
+            }
+        }
+
+        local CATEGORY_BY_KEY = {}
+        for _, category in ipairs(CATEGORIES) do
+            CATEGORY_BY_KEY[category.Key] = category
+        end
+
+        local state = {
+            Destroyed = false,
+            Minimized = false,
+            CurrentCategory = CATEGORIES[1],
+            SearchSerial = 0,
+            CurrentResults = {},
+            CurrentResultIds = {},
+            CurrentNextPage = nil,
+            CurrentHasMore = false,
+            CurrentQuery = "",
+            Loading = false,
+            EquippedBySlot = {},
+            ItemStacking = false,
+            SnapshotByCharacter = setmetatable({}, {__mode = "k"}),
+            OriginalDescriptionByCharacter = setmetatable({}, {__mode = "k"}),
+            CurrentCharacter = LocalPlayer.Character,
+            Reapplying = false,
+            Connections = {},
+            CardRecords = {},
+            CategoryButtons = {},
+            DetailsItem = nil,
+            ExpandedPosition = UDim2.fromScale(0.5, 0.5),
+            ExpandedAnchorPoint = Vector2.new(0.5, 0.5),
+            ExpandedSize = UDim2.new(1, 0, 1, 0)
+        }
+
+        local function track(connection)
+            table.insert(state.Connections, connection)
+            return connection
+        end
+
+        state.Tab = avatarTab
+        active.AvatarKreator = state
+
+        local ScreenGui = create("Frame", {
+            Name = "AvatarKreatorSurface",
+            Size = UDim2.fromScale(1, 1),
+            BackgroundTransparency = 1,
+            BorderSizePixel = 0,
+            ClipsDescendants = true,
+            ZIndex = 1
+        })
+        ScreenGui.Parent = avatarTab.Page
+
+        local Main = create("Frame", {
+            Name = "Main",
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            Position = UDim2.fromScale(0.5, 0.5),
+            Size = state.ExpandedSize,
+            BackgroundColor3 = BACKGROUND,
+            BorderSizePixel = 0,
+            ClipsDescendants = true,
+            ZIndex = 2
+        })
+        addCorner(Main, 16)
+        addStroke(Main, STROKE, 1, 0.1)
+        Main.Parent = ScreenGui
+
+        local MainConstraint = create("UISizeConstraint", {
+            MaxSize = Vector2.new(900, 680),
+            MinSize = Vector2.new(270, 56)
+        })
+        MainConstraint.Parent = Main
+
+        local Topbar = create("Frame", {
+            Name = "Topbar",
+            BackgroundColor3 = PANEL,
+            BorderSizePixel = 0,
+            Size = UDim2.new(1, 0, 0, 56),
+            ZIndex = 3
+        })
+        Topbar.Parent = Main
+
+        local TopbarBottom = create("Frame", {
+            AnchorPoint = Vector2.new(0, 1),
+            Position = UDim2.fromScale(0, 1),
+            Size = UDim2.new(1, 0, 0, 1),
+            BackgroundColor3 = STROKE,
+            BorderSizePixel = 0,
+            ZIndex = 4
+        })
+        TopbarBottom.Parent = Topbar
+
+        local Logo = create("Frame", {
+            Position = UDim2.fromOffset(14, 12),
+            Size = UDim2.fromOffset(32, 32),
+            BackgroundColor3 = ACCENT,
+            BorderSizePixel = 0,
+            ZIndex = 4
+        })
+        addCorner(Logo, 10)
+        Logo.Parent = Topbar
+
+        local LogoText = create("TextLabel", {
+            BackgroundTransparency = 1,
+            Size = UDim2.fromScale(1, 1),
+            Font = Enum.Font.GothamBold,
+            Text = "A",
+            TextColor3 = Color3.new(1, 1, 1),
+            TextSize = 17,
+            ZIndex = 5
+        })
+        LogoText.Parent = Logo
+
+        local Title = create("TextLabel", {
+            Position = UDim2.fromOffset(56, 8),
+            Size = UDim2.new(1, -165, 0, 23),
+            BackgroundTransparency = 1,
+            Font = Enum.Font.GothamBold,
+            Text = "Ava Kreator",
+            TextColor3 = TEXT,
+            TextSize = 17,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            ZIndex = 4
+        })
+        Title.Parent = Topbar
+
+        local Subtitle = create("TextLabel", {
+            Position = UDim2.fromOffset(56, 30),
+            Size = UDim2.new(1, -165, 0, 17),
+            BackgroundTransparency = 1,
+            Font = Enum.Font.Gotham,
+            Text = "Try on Roblox klothing locally",
+            TextColor3 = MUTED,
+            TextSize = 11,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            ZIndex = 4
+        })
+        Subtitle.Parent = Topbar
+
+        local OutfitButton = create("TextButton", {
+            AnchorPoint = Vector2.new(1, 0.5),
+            Position = UDim2.new(1, -12, 0.5, 0),
+            Size = UDim2.fromOffset(86, 34),
+            BackgroundColor3 = PANEL_2,
+            AutoButtonColor = false,
+            Font = Enum.Font.GothamBold,
+            Text = "Outfit 0",
+            TextColor3 = TEXT,
+            TextSize = 11,
+            ZIndex = 5
+        })
+        addCorner(OutfitButton, 10)
+        addStroke(OutfitButton, STROKE, 1, 0.25)
+        OutfitButton.Parent = Topbar
+
+        local MinimizeButton = create("TextButton", {
+            AnchorPoint = Vector2.new(1, 0.5),
+            Position = UDim2.new(1, -52, 0.5, 0),
+            Size = UDim2.fromOffset(34, 34),
+            BackgroundColor3 = PANEL_2,
+            AutoButtonColor = false,
+            Font = Enum.Font.GothamBold,
+            Text = "-",
+            TextColor3 = TEXT,
+            TextSize = 19,
+            ZIndex = 5
+        })
+        addCorner(MinimizeButton, 10)
+        addStroke(MinimizeButton, STROKE, 1, 0.25)
+        MinimizeButton.Parent = Topbar
+        MinimizeButton.Visible = false
+
+        local CloseButton = create("TextButton", {
+            AnchorPoint = Vector2.new(1, 0.5),
+            Position = UDim2.new(1, -12, 0.5, 0),
+            Size = UDim2.fromOffset(34, 34),
+            BackgroundColor3 = PANEL_2,
+            AutoButtonColor = false,
+            Font = Enum.Font.GothamBold,
+            Text = "x",
+            TextColor3 = TEXT,
+            TextSize = 17,
+            ZIndex = 5
+        })
+        addCorner(CloseButton, 10)
+        addStroke(CloseButton, STROKE, 1, 0.25)
+        CloseButton.Parent = Topbar
+        CloseButton.Visible = false
+
+        local Controls = create("Frame", {
+            Name = "Controls",
+            Position = UDim2.fromOffset(0, 56),
+            Size = UDim2.new(1, 0, 0, 96),
+            BackgroundColor3 = BACKGROUND,
+            BorderSizePixel = 0,
+            ZIndex = 3
+        })
+        Controls.Parent = Main
+
+        local SearchShell = create("Frame", {
+            Position = UDim2.new(0, 14, 0, 8),
+            Size = UDim2.new(1, -28, 0, 40),
+            BackgroundColor3 = PANEL_2,
+            BorderSizePixel = 0,
+            ZIndex = 4
+        })
+        addCorner(SearchShell, 12)
+        local SearchStroke = addStroke(SearchShell, STROKE, 1, 0.1)
+        SearchShell.Parent = Controls
+
+        local SearchIcon = create("TextLabel", {
+            Position = UDim2.fromOffset(12, 0),
+            Size = UDim2.fromOffset(25, 40),
+            BackgroundTransparency = 1,
+            Font = Enum.Font.GothamBold,
+            Text = "S",
+            TextColor3 = MUTED,
+            TextSize = 14,
+            ZIndex = 5
+        })
+        SearchIcon.Parent = SearchShell
+
+        local SearchBox = create("TextBox", {
+            Position = UDim2.fromOffset(40, 0),
+            Size = UDim2.new(1, -142, 1, 0),
+            BackgroundTransparency = 1,
+            ClearTextOnFocus = false,
+            Font = Enum.Font.Gotham,
+            PlaceholderText = "Search Roblox avatar items or paste an ID...",
+            PlaceholderColor3 = MUTED,
+            Text = "",
+            TextColor3 = TEXT,
+            TextSize = 14,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            ZIndex = 5
+        })
+        SearchBox.Parent = SearchShell
+
+        local SearchButton = create("TextButton", {
+            AnchorPoint = Vector2.new(1, 0.5),
+            Position = UDim2.new(1, -5, 0.5, 0),
+            Size = UDim2.fromOffset(94, 34),
+            BackgroundColor3 = ACCENT,
+            AutoButtonColor = false,
+            Font = Enum.Font.GothamBold,
+            Text = "Search",
+            TextColor3 = Color3.new(1, 1, 1),
+            TextSize = 13,
+            ZIndex = 5
+        })
+        addCorner(SearchButton, 10)
+        SearchButton.Parent = SearchShell
+
+        local CategoryScroll = create("ScrollingFrame", {
+            Name = "Categories",
+            Position = UDim2.new(0, 14, 0, 54),
+            Size = UDim2.new(1, -28, 0, 34),
+            BackgroundTransparency = 1,
+            BorderSizePixel = 0,
+            CanvasSize = UDim2.fromOffset(0, 0),
+            AutomaticCanvasSize = Enum.AutomaticSize.X,
+            ScrollBarThickness = 0,
+            ScrollingDirection = Enum.ScrollingDirection.X,
+            ZIndex = 4
+        })
+        CategoryScroll.Parent = Controls
+
+        local CategoryLayout = create("UIListLayout", {
+            FillDirection = Enum.FillDirection.Horizontal,
+            Padding = UDim.new(0, 8),
+            SortOrder = Enum.SortOrder.LayoutOrder,
+            VerticalAlignment = Enum.VerticalAlignment.Center
+        })
+        CategoryLayout.Parent = CategoryScroll
+
+        local ResultsArea = create("Frame", {
+            Name = "ResultsArea",
+            Position = UDim2.fromOffset(0, 152),
+            Size = UDim2.new(1, 0, 1, -152),
+            BackgroundTransparency = 1,
+            ZIndex = 3
+        })
+        ResultsArea.Parent = Main
+
+        local ResultsHeader = create("Frame", {
+            Position = UDim2.fromOffset(14, 0),
+            Size = UDim2.new(1, -28, 0, 30),
+            BackgroundTransparency = 1,
+            ZIndex = 3
+        })
+        ResultsHeader.Parent = ResultsArea
+
+        local ResultsTitle = create("TextLabel", {
+            Size = UDim2.new(0.40, 0, 1, 0),
+            BackgroundTransparency = 1,
+            Font = Enum.Font.GothamBold,
+            Text = "Marketplace",
+            TextColor3 = TEXT,
+            TextSize = 15,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            ZIndex = 4
+        })
+        ResultsTitle.Parent = ResultsHeader
+
+        local ResultsCount = create("TextLabel", {
+            AnchorPoint = Vector2.new(1, 0),
+            Position = UDim2.fromScale(1, 0),
+            Size = UDim2.new(0.25, 0, 1, 0),
+            BackgroundTransparency = 1,
+            Font = Enum.Font.Gotham,
+            Text = "",
+            TextColor3 = MUTED,
+            TextSize = 11,
+            TextXAlignment = Enum.TextXAlignment.Right,
+            ZIndex = 4
+        })
+        ResultsCount.Parent = ResultsHeader
+
+        local StackingButton = create("TextButton", {
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            Position = UDim2.new(0.58, 0, 0.5, 0),
+            Size = UDim2.new(0.30, 0, 0, 26),
+            BackgroundColor3 = PANEL_2,
+            AutoButtonColor = false,
+            Font = Enum.Font.GothamBold,
+            Text = "Item Stacking: OFF",
+            TextColor3 = MUTED,
+            TextSize = 10,
+            ZIndex = 5
+        })
+        addCorner(StackingButton, 8)
+        addStroke(StackingButton, STROKE, 1, 0.2)
+        StackingButton.Parent = ResultsHeader
+
+        local ResultsScroll = create("ScrollingFrame", {
+            Name = "ResultsScroll",
+            Position = UDim2.new(0, 14, 0, 30),
+            Size = UDim2.new(1, -28, 1, -70),
+            BackgroundTransparency = 1,
+            BorderSizePixel = 0,
+            CanvasSize = UDim2.fromOffset(0, 0),
+            AutomaticCanvasSize = Enum.AutomaticSize.Y,
+            ScrollBarThickness = 4,
+            ScrollBarImageColor3 = ACCENT,
+            ScrollingDirection = Enum.ScrollingDirection.Y,
+            ZIndex = 3
+        })
+        ResultsScroll.Parent = ResultsArea
+
+        local Grid = create("UIGridLayout", {
+            CellPadding = UDim2.fromOffset(10, 10),
+            CellSize = UDim2.fromOffset(190, 246),
+            FillDirection = Enum.FillDirection.Horizontal,
+            FillDirectionMaxCells = 4,
+            HorizontalAlignment = Enum.HorizontalAlignment.Left,
+            SortOrder = Enum.SortOrder.LayoutOrder
+        })
+        Grid.Parent = ResultsScroll
+
+        local ResultsPadding = create("UIPadding", {
+            PaddingBottom = UDim.new(0, 8),
+            PaddingLeft = UDim.new(0, 2),
+            PaddingRight = UDim.new(0, 2),
+            PaddingTop = UDim.new(0, 2)
+        })
+        ResultsPadding.Parent = ResultsScroll
+
+        local LoadMoreButton = create("TextButton", {
+            AnchorPoint = Vector2.new(0.5, 1),
+            Position = UDim2.new(0.5, 0, 1, -5),
+            Size = UDim2.fromOffset(150, 32),
+            BackgroundColor3 = PANEL_2,
+            AutoButtonColor = false,
+            Font = Enum.Font.GothamBold,
+            Text = "Load more",
+            TextColor3 = TEXT,
+            TextSize = 12,
+            Visible = false,
+            ZIndex = 4
+        })
+        addCorner(LoadMoreButton, 10)
+        addStroke(LoadMoreButton, STROKE, 1, 0.1)
+        LoadMoreButton.Parent = ResultsArea
+
+        local EmptyState = create("Frame", {
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            Position = UDim2.fromScale(0.5, 0.5),
+            Size = UDim2.new(1, -40, 0, 130),
+            BackgroundTransparency = 1,
+            Visible = false,
+            ZIndex = 5
+        })
+        EmptyState.Parent = ResultsArea
+
+        local EmptyTitle = create("TextLabel", {
+            Size = UDim2.new(1, 0, 0, 38),
+            BackgroundTransparency = 1,
+            Font = Enum.Font.GothamBold,
+            Text = "No avatar items found",
+            TextColor3 = TEXT,
+            TextSize = 18,
+            ZIndex = 6
+        })
+        EmptyTitle.Parent = EmptyState
+
+        local EmptyText = create("TextLabel", {
+            Position = UDim2.fromOffset(0, 40),
+            Size = UDim2.new(1, 0, 0, 56),
+            BackgroundTransparency = 1,
+            Font = Enum.Font.Gotham,
+            Text = "Try another name, another kategory, or paste an asset ID.",
+            TextColor3 = MUTED,
+            TextSize = 13,
+            TextWrapped = true,
+            ZIndex = 6
+        })
+        EmptyText.Parent = EmptyState
+
+        local LoadingOverlay = create("Frame", {
+            Position = UDim2.new(0, 14, 0, 30),
+            Size = UDim2.new(1, -28, 1, -36),
+            BackgroundColor3 = BACKGROUND,
+            BackgroundTransparency = 0.08,
+            BorderSizePixel = 0,
+            Visible = false,
+            ZIndex = 20
+        })
+        addCorner(LoadingOverlay, 12)
+        LoadingOverlay.Parent = ResultsArea
+
+        local LoadingText = create("TextLabel", {
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            Position = UDim2.fromScale(0.5, 0.5),
+            Size = UDim2.new(1, -30, 0, 54),
+            BackgroundTransparency = 1,
+            Font = Enum.Font.GothamBold,
+            Text = "Searching Roblox Marketplace...",
+            TextColor3 = TEXT,
+            TextSize = 15,
+            TextWrapped = true,
+            ZIndex = 21
+        })
+        LoadingText.Parent = LoadingOverlay
+
+        local ToastHolder = create("Frame", {
+            AnchorPoint = Vector2.new(1, 0),
+            Position = UDim2.new(1, -14, 0, 70),
+            Size = UDim2.new(0, 310, 1, -84),
+            BackgroundTransparency = 1,
+            ZIndex = 100
+        })
+        ToastHolder.Parent = ScreenGui
+
+        local ToastLayout = create("UIListLayout", {
+            Padding = UDim.new(0, 8),
+            HorizontalAlignment = Enum.HorizontalAlignment.Right,
+            SortOrder = Enum.SortOrder.LayoutOrder,
+            VerticalAlignment = Enum.VerticalAlignment.Top
+        })
+        ToastLayout.Parent = ToastHolder
+
+        local function notify(message, kind, duration)
+            if state.Destroyed then
+                return
+            end
+
+            kind = kind or "info"
+            duration = duration or 2.8
+
+            if type(LULA.Notify) == "function" then
+                local delivered = pcall(function()
+                    LULA:Notify(kind, "Ava Kreator", tostring(message), duration, nil, true)
+                end)
+                if delivered then return end
+            end
+
+            local color = ACCENT
+            if kind == "success" then
+                color = SUCCESS
+            elseif kind == "warning" then
+                color = WARNING
+            elseif kind == "error" then
+                color = ERROR_COLOR
+            end
+
+            local toast = create("Frame", {
+                Size = UDim2.fromOffset(300, 0),
+                AutomaticSize = Enum.AutomaticSize.Y,
+                BackgroundColor3 = PANEL,
+                BackgroundTransparency = 0.03,
+                BorderSizePixel = 0,
+                ZIndex = 101
+            })
+            addCorner(toast, 11)
+            addStroke(toast, color, 1, 0.15)
+            toast.Parent = ToastHolder
+
+            local accentBar = create("Frame", {
+                Size = UDim2.new(0, 4, 1, 0),
+                BackgroundColor3 = color,
+                BorderSizePixel = 0,
+                ZIndex = 102
+            })
+            addCorner(accentBar, 4)
+            accentBar.Parent = toast
+
+            local label = create("TextLabel", {
+                Position = UDim2.fromOffset(14, 0),
+                Size = UDim2.new(1, -26, 0, 42),
+                AutomaticSize = Enum.AutomaticSize.Y,
+                BackgroundTransparency = 1,
+                Font = Enum.Font.GothamMedium,
+                Text = tostring(message),
+                TextColor3 = TEXT,
+                TextSize = 12,
+                TextWrapped = true,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                TextYAlignment = Enum.TextYAlignment.Center,
+                ZIndex = 102
+            })
+            label.Parent = toast
+
+            toast.Position = UDim2.fromOffset(20, 0)
+            toast.BackgroundTransparency = 1
+            label.TextTransparency = 1
+            tween(toast, 0.18, {
+                Position = UDim2.fromOffset(0, 0),
+                BackgroundTransparency = 0.03
+            })
+            tween(label, 0.18, {TextTransparency = 0})
+
+            task.delay(duration, function()
+                if not toast.Parent then
+                    return
+                end
+                tween(toast, 0.18, {
+                    Position = UDim2.fromOffset(20, 0),
+                    BackgroundTransparency = 1
+                })
+                tween(label, 0.18, {TextTransparency = 1})
+                task.delay(0.2, function()
+                    if toast.Parent then
+                        toast:Destroy()
+                    end
+                end)
+            end)
+        end
+
+        local function bindButtonVisual(button, normalColor, hoverColor)
+            normalColor = normalColor or PANEL_2
+            hoverColor = hoverColor or PANEL_3
+
+            track(button.MouseEnter:Connect(function()
+                tween(button, 0.12, {BackgroundColor3 = hoverColor})
+            end))
+
+            track(button.MouseLeave:Connect(function()
+                tween(button, 0.12, {BackgroundColor3 = normalColor})
+            end))
+
+            track(button.MouseButton1Down:Connect(function()
+                tween(button, 0.07, {BackgroundTransparency = 0.22})
+            end))
+
+            track(button.MouseButton1Up:Connect(function()
+                tween(button, 0.10, {BackgroundTransparency = 0})
+            end))
+        end
+
+        bindButtonVisual(SearchButton, ACCENT, ACCENT_HOVER)
+        bindButtonVisual(OutfitButton, PANEL_2, PANEL_3)
+        bindButtonVisual(MinimizeButton, PANEL_2, PANEL_3)
+        bindButtonVisual(CloseButton, PANEL_2, PANEL_3)
+        bindButtonVisual(LoadMoreButton, PANEL_2, PANEL_3)
+
+        track(SearchBox.Focused:Connect(function()
+            tween(SearchStroke, 0.15, {Color = ACCENT, Transparency = 0.15})
+        end))
+
+        track(SearchBox.FocusLost:Connect(function()
+            tween(SearchStroke, 0.15, {Color = STROKE, Transparency = 0.1})
+        end))
+
+        local DetailsOverlay = create("Frame", {
+            Name = "DetailsOverlay",
+            Position = UDim2.fromOffset(0, 56),
+            Size = UDim2.new(1, 0, 1, -56),
+            BackgroundColor3 = BACKGROUND,
+            BorderSizePixel = 0,
+            Visible = false,
+            ZIndex = 40
+        })
+        DetailsOverlay.Parent = Main
+
+        local DetailsHeader = create("Frame", {
+            Size = UDim2.new(1, 0, 0, 52),
+            BackgroundColor3 = PANEL,
+            BorderSizePixel = 0,
+            ZIndex = 41
+        })
+        DetailsHeader.Parent = DetailsOverlay
+
+        local DetailsBack = create("TextButton", {
+            Position = UDim2.fromOffset(12, 9),
+            Size = UDim2.fromOffset(72, 34),
+            BackgroundColor3 = PANEL_2,
+            AutoButtonColor = false,
+            Font = Enum.Font.GothamBold,
+            Text = "Back",
+            TextColor3 = TEXT,
+            TextSize = 12,
+            ZIndex = 42
+        })
+        addCorner(DetailsBack, 10)
+        addStroke(DetailsBack, STROKE, 1, 0.2)
+        DetailsBack.Parent = DetailsHeader
+        bindButtonVisual(DetailsBack, PANEL_2, PANEL_3)
+
+        local DetailsHeaderTitle = create("TextLabel", {
+            Position = UDim2.fromOffset(96, 0),
+            Size = UDim2.new(1, -108, 1, 0),
+            BackgroundTransparency = 1,
+            Font = Enum.Font.GothamBold,
+            Text = "Item Details",
+            TextColor3 = TEXT,
+            TextSize = 15,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            ZIndex = 42
+        })
+        DetailsHeaderTitle.Parent = DetailsHeader
+
+        local DetailsScroll = create("ScrollingFrame", {
+            Position = UDim2.fromOffset(0, 52),
+            Size = UDim2.new(1, 0, 1, -52),
+            BackgroundTransparency = 1,
+            BorderSizePixel = 0,
+            CanvasSize = UDim2.fromOffset(0, 0),
+            AutomaticCanvasSize = Enum.AutomaticSize.Y,
+            ScrollBarThickness = 4,
+            ScrollBarImageColor3 = ACCENT,
+            ZIndex = 41
+        })
+        DetailsScroll.Parent = DetailsOverlay
+
+        local DetailsPadding = create("UIPadding", {
+            PaddingBottom = UDim.new(0, 18),
+            PaddingLeft = UDim.new(0, 16),
+            PaddingRight = UDim.new(0, 16),
+            PaddingTop = UDim.new(0, 16)
+        })
+        DetailsPadding.Parent = DetailsScroll
+
+        local DetailsLayout = create("UIListLayout", {
+            Padding = UDim.new(0, 12),
+            SortOrder = Enum.SortOrder.LayoutOrder
+        })
+        DetailsLayout.Parent = DetailsScroll
+
+        local DetailsHero = create("Frame", {
+            Size = UDim2.new(1, 0, 0, 220),
+            BackgroundColor3 = PANEL,
+            BorderSizePixel = 0,
+            LayoutOrder = 1,
+            ZIndex = 42
+        })
+        addCorner(DetailsHero, 14)
+        addStroke(DetailsHero, STROKE, 1, 0.2)
+        DetailsHero.Parent = DetailsScroll
+
+        local DetailsImageShell = create("Frame", {
+            Position = UDim2.fromOffset(12, 12),
+            Size = UDim2.fromOffset(196, 196),
+            BackgroundColor3 = PANEL_2,
+            BorderSizePixel = 0,
+            ZIndex = 43
+        })
+        addCorner(DetailsImageShell, 12)
+        DetailsImageShell.Parent = DetailsHero
+
+        local DetailsImage = create("ImageLabel", {
+            Position = UDim2.fromOffset(6, 6),
+            Size = UDim2.new(1, -12, 1, -12),
+            BackgroundTransparency = 1,
+            Image = "",
+            ScaleType = Enum.ScaleType.Fit,
+            ZIndex = 44
+        })
+        DetailsImage.Parent = DetailsImageShell
+
+        local DetailsName = create("TextLabel", {
+            Position = UDim2.fromOffset(224, 16),
+            Size = UDim2.new(1, -240, 0, 58),
+            BackgroundTransparency = 1,
+            Font = Enum.Font.GothamBold,
+            Text = "",
+            TextColor3 = TEXT,
+            TextSize = 18,
+            TextWrapped = true,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            TextYAlignment = Enum.TextYAlignment.Top,
+            ZIndex = 43
+        })
+        DetailsName.Parent = DetailsHero
+
+        local DetailsCreator = create("TextLabel", {
+            Position = UDim2.fromOffset(224, 78),
+            Size = UDim2.new(1, -240, 0, 24),
+            BackgroundTransparency = 1,
+            Font = Enum.Font.Gotham,
+            Text = "",
+            TextColor3 = MUTED,
+            TextSize = 12,
+            TextTruncate = Enum.TextTruncate.AtEnd,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            ZIndex = 43
+        })
+        DetailsCreator.Parent = DetailsHero
+
+        local DetailsMeta = create("TextLabel", {
+            Position = UDim2.fromOffset(224, 106),
+            Size = UDim2.new(1, -240, 0, 52),
+            BackgroundTransparency = 1,
+            Font = Enum.Font.GothamMedium,
+            Text = "",
+            TextColor3 = Color3.fromRGB(205, 214, 255),
+            TextSize = 12,
+            TextWrapped = true,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            TextYAlignment = Enum.TextYAlignment.Top,
+            ZIndex = 43
+        })
+        DetailsMeta.Parent = DetailsHero
+
+        local DetailsTryButton = create("TextButton", {
+            AnchorPoint = Vector2.new(0, 1),
+            Position = UDim2.new(0, 224, 1, -12),
+            Size = UDim2.new(1, -346, 0, 38),
+            BackgroundColor3 = ACCENT,
+            AutoButtonColor = false,
+            Font = Enum.Font.GothamBold,
+            Text = "Try On",
+            TextColor3 = Color3.new(1, 1, 1),
+            TextSize = 13,
+            ZIndex = 43
+        })
+        addCorner(DetailsTryButton, 10)
+        DetailsTryButton.Parent = DetailsHero
+        bindButtonVisual(DetailsTryButton, ACCENT, ACCENT_HOVER)
+
+        local DetailsCopyButton = create("TextButton", {
+            AnchorPoint = Vector2.new(1, 1),
+            Position = UDim2.new(1, -12, 1, -12),
+            Size = UDim2.fromOffset(104, 38),
+            BackgroundColor3 = PANEL_2,
+            AutoButtonColor = false,
+            Font = Enum.Font.GothamBold,
+            Text = "Kopy ID",
+            TextColor3 = TEXT,
+            TextSize = 12,
+            ZIndex = 43
+        })
+        addCorner(DetailsCopyButton, 10)
+        addStroke(DetailsCopyButton, STROKE, 1, 0.2)
+        DetailsCopyButton.Parent = DetailsHero
+        bindButtonVisual(DetailsCopyButton, PANEL_2, PANEL_3)
+
+        local DetailsDescriptionShell = create("Frame", {
+            Size = UDim2.new(1, 0, 0, 78),
+            BackgroundColor3 = PANEL,
+            BorderSizePixel = 0,
+            LayoutOrder = 2,
+            ZIndex = 42
+        })
+        addCorner(DetailsDescriptionShell, 14)
+        addStroke(DetailsDescriptionShell, STROKE, 1, 0.2)
+        DetailsDescriptionShell.Parent = DetailsScroll
+
+        local DetailsDescriptionTitle = create("TextLabel", {
+            Position = UDim2.fromOffset(14, 12),
+            Size = UDim2.new(1, -28, 0, 24),
+            BackgroundTransparency = 1,
+            Font = Enum.Font.GothamBold,
+            Text = "Description",
+            TextColor3 = TEXT,
+            TextSize = 14,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            ZIndex = 43
+        })
+        DetailsDescriptionTitle.Parent = DetailsDescriptionShell
+
+        local DetailsDescription = create("TextLabel", {
+            Position = UDim2.fromOffset(14, 42),
+            Size = UDim2.new(1, -28, 0, 22),
+            BackgroundTransparency = 1,
+            Font = Enum.Font.Gotham,
+            Text = "",
+            TextColor3 = MUTED,
+            TextSize = 12,
+            TextWrapped = true,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            TextYAlignment = Enum.TextYAlignment.Top,
+            ZIndex = 43
+        })
+        DetailsDescription.Parent = DetailsDescriptionShell
+
+        local function resizeDetailsDescription()
+            local width = math.max(120, DetailsDescriptionShell.AbsoluteSize.X - 28)
+            local bounds = TextService:GetTextSize(
+                tostring(DetailsDescription.Text or ""),
+                DetailsDescription.TextSize,
+                DetailsDescription.Font,
+                Vector2.new(width, 10000)
+            )
+            local textHeight = math.clamp(math.ceil(bounds.Y), 20, 238)
+            DetailsDescription.Size = UDim2.new(1, -28, 0, textHeight)
+            DetailsDescriptionShell.Size = UDim2.new(1, 0, 0, math.clamp(textHeight + 56, 76, 294))
+        end
+
+        local OutfitOverlay = create("Frame", {
+            Name = "OutfitOverlay",
+            Position = UDim2.fromOffset(0, 56),
+            Size = UDim2.new(1, 0, 1, -56),
+            BackgroundColor3 = BACKGROUND,
+            BorderSizePixel = 0,
+            Visible = false,
+            ZIndex = 50
+        })
+        OutfitOverlay.Parent = Main
+
+        local OutfitHeader = create("Frame", {
+            Size = UDim2.new(1, 0, 0, 52),
+            BackgroundColor3 = PANEL,
+            BorderSizePixel = 0,
+            ZIndex = 51
+        })
+        OutfitHeader.Parent = OutfitOverlay
+
+        local OutfitBack = create("TextButton", {
+            Position = UDim2.fromOffset(12, 9),
+            Size = UDim2.fromOffset(72, 34),
+            BackgroundColor3 = PANEL_2,
+            AutoButtonColor = false,
+            Font = Enum.Font.GothamBold,
+            Text = "Back",
+            TextColor3 = TEXT,
+            TextSize = 12,
+            ZIndex = 52
+        })
+        addCorner(OutfitBack, 10)
+        addStroke(OutfitBack, STROKE, 1, 0.2)
+        OutfitBack.Parent = OutfitHeader
+        bindButtonVisual(OutfitBack, PANEL_2, PANEL_3)
+
+        local OutfitTitle = create("TextLabel", {
+            Position = UDim2.fromOffset(96, 0),
+            Size = UDim2.new(1, -226, 1, 0),
+            BackgroundTransparency = 1,
+            Font = Enum.Font.GothamBold,
+            Text = "Current Local Outfit",
+            TextColor3 = TEXT,
+            TextSize = 15,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            ZIndex = 52
+        })
+        OutfitTitle.Parent = OutfitHeader
+
+        local ResetAllButton = create("TextButton", {
+            AnchorPoint = Vector2.new(1, 0.5),
+            Position = UDim2.new(1, -12, 0.5, 0),
+            Size = UDim2.fromOffset(112, 34),
+            BackgroundColor3 = Color3.fromRGB(78, 38, 48),
+            AutoButtonColor = false,
+            Font = Enum.Font.GothamBold,
+            Text = "Reset All",
+            TextColor3 = Color3.fromRGB(255, 189, 198),
+            TextSize = 12,
+            ZIndex = 52
+        })
+        addCorner(ResetAllButton, 10)
+        addStroke(ResetAllButton, ERROR_COLOR, 1, 0.45)
+        ResetAllButton.Parent = OutfitHeader
+        bindButtonVisual(ResetAllButton, Color3.fromRGB(78, 38, 48), Color3.fromRGB(95, 44, 56))
+
+        local OutfitScroll = create("ScrollingFrame", {
+            Position = UDim2.fromOffset(14, 66),
+            Size = UDim2.new(1, -28, 1, -80),
+            BackgroundTransparency = 1,
+            BorderSizePixel = 0,
+            CanvasSize = UDim2.fromOffset(0, 0),
+            AutomaticCanvasSize = Enum.AutomaticSize.Y,
+            ScrollBarThickness = 4,
+            ScrollBarImageColor3 = ACCENT,
+            ZIndex = 51
+        })
+        OutfitScroll.Parent = OutfitOverlay
+
+        local OutfitList = create("UIListLayout", {
+            Padding = UDim.new(0, 10),
+            SortOrder = Enum.SortOrder.LayoutOrder
+        })
+        OutfitList.Parent = OutfitScroll
+
+        local OutfitEmpty = create("TextLabel", {
+            Size = UDim2.new(1, 0, 0, 100),
+            BackgroundTransparency = 1,
+            Font = Enum.Font.GothamMedium,
+            Text = "No Marketplace items are being tested right now.",
+            TextColor3 = MUTED,
+            TextSize = 13,
+            TextWrapped = true,
+            ZIndex = 52
+        })
+        OutfitEmpty.Parent = OutfitScroll
+
+        local function thumbnailFor(assetId)
+            return "rbxthumb://type=Asset&id=" .. tostring(assetId) .. "&w=420&h=420"
+        end
+
+        local function normalizeAssetType(value)
+            if typeof(value) == "EnumItem" then
+                return value.Value, value.Name
+            end
+
+            if type(value) == "number" then
+                return value, ASSET_TYPE_NAMES[value]
+            end
+
+            if type(value) == "string" then
+                local numeric = tonumber(value)
+                if numeric then
+                    return numeric, ASSET_TYPE_NAMES[numeric]
+                end
+                local clean = value:match("([^%.]+)$") or value
+                local enumItem = avatarAssetType(clean)
+                if enumItem then
+                    return enumItem.Value, enumItem.Name
+                end
+                return nil, clean
+            end
+
+            return nil, nil
+        end
+
+        local function normalizeCatalogItem(raw)
+            if type(raw) ~= "table" then
+                return nil
+            end
+
+            local itemType = raw.ItemType or raw.itemType or raw.Type or raw.type
+            if typeof(itemType) == "EnumItem" then
+                itemType = itemType.Name
+            end
+            itemType = tostring(itemType or "Asset")
+            if not containsPlain(itemType, "asset") then
+                return nil
+            end
+
+            local id = tonumber(raw.Id or raw.id or raw.AssetId or raw.assetId)
+            if not id then
+                return nil
+            end
+
+            local assetTypeId, assetTypeName = normalizeAssetType(
+                raw.AssetType
+                or raw.assetType
+                or raw.AssetTypeId
+                or raw.assetTypeId
+                or raw.AvatarAssetType
+                or raw.avatarAssetType
+            )
+
+            local creatorName = raw.CreatorName or raw.creatorName
+            local creatorId = raw.CreatorTargetId or raw.creatorTargetId or raw.CreatorId or raw.creatorId
+            local creatorType = raw.CreatorType or raw.creatorType
+            local creator = raw.Creator or raw.creator
+            if type(creator) == "table" then
+                creatorName = creator.Name or creator.name or creatorName
+                creatorId = creator.Id or creator.id or creatorId
+                creatorType = creator.Type or creator.type or creatorType
+            end
+
+            local price = raw.Price or raw.price or raw.LowestPrice or raw.lowestPrice
+            if price ~= nil then
+                price = tonumber(price)
+            end
+
+            return {
+                Id = id,
+                Name = tostring(raw.Name or raw.name or ("Asset " .. tostring(id))),
+                Description = tostring(raw.Description or raw.description or ""),
+                CreatorName = tostring(creatorName or "Unknown creator"),
+                CreatorId = tonumber(creatorId),
+                CreatorType = tostring(creatorType or ""),
+                AssetTypeId = assetTypeId,
+                AssetTypeName = ASSET_TYPE_NAMES[assetTypeId] or assetTypeName or "Avatar Item",
+                Price = price,
+                PriceStatus = raw.PriceStatus or raw.priceStatus,
+                FavoriteCount = tonumber(raw.FavoriteCount or raw.favoriteCount),
+                Raw = raw
+            }
+        end
+
+        local function itemAllowed(item, category)
+            if not item or not item.AssetTypeId then
+                return false
+            end
+            return category.AllowedIds[item.AssetTypeId] == true
+        end
+
+        local function normalizePage(rawPage, category)
+            local output = {}
+            local seen = {}
+
+            for _, raw in ipairs(rawPage or {}) do
+                local item = normalizeCatalogItem(raw)
+                if item and itemAllowed(item, category) and not seen[item.Id] then
+                    seen[item.Id] = true
+                    table.insert(output, item)
+                end
+            end
+
+            return output
+        end
+
+        local function resultScore(item, query)
+            query = lower(trim(query))
+            if query == "" then
+                return 0
+            end
+
+            local name = lower(item.Name)
+            if name == query then
+                return 1000
+            end
+            if name:sub(1, #query) == query then
+                return 700
+            end
+            if name:find(query, 1, true) then
+                return 500
+            end
+
+            local score = 0
+            for token in query:gmatch("%S+") do
+                if name:find(token, 1, true) then
+                    score = score + 100
+                end
+            end
+            return score
+        end
+
+        local function sortResults(results, query)
+            table.sort(results, function(a, b)
+                local aScore = resultScore(a, query)
+                local bScore = resultScore(b, query)
+                if aScore == bScore then
+                    return lower(a.Name) < lower(b.Name)
+                end
+                return aScore > bScore
+            end)
+        end
+
+        local function createEngineSearch(query, category)
+            local params = CatalogSearchParams.new()
+            params.SearchKeyword = query or ""
+            params.AssetTypes = category.EngineTypes
+            params.IncludeOffSale = true
+            params.Limit = 30
+
+            pcall(function()
+                params.SortType = Enum.CatalogSortType.Relevance
+            end)
+            pcall(function()
+                params.SortAggregation = Enum.CatalogSortAggregation.AllTime
+            end)
+
+            local pages = AvatarEditorService:SearchCatalogAsync(params)
+            local firstPage = normalizePage(pages:GetCurrentPage(), category)
+
+            local function hasMorePages()
+                local ok, finished = pcall(function()
+                    return pages.IsFinished
+                end)
+                return ok and not finished
+            end
+
+            local function nextPage()
+                if not hasMorePages() then
+                    return {}, false
+                end
+                pages:AdvanceToNextPageAsync()
+                return normalizePage(pages:GetCurrentPage(), category), hasMorePages()
+            end
+
+            return firstPage, nextPage, hasMorePages(), "AvatarEditorService"
+        end
+
+        local function buildCatalogUrl(query, category, cursor)
+            local parts = {
+                "Category=" .. tostring(category.HttpCategory or 1),
+                "Subcategory=" .. tostring(category.HttpSubcategory or 1),
+                "Limit=30",
+                "SortType=0",
+                "SortAggregation=5"
+            }
+
+            if trim(query) ~= "" then
+                table.insert(parts, "Keyword=" .. HttpService:UrlEncode(trim(query)))
+            end
+
+            if cursor and cursor ~= "" then
+                table.insert(parts, "Cursor=" .. HttpService:UrlEncode(cursor))
+            end
+
+            return "https://catalog.roblox.com/v1/search/items/details?" .. table.concat(parts, "&")
+        end
+
+        local function createHttpSearch(query, category)
+            local currentCursor = nil
+
+            local function requestPage(cursor)
+                local body = httpGet(buildCatalogUrl(query, category, cursor))
+                local decoded = HttpService:JSONDecode(body)
+                local data = normalizePage(decoded.data or decoded.Data or {}, category)
+                local nextCursor = decoded.nextPageCursor or decoded.NextPageCursor
+                return data, nextCursor
+            end
+
+            local firstPage, nextCursor = requestPage(nil)
+            currentCursor = nextCursor
+
+            local function nextPage()
+                if not currentCursor then
+                    return {}, false
+                end
+                local page, newCursor = requestPage(currentCursor)
+                currentCursor = newCursor
+                return page, currentCursor ~= nil
+            end
+
+            return firstPage, nextPage, currentCursor ~= nil, "Catalog HTTP"
+        end
+
+        local ProductInfoCache = {}
+
+        local function getProductInfo(assetId)
+            assetId = tonumber(assetId)
+            if not assetId then
+                return nil
+            end
+
+            if ProductInfoCache[assetId] ~= nil then
+                return ProductInfoCache[assetId] or nil
+            end
+
+            local ok, info = pcall(function()
+                return MarketplaceService:GetProductInfoAsync(assetId, Enum.InfoType.Asset)
+            end)
+            if not ok then
+                ok, info = pcall(function()
+                    return MarketplaceService:GetProductInfo(assetId, Enum.InfoType.Asset)
+                end)
+            end
+
+            if ok and type(info) == "table" then
+                ProductInfoCache[assetId] = info
+                return info
+            end
+
+            ProductInfoCache[assetId] = false
+            return nil
+        end
+
+        local function itemFromProductInfo(assetId)
+            local info = getProductInfo(assetId)
+            if not info then
+                return nil
+            end
+
+            local item = normalizeCatalogItem({
+                Id = assetId,
+                Name = info.Name,
+                Description = info.Description,
+                Creator = info.Creator,
+                CreatorName = info.Creator and info.Creator.Name,
+                CreatorId = info.Creator and info.Creator.Id,
+                CreatorType = info.Creator and info.Creator.CreatorType,
+                AssetTypeId = info.AssetTypeId,
+                Price = info.PriceInRobux,
+                PriceStatus = info.IsForSale == false and "OffSale" or nil,
+                ItemType = "Asset"
+            })
+
+            return item
+        end
+
+        local function searchMarketplace(query, category)
+            local exactId = trim(query):match("^%d+$") and tonumber(trim(query)) or nil
+            local directItem = exactId and itemFromProductInfo(exactId) or nil
+
+            local engineOk, engineResults, engineNext, engineHasMore, engineBackend = pcall(
+                createEngineSearch,
+                query,
+                category
+            )
+
+            local results
+            local nextPage
+            local hasMore
+            local backend
+
+            if engineOk and type(engineResults) == "table" and #engineResults > 0 then
+                results = engineResults
+                nextPage = engineNext
+                hasMore = engineHasMore
+                backend = engineBackend
+            else
+                local httpOk, httpResults, httpNext, httpHasMore, httpBackend = pcall(
+                    createHttpSearch,
+                    query,
+                    category
+                )
+
+                if httpOk then
+                    results = httpResults
+                    nextPage = httpNext
+                    hasMore = httpHasMore
+                    backend = httpBackend
+                elseif engineOk then
+                    results = engineResults or {}
+                    nextPage = engineNext
+                    hasMore = engineHasMore
+                    backend = engineBackend or "AvatarEditorService"
+                else
+                    error(
+                        "AvatarEditorService error: "
+                        .. tostring(engineResults)
+                        .. " | HTTP error: "
+                        .. tostring(httpResults)
+                    )
+                end
+            end
+
+            if directItem and itemAllowed(directItem, category) then
+                local alreadyAdded = false
+                for _, item in ipairs(results) do
+                    if item.Id == directItem.Id then
+                        alreadyAdded = true
+                        break
+                    end
+                end
+                if not alreadyAdded then
+                    table.insert(results, 1, directItem)
+                end
+            end
+
+            sortResults(results, query)
+            return results, nextPage, hasMore, backend
+        end
+
+        local function getCharacter()
+            local character = LocalPlayer.Character
+            if character and character.Parent then
+                state.CurrentCharacter = character
+                return character
+            end
+            return nil
+        end
+
+        local function getHumanoid(character)
+            character = character or getCharacter()
+            if not character then
+                return nil
+            end
+            return character:FindFirstChildOfClass("Humanoid")
+                or character:WaitForChild("Humanoid", 5)
+        end
+
+        local function getSnapshot(character)
+            local snapshot = state.SnapshotByCharacter[character]
+            if not snapshot then
+                snapshot = {
+                    Captured = {},
+                    Slots = {}
+                }
+                state.SnapshotByCharacter[character] = snapshot
+            end
+            return snapshot
+        end
+
+        local function slotForAccessory(accessory)
+            if not accessory or not accessory:IsA("Accessory") then
+                return nil
+            end
+
+            local customSlot = accessory:GetAttribute("LHAvatarSlot")
+            if type(customSlot) == "string" and customSlot ~= "" then
+                return customSlot
+            end
+
+            local handle = accessory:FindFirstChild("Handle")
+            if handle then
+                -- Hair/Hat attachment names are more reliable than AccessoryType for
+                -- several older Marketplace items.
+                if handle:FindFirstChild("HairAttachment") then return "Hair" end
+                if handle:FindFirstChild("HatAttachment") then return "Hat" end
+            end
+
+            local ok, typeName = pcall(function()
+                return accessory.AccessoryType.Name
+            end)
+            if ok and typeName and ACCESSORY_NAME_TO_SLOT[typeName] then
+                return ACCESSORY_NAME_TO_SLOT[typeName]
+            end
+
+            if handle then
+                for _, child in ipairs(handle:GetChildren()) do
+                    if child:IsA("Attachment") then
+                        local inferred = ACCESSORY_ATTACHMENT_TO_SLOT[child.Name]
+                        if inferred then return inferred end
+                    end
+                end
+            end
+
+            return nil
+        end
+
+        local function instanceBelongsToSlot(instance, slot)
+            if not instance then
+                return false
+            end
+
+            if slot == "ClassicTShirt" then
+                return instance:IsA("ShirtGraphic")
+            elseif slot == "ClassicShirt" then
+                return instance:IsA("Shirt")
+            elseif slot == "ClassicPants" then
+                return instance:IsA("Pants")
+            elseif slot == "FaceDecal" then
+                return instance:IsA("Decal") and lower(instance.Name) == "face"
+            elseif instance:IsA("Accessory") then
+                return slotForAccessory(instance) == slot
+            end
+
+            return false
+        end
+
+        local function captureOriginalSlot(character, slot)
+            local snapshot = getSnapshot(character)
+            if snapshot.Captured[slot] then
+                return
+            end
+
+            snapshot.Captured[slot] = true
+            snapshot.Slots[slot] = {}
+
+            if slot == "FaceDecal" then
+                local head = character:FindFirstChild("Head")
+                if head then
+                    for _, child in ipairs(head:GetChildren()) do
+                        if instanceBelongsToSlot(child, slot) then
+                            table.insert(snapshot.Slots[slot], child:Clone())
+                        end
+                    end
+                end
+                return
+            end
+
+            for _, child in ipairs(character:GetChildren()) do
+                if instanceBelongsToSlot(child, slot) then
+                    table.insert(snapshot.Slots[slot], child:Clone())
+                end
+            end
+        end
+
+        local function destroySlotInstances(character, slot)
+            if not character then
+                return
+            end
+
+            if slot == "FaceDecal" then
+                local head = character:FindFirstChild("Head")
+                if head then
+                    for _, child in ipairs(head:GetChildren()) do
+                        if instanceBelongsToSlot(child, slot) then
+                            child:Destroy()
+                        end
+                    end
+                end
+                return
+            end
+
+            for _, child in ipairs(character:GetChildren()) do
+                if instanceBelongsToSlot(child, slot) then
+                    child:Destroy()
+                end
+            end
+        end
+
+        local function prepareAccessory(accessory, item, slot)
+            accessory:SetAttribute("LHAvatarItemId", item.Id)
+            accessory:SetAttribute("LHAvatarSlot", slot)
+            accessory:SetAttribute("LHAvatarKreator", true)
+
+            local desiredType = ASSET_TYPE_TO_ACCESSORY_TYPE[item.AssetTypeId]
+            if desiredType then
+                pcall(function()
+                    accessory.AccessoryType = desiredType
+                end)
+            end
+
+            local handle = accessory:FindFirstChild("Handle")
+            if handle and handle:IsA("BasePart") then
+                handle.CanCollide = false
+                handle.CanTouch = false
+                handle.Massless = true
+            end
+        end
+
+        local function findAccessoryHandle(accessory)
+            local handle = accessory and accessory:FindFirstChild("Handle")
+            return handle and handle:IsA("BasePart") and handle or nil
+        end
+
+        local function findMatchingCharacterAttachment(character, accessory)
+            local handle = findAccessoryHandle(accessory)
+            if not handle then return nil, nil end
+
+            for _, handleChild in ipairs(handle:GetChildren()) do
+                if handleChild:IsA("Attachment") then
+                    for _, characterDescendant in ipairs(character:GetDescendants()) do
+                        if characterDescendant:IsA("Attachment")
+                            and characterDescendant.Name == handleChild.Name
+                            and not characterDescendant:IsDescendantOf(accessory) then
+                            return handleChild, characterDescendant
+                        end
+                    end
+                end
+            end
+            return nil, nil
+        end
+
+        local function accessoryHasCharacterJoint(character, accessory)
+            local handle = findAccessoryHandle(accessory)
+            if not handle then return false end
+
+            for _, descendant in ipairs(character:GetDescendants()) do
+                if descendant:IsA("JointInstance") then
+                    local part0 = descendant.Part0
+                    local part1 = descendant.Part1
+                    if (part0 == handle and part1 and part1:IsDescendantOf(character) and not part1:IsDescendantOf(accessory))
+                        or (part1 == handle and part0 and part0:IsDescendantOf(character) and not part0:IsDescendantOf(accessory)) then
+                        return true, descendant
+                    end
+                elseif descendant:IsA("RigidConstraint") then
+                    local attachment0 = descendant.Attachment0
+                    local attachment1 = descendant.Attachment1
+                    if attachment0 and attachment1 then
+                        local part0 = attachment0.Parent
+                        local part1 = attachment1.Parent
+                        if (part0 == handle and part1 and part1:IsDescendantOf(character) and not part1:IsDescendantOf(accessory))
+                            or (part1 == handle and part0 and part0:IsDescendantOf(character) and not part0:IsDescendantOf(accessory)) then
+                            return true, descendant
+                        end
+                    end
+                end
+            end
+
+            return false
+        end
+
+        local function makeManualAttachmentWeld(character, accessory)
+            local handle = findAccessoryHandle(accessory)
+            if not handle then return false, "Accessory Handle is missing." end
+
+            local handleAttachment, characterAttachment = findMatchingCharacterAttachment(character, accessory)
+            if not handleAttachment or not characterAttachment then
+                return false, "No matching character Attachment was found."
+            end
+
+            local bodyPart = characterAttachment.Parent
+            if not bodyPart or not bodyPart:IsA("BasePart") then
+                return false, "Matching character Attachment was not inside a BasePart."
+            end
+
+            pcall(function()
+                handle.CFrame = characterAttachment.WorldCFrame * handleAttachment.CFrame:Inverse()
+            end)
+
+            local existing = handle:FindFirstChild("AccessoryWeld")
+            if existing and existing:IsA("JointInstance") then existing:Destroy() end
+
+            local weld = Instance.new("Weld")
+            weld.Name = "AccessoryWeld"
+            weld.Part0 = handle
+            weld.Part1 = bodyPart
+            weld.C0 = handleAttachment.CFrame
+            weld.C1 = characterAttachment.CFrame
+            weld.Parent = handle
+
+            local attached = accessoryHasCharacterJoint(character, accessory)
+            return attached == true, attached and "matching Attachment weld created" or "manual weld verification failed"
+        end
+
+        local function makeLegacyHeadWeld(character, accessory)
+            local handle = findAccessoryHandle(accessory)
+            local head = character and character:FindFirstChild("Head")
+            if not handle or not head or not head:IsA("BasePart") then
+                return false, "Legacy head weld is unavailable."
+            end
+
+            local slot = slotForAccessory(accessory)
+            if slot ~= "Hat" and slot ~= "Hair" and slot ~= "FaceAccessory" then
+                return false, "Legacy head weld is only used for head accessories."
+            end
+
+            local attachmentPoint = CFrame.new()
+            pcall(function() attachmentPoint = accessory.AttachmentPoint end)
+            local headOffset = CFrame.new(0, head.Size.Y / 2, 0)
+
+            pcall(function()
+                handle.CFrame = head.CFrame * headOffset * attachmentPoint:Inverse()
+            end)
+
+            local weld = Instance.new("Weld")
+            weld.Name = "AccessoryWeld"
+            weld.Part0 = handle
+            weld.Part1 = head
+            weld.C0 = attachmentPoint
+            weld.C1 = headOffset
+            weld.Parent = handle
+
+            local attached = accessoryHasCharacterJoint(character, accessory)
+            return attached == true, attached and "legacy head weld created" or "legacy weld verification failed"
+        end
+
+        local function attachAccessory(humanoid, character, accessory)
+            accessory.Parent = nil
+
+            local addOk, addError = pcall(function()
+                humanoid:AddAccessory(accessory)
+            end)
+            if not addOk then
+                return false, "Humanoid:AddAccessory", tostring(addError)
+            end
+
+            for _ = 1, 2 do RunService.Heartbeat:Wait() end
+            if accessory.Parent == character and accessoryHasCharacterJoint(character, accessory) then
+                return true, "Humanoid:AddAccessory"
+            end
+
+            -- Roblox documents that client-sided AddAccessory calls may parent the
+            -- Accessory without producing the expected weld. BuildRigFromAttachments
+            -- is the official repair path for that client-side case.
+            local buildOk, buildError = pcall(function()
+                humanoid:BuildRigFromAttachments()
+            end)
+            for _ = 1, 2 do RunService.Heartbeat:Wait() end
+            if buildOk and accessory.Parent == character and accessoryHasCharacterJoint(character, accessory) then
+                return true, "Humanoid:AddAccessory + BuildRigFromAttachments"
+            end
+
+            if accessory.Parent ~= character then
+                accessory.Parent = character
+            end
+
+            local manualOk, manualDetail = makeManualAttachmentWeld(character, accessory)
+            if manualOk then
+                return true, "Manual Attachment Weld"
+            end
+
+            local legacyOk, legacyDetail = makeLegacyHeadWeld(character, accessory)
+            if legacyOk then
+                return true, "Legacy Head Weld"
+            end
+
+            return false,
+                "Humanoid:AddAccessory",
+                tostring(buildError or addError or manualDetail or legacyDetail or "Accessory stayed unattached.")
+        end
+
+        local function restoreOriginalSlot(character, slot)
+            if not character then
+                return false
+            end
+
+            destroySlotInstances(character, slot)
+
+            local snapshot = getSnapshot(character)
+            local originals = snapshot.Slots[slot] or {}
+            local humanoid = getHumanoid(character)
+
+            for _, original in ipairs(originals) do
+                local clone = original:Clone()
+                if slot == "FaceDecal" then
+                    local head = character:FindFirstChild("Head")
+                    if head then
+                        clone.Parent = head
+                    else
+                        clone:Destroy()
+                    end
+                elseif clone:IsA("Accessory") and humanoid then
+                    local restored = attachAccessory(humanoid, character, clone)
+                    if not restored then
+                        pcall(function() clone:Destroy() end)
+                    end
+                else
+                    clone.Parent = character
+                end
+            end
+
+            return true
+        end
+
+        local function destroyLoadedResult(result)
+            if typeof(result) == "Instance" then
+                pcall(function()
+                    result:Destroy()
+                end)
+            elseif type(result) == "table" then
+                for _, instance in ipairs(result) do
+                    if typeof(instance) == "Instance" then
+                        pcall(function()
+                            instance:Destroy()
+                        end)
+                    end
+                end
+            end
+        end
+
+        local function getLoadedRoots(result)
+            if typeof(result) == "Instance" then
+                return {result}
+            end
+
+            local roots = {}
+            if type(result) == "table" then
+                for _, instance in ipairs(result) do
+                    if typeof(instance) == "Instance" then
+                        table.insert(roots, instance)
+                    end
+                end
+            end
+            return roots
+        end
+
+        local Wear = {}
+
+        -- Avatar Kreator v3 Try On notes:
+        -- * Default: matching item types replace each other.
+        -- * Item Stacking: accessories of the same type are preserved and appended locally.
+        -- * Every successful Try On toast includes [the method that aktually worked].
+        -- * Failed methods are written to the developer/executor console for testing.
+
+        function Wear.DescendantsIncludingRoot(root)
+            local output = {root}
+            for _, descendant in ipairs(root:GetDescendants()) do
+                output[#output + 1] = descendant
+            end
+            return output
+        end
+
+        function Wear.CloneFirstClass(roots, className)
+            for _, root in ipairs(roots) do
+                for _, instance in ipairs(Wear.DescendantsIncludingRoot(root)) do
+                    if instance:IsA(className) then return instance:Clone() end
+                end
+            end
+            return nil
+        end
+
+        function Wear.CloneAccessories(roots)
+            local output = {}
+            local seen = {}
+            for _, root in ipairs(roots) do
+                for _, instance in ipairs(Wear.DescendantsIncludingRoot(root)) do
+                    if instance:IsA("Accessory") and not seen[instance] then
+                        seen[instance] = true
+                        output[#output + 1] = instance:Clone()
+                    end
+                end
+            end
+            return output
+        end
+
+        function Wear.ResolveMissingAssetType(item)
+            if item.AssetTypeId and ASSET_TYPE_TO_SLOT[item.AssetTypeId] then return true end
+            local info = getProductInfo(item.Id)
+            if not info then return false end
+            local typeId = tonumber(info.AssetTypeId)
+            if not typeId or not ASSET_TYPE_TO_SLOT[typeId] then return false end
+            item.AssetTypeId = typeId
+            item.AssetTypeName = ASSET_TYPE_NAMES[typeId] or item.AssetTypeName
+            item.Name = info.Name or item.Name
+            item.Description = info.Description or item.Description
+            if info.Creator then
+                item.CreatorName = info.Creator.Name or item.CreatorName
+                item.CreatorId = tonumber(info.Creator.Id) or item.CreatorId
+            end
+            item.Price = tonumber(info.PriceInRobux) or item.Price
+            return true
+        end
+
+        Wear.AssetLoaders = {
+            {
+                Name = "AssetService",
+                Run = function(assetId)
+                    return AssetService:LoadAssetAsync(assetId)
+                end
+            },
+            {
+                Name = "InsertService",
+                Run = function(assetId)
+                    return InsertService:LoadAsset(assetId)
+                end
+            },
+            {
+                Name = "GetObjects",
+                Run = function(assetId)
+                    return game:GetObjects("rbxassetid://" .. tostring(assetId))
+                end
+            }
+        }
+
+        function Wear.Debug(methodName, worked, detail)
+            local stateText = worked and "WORKED" or "FAILED"
+            warn(("[Avatar Kreator][%s] %s%s"):format(
+                tostring(methodName),
+                stateText,
+                detail and (" - " .. tostring(detail)) or ""
+            ))
+        end
+
+        function Wear.WithRobloxIdentity(callback)
+            local setter = getGlobal("setthreadidentity")
+                or getGlobal("set_thread_identity")
+                or getGlobal("setidentity")
+            local getter = getGlobal("getthreadidentity")
+                or getGlobal("get_thread_identity")
+                or getGlobal("getidentity")
+
+            local previous
+            if typeof(getter) == "function" then
+                pcall(function() previous = getter() end)
+            end
+            if typeof(setter) == "function" then
+                pcall(setter, 8)
+            end
+
+            local ok, packed = pcall(function()
+                return table.pack(callback())
+            end)
+
+            if typeof(setter) == "function" and previous ~= nil then
+                pcall(setter, previous)
+            end
+
+            if not ok then return false, packed end
+            return true, packed
+        end
+
+        function Wear.CharacterSlotLooksApplied(character, slot, selectedItems)
+            if #selectedItems == 0 then return true end
+            if not character then return false end
+
+            if slot == "ClassicTShirt" then
+                return character:FindFirstChildOfClass("ShirtGraphic") ~= nil
+            elseif slot == "ClassicShirt" then
+                return character:FindFirstChildOfClass("Shirt") ~= nil
+            elseif slot == "ClassicPants" then
+                return character:FindFirstChildOfClass("Pants") ~= nil
+            elseif slot == "FaceDecal" then
+                local head = character:FindFirstChild("Head")
+                return head and head:FindFirstChild("face") ~= nil
+            end
+
+            for _, child in ipairs(character:GetChildren()) do
+                if child:IsA("Accessory")
+                    and slotForAccessory(child) == slot
+                    and accessoryHasCharacterJoint(character, child) then
+                    return true
+                end
+            end
+            return false
+        end
+
+        function Wear.GetSlotItems(slot)
+            local items = state.EquippedBySlot[slot]
+            if type(items) ~= "table" then return {} end
+            if items.Id then return {items} end
+            return items
+        end
+
+        function Wear.CopyItems(items)
+            local output = {}
+            for _, item in ipairs(items or {}) do
+                output[#output + 1] = item
+            end
+            return output
+        end
+
+        function Wear.IsEquipped(item)
+            if not item or not item.AssetTypeId then return false end
+            local slot = ASSET_TYPE_TO_SLOT[item.AssetTypeId]
+            for _, selected in ipairs(Wear.GetSlotItems(slot)) do
+                if tonumber(selected.Id) == tonumber(item.Id) then return true end
+            end
+            return false
+        end
+
+        function Wear.IsAccessoryItem(item)
+            return item and ASSET_TYPE_TO_ACCESSORY_TYPE[item.AssetTypeId] ~= nil
+        end
+
+        function Wear.GetOriginalDescription(character, humanoid)
+            local cached = state.OriginalDescriptionByCharacter[character]
+            if cached then return cached end
+
+            local ok, description = pcall(function()
+                return humanoid:GetAppliedDescription()
+            end)
+            if not ok or not description then
+                Wear.Debug("Humanoid.GetAppliedDescription", false, description)
+                return nil
+            end
+
+            local cloneOk, clone = pcall(function() return description:Clone() end)
+            state.OriginalDescriptionByCharacter[character] = (cloneOk and clone) or description
+            Wear.Debug("Humanoid.GetAppliedDescription", true, "original avatar captured")
+            return state.OriginalDescriptionByCharacter[character]
+        end
+
+        function Wear.GetDescriptionProperty(slot)
+            if slot == "ClassicTShirt" then return "GraphicTShirt" end
+            if slot == "ClassicShirt" then return "Shirt" end
+            if slot == "ClassicPants" then return "Pants" end
+            if slot == "FaceDecal" then return "Face" end
+            return nil
+        end
+
+        function Wear.BuildDescription(character, humanoid, slot, selectedItems)
+            local currentOk, description = pcall(function()
+                return humanoid:GetAppliedDescription()
+            end)
+            if not currentOk or not description then
+                return nil, "Humanoid:GetAppliedDescription failed: " .. tostring(description)
+            end
+
+            local original = Wear.GetOriginalDescription(character, humanoid)
+            if not original then
+                return nil, "Original HumanoidDescription was unavailable."
+            end
+
+            local propertyName = Wear.GetDescriptionProperty(slot)
+            if propertyName then
+                local targetId
+                if #selectedItems > 0 then
+                    targetId = tonumber(selectedItems[#selectedItems].Id) or 0
+                else
+                    local readOk, originalId = pcall(function() return original[propertyName] end)
+                    targetId = readOk and tonumber(originalId) or 0
+                end
+                local writeOk, writeError = pcall(function() description[propertyName] = targetId end)
+                if not writeOk then return nil, writeError end
+                return description
+            end
+
+            local targetType = nil
+            if #selectedItems > 0 then
+                targetType = ASSET_TYPE_TO_ACCESSORY_TYPE[selectedItems[1].AssetTypeId]
+            else
+                for typeId, mappedSlot in pairs(ASSET_TYPE_TO_SLOT) do
+                    if mappedSlot == slot and ASSET_TYPE_TO_ACCESSORY_TYPE[typeId] then
+                        targetType = ASSET_TYPE_TO_ACCESSORY_TYPE[typeId]
+                        break
+                    end
+                end
+            end
+            if not targetType then return nil, "AccessoryType could not be resolved for " .. tostring(slot) end
+
+            local okCurrent, currentAccessories = pcall(function() return description:GetAccessories(true) end)
+            local okOriginal, originalAccessories = pcall(function() return original:GetAccessories(true) end)
+            if not okCurrent or type(currentAccessories) ~= "table" then
+                return nil, "GetAccessories failed."
+            end
+            if not okOriginal or type(originalAccessories) ~= "table" then originalAccessories = {} end
+
+            local rebuilt = {}
+            for _, record in ipairs(currentAccessories) do
+                if record.AccessoryType ~= targetType then
+                    rebuilt[#rebuilt + 1] = record
+                end
+            end
+
+            if #selectedItems == 0 or state.ItemStacking then
+                for _, record in ipairs(originalAccessories) do
+                    if record.AccessoryType == targetType then
+                        rebuilt[#rebuilt + 1] = record
+                    end
+                end
+            end
+
+            local order = #rebuilt + 1
+            for _, item in ipairs(selectedItems) do
+                rebuilt[#rebuilt + 1] = {
+                    AssetId = tonumber(item.Id),
+                    AccessoryType = ASSET_TYPE_TO_ACCESSORY_TYPE[item.AssetTypeId] or targetType,
+                    IsLayered = tonumber(item.AssetTypeId) and item.AssetTypeId >= 64 or false,
+                    Order = order
+                }
+                order = order + 1
+            end
+
+            local setOk, setError = pcall(function() description:SetAccessories(rebuilt, true) end)
+            if not setOk then return nil, setError end
+            return description
+        end
+
+        function Wear.DescriptionContains(description, slot, selectedItems)
+            if not description then return false end
+            if #selectedItems == 0 then return true end
+
+            local propertyName = Wear.GetDescriptionProperty(slot)
+            if propertyName then
+                local ok, value = pcall(function() return description[propertyName] end)
+                return ok and tonumber(value) == tonumber(selectedItems[#selectedItems].Id)
+            end
+
+            local ok, accessories = pcall(function() return description:GetAccessories(true) end)
+            if not ok or type(accessories) ~= "table" then return false end
+            local found = {}
+            for _, record in ipairs(accessories) do
+                found[tonumber(record.AssetId)] = (found[tonumber(record.AssetId)] or 0) + 1
+            end
+            for _, item in ipairs(selectedItems) do
+                local id = tonumber(item.Id)
+                if not id or not found[id] or found[id] <= 0 then return false end
+                found[id] = found[id] - 1
+            end
+            return true
+        end
+
+        function Wear.TryDescriptionMethod(humanoid, description, slot, selectedItems, methodName, resetMode)
+            local method = resetMode and humanoid.ApplyDescriptionResetAsync or humanoid.ApplyDescriptionAsync
+            if typeof(method) ~= "function" then
+                Wear.Debug(methodName, false, "method unavailable")
+                return false
+            end
+
+            local variants = {
+                {
+                    Name = methodName .. " + ClientOnly",
+                    Run = function()
+                        method(humanoid, description, Enum.AssetTypeVerification.ClientOnly)
+                    end
+                },
+                {
+                    Name = methodName .. " + Default",
+                    Run = function()
+                        method(humanoid, description)
+                    end
+                }
+            }
+
+            for _, variant in ipairs(variants) do
+                local callOk, packed = Wear.WithRobloxIdentity(variant.Run)
+                if callOk then
+                    pcall(function() humanoid:BuildRigFromAttachments() end)
+                    for _ = 1, 2 do RunService.Heartbeat:Wait() end
+
+                    local readOk, applied = pcall(function() return humanoid:GetAppliedDescription() end)
+                    local descriptionVerified = readOk and Wear.DescriptionContains(applied, slot, selectedItems)
+                    local visibleVerified = Wear.CharacterSlotLooksApplied(humanoid.Parent, slot, selectedItems)
+                    if applied and applied ~= description then
+                        pcall(function() applied:Destroy() end)
+                    end
+
+                    local verified = descriptionVerified and visibleVerified
+                    Wear.Debug(
+                        variant.Name,
+                        verified,
+                        verified and "description + visible avatar verified"
+                            or "method returned but the avatar did not visibly attach the requested item"
+                    )
+                    if verified then return true, variant.Name end
+                else
+                    Wear.Debug(variant.Name, false, packed)
+                end
+            end
+
+            return false
+        end
+
+        function Wear.TryDeprecatedDescriptionMethod(humanoid, description, slot, selectedItems, methodName, resetMode)
+            local method = resetMode and humanoid.ApplyDescriptionReset or humanoid.ApplyDescription
+            if typeof(method) ~= "function" then
+                Wear.Debug(methodName, false, "method unavailable")
+                return false
+            end
+
+            local variants = {
+                {
+                    Name = methodName .. " + ClientOnly",
+                    Run = function()
+                        method(humanoid, description, Enum.AssetTypeVerification.ClientOnly)
+                    end
+                },
+                {
+                    Name = methodName .. " + Default",
+                    Run = function()
+                        method(humanoid, description)
+                    end
+                }
+            }
+
+            for _, variant in ipairs(variants) do
+                local callOk, packed = Wear.WithRobloxIdentity(variant.Run)
+                if callOk then
+                    pcall(function() humanoid:BuildRigFromAttachments() end)
+                    for _ = 1, 2 do RunService.Heartbeat:Wait() end
+
+                    local readOk, applied = pcall(function() return humanoid:GetAppliedDescription() end)
+                    local descriptionVerified = readOk and Wear.DescriptionContains(applied, slot, selectedItems)
+                    local visibleVerified = Wear.CharacterSlotLooksApplied(humanoid.Parent, slot, selectedItems)
+                    if applied and applied ~= description then
+                        pcall(function() applied:Destroy() end)
+                    end
+
+                    local verified = descriptionVerified and visibleVerified
+                    Wear.Debug(
+                        variant.Name,
+                        verified,
+                        verified and "description + visible avatar verified"
+                            or "method returned but visible verification failed"
+                    )
+                    if verified then return true, variant.Name end
+                else
+                    Wear.Debug(variant.Name, false, packed)
+                end
+            end
+
+            return false
+        end
+
+        function Wear.TryDescription(character, humanoid, slot, selectedItems)
+            local description, buildError = Wear.BuildDescription(character, humanoid, slot, selectedItems)
+            if not description then
+                Wear.Debug("HumanoidDescription.Build", false, buildError)
+                return false
+            end
+
+            local attempts = {
+                {"HumanoidDescription.ApplyAsync", false, false},
+                {"HumanoidDescription.ResetAsync", true, false},
+                {"HumanoidDescription.Apply", false, true},
+                {"HumanoidDescription.Reset", true, true}
+            }
+
+            for _, attempt in ipairs(attempts) do
+                local methodName, resetMode, deprecatedMode = attempt[1], attempt[2], attempt[3]
+                local worked, workedMethod
+                if deprecatedMode then
+                    worked, workedMethod = Wear.TryDeprecatedDescriptionMethod(
+                        humanoid, description, slot, selectedItems, methodName, resetMode
+                    )
+                else
+                    worked, workedMethod = Wear.TryDescriptionMethod(
+                        humanoid, description, slot, selectedItems, methodName, resetMode
+                    )
+                end
+                if worked then
+                    pcall(function() description:Destroy() end)
+                    return true, workedMethod or methodName
+                end
+            end
+
+            pcall(function() description:Destroy() end)
+            return false
+        end
+
+        function Wear.LoadBy(loader, assetId)
+            local ok, result = pcall(loader.Run, assetId)
+            if not ok or not result then
+                Wear.Debug(loader.Name, false, result)
+                return nil
+            end
+            return result
+        end
+
+        function Wear.TryDirectItem(item, character, slot)
+            for _, loader in ipairs(Wear.AssetLoaders) do
+                local loaded = Wear.LoadBy(loader, item.Id)
+                if loaded then
+                    local roots = getLoadedRoots(loaded)
+                    local worked = false
+                    local methodSuffix = "Klassic Instance"
+
+                    if slot == "ClassicTShirt" or slot == "ClassicShirt" or slot == "ClassicPants" then
+                        local className = slot == "ClassicTShirt" and "ShirtGraphic" or (slot == "ClassicShirt" and "Shirt" or "Pants")
+                        local clothing = Wear.CloneFirstClass(roots, className)
+                        if clothing then
+                            clothing:SetAttribute("LHAvatarItemId", item.Id)
+                            clothing:SetAttribute("LHAvatarSlot", slot)
+                            clothing:SetAttribute("LHAvatarKreator", true)
+                            clothing.Parent = character
+                            worked = clothing.Parent == character
+                        end
+                    elseif slot == "FaceDecal" then
+                        local head = character:FindFirstChild("Head")
+                        local decal
+                        for _, root in ipairs(roots) do
+                            for _, instance in ipairs(Wear.DescendantsIncludingRoot(root)) do
+                                if instance:IsA("Decal") and instance.Texture ~= "" then
+                                    decal = instance:Clone()
+                                    break
+                                end
+                            end
+                            if decal then break end
+                        end
+                        if head and decal then
+                            decal.Name = "face"
+                            decal.Face = Enum.NormalId.Front
+                            decal:SetAttribute("LHAvatarItemId", item.Id)
+                            decal:SetAttribute("LHAvatarSlot", slot)
+                            decal:SetAttribute("LHAvatarKreator", true)
+                            decal.Parent = head
+                            worked = decal.Parent == head
+                        end
+                        methodSuffix = "Face Decal"
+                    else
+                        local humanoid = getHumanoid(character)
+                        local accessories = Wear.CloneAccessories(roots)
+                        if humanoid and #accessories > 0 then
+                            worked = true
+                            local attachMethods = {}
+                            for _, accessory in ipairs(accessories) do
+                                prepareAccessory(accessory, item, slot)
+                                local attached, attachMethod, attachError = attachAccessory(
+                                    humanoid, character, accessory
+                                )
+                                if not attached then
+                                    worked = false
+                                    Wear.Debug(
+                                        loader.Name .. " + " .. tostring(attachMethod),
+                                        false,
+                                        attachError or "Accessory was parented but not welded to the character."
+                                    )
+                                    pcall(function() accessory:Destroy() end)
+                                    break
+                                end
+                                attachMethods[#attachMethods + 1] = attachMethod
+                            end
+
+                            if worked then
+                                methodSuffix = attachMethods[1] or "Verified Accessory"
+                                for index = 2, #attachMethods do
+                                    if attachMethods[index] ~= methodSuffix then
+                                        methodSuffix = "Mixed Verified Accessory Methods"
+                                        break
+                                    end
+                                end
+                            end
+                        end
+                    end
+
+                    destroyLoadedResult(loaded)
+                    local methodName = loader.Name .. " + " .. methodSuffix
+                    Wear.Debug(
+                        methodName,
+                        worked,
+                        worked and "wearable instance verified on avatar"
+                            or "asset loaded but no verified avatar attachment/weld was created"
+                    )
+                    if worked then return true, methodName end
+                end
+            end
+            return false
+        end
+
+        function Wear.TryDirectSlot(character, slot, selectedItems)
+            local accessorySelection = #selectedItems > 0 and Wear.IsAccessoryItem(selectedItems[1])
+
+            if #selectedItems == 0 then
+                restoreOriginalSlot(character, slot)
+                Wear.Debug("Original Slot Snapshot", true, tostring(slot) .. " restored")
+                return true, "Original Slot Snapshot"
+            end
+
+            if state.ItemStacking and accessorySelection then
+                restoreOriginalSlot(character, slot)
+            else
+                destroySlotInstances(character, slot)
+            end
+
+            local methods = {}
+            for _, item in ipairs(selectedItems) do
+                local ok, methodName = Wear.TryDirectItem(item, character, slot)
+                if not ok then
+                    restoreOriginalSlot(character, slot)
+                    Wear.Debug("Direct Slot Rollback", false, "restored original after fallback failure")
+                    return false
+                end
+                methods[#methods + 1] = methodName
+            end
+
+            local firstMethod = methods[1] or "Direct Wear"
+            for index = 2, #methods do
+                if methods[index] ~= firstMethod then
+                    firstMethod = "Mixed Direct Methods"
+                    break
+                end
+            end
+            return true, firstMethod
+        end
+
+        function Wear.ApplySlotSelection(slot, selectedItems)
+            local character = getCharacter()
+            local humanoid = character and getHumanoid(character)
+            if not character or not humanoid then
+                return false, nil, "Character/Humanoid unavailable."
+            end
+
+            captureOriginalSlot(character, slot)
+            Wear.GetOriginalDescription(character, humanoid)
+
+            local accessorySelection = #selectedItems > 0 and Wear.IsAccessoryItem(selectedItems[1])
+
+            -- Stacking is intentionally a local attachment override. Try the verified
+            -- direct route first so Roblox's normal katalog accessory limits do not
+            -- silently discard extra same-type items.
+            if state.ItemStacking and accessorySelection then
+                local stackedOk, stackedMethod = Wear.TryDirectSlot(character, slot, selectedItems)
+                if stackedOk then return true, "Item Stacking + " .. tostring(stackedMethod) end
+                Wear.Debug("Item Stacking Direct", false, "verified direct stacking failed; trying HumanoidDescription")
+            end
+
+            local descriptionOk, descriptionMethod = Wear.TryDescription(
+                character, humanoid, slot, selectedItems
+            )
+            if descriptionOk then return true, descriptionMethod end
+
+            local directOk, directMethod = Wear.TryDirectSlot(character, slot, selectedItems)
+            if directOk then return true, directMethod end
+
+            return false, nil, "Every supported local Try On method failed. No unattached item was kept."
+        end
+
+        local function countEquipped()
+            local count = 0
+            for slot in pairs(state.EquippedBySlot) do
+                count = count + #Wear.GetSlotItems(slot)
+            end
+            return count
+        end
+
+        local function updateOutfitButton()
+            OutfitButton.Text = "Outfit " .. tostring(countEquipped())
+        end
+
+        local function internalWearItem(item, silent)
+            if state.Destroyed then return false end
+            if not Wear.ResolveMissingAssetType(item) then
+                if not silent then notify("This asset type is not supported by the local avatar tester.", "error", 4) end
+                return false
+            end
+
+            local slot = ASSET_TYPE_TO_SLOT[item.AssetTypeId]
+            if not slot then
+                if not silent then notify("This item does not have a supported avatar slot.", "error") end
+                return false
+            end
+
+            local selected = Wear.CopyItems(Wear.GetSlotItems(slot))
+            local accessoryItem = Wear.IsAccessoryItem(item)
+            if state.ItemStacking and accessoryItem then
+                selected[#selected + 1] = item
+            else
+                selected = {item}
+            end
+
+            local ok, methodName, errorMessage = Wear.ApplySlotSelection(slot, selected)
+            if not ok then
+                if not silent then notify(errorMessage or "The item kould not be worn locally.", "error", 5) end
+                return false
+            end
+
+            state.EquippedBySlot[slot] = selected
+            if not silent then
+                notify("Wearing " .. tostring(item.Name) .. " [" .. tostring(methodName) .. "]", "success", 4)
+            end
+            return true
+        end
+
+        local function removeItem(item, silent)
+            if not item or not Wear.ResolveMissingAssetType(item) then return false end
+            local slot = ASSET_TYPE_TO_SLOT[item.AssetTypeId]
+            if not slot then return false end
+
+            local selected = {}
+            local removed = false
+            for _, existing in ipairs(Wear.GetSlotItems(slot)) do
+                if not removed and tonumber(existing.Id) == tonumber(item.Id) then
+                    removed = true
+                else
+                    selected[#selected + 1] = existing
+                end
+            end
+            if not removed then return false end
+
+            local ok, methodName, errorMessage = Wear.ApplySlotSelection(slot, selected)
+            if not ok then
+                if not silent then notify(errorMessage or "The item kould not be taken off.", "error", 5) end
+                return false
+            end
+
+            state.EquippedBySlot[slot] = #selected > 0 and selected or nil
+            if not silent then
+                notify("Took off " .. tostring(item.Name) .. " [" .. tostring(methodName) .. "]", "success", 3.5)
+            end
+            return true
+        end
+
+        local function removeSlot(slot, silent)
+            local current = Wear.GetSlotItems(slot)
+            if #current == 0 then return false end
+            local ok, methodName, errorMessage = Wear.ApplySlotSelection(slot, {})
+            if not ok then
+                if not silent then notify(errorMessage or "The item type kould not be restored.", "error", 5) end
+                return false
+            end
+            state.EquippedBySlot[slot] = nil
+            if not silent then
+                notify("Restored your original " .. tostring(slot) .. " item [" .. tostring(methodName) .. "]", "success", 3.5)
+            end
+            return true
+        end
+
+        local refreshAllCardStates
+        local rebuildOutfitList
+
+        local function refreshSelectedUi()
+            updateOutfitButton()
+            if refreshAllCardStates then refreshAllCardStates() end
+            if rebuildOutfitList and OutfitOverlay.Visible then rebuildOutfitList() end
+
+            if state.DetailsItem then
+                if Wear.IsEquipped(state.DetailsItem) then
+                    DetailsTryButton.Text = "Take Off"
+                    DetailsTryButton.BackgroundColor3 = Color3.fromRGB(79, 53, 64)
+                else
+                    DetailsTryButton.Text = "Try On"
+                    DetailsTryButton.BackgroundColor3 = ACCENT
+                end
+            end
+        end
+
+        local function toggleItem(item)
+            if state.Loading then return end
+            if not Wear.ResolveMissingAssetType(item) then
+                notify("This asset type is not supported.", "error")
+                return
+            end
+
+            if Wear.IsEquipped(item) then
+                if removeItem(item, false) then refreshSelectedUi() end
+                return
+            end
+
+            task.spawn(function()
+                if internalWearItem(item, false) then refreshSelectedUi() end
+            end)
+        end
+
+        local function resetAllItems(silent)
+            local slots = {}
+            for slot in pairs(state.EquippedBySlot) do slots[#slots + 1] = slot end
+            for _, slot in ipairs(slots) do removeSlot(slot, true) end
+            state.EquippedBySlot = {}
+            refreshSelectedUi()
+            if not silent then notify("Restored your original local avatar items.", "success") end
+        end
+
+        local function formatPrice(item)
+            if item.Price ~= nil then
+                if item.Price <= 0 then
+                    return "Free"
+                end
+                return tostring(math.floor(item.Price)) .. " R$"
+            end
+
+            if item.PriceStatus then
+                local text = tostring(item.PriceStatus)
+                if containsPlain(text, "off") then
+                    return "Off Sale"
+                end
+                return text
+            end
+
+            return "Price N/A"
+        end
+
+        local function openDetails(item)
+            state.DetailsItem = item
+            OutfitOverlay.Visible = false
+            DetailsOverlay.Visible = true
+
+            DetailsImage.Image = thumbnailFor(item.Id)
+            DetailsName.Text = item.Name
+            DetailsCreator.Text = "By " .. item.CreatorName
+            DetailsMeta.Text = table.concat({
+                item.AssetTypeName or "Avatar Item",
+                "Asset ID: " .. tostring(item.Id),
+                formatPrice(item)
+            }, "\n")
+            DetailsDescription.Text = trim(item.Description) ~= ""
+                and item.Description
+                or "No Marketplace description was returned for this item."
+            task.defer(resizeDetailsDescription)
+
+            refreshSelectedUi()
+        end
+
+        local function closeDetails()
+            DetailsOverlay.Visible = false
+            state.DetailsItem = nil
+        end
+
+        track(DetailsBack.MouseButton1Click:Connect(closeDetails))
+
+        track(DetailsTryButton.MouseButton1Click:Connect(function()
+            if state.DetailsItem then
+                toggleItem(state.DetailsItem)
+            end
+        end))
+
+        track(DetailsCopyButton.MouseButton1Click:Connect(function()
+            if not state.DetailsItem then
+                return
+            end
+
+            if copyToClipboard(tostring(state.DetailsItem.Id)) then
+                notify("Kopied asset ID " .. tostring(state.DetailsItem.Id) .. ".", "success")
+            else
+                notify("Clipboard is unsupported. Asset ID: " .. tostring(state.DetailsItem.Id), "warning", 5)
+            end
+        end))
+
+        local function clearOutfitRows()
+            for _, child in ipairs(OutfitScroll:GetChildren()) do
+                if child:IsA("Frame") and child.Name == "OutfitRow" then
+                    child:Destroy()
+                end
+            end
+        end
+
+        rebuildOutfitList = function()
+            clearOutfitRows()
+
+            local entries = {}
+            for slot in pairs(state.EquippedBySlot) do
+                for _, item in ipairs(Wear.GetSlotItems(slot)) do
+                    entries[#entries + 1] = {Slot = slot, Item = item}
+                end
+            end
+            table.sort(entries, function(a, b)
+                if a.Slot == b.Slot then return tostring(a.Item.Name) < tostring(b.Item.Name) end
+                return a.Slot < b.Slot
+            end)
+
+            OutfitEmpty.Visible = #entries == 0
+
+            for index, entry in ipairs(entries) do
+                local item = entry.Item
+                local row = create("Frame", {
+                    Name = "OutfitRow",
+                    Size = UDim2.new(1, -4, 0, 88),
+                    BackgroundColor3 = PANEL,
+                    BorderSizePixel = 0,
+                    LayoutOrder = index,
+                    ZIndex = 52
+                })
+                addCorner(row, 12)
+                addStroke(row, STROKE, 1, 0.2)
+                row.Parent = OutfitScroll
+
+                local imageShell = create("Frame", {
+                    Position = UDim2.fromOffset(8, 8),
+                    Size = UDim2.fromOffset(72, 72),
+                    BackgroundColor3 = PANEL_2,
+                    BorderSizePixel = 0,
+                    ZIndex = 53
+                })
+                addCorner(imageShell, 10)
+                imageShell.Parent = row
+
+                local image = create("ImageLabel", {
+                    Position = UDim2.fromOffset(4, 4),
+                    Size = UDim2.new(1, -8, 1, -8),
+                    BackgroundTransparency = 1,
+                    Image = thumbnailFor(item.Id),
+                    ScaleType = Enum.ScaleType.Fit,
+                    ZIndex = 54
+                })
+                image.Parent = imageShell
+
+                local name = create("TextLabel", {
+                    Position = UDim2.fromOffset(92, 12),
+                    Size = UDim2.new(1, -220, 0, 28),
+                    BackgroundTransparency = 1,
+                    Font = Enum.Font.GothamBold,
+                    Text = item.Name,
+                    TextColor3 = TEXT,
+                    TextSize = 13,
+                    TextTruncate = Enum.TextTruncate.AtEnd,
+                    TextXAlignment = Enum.TextXAlignment.Left,
+                    ZIndex = 53
+                })
+                name.Parent = row
+
+                local meta = create("TextLabel", {
+                    Position = UDim2.fromOffset(92, 42),
+                    Size = UDim2.new(1, -220, 0, 30),
+                    BackgroundTransparency = 1,
+                    Font = Enum.Font.Gotham,
+                    Text = (item.AssetTypeName or entry.Slot) .. " | ID " .. tostring(item.Id),
+                    TextColor3 = MUTED,
+                    TextSize = 11,
+                    TextTruncate = Enum.TextTruncate.AtEnd,
+                    TextXAlignment = Enum.TextXAlignment.Left,
+                    ZIndex = 53
+                })
+                meta.Parent = row
+
+                local removeButton = create("TextButton", {
+                    AnchorPoint = Vector2.new(1, 0.5),
+                    Position = UDim2.new(1, -10, 0.5, 0),
+                    Size = UDim2.fromOffset(104, 36),
+                    BackgroundColor3 = Color3.fromRGB(78, 38, 48),
+                    AutoButtonColor = false,
+                    Font = Enum.Font.GothamBold,
+                    Text = "Take Off",
+                    TextColor3 = Color3.fromRGB(255, 189, 198),
+                    TextSize = 12,
+                    ZIndex = 53
+                })
+                addCorner(removeButton, 10)
+                removeButton.Parent = row
+                bindButtonVisual(removeButton, Color3.fromRGB(78, 38, 48), Color3.fromRGB(95, 44, 56))
+
+                removeButton.MouseButton1Click:Connect(function()
+                    if removeItem(item, false) then
+                        refreshSelectedUi()
+                        rebuildOutfitList()
+                    end
+                end)
+            end
+        end
+
+        track(OutfitButton.MouseButton1Click:Connect(function()
+            DetailsOverlay.Visible = false
+            state.DetailsItem = nil
+            OutfitOverlay.Visible = true
+            rebuildOutfitList()
+        end))
+
+        track(OutfitBack.MouseButton1Click:Connect(function()
+            OutfitOverlay.Visible = false
+        end))
+
+        track(ResetAllButton.MouseButton1Click:Connect(function()
+            resetAllItems(false)
+            rebuildOutfitList()
+        end))
+
+        track(StackingButton.MouseButton1Click:Connect(function()
+            state.ItemStacking = not state.ItemStacking
+            StackingButton.Text = state.ItemStacking and "Item Stacking: ON" or "Item Stacking: OFF"
+            StackingButton.BackgroundColor3 = state.ItemStacking and ACCENT or PANEL_2
+            StackingButton.TextColor3 = state.ItemStacking and Color3.new(1, 1, 1) or MUTED
+            if state.ItemStacking then
+                notify("Item Stacking ON: matching accessory types kan stack past normal katalog limits.", "success", 3.5)
+            else
+                notify("Item Stacking OFF: the next matching item type will replace that type.", "info", 3.5)
+            end
+        end))
+
+        local function clearResultCards()
+            state.CurrentResults = {}
+            state.CurrentResultIds = {}
+            state.CardRecords = {}
+
+            for _, child in ipairs(ResultsScroll:GetChildren()) do
+                if child:IsA("Frame") and child.Name == "ResultCard" then
+                    child:Destroy()
+                end
+            end
+        end
+
+        local function updateCardRecord(record)
+            if not record or not record.Item then return end
+            local active = Wear.IsEquipped(record.Item)
+            if active then
+                record.TryButton.Text = "Take Off"
+                record.TryButton.BackgroundColor3 = Color3.fromRGB(79, 53, 64)
+                record.Stroke.Color = SUCCESS
+                record.Stroke.Transparency = 0.15
+            else
+                record.TryButton.Text = "Try On"
+                record.TryButton.BackgroundColor3 = ACCENT
+                record.Stroke.Color = STROKE
+                record.Stroke.Transparency = 0.25
+            end
+        end
+
+        refreshAllCardStates = function()
+            for _, records in pairs(state.CardRecords) do
+                for _, record in ipairs(records) do
+                    updateCardRecord(record)
+                end
+            end
+        end
+
+        local function createResultCard(item, order)
+            local card = create("Frame", {
+                Name = "ResultCard",
+                BackgroundColor3 = PANEL,
+                BorderSizePixel = 0,
+                LayoutOrder = order,
+                ZIndex = 4
+            })
+            addCorner(card, 13)
+            local cardStroke = addStroke(card, STROKE, 1, 0.25)
+            card.Parent = ResultsScroll
+
+            local imageShell = create("Frame", {
+                Position = UDim2.fromOffset(10, 10),
+                Size = UDim2.new(1, -20, 0, 130),
+                BackgroundColor3 = PANEL_2,
+                BorderSizePixel = 0,
+                ZIndex = 5
+            })
+            addCorner(imageShell, 11)
+            imageShell.Parent = card
+
+            local image = create("ImageLabel", {
+                Position = UDim2.fromOffset(6, 6),
+                Size = UDim2.new(1, -12, 1, -12),
+                BackgroundTransparency = 1,
+                Image = thumbnailFor(item.Id),
+                ScaleType = Enum.ScaleType.Fit,
+                ZIndex = 6
+            })
+            image.Parent = imageShell
+
+            local typeBadge = create("TextLabel", {
+                Position = UDim2.fromOffset(7, 7),
+                Size = UDim2.new(0.58, -6, 0, 24),
+                BackgroundColor3 = Color3.fromRGB(18, 20, 31),
+                BackgroundTransparency = 0.08,
+                Font = Enum.Font.GothamBold,
+                Text = item.AssetTypeName or "Avatar Item",
+                TextColor3 = Color3.fromRGB(205, 214, 255),
+                TextSize = 9,
+                TextTruncate = Enum.TextTruncate.AtEnd,
+                ZIndex = 7
+            })
+            addCorner(typeBadge, 8)
+            typeBadge.Parent = imageShell
+
+            local priceBadge = create("TextLabel", {
+                AnchorPoint = Vector2.new(1, 0),
+                Position = UDim2.new(1, -7, 0, 7),
+                Size = UDim2.new(0.36, 0, 0, 24),
+                BackgroundColor3 = Color3.fromRGB(18, 20, 31),
+                BackgroundTransparency = 0.08,
+                Font = Enum.Font.GothamBold,
+                Text = formatPrice(item),
+                TextColor3 = TEXT,
+                TextSize = 9,
+                TextTruncate = Enum.TextTruncate.AtEnd,
+                ZIndex = 7
+            })
+            addCorner(priceBadge, 8)
+            priceBadge.Parent = imageShell
+
+            local nameLabel = create("TextLabel", {
+                Position = UDim2.fromOffset(10, 148),
+                Size = UDim2.new(1, -20, 0, 30),
+                BackgroundTransparency = 1,
+                Font = Enum.Font.GothamBold,
+                Text = item.Name,
+                TextColor3 = TEXT,
+                TextSize = 12,
+                TextWrapped = true,
+                TextTruncate = Enum.TextTruncate.AtEnd,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                TextYAlignment = Enum.TextYAlignment.Top,
+                ZIndex = 5
+            })
+            nameLabel.Parent = card
+
+            local creatorLabel = create("TextLabel", {
+                Position = UDim2.fromOffset(10, 180),
+                Size = UDim2.new(1, -20, 0, 16),
+                BackgroundTransparency = 1,
+                Font = Enum.Font.Gotham,
+                Text = item.CreatorName,
+                TextColor3 = MUTED,
+                TextSize = 10,
+                TextTruncate = Enum.TextTruncate.AtEnd,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                ZIndex = 5
+            })
+            creatorLabel.Parent = card
+
+            local tryButton = create("TextButton", {
+                AnchorPoint = Vector2.new(0, 1),
+                Position = UDim2.new(0, 9, 1, -9),
+                Size = UDim2.new(0.66, -5, 0, 32),
+                BackgroundColor3 = ACCENT,
+                AutoButtonColor = false,
+                Font = Enum.Font.GothamBold,
+                Text = "Try On",
+                TextColor3 = Color3.new(1, 1, 1),
+                TextSize = 11,
+                ZIndex = 6
+            })
+            addCorner(tryButton, 9)
+            tryButton.Parent = card
+
+            local infoButton = create("TextButton", {
+                AnchorPoint = Vector2.new(1, 1),
+                Position = UDim2.new(1, -9, 1, -9),
+                Size = UDim2.new(0.34, -5, 0, 32),
+                BackgroundColor3 = PANEL_3,
+                AutoButtonColor = false,
+                Font = Enum.Font.GothamBold,
+                Text = "Info",
+                TextColor3 = TEXT,
+                TextSize = 11,
+                ZIndex = 6
+            })
+            addCorner(infoButton, 9)
+            infoButton.Parent = card
+
+            bindButtonVisual(tryButton, ACCENT, ACCENT_HOVER)
+            bindButtonVisual(infoButton, PANEL_3, Color3.fromRGB(45, 49, 66))
+
+            card.MouseEnter:Connect(function()
+                tween(card, 0.14, {BackgroundColor3 = PANEL_2})
+                if not Wear.IsEquipped(item) then
+                    tween(cardStroke, 0.14, {Color = ACCENT, Transparency = 0.25})
+                end
+            end)
+
+            card.MouseLeave:Connect(function()
+                tween(card, 0.14, {BackgroundColor3 = PANEL})
+                updateCardRecord({
+                    Item = item,
+                    TryButton = tryButton,
+                    Stroke = cardStroke
+                })
+            end)
+
+            tryButton.MouseButton1Click:Connect(function()
+                toggleItem(item)
+            end)
+
+            infoButton.MouseButton1Click:Connect(function()
+                openDetails(item)
+            end)
+
+            state.CardRecords[item.Id] = state.CardRecords[item.Id] or {}
+            local record = {
+                Item = item,
+                Card = card,
+                TryButton = tryButton,
+                Stroke = cardStroke
+            }
+            table.insert(state.CardRecords[item.Id], record)
+            updateCardRecord(record)
+        end
+
+        local function appendResults(results)
+            for _, item in ipairs(results or {}) do
+                if not state.CurrentResultIds[item.Id] then
+                    state.CurrentResultIds[item.Id] = true
+                    table.insert(state.CurrentResults, item)
+                    createResultCard(item, #state.CurrentResults)
+                end
+            end
+
+            ResultsCount.Text = tostring(#state.CurrentResults) .. " found"
+            EmptyState.Visible = #state.CurrentResults == 0
+            LoadMoreButton.Visible = state.CurrentHasMore and #state.CurrentResults > 0
+        end
+
+        local function displayResults(results, query, nextPage, hasMore, backend)
+            clearResultCards()
+            state.CurrentQuery = query
+            state.CurrentNextPage = nextPage
+            state.CurrentHasMore = hasMore == true
+
+            local title = state.CurrentCategory.Name
+            if trim(query) ~= "" then
+                title = title .. " results for \"" .. trim(query) .. "\""
+            end
+            ResultsTitle.Text = title
+
+            appendResults(results)
+            if backend then
+                ResultsCount.Text = tostring(#state.CurrentResults) .. " found | " .. tostring(backend)
+            end
+        end
+
+        local function setLoading(value, message)
+            state.Loading = value == true
+            LoadingOverlay.Visible = state.Loading
+            LoadingText.Text = message or "Searching Roblox Marketplace..."
+            SearchButton.Active = not state.Loading
+            SearchBox.TextEditable = not state.Loading
+            LoadMoreButton.Active = not state.Loading
+        end
+
+        local function performSearch(rawQuery)
+            local query = trim(rawQuery)
+            state.SearchSerial = state.SearchSerial + 1
+            local serial = state.SearchSerial
+            local category = state.CurrentCategory
+
+            setLoading(true, "Searching Roblox Marketplace...")
+            ResultsScroll.CanvasPosition = Vector2.zero
+
+            task.spawn(function()
+                local ok, results, nextPage, hasMore, backend = pcall(
+                    searchMarketplace,
+                    query,
+                    category
+                )
+
+                if state.Destroyed or serial ~= state.SearchSerial then
+                    return
+                end
+
+                setLoading(false)
+
+                if not ok then
+                    displayResults({}, query, nil, false, nil)
+                    EmptyTitle.Text = "Marketplace search failed"
+                    EmptyText.Text = tostring(results)
+                    notify("Roblox Marketplace search failed.", "error", 4.5)
+                    return
+                end
+
+                EmptyTitle.Text = "No avatar items found"
+                EmptyText.Text = "Try another name, another kategory, or paste an asset ID."
+                displayResults(results, query, nextPage, hasMore, backend)
+            end)
+        end
+
+        local function updateCategoryVisuals()
+            for key, button in pairs(state.CategoryButtons) do
+                local selected = key == state.CurrentCategory.Key
+                button.BackgroundColor3 = selected and ACCENT or PANEL_2
+                button.TextColor3 = selected and Color3.new(1, 1, 1) or MUTED
+            end
+        end
+
+        for index, category in ipairs(CATEGORIES) do
+            local width = math.max(68, 26 + (#category.Name * 7))
+            local button = create("TextButton", {
+                Name = category.Key,
+                Size = UDim2.fromOffset(width, 32),
+                BackgroundColor3 = category == state.CurrentCategory and ACCENT or PANEL_2,
+                AutoButtonColor = false,
+                Font = Enum.Font.GothamBold,
+                Text = category.Name,
+                TextColor3 = category == state.CurrentCategory and Color3.new(1, 1, 1) or MUTED,
+                TextSize = 11,
+                LayoutOrder = index,
+                ZIndex = 5
+            })
+            addCorner(button, 10)
+            addStroke(button, STROKE, 1, 0.25)
+            button.Parent = CategoryScroll
+            state.CategoryButtons[category.Key] = button
+
+            button.MouseEnter:Connect(function()
+                if state.CurrentCategory.Key ~= category.Key then
+                    tween(button, 0.12, {BackgroundColor3 = PANEL_3})
+                end
+            end)
+            button.MouseLeave:Connect(function()
+                updateCategoryVisuals()
+            end)
+            button.MouseButton1Click:Connect(function()
+                if state.Loading then
+                    return
+                end
+                state.CurrentCategory = category
+                updateCategoryVisuals()
+                performSearch(SearchBox.Text)
+            end)
+        end
+
+        track(SearchButton.MouseButton1Click:Connect(function()
+            performSearch(SearchBox.Text)
+        end))
+
+        track(SearchBox.FocusLost:Connect(function(enterPressed)
+            if enterPressed then
+                performSearch(SearchBox.Text)
+            end
+        end))
+
+        track(LoadMoreButton.MouseButton1Click:Connect(function()
+            if state.Loading
+                or not state.CurrentHasMore
+                or typeof(state.CurrentNextPage) ~= "function" then
+                return
+            end
+
+            setLoading(true, "Loading more Marketplace items...")
+            local nextPage = state.CurrentNextPage
+
+            task.spawn(function()
+                local ok, page, hasMore = pcall(nextPage)
+                if state.Destroyed then
+                    return
+                end
+
+                setLoading(false)
+
+                if not ok then
+                    state.CurrentHasMore = false
+                    LoadMoreButton.Visible = false
+                    notify("Could not load the next Marketplace page.", "error")
+                    return
+                end
+
+                state.CurrentHasMore = hasMore == true
+                sortResults(page, state.CurrentQuery)
+                appendResults(page)
+            end)
+        end))
+
+        local function updateGrid()
+            local width = ResultsScroll.AbsoluteSize.X
+            if width <= 0 then return end
+
+            local viewport = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(800, 600)
+            local columns
+            if width < 300 then
+                columns = 1
+            elseif width < 560 then
+                columns = 2
+            else
+                columns = 3
+            end
+
+            local padding = 10
+            local available = width - 4 - (padding * (columns - 1))
+            local cellWidth = math.floor(available / columns)
+            Grid.FillDirectionMaxCells = columns
+            Grid.CellSize = UDim2.fromOffset(math.max(126, cellWidth), 246)
+        end
+
+        track(ResultsScroll:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateGrid))
+        track(Main:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+            if DetailsOverlay.Visible then task.defer(resizeDetailsDescription) end
+        end))
+        task.defer(updateGrid)
+
+        -- Embedded in LH: the Ava Kreator surface stays locked to its tab.
+
+        local function setMinimized(value)
+            value = value == true
+            if state.Minimized == value then
+                return
+            end
+
+            state.Minimized = value
+
+            if value then
+                state.ExpandedPosition = Main.Position
+                state.ExpandedAnchorPoint = Main.AnchorPoint
+                state.ExpandedSize = Main.Size
+
+                Controls.Visible = false
+                ResultsArea.Visible = false
+                DetailsOverlay.Visible = false
+                OutfitOverlay.Visible = false
+                Subtitle.Visible = false
+                OutfitButton.Visible = false
+
+                Title.Text = "Ava Kreator"
+                Title.Size = UDim2.new(1, -144, 1, 0)
+                Title.Position = UDim2.fromOffset(56, 0)
+                Title.TextSize = 15
+                Title.TextYAlignment = Enum.TextYAlignment.Center
+                MinimizeButton.Text = "+"
+
+                Main.AnchorPoint = Vector2.new(0, 0)
+                Main.Position = UDim2.fromOffset(10, 10)
+
+                local viewport = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize
+                    or Vector2.new(800, 600)
+                local miniWidth = math.clamp(math.floor(viewport.X * 0.64), 255, 330)
+                tween(Main, 0.2, {Size = UDim2.fromOffset(miniWidth, 56)})
+            else
+                Controls.Visible = true
+                ResultsArea.Visible = true
+                Subtitle.Visible = true
+                OutfitButton.Visible = true
+
+                Title.Text = "Ava Kreator"
+                Title.Size = UDim2.new(1, -270, 0, 23)
+                Title.Position = UDim2.fromOffset(56, 8)
+                Title.TextSize = 17
+                Title.TextYAlignment = Enum.TextYAlignment.Center
+                MinimizeButton.Text = "-"
+
+                Main.AnchorPoint = state.ExpandedAnchorPoint
+                Main.Position = state.ExpandedPosition
+                tween(Main, 0.2, {Size = state.ExpandedSize})
+            end
+        end
+
+        track(MinimizeButton.MouseButton1Click:Connect(function()
+            setMinimized(not state.Minimized)
+        end))
+
+        local characterAddedConnection
+        characterAddedConnection = LocalPlayer.CharacterAdded:Connect(function(character)
+            state.CurrentCharacter = character
+            state.SnapshotByCharacter[character] = nil
+            state.OriginalDescriptionByCharacter[character] = nil
+
+            task.wait(1.4)
+            if state.Destroyed or countEquipped() == 0 then return end
+
+            state.Reapplying = true
+            for slot in pairs(state.EquippedBySlot) do
+                local selected = Wear.CopyItems(Wear.GetSlotItems(slot))
+                local ok, methodName = Wear.ApplySlotSelection(slot, selected)
+                Wear.Debug("Respawn Reapply " .. tostring(slot), ok, methodName)
+                task.wait(0.05)
+            end
+            state.Reapplying = false
+            refreshSelectedUi()
+            notify("Reapplied the local test outfit after respawn.", "success", 3)
+        end)
+
+        local function runtimeCleanup(restoreAvatar)
+            if state.Destroyed then
+                return
+            end
+            state.Destroyed = true
+
+            safeDisconnect(characterAddedConnection)
+
+            if restoreAvatar ~= false then
+                local character = getCharacter()
+                if character then
+                    local slots = {}
+                    for slot in pairs(state.EquippedBySlot) do
+                        table.insert(slots, slot)
+                    end
+                    for _, slot in ipairs(slots) do
+                        pcall(restoreOriginalSlot, character, slot)
+                    end
+                end
+            end
+
+            for _, connection in ipairs(state.Connections) do
+                safeDisconnect(connection)
+            end
+            state.Connections = {}
+
+            if ScreenGui and ScreenGui.Parent then
+                ScreenGui:Destroy()
+            end
+
+            if ENV[RUNTIME_KEY] == runtimeCleanup then
+                ENV[RUNTIME_KEY] = nil
+            end
+        end
+
+        ENV[RUNTIME_KEY] = runtimeCleanup
+        state.Cleanup = runtimeCleanup
+        state.RestoreOriginal = function()
+            return resetAllItems(true)
+        end
+
+        track(CloseButton.MouseButton1Click:Connect(function()
+            runtimeCleanup(true)
+        end))
+
+        track(UserInputService.InputBegan:Connect(function(input, processed)
+            if processed then
+                return
+            end
+
+            if input.KeyCode == Enum.KeyCode.Escape then
+                if DetailsOverlay.Visible then
+                    closeDetails()
+                elseif OutfitOverlay.Visible then
+                    OutfitOverlay.Visible = false
+                end
+            end
+        end))
+
+        updateOutfitButton()
+        updateCategoryVisuals()
+
+        task.defer(function()
+            SearchBox.Text = ""
+            performSearch("")
+        end)
+
+        state.Search = function(query)
+            SearchBox.Text = tostring(query or "")
+            performSearch(SearchBox.Text)
+        end
+        state.Refresh = function()
+            performSearch(state.CurrentQuery or SearchBox.Text)
+        end
+        return avatarTab
+    end
+
     function window:EnablePersonalShelf(tabName)
         if active.Shelf then return active.Shelf.Tab end
         local shelfTab = self:NewTab(tabName or "My Shelf")
@@ -10281,6 +13942,9 @@ function LULA:Destroy()
     if active.FreeEmotes and type(active.FreeEmotes.Stop) == "function" then
         pcall(active.FreeEmotes.Stop)
     end
+    if active.AvatarKreator and type(active.AvatarKreator.Cleanup) == "function" then
+        pcall(function() active.AvatarKreator.Cleanup(true) end)
+    end
     pcall(function() UserInputService.MouseIconEnabled = true end)
     disconnectAll()
     if active.Blur then pcall(function() active.Blur:Destroy() end) end
@@ -10291,4 +13955,4 @@ function LULA:Destroy()
     controlFrameRegistry = setmetatable({}, {__mode = "k"})
 end
 
-return LULA
+return LULA;
