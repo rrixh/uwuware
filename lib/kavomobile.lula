@@ -1,3 +1,4 @@
+--kavo ui 4.5.1
 local LULA = {}
 LULA.AnimationMarketplaceVersion = 4
 LULA.EmoteMarketplaceVersion = 1
@@ -13340,6 +13341,10 @@ function LULA.CreateLib(kavName, themeInput)
             runActiveSearch()
         end
 
+        -- Split the remaining Avatar Kreator setup into a fresh Luau function frame.
+        -- Delta/Luau caps a single function at 200 local registers; keeping this tail
+        -- nested prevents the large builder above from exhausting that register budget.
+        return (function()
         local function updateCategoryVisuals()
             for key, button in pairs(state.CategoryButtons) do
                 local selected = key == state.CurrentCategory.Key
@@ -13628,6 +13633,7 @@ function LULA.CreateLib(kavName, themeInput)
             runActiveSearch()
         end
         return avatarTab
+        end)()
     end
 
     function window:EnablePersonalShelf(tabName)
