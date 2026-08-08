@@ -1,8 +1,8 @@
---kavo ui 4.5.1
+--kavo ui 4.5.2
 local LULA = {}
 LULA.AnimationMarketplaceVersion = 4
 LULA.EmoteMarketplaceVersion = 1
-LULA.AvatarMarketplaceVersion = 2
+LULA.AvatarMarketplaceVersion = 3
 local env = (getgenv and getgenv()) or _G
 
 --kr
@@ -10022,6 +10022,7 @@ function LULA.CreateLib(kavName, themeInput)
             [11] = "Klassic Shirt",
             [12] = "Klassic Pants",
             [18] = "Face",
+            [19] = "Gear",
             [41] = "Hair",
             [42] = "Face Accessory",
             [43] = "Neck Accessory",
@@ -10048,6 +10049,7 @@ function LULA.CreateLib(kavName, themeInput)
             [11] = "ClassicShirt",
             [12] = "ClassicPants",
             [18] = "FaceDecal",
+            [19] = "Gear",
             [41] = "Hair",
             [42] = "FaceAccessory",
             [43] = "Neck",
@@ -10158,7 +10160,7 @@ function LULA.CreateLib(kavName, themeInput)
                 Key = "all",
                 Name = "All",
                 EngineTypes = enumList({
-                    "TShirt", "Shirt", "Pants", "Hat", "Face",
+                    "TShirt", "Shirt", "Pants", "Hat", "Face", "Gear",
                     "HairAccessory", "FaceAccessory", "NeckAccessory",
                     "ShoulderAccessory", "FrontAccessory", "BackAccessory",
                     "WaistAccessory", "TShirtAccessory", "ShirtAccessory",
@@ -10172,11 +10174,49 @@ function LULA.CreateLib(kavName, themeInput)
             },
             {
                 Key = "classic",
-                Name = "Klassic",
+                Name = "Klassic Klothing",
                 EngineTypes = enumList({"TShirt", "Shirt", "Pants"}),
                 AllowedIds = idSet({2, 11, 12}),
                 HttpCategory = 3,
-                HttpSubcategory = 3
+                HttpSubcategory = 3,
+                Children = {
+                    {
+                        Key = "classic_all",
+                        ParentKey = "classic",
+                        Name = "All Klassic",
+                        EngineTypes = enumList({"TShirt", "Shirt", "Pants"}),
+                        AllowedIds = idSet({2, 11, 12}),
+                        HttpCategory = 3,
+                        HttpSubcategory = 3
+                    },
+                    {
+                        Key = "classic_shirts",
+                        ParentKey = "classic",
+                        Name = "Klassic Shirts",
+                        EngineTypes = enumList({"Shirt"}),
+                        AllowedIds = idSet({11}),
+                        HttpCategory = 3,
+                        HttpSubcategory = 56
+                    },
+                    {
+                        Key = "classic_pants",
+                        ParentKey = "classic",
+                        Name = "Klassic Pants",
+                        EngineTypes = enumList({"Pants"}),
+                        AllowedIds = idSet({12}),
+                        HttpCategory = 3,
+                        HttpSubcategory = 57
+                    },
+                    {
+                        Key = "classic_tshirts",
+                        ParentKey = "classic",
+                        Name = "Klassic T-Shirts",
+                        EngineTypes = enumList({"TShirt"}),
+                        AllowedIds = idSet({2}),
+                        HttpCategory = 3,
+                        HttpSubcategory = 55
+                    }
+                }
             },
             {
                 Key = "tops",
@@ -10232,6 +10272,54 @@ function LULA.CreateLib(kavName, themeInput)
                 AllowedIds = idSet({18, 42, 76, 77}),
                 HttpCategory = 11,
                 HttpSubcategory = 21
+            },
+            {
+                Key = "neck",
+                Name = "Neck",
+                EngineTypes = enumList({"NeckAccessory"}),
+                AllowedIds = idSet({43}),
+                HttpCategory = 11,
+                HttpSubcategory = 22
+            },
+            {
+                Key = "waist",
+                Name = "Waist",
+                EngineTypes = enumList({"WaistAccessory"}),
+                AllowedIds = idSet({47}),
+                HttpCategory = 11,
+                HttpSubcategory = 26
+            },
+            {
+                Key = "shoulder",
+                Name = "Shoulder",
+                EngineTypes = enumList({"ShoulderAccessory"}),
+                AllowedIds = idSet({44}),
+                HttpCategory = 11,
+                HttpSubcategory = 23
+            },
+            {
+                Key = "back",
+                Name = "Back",
+                EngineTypes = enumList({"BackAccessory"}),
+                AllowedIds = idSet({46}),
+                HttpCategory = 11,
+                HttpSubcategory = 25
+            },
+            {
+                Key = "front",
+                Name = "Front",
+                EngineTypes = enumList({"FrontAccessory"}),
+                AllowedIds = idSet({45}),
+                HttpCategory = 11,
+                HttpSubcategory = 24
+            },
+            {
+                Key = "gear",
+                Name = "Gear",
+                EngineTypes = enumList({"Gear"}),
+                AllowedIds = idSet({19}),
+                HttpCategory = 5,
+                HttpSubcategory = 5
             },
             {
                 Key = "accessories",
@@ -11723,6 +11811,10 @@ function LULA.CreateLib(kavName, themeInput)
                 return instance:IsA("Pants")
             elseif slot == "FaceDecal" then
                 return instance:IsA("Decal") and lower(instance.Name) == "face"
+            elseif slot == "Gear" then
+                return instance:IsA("Tool")
+                    and instance:GetAttribute("LHAvatarKreator") == true
+                    and instance:GetAttribute("LHAvatarSlot") == "Gear"
             elseif instance:IsA("Accessory") then
                 return slotForAccessory(instance) == slot
             end
@@ -11738,6 +11830,11 @@ function LULA.CreateLib(kavName, themeInput)
 
             snapshot.Captured[slot] = true
             snapshot.Slots[slot] = {}
+
+            if slot == "Gear" then
+                -- Gear is a Tool, not part of HumanoidDescription. Preserve game tools.
+                return
+            end
 
             if slot == "FaceDecal" then
                 local head = character:FindFirstChild("Head")
@@ -11769,6 +11866,22 @@ function LULA.CreateLib(kavName, themeInput)
                     for _, child in ipairs(head:GetChildren()) do
                         if instanceBelongsToSlot(child, slot) then
                             child:Destroy()
+                        end
+                    end
+                end
+                return
+            end
+
+            if slot == "Gear" then
+                for _, parent in ipairs({
+                    character,
+                    LocalPlayer:FindFirstChildOfClass("Backpack")
+                }) do
+                    if parent then
+                        for _, child in ipairs(parent:GetChildren()) do
+                            if instanceBelongsToSlot(child, slot) then
+                                child:Destroy()
+                            end
                         end
                     end
                 end
@@ -12480,7 +12593,21 @@ function LULA.CreateLib(kavName, themeInput)
                     local worked = false
                     local methodSuffix = "Klassic Instance"
 
-                    if slot == "ClassicTShirt" or slot == "ClassicShirt" or slot == "ClassicPants" then
+                    if slot == "Gear" then
+                        local humanoid = getHumanoid(character)
+                        local tool = Wear.CloneFirstClass(roots, "Tool")
+                        local backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
+                        if tool and humanoid then
+                            tool:SetAttribute("LHAvatarItemId", item.Id)
+                            tool:SetAttribute("LHAvatarSlot", slot)
+                            tool:SetAttribute("LHAvatarKreator", true)
+                            tool.Parent = backpack or character
+                            pcall(function() humanoid:EquipTool(tool) end)
+                            RunService.Heartbeat:Wait()
+                            worked = tool.Parent == character or tool.Parent == backpack
+                        end
+                        methodSuffix = "Gear Tool"
+                    elseif slot == "ClassicTShirt" or slot == "ClassicShirt" or slot == "ClassicPants" then
                         local className = slot == "ClassicTShirt" and "ShirtGraphic" or (slot == "ClassicShirt" and "Shirt" or "Pants")
                         local clothing = Wear.CloneFirstClass(roots, className)
                         if clothing then
@@ -13345,12 +13472,98 @@ function LULA.CreateLib(kavName, themeInput)
         -- Delta/Luau caps a single function at 200 local registers; keeping this tail
         -- nested prevents the large builder above from exhausting that register budget.
         return (function()
+        local classicSubButtons = {}
+
+        local ClassicSubScroll = create("ScrollingFrame", {
+            Name = "KlassicSubcategories",
+            Position = UDim2.new(0, 8, 0, 89),
+            Size = UDim2.new(1, -16, 0, 22),
+            BackgroundTransparency = 1,
+            BorderSizePixel = 0,
+            CanvasSize = UDim2.fromOffset(0, 0),
+            AutomaticCanvasSize = Enum.AutomaticSize.X,
+            ScrollBarThickness = 0,
+            ScrollingDirection = Enum.ScrollingDirection.X,
+            Visible = false,
+            ZIndex = 4
+        })
+        ClassicSubScroll.Parent = Controls
+
+        local ClassicSubLayout = create("UIListLayout", {
+            FillDirection = Enum.FillDirection.Horizontal,
+            Padding = UDim.new(0, 5),
+            SortOrder = Enum.SortOrder.LayoutOrder,
+            VerticalAlignment = Enum.VerticalAlignment.Center
+        })
+        ClassicSubLayout.Parent = ClassicSubScroll
+
+        local function setClassicSubmenuVisible(visible)
+            visible = visible == true
+            ClassicSubScroll.Visible = visible
+            if visible then
+                Controls.Size = UDim2.new(1, 0, 0, 113)
+                ResultsArea.Position = UDim2.fromOffset(0, 153)
+                ResultsArea.Size = UDim2.new(1, 0, 1, -153)
+            else
+                Controls.Size = UDim2.new(1, 0, 0, 88)
+                ResultsArea.Position = UDim2.fromOffset(0, 128)
+                ResultsArea.Size = UDim2.new(1, 0, 1, -128)
+            end
+        end
+
         local function updateCategoryVisuals()
+            local selectedMainKey = state.CurrentCategory.ParentKey or state.CurrentCategory.Key
             for key, button in pairs(state.CategoryButtons) do
+                local selected = key == selectedMainKey
+                button.BackgroundColor3 = selected and ACCENT or PANEL_2
+                button.TextColor3 = selected and Color3.new(1, 1, 1) or MUTED
+            end
+            for key, button in pairs(classicSubButtons) do
                 local selected = key == state.CurrentCategory.Key
                 button.BackgroundColor3 = selected and ACCENT or PANEL_2
                 button.TextColor3 = selected and Color3.new(1, 1, 1) or MUTED
             end
+        end
+
+        local classicParent = CATEGORY_BY_KEY["classic"]
+        for index, child in ipairs((classicParent and classicParent.Children) or {}) do
+            local label = child.Name
+            if child.Key == "classic_shirts" then label = "Shirts"
+            elseif child.Key == "classic_pants" then label = "Pants"
+            elseif child.Key == "classic_tshirts" then label = "T-Shirts"
+            elseif child.Key == "classic_all" then label = "All Klassic" end
+
+            local width = math.max(52, 18 + (#label * 5.4))
+            local button = create("TextButton", {
+                Name = child.Key,
+                Size = UDim2.fromOffset(width, 22),
+                BackgroundColor3 = PANEL_2,
+                AutoButtonColor = false,
+                Font = Enum.Font.GothamBold,
+                Text = label,
+                TextColor3 = MUTED,
+                TextSize = 8.5,
+                LayoutOrder = index,
+                ZIndex = 5
+            })
+            addCorner(button, 7)
+            addStroke(button, STROKE, 1, 0.25)
+            button.Parent = ClassicSubScroll
+            classicSubButtons[child.Key] = button
+
+            button.MouseEnter:Connect(function()
+                if state.CurrentCategory.Key ~= child.Key then
+                    tween(button, 0.12, {BackgroundColor3 = PANEL_3})
+                end
+            end)
+            button.MouseLeave:Connect(updateCategoryVisuals)
+            button.MouseButton1Click:Connect(function()
+                if state.Loading then return end
+                state.CurrentCategory = child
+                setClassicSubmenuVisible(true)
+                updateCategoryVisuals()
+                runActiveSearch()
+            end)
         end
 
         for index, category in ipairs(CATEGORIES) do
@@ -13373,22 +13586,23 @@ function LULA.CreateLib(kavName, themeInput)
             state.CategoryButtons[category.Key] = button
 
             button.MouseEnter:Connect(function()
-                if state.CurrentCategory.Key ~= category.Key then
+                local selectedMainKey = state.CurrentCategory.ParentKey or state.CurrentCategory.Key
+                if selectedMainKey ~= category.Key then
                     tween(button, 0.12, {BackgroundColor3 = PANEL_3})
                 end
             end)
-            button.MouseLeave:Connect(function()
-                updateCategoryVisuals()
-            end)
+            button.MouseLeave:Connect(updateCategoryVisuals)
             button.MouseButton1Click:Connect(function()
-                if state.Loading then
-                    return
-                end
+                if state.Loading then return end
                 state.CurrentCategory = category
+                setClassicSubmenuVisible(category.Key == "classic")
                 updateCategoryVisuals()
                 runActiveSearch()
             end)
         end
+
+        setClassicSubmenuVisible(false)
+        updateCategoryVisuals()
 
         track(MarketplaceModeButton.MouseButton1Click:Connect(function()
             setMode("marketplace")
