@@ -1,4 +1,4 @@
---kavo ui 4.6
+--kavo ui 4.6.1
 local LULA = {}
 LULA.AnimationMarketplaceVersion = 4
 LULA.EmoteMarketplaceVersion = 1
@@ -10362,6 +10362,7 @@ function LULA.CreateLib(kavName, themeInput)
             CategoryButtons = {},
             DetailsItem = nil,
             ViewerModifiedSlots = {},
+            ViewerHiddenAssetIds = {},
             OutfitRenderSerial = 0,
             ViewerRenderSerial = 0,
             ExpandedPosition = UDim2.fromScale(0.5, 0.5),
@@ -10601,45 +10602,59 @@ function LULA.CreateLib(kavName, themeInput)
         ModeRow.Parent = Controls
 
         local MarketplaceModeButton = create("TextButton", {
-            Size = UDim2.new(0.32, 0, 1, 0),
+            Size = UDim2.new(0.235, 0, 1, 0),
             BackgroundColor3 = ACCENT,
             AutoButtonColor = false,
             Font = Enum.Font.GothamBold,
             Text = "Marketplace",
             TextColor3 = Color3.new(1, 1, 1),
-            TextSize = 9.5,
+            TextSize = 8.5,
             ZIndex = 5
         })
         addCorner(MarketplaceModeButton, 7)
         MarketplaceModeButton.Parent = ModeRow
 
         local FavoritesModeButton = create("TextButton", {
-            Position = UDim2.new(0.34, 0, 0, 0),
-            Size = UDim2.new(0.32, 0, 1, 0),
+            Position = UDim2.new(0.255, 0, 0, 0),
+            Size = UDim2.new(0.235, 0, 1, 0),
             BackgroundColor3 = PANEL_2,
             AutoButtonColor = false,
             Font = Enum.Font.GothamBold,
             Text = utf8.char(0x2605) .. " Favorites",
             TextColor3 = MUTED,
-            TextSize = 9.5,
+            TextSize = 8.5,
             ZIndex = 5
         })
         addCorner(FavoritesModeButton, 7)
         FavoritesModeButton.Parent = ModeRow
 
         state.ViewerModeButton = create("TextButton", {
-            Position = UDim2.new(0.68, 0, 0, 0),
-            Size = UDim2.new(0.32, 0, 1, 0),
+            Position = UDim2.new(0.51, 0, 0, 0),
+            Size = UDim2.new(0.235, 0, 1, 0),
             BackgroundColor3 = PANEL_2,
             AutoButtonColor = false,
             Font = Enum.Font.GothamBold,
             Text = "Avatar Viewer",
             TextColor3 = MUTED,
-            TextSize = 9,
+            TextSize = 8.2,
             ZIndex = 5
         })
         addCorner(state.ViewerModeButton, 7)
         state.ViewerModeButton.Parent = ModeRow
+
+        state.OutfitModeButton = create("TextButton", {
+            Position = UDim2.new(0.765, 0, 0, 0),
+            Size = UDim2.new(0.235, 0, 1, 0),
+            BackgroundColor3 = PANEL_2,
+            AutoButtonColor = false,
+            Font = Enum.Font.GothamBold,
+            Text = "Kurrent Outfit",
+            TextColor3 = MUTED,
+            TextSize = 8.1,
+            ZIndex = 5
+        })
+        addCorner(state.OutfitModeButton, 7)
+        state.OutfitModeButton.Parent = ModeRow
 
         local SearchShell = create("Frame", {
             Position = UDim2.new(0, 8, 0, 30),
@@ -11032,6 +11047,7 @@ function LULA.CreateLib(kavName, themeInput)
 
         bindButtonVisual(SearchButton, ACCENT, ACCENT_HOVER)
         bindButtonVisual(OutfitButton, PANEL_2, PANEL_3)
+        bindButtonVisual(state.OutfitModeButton, PANEL_2, PANEL_3)
         bindButtonVisual(MinimizeButton, PANEL_2, PANEL_3)
         bindButtonVisual(CloseButton, PANEL_2, PANEL_3)
         bindButtonVisual(LoadMoreButton, PANEL_2, PANEL_3)
@@ -11302,8 +11318,8 @@ function LULA.CreateLib(kavName, themeInput)
 
         local OutfitOverlay = create("Frame", {
             Name = "OutfitOverlay",
-            Position = UDim2.fromOffset(0, 40),
-            Size = UDim2.new(1, 0, 1, -40),
+            Position = UDim2.fromOffset(0, 68),
+            Size = UDim2.new(1, 0, 1, -68),
             BackgroundColor3 = BACKGROUND,
             BorderSizePixel = 0,
             Visible = false,
@@ -12912,6 +12928,9 @@ function LULA.CreateLib(kavName, themeInput)
             end
 
             state.EquippedBySlot[slot] = selected
+            if state.ViewerHiddenAssetIds then
+                state.ViewerHiddenAssetIds[tonumber(item.Id)] = nil
+            end
             return true
         end
 
@@ -13013,6 +13032,7 @@ function LULA.CreateLib(kavName, themeInput)
             end
             state.EquippedBySlot = {}
             state.ViewerModifiedSlots = {}
+            state.ViewerHiddenAssetIds = {}
             refreshSelectedUi()
         end
 
@@ -13063,6 +13083,36 @@ function LULA.CreateLib(kavName, themeInput)
             return nil, result
         end
 
+        function state.Purchase:CallAsNormalClient(callback)
+            if type(callback) ~= "function" then return false, "invalid purchase callback" end
+
+            local setter = getGlobal("setthreadidentity")
+                or getGlobal("set_thread_identity")
+                or getGlobal("setidentity")
+            local getter = getGlobal("getthreadidentity")
+                or getGlobal("get_thread_identity")
+                or getGlobal("getidentity")
+
+            local previous
+            if typeof(getter) == "function" then
+                pcall(function() previous = getter() end)
+            end
+
+            -- Roblox documents PromptPurchase as callable by a LocalScript.
+            -- Identity 2 is the normal client LocalScript context. This is a
+            -- compatibility normalization, not a privileged purchase bypass.
+            if typeof(setter) == "function" then
+                pcall(setter, 2)
+            end
+
+            local ok, err = pcall(callback)
+
+            if typeof(setter) == "function" and previous ~= nil then
+                pcall(setter, previous)
+            end
+            return ok, err
+        end
+
         function state.Purchase:PromptSingleRaw(item)
             if not item or not tonumber(item.Id) then return false, "invalid asset id" end
             local saleable, saleError = self:IsSaleable(item)
@@ -13071,20 +13121,21 @@ function LULA.CreateLib(kavName, themeInput)
             local owns = self:Owns(item.Id)
             if owns == true then return false, "owned" end
 
-            local ok, packed = Wear.WithRobloxIdentity(function()
+            local ok, err = self:CallAsNormalClient(function()
                 MarketplaceService:PromptPurchase(LocalPlayer, tonumber(item.Id), false)
             end)
             if ok then return true end
 
-            local retryOk, retryError = pcall(
-                MarketplaceService.PromptPurchase,
-                MarketplaceService,
-                LocalPlayer,
-                tonumber(item.Id),
-                false
-            )
-            if retryOk then return true end
-            return false, tostring(retryError or packed)
+            local message = tostring(err or "Roblox could not open the purchase prompt.")
+            local lowered = string.lower(message)
+            if string.find(lowered, "blocked", 1, true)
+                or string.find(lowered, "current thread cannot call", 1, true)
+                or string.find(lowered, "lacking capability", 1, true) then
+                return false,
+                    "Your executor blocked Roblox's PromptPurchase from the injected client thread. "
+                    .. "LH is using Roblox's normal client purchase API; this executor does not allow that prompt here."
+            end
+            return false, message
         end
 
         function state.Purchase:Prompt(item)
@@ -13092,7 +13143,11 @@ function LULA.CreateLib(kavName, themeInput)
                 local ok, why = self:PromptSingleRaw(item)
                 if not ok then
                     if why == "owned" then
-                        LULA:ShowIsland("Already Owned", tostring(item.Name or "This item") .. " is already in your inventory.", {Duration = 2.6})
+                        LULA:ShowIsland(
+                            "Already Owned",
+                            tostring(item.Name or "This item") .. " is already in your inventory.",
+                            {Duration = 2.6}
+                        )
                     else
                         notify(tostring(why or "Roblox could not open the purchase prompt."), "error", 4)
                     end
@@ -13120,10 +13175,13 @@ function LULA.CreateLib(kavName, themeInput)
                 local id = tonumber(item.Id)
                 local finished = false
                 local connection
-                connection = MarketplaceService.PromptPurchaseFinished:Connect(function(player, assetId)
-                    if player == LocalPlayer and tonumber(assetId) == id then
-                        finished = true
-                    end
+
+                local connectOk = pcall(function()
+                    connection = MarketplaceService.PromptPurchaseFinished:Connect(function(player, assetId)
+                        if player == LocalPlayer and tonumber(assetId) == id then
+                            finished = true
+                        end
+                    end)
                 end)
 
                 local ok, why = self:PromptSingleRaw(item)
@@ -13131,13 +13189,21 @@ function LULA.CreateLib(kavName, themeInput)
                     if connection and connection.Connected then connection:Disconnect() end
                     if why ~= "owned" then
                         warn("[Avatar Kreator][Buy All] " .. tostring(item.Name) .. ": " .. tostring(why))
+                        notify(tostring(why), "error", 4)
+                        return
                     end
                 else
-                    local deadline = os.clock() + 60
-                    while not finished and os.clock() < deadline and not state.Destroyed do
-                        task.wait(0.1)
+                    if connectOk and connection then
+                        local deadline = os.clock() + 60
+                        while not finished and os.clock() < deadline and not state.Destroyed do
+                            task.wait(0.1)
+                        end
+                        if connection and connection.Connected then connection:Disconnect() end
+                    else
+                        -- If the close event itself is unavailable, leave enough time
+                        -- for the purchase sheet to be used before prompting another.
+                        task.wait(2.5)
                     end
-                    if connection and connection.Connected then connection:Disconnect() end
                 end
             end
         end
@@ -13146,31 +13212,17 @@ function LULA.CreateLib(kavName, themeInput)
             task.spawn(function()
                 local eligible = self:PrepareMany(items)
                 if #eligible == 0 then
-                    LULA:ShowIsland("Buy All", "Every available item is already owned or off sale.", {Duration = 2.8})
+                    LULA:ShowIsland(
+                        "Buy All",
+                        "Every available item is already owned or off sale.",
+                        {Duration = 2.8}
+                    )
                     return
                 end
 
-                local lineItems = {}
-                local enumOk, avatarAssetProductType = pcall(function()
-                    return Enum.MarketplaceProductType.AvatarAsset
-                end)
-                if enumOk and avatarAssetProductType then
-                    for _, item in ipairs(eligible) do
-                        lineItems[#lineItems + 1] = {
-                            Type = avatarAssetProductType,
-                            Id = tostring(item.Id)
-                        }
-                    end
-                end
-
-                if #lineItems > 0 then
-                    local bulkOk = Wear.WithRobloxIdentity(function()
-                        MarketplaceService:PromptBulkPurchase(LocalPlayer, lineItems, {})
-                    end)
-                    if bulkOk then return end
-                end
-
-                -- Universal fallback for environments where direct bulk prompting is blocked.
+                -- PromptBulkPurchase is documented as server-script only.
+                -- LH is universal/client-side, so sequential PromptPurchase is
+                -- the supported purchase path available to this injected UI.
                 self:PromptSequential(eligible)
             end)
         end
@@ -13188,68 +13240,142 @@ function LULA.CreateLib(kavName, themeInput)
             end
             LULA:Confirm(
                 title or "Buy All?",
-                "Open Roblox purchase prompt(s) for up to " .. tostring(count) .. " outfit item(s)? You still approve every purchase through Roblox.",
+                "Open Roblox purchase prompt(s) for up to "
+                    .. tostring(count)
+                    .. " outfit item(s)? You still approve every purchase through Roblox.",
                 function() self:PromptMany(items) end
             )
         end
 
-        state.GetCurrentWornAssetIds = function()
-            local ids, seen = {}, {}
-            local function add(assetId)
+        state.GetCurrentWornItems = function()
+            local byId, order = {}, {}
+
+            local function add(assetId, metadata)
                 assetId = tonumber(assetId)
-                if assetId and assetId > 0 and not seen[assetId] then
-                    seen[assetId] = true
-                    ids[#ids + 1] = assetId
+                if not assetId or assetId <= 0 then return end
+                if state.ViewerHiddenAssetIds and state.ViewerHiddenAssetIds[assetId] then return end
+
+                local item = byId[assetId]
+                if not item then
+                    item = itemFromProductInfo(assetId)
+                    if not item then return end
+                    byId[assetId] = item
+                    order[#order + 1] = assetId
+                end
+
+                if type(metadata) == "table" then
+                    for key, value in pairs(metadata) do
+                        if value ~= nil and item[key] == nil then
+                            item[key] = value
+                        end
+                    end
                 end
             end
 
             local character = getCharacter()
             local humanoid = character and getHumanoid(character)
-            if humanoid then
-                local ok, description = pcall(function() return humanoid:GetAppliedDescription() end)
-                if ok and description then
-                    for _, property in ipairs({"GraphicTShirt", "Shirt", "Pants", "Face"}) do
-                        pcall(function() add(description[property]) end)
+
+            -- Read the actual live character first. This gives Take Off an
+            -- exact Instance reference instead of trusting description data.
+            if character then
+                for _, object in ipairs(character:GetDescendants()) do
+                    if object:IsA("Accessory") then
+                        local sourceId
+                        pcall(function() sourceId = tonumber(object.SourceAssetId) end)
+                        local id = tonumber(object:GetAttribute("LHAvatarItemId")) or sourceId
+                        if id and id > 0 then
+                            add(id, {
+                                LiveInstance = object,
+                                LiveSource = "Accessory",
+                                LiveSlot = slotForAccessory(object)
+                            })
+                        end
+                    elseif object:IsA("Shirt")
+                        or object:IsA("Pants")
+                        or object:IsA("ShirtGraphic") then
+                        local id = tonumber(object:GetAttribute("LHAvatarItemId"))
+                        if id and id > 0 then
+                            add(id, {
+                                LiveInstance = object,
+                                LiveSource = object.ClassName
+                            })
+                        end
                     end
+                end
+            end
+
+            local backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
+            if backpack then
+                for _, object in ipairs(backpack:GetChildren()) do
+                    if object:IsA("Tool") then
+                        local id = tonumber(object:GetAttribute("LHAvatarItemId"))
+                        if id and id > 0 then
+                            add(id, {
+                                LiveInstance = object,
+                                LiveSource = "Gear",
+                                LiveSlot = "Gear"
+                            })
+                        end
+                    end
+                end
+            end
+
+            -- Merge HumanoidDescription IDs. This fills in classic clothing,
+            -- faces, and accessories whose live instances don't expose a
+            -- useful SourceAssetId on the client.
+            if humanoid then
+                local ok, description = pcall(function()
+                    return humanoid:GetAppliedDescription()
+                end)
+                if ok and description then
+                    local propertyMap = {
+                        GraphicTShirt = "ClassicTShirt",
+                        Shirt = "ClassicShirt",
+                        Pants = "ClassicPants",
+                        Face = "FaceDecal"
+                    }
+                    for property, slot in pairs(propertyMap) do
+                        local id
+                        pcall(function() id = tonumber(description[property]) end)
+                        if id and id > 0 then
+                            add(id, {
+                                DescriptionProperty = property,
+                                LiveSlot = slot
+                            })
+                        end
+                    end
+
                     local accessoriesOk, accessories = pcall(function()
                         return description:GetAccessories(true)
                     end)
                     if accessoriesOk and type(accessories) == "table" then
-                        for _, record in ipairs(accessories) do add(record.AssetId) end
+                        for _, record in ipairs(accessories) do
+                            local id = tonumber(record.AssetId)
+                            if id and id > 0 then
+                                add(id, {
+                                    DescriptionAccessory = true,
+                                    DescriptionAccessoryType = record.AccessoryType
+                                })
+                            end
+                        end
                     end
                     pcall(function() description:Destroy() end)
                 end
             end
 
+            -- Always merge LH-selected items too.
             for slot in pairs(state.EquippedBySlot) do
-                for _, item in ipairs(Wear.GetSlotItems(slot)) do add(item.Id) end
-            end
-
-            if character then
-                for _, object in ipairs(character:GetDescendants()) do
-                    if object:IsA("Accessory") then
-                        pcall(function() add(object.SourceAssetId) end)
-                        add(object:GetAttribute("LHAvatarItemId"))
-                    elseif object:IsA("Shirt") or object:IsA("Pants") or object:IsA("ShirtGraphic") then
-                        add(object:GetAttribute("LHAvatarItemId"))
-                    end
-                end
-            end
-            local backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
-            if backpack then
-                for _, object in ipairs(backpack:GetChildren()) do
-                    if object:IsA("Tool") then add(object:GetAttribute("LHAvatarItemId")) end
+                for _, item in ipairs(Wear.GetSlotItems(slot)) do
+                    add(item.Id, {
+                        LHSelected = true,
+                        LiveSlot = slot
+                    })
                 end
             end
 
-            return ids
-        end
-
-        state.GetCurrentWornItems = function()
             local items = {}
-            for _, assetId in ipairs(state.GetCurrentWornAssetIds()) do
-                local item = itemFromProductInfo(assetId)
-                if item then items[#items + 1] = item end
+            for _, assetId in ipairs(order) do
+                if byId[assetId] then items[#items + 1] = byId[assetId] end
             end
             table.sort(items, function(a, b)
                 local ta = tostring(a.AssetTypeName or "")
@@ -13260,23 +13386,33 @@ function LULA.CreateLib(kavName, themeInput)
             return items
         end
 
+        state.GetCurrentWornAssetIds = function()
+            local ids = {}
+            for _, item in ipairs(state.GetCurrentWornItems()) do
+                if item and tonumber(item.Id) then ids[#ids + 1] = tonumber(item.Id) end
+            end
+            return ids
+        end
+
         function Wear.RemoveCurrentAsset(item)
             if not item or not Wear.ResolveMissingAssetType(item) then
                 return false, "This item type cannot be removed locally."
             end
-            local slot = ASSET_TYPE_TO_SLOT[item.AssetTypeId]
+
+            local id = tonumber(item.Id)
+            local slot = item.LiveSlot or ASSET_TYPE_TO_SLOT[item.AssetTypeId]
             local character = getCharacter()
             local humanoid = character and getHumanoid(character)
-            if not slot or not character or not humanoid then
+            if not id or not slot or not character or not humanoid then
                 return false, "Character/Humanoid unavailable."
             end
 
-            -- If LH itself equipped this item, use the tested slot-selection path.
+            -- If LH equipped it, use the existing verified slot path.
             local selected = Wear.CopyItems(Wear.GetSlotItems(slot))
             local foundSelected = false
             local remaining = {}
             for _, existing in ipairs(selected) do
-                if not foundSelected and tonumber(existing.Id) == tonumber(item.Id) then
+                if not foundSelected and tonumber(existing.Id) == id then
                     foundSelected = true
                 else
                     remaining[#remaining + 1] = existing
@@ -13286,6 +13422,7 @@ function LULA.CreateLib(kavName, themeInput)
                 local ok, _, err = Wear.ApplySlotSelection(slot, remaining)
                 if ok then
                     state.EquippedBySlot[slot] = #remaining > 0 and remaining or nil
+                    state.ViewerHiddenAssetIds[id] = true
                     return true
                 end
                 return false, err
@@ -13293,19 +13430,76 @@ function LULA.CreateLib(kavName, themeInput)
 
             captureOriginalSlot(character, slot)
             Wear.GetOriginalDescription(character, humanoid)
+
+            local function markRemoved()
+                state.ViewerModifiedSlots[slot] = true
+                state.ViewerHiddenAssetIds[id] = true
+            end
+
+            -- Best route: remove the exact live instance recorded when the
+            -- Kurrent Outfit / Viewer page was rendered.
+            local live = item.LiveInstance
+            if typeof(live) == "Instance" and live.Parent
+                and (live:IsDescendantOf(character)
+                    or (LocalPlayer:FindFirstChildOfClass("Backpack")
+                        and live:IsDescendantOf(LocalPlayer:FindFirstChildOfClass("Backpack")))) then
+                pcall(function() live:Destroy() end)
+                markRemoved()
+                return true
+            end
+
+            -- Next, match actual instances by SourceAssetId, LH attribute, or
+            -- exact catalog name. This fixes Roblox accessories whose current
+            -- HumanoidDescription and replicated Accessory data disagree.
+            local exact = {}
+            for _, object in ipairs(character:GetDescendants()) do
+                if object:IsA("Accessory") then
+                    local sourceId
+                    pcall(function() sourceId = tonumber(object.SourceAssetId) end)
+                    local attrId = tonumber(object:GetAttribute("LHAvatarItemId"))
+                    if sourceId == id
+                        or attrId == id
+                        or lower(trim(object.Name)) == lower(trim(item.Name or "")) then
+                        exact[#exact + 1] = object
+                    end
+                end
+            end
+
+            local backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
+            if slot == "Gear" and backpack then
+                for _, object in ipairs(backpack:GetChildren()) do
+                    if object:IsA("Tool")
+                        and tonumber(object:GetAttribute("LHAvatarItemId")) == id then
+                        exact[#exact + 1] = object
+                    end
+                end
+            end
+
+            if #exact > 0 then
+                for _, object in ipairs(exact) do
+                    pcall(function() object:Destroy() end)
+                end
+                markRemoved()
+                return true
+            end
+
+            -- HumanoidDescription route for classic clothing / faces and
+            -- accessories that only expose IDs through GetAppliedDescription.
             local pivot
             pcall(function() pivot = character:GetPivot() end)
 
-            local descOk, description = pcall(function() return humanoid:GetAppliedDescription() end)
+            local descOk, description = pcall(function()
+                return humanoid:GetAppliedDescription()
+            end)
             if descOk and description then
                 local changed = false
                 local propertyName = Wear.GetDescriptionProperty(slot)
+
                 if propertyName then
                     local currentId
                     pcall(function() currentId = tonumber(description[propertyName]) end)
-                    if currentId == tonumber(item.Id) then
-                        local writeOk = pcall(function() description[propertyName] = 0 end)
-                        changed = writeOk
+                    if currentId == id then
+                        changed = pcall(function() description[propertyName] = 0 end)
                     end
                 else
                     local accessoriesOk, accessories = pcall(function()
@@ -13314,33 +13508,41 @@ function LULA.CreateLib(kavName, themeInput)
                     if accessoriesOk and type(accessories) == "table" then
                         local rebuilt = {}
                         for _, record in ipairs(accessories) do
-                            if tonumber(record.AssetId) == tonumber(item.Id) then
+                            if tonumber(record.AssetId) == id then
                                 changed = true
                             else
                                 rebuilt[#rebuilt + 1] = record
                             end
                         end
                         if changed then
-                            local setOk = pcall(function() description:SetAccessories(rebuilt, true) end)
-                            changed = setOk
+                            changed = pcall(function()
+                                description:SetAccessories(rebuilt, true)
+                            end)
                         end
                     end
                 end
 
                 if changed then
-                    local applied = Wear.WithRobloxIdentity(function()
+                    local applied = false
+                    local applyOk = pcall(function()
                         if typeof(humanoid.ApplyDescriptionAsync) == "function" then
-                            humanoid:ApplyDescriptionAsync(description, Enum.AssetTypeVerification.ClientOnly)
+                            humanoid:ApplyDescriptionAsync(
+                                description,
+                                Enum.AssetTypeVerification.ClientOnly
+                            )
                         else
                             humanoid:ApplyDescription(description)
                         end
+                        applied = true
                     end)
+
                     pcall(function() humanoid:BuildRigFromAttachments() end)
                     for _ = 1, 2 do RunService.Heartbeat:Wait() end
                     if pivot then pcall(function() character:PivotTo(pivot) end) end
                     pcall(function() description:Destroy() end)
-                    if applied then
-                        state.ViewerModifiedSlots[slot] = true
+
+                    if applyOk and applied then
+                        markRemoved()
                         return true
                     end
                 else
@@ -13348,22 +13550,41 @@ function LULA.CreateLib(kavName, themeInput)
                 end
             end
 
-            -- Direct attachment fallback for locally-created / executor-loaded instances.
-            local removed = false
-            for _, object in ipairs(character:GetDescendants()) do
-                if object:IsA("Accessory") then
-                    local sourceId
-                    pcall(function() sourceId = tonumber(object.SourceAssetId) end)
-                    if sourceId == tonumber(item.Id)
-                        or tonumber(object:GetAttribute("LHAvatarItemId")) == tonumber(item.Id) then
-                        object:Destroy()
-                        removed = true
+            -- Last safe visual fallback: if exactly ONE live object occupies
+            -- this slot, it is the item represented by this outfit row.
+            local slotCandidates = {}
+            if slot == "FaceDecal" then
+                local head = character:FindFirstChild("Head")
+                local face = head and head:FindFirstChild("face")
+                if face and face:IsA("Decal") then slotCandidates[1] = face end
+            elseif slot == "ClassicTShirt" then
+                local obj = character:FindFirstChildOfClass("ShirtGraphic")
+                if obj then slotCandidates[1] = obj end
+            elseif slot == "ClassicShirt" then
+                local obj = character:FindFirstChildOfClass("Shirt")
+                if obj then slotCandidates[1] = obj end
+            elseif slot == "ClassicPants" then
+                local obj = character:FindFirstChildOfClass("Pants")
+                if obj then slotCandidates[1] = obj end
+            else
+                for _, child in ipairs(character:GetChildren()) do
+                    if child:IsA("Accessory") and slotForAccessory(child) == slot then
+                        slotCandidates[#slotCandidates + 1] = child
                     end
                 end
             end
-            if removed then
-                state.ViewerModifiedSlots[slot] = true
+
+            if #slotCandidates == 1 then
+                pcall(function() slotCandidates[1]:Destroy() end)
+                markRemoved()
                 return true
+            end
+
+            if #slotCandidates > 1 then
+                return false,
+                    "This avatar has multiple "
+                    .. tostring(item.AssetTypeName or slot)
+                    .. " items and Roblox did not expose a reliable ID for this one."
             end
 
             return false, "The item was not found on the kurrent local avatar."
@@ -13562,12 +13783,20 @@ function LULA.CreateLib(kavName, themeInput)
         track(OutfitButton.MouseButton1Click:Connect(function()
             DetailsOverlay.Visible = false
             state.DetailsItem = nil
-            OutfitOverlay.Visible = true
-            rebuildOutfitList()
+            if state.SetMode then
+                state.SetMode("outfit")
+            else
+                OutfitOverlay.Visible = true
+                rebuildOutfitList()
+            end
         end))
 
         track(OutfitBack.MouseButton1Click:Connect(function()
-            OutfitOverlay.Visible = false
+            if state.SetMode then
+                state.SetMode("marketplace")
+            else
+                OutfitOverlay.Visible = false
+            end
         end))
 
         track(state.BuyAllButton.MouseButton1Click:Connect(function()
@@ -13964,6 +14193,7 @@ function LULA.CreateLib(kavName, themeInput)
             local marketplace = state.Mode == "marketplace"
             local favorites = state.Mode == "favorites"
             local viewer = state.Mode == "viewer"
+            local outfit = state.Mode == "outfit"
 
             MarketplaceModeButton.BackgroundColor3 = marketplace and ACCENT or PANEL_2
             MarketplaceModeButton.TextColor3 = marketplace and Color3.new(1, 1, 1) or MUTED
@@ -13971,19 +14201,27 @@ function LULA.CreateLib(kavName, themeInput)
             FavoritesModeButton.TextColor3 = favorites and Color3.new(1, 1, 1) or MUTED
             state.ViewerModeButton.BackgroundColor3 = viewer and ACCENT or PANEL_2
             state.ViewerModeButton.TextColor3 = viewer and Color3.new(1, 1, 1) or MUTED
+            state.OutfitModeButton.BackgroundColor3 = outfit and ACCENT or PANEL_2
+            state.OutfitModeButton.TextColor3 = outfit and Color3.new(1, 1, 1) or MUTED
 
-            SearchShell.Visible = not viewer
-            CategoryScroll.Visible = not viewer
-            ResultsArea.Visible = not viewer
+            local browse = marketplace or favorites
+            SearchShell.Visible = browse
+            CategoryScroll.Visible = browse
+            ResultsArea.Visible = browse
+            OutfitOverlay.Visible = outfit
+
             if state.ClassicSubScroll then
-                state.ClassicSubScroll.Visible = (not viewer)
-                    and (state.CurrentCategory.ParentKey == "classic" or state.CurrentCategory.Key == "classic")
+                state.ClassicSubScroll.Visible = browse
+                    and (state.CurrentCategory.ParentKey == "classic"
+                        or state.CurrentCategory.Key == "classic")
             end
+
             if state.Viewer and state.Viewer.Area then
                 state.Viewer.Visible = viewer
                 state.Viewer.Area.Visible = viewer
             end
-            if viewer then
+
+            if viewer or outfit then
                 Controls.Size = UDim2.new(1, 0, 0, 28)
             else
                 local classicOpen = state.CurrentCategory.ParentKey == "classic"
@@ -14003,7 +14241,11 @@ function LULA.CreateLib(kavName, themeInput)
             if state.Mode == "viewer" then
                 if state.Viewer and state.Viewer.Refresh then state.Viewer:Refresh() end
                 return
+            elseif state.Mode == "outfit" then
+                rebuildOutfitList()
+                return
             end
+
             ResultsScroll.CanvasPosition = Vector2.zero
             if state.Mode == "favorites" then
                 renderFavorites(SearchBox.Text)
@@ -14015,7 +14257,9 @@ function LULA.CreateLib(kavName, themeInput)
         end
 
         local function setMode(mode)
-            if mode ~= "favorites" and mode ~= "viewer" then mode = "marketplace" end
+            if mode ~= "favorites" and mode ~= "viewer" and mode ~= "outfit" then
+                mode = "marketplace"
+            end
             if mode ~= "marketplace" then
                 state.SearchSerial = state.SearchSerial + 1
                 setLoading(false)
@@ -14025,10 +14269,15 @@ function LULA.CreateLib(kavName, themeInput)
                 runActiveSearch()
                 return
             end
+
+            DetailsOverlay.Visible = false
+            state.DetailsItem = nil
             state.Mode = mode
             updateModeVisuals()
             runActiveSearch()
         end
+
+        state.SetMode = setMode
 
         -- Split the remaining Avatar Kreator setup into a fresh Luau function frame.
         -- Delta/Luau caps a single function at 200 local registers; keeping this tail
@@ -14062,7 +14311,7 @@ function LULA.CreateLib(kavName, themeInput)
 
         local function setClassicSubmenuVisible(visible)
             visible = visible == true
-            if state.Mode == "viewer" then
+            if state.Mode == "viewer" or state.Mode == "outfit" then
                 ClassicSubScroll.Visible = false
                 Controls.Size = UDim2.new(1, 0, 0, 28)
                 return
@@ -14505,8 +14754,12 @@ function LULA.CreateLib(kavName, themeInput)
         track(state.Viewer.OutfitButton.MouseButton1Click:Connect(function()
             DetailsOverlay.Visible = false
             state.DetailsItem = nil
-            OutfitOverlay.Visible = true
-            rebuildOutfitList()
+            if state.SetMode then
+                state.SetMode("outfit")
+            else
+                OutfitOverlay.Visible = true
+                rebuildOutfitList()
+            end
         end))
         track(state.Viewer.BuyAllButton.MouseButton1Click:Connect(function()
             task.spawn(function()
@@ -14556,6 +14809,10 @@ function LULA.CreateLib(kavName, themeInput)
 
         track(state.ViewerModeButton.MouseButton1Click:Connect(function()
             setMode("viewer")
+        end))
+
+        track(state.OutfitModeButton.MouseButton1Click:Connect(function()
+            setMode("outfit")
         end))
 
         track(SearchButton.MouseButton1Click:Connect(runActiveSearch))
@@ -14781,7 +15038,11 @@ function LULA.CreateLib(kavName, themeInput)
                 if DetailsOverlay.Visible then
                     closeDetails()
                 elseif OutfitOverlay.Visible then
-                    OutfitOverlay.Visible = false
+                    if state.SetMode then
+                        state.SetMode("marketplace")
+                    else
+                        OutfitOverlay.Visible = false
+                    end
                 end
             end
         end))
