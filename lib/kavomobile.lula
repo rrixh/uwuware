@@ -1,4 +1,4 @@
---kavo ui 4.6.2
+--kavo ui 4.6.3
 local LULA = {}
 LULA.AnimationMarketplaceVersion = 4
 LULA.EmoteMarketplaceVersion = 1
@@ -14274,6 +14274,9 @@ function LULA.CreateLib(kavName, themeInput)
             state.DetailsItem = nil
             state.Mode = mode
             updateModeVisuals()
+            if mode == "viewer" and state.Viewer and state.Viewer.Area then
+                state.Viewer.Area.CanvasPosition = Vector2.zero
+            end
             runActiveSearch()
         end
 
@@ -14426,12 +14429,20 @@ function LULA.CreateLib(kavName, themeInput)
             Rotation = 0
         }
 
-        state.Viewer.Area = create("Frame", {
+        state.Viewer.Area = create("ScrollingFrame", {
             Name = "AvatarViewerArea",
             Position = UDim2.fromOffset(0, 68),
             Size = UDim2.new(1, 0, 1, -68),
             BackgroundTransparency = 1,
             BorderSizePixel = 0,
+            CanvasSize = UDim2.fromOffset(0, 0),
+            AutomaticCanvasSize = Enum.AutomaticSize.Y,
+            ScrollBarThickness = 3,
+            ScrollBarImageColor3 = ACCENT,
+            ScrollingDirection = Enum.ScrollingDirection.Y,
+            ElasticBehavior = Enum.ElasticBehavior.WhenScrollable,
+            ScrollingEnabled = true,
+            Active = true,
             Visible = false,
             ZIndex = 12
         })
@@ -14561,7 +14572,7 @@ function LULA.CreateLib(kavName, themeInput)
 
         state.Viewer.Items = create("ScrollingFrame", {
             Position = UDim2.new(0, 8, 0, 153),
-            Size = UDim2.new(1, -16, 1, -158),
+            Size = UDim2.new(1, -16, 0, 100),
             BackgroundTransparency = 1,
             BorderSizePixel = 0,
             CanvasSize = UDim2.fromOffset(0, 0),
@@ -14583,6 +14594,17 @@ function LULA.CreateLib(kavName, themeInput)
             VerticalAlignment = Enum.VerticalAlignment.Top
         })
         state.Viewer.ItemsLayout.Parent = state.Viewer.Items
+
+        state.Viewer.BottomSpacer = create("Frame", {
+            Name = "ViewerBottomSpacer",
+            Position = UDim2.new(0, 0, 0, 263),
+            Size = UDim2.new(1, 0, 0, 10),
+            BackgroundTransparency = 1,
+            BorderSizePixel = 0,
+            Active = false,
+            ZIndex = 12
+        })
+        state.Viewer.BottomSpacer.Parent = state.Viewer.Area
 
         function state.Viewer:ClearViewport()
             for _, child in ipairs(self.Viewport:GetChildren()) do
@@ -14650,7 +14672,7 @@ function LULA.CreateLib(kavName, themeInput)
             for index, item in ipairs(items) do
                 local card = create("Frame", {
                     Name = "ViewerItem",
-                    Size = UDim2.fromOffset(106, 92),
+                    Size = UDim2.fromOffset(110, 94),
                     BackgroundColor3 = PANEL,
                     BorderSizePixel = 0,
                     LayoutOrder = index,
@@ -14691,7 +14713,7 @@ function LULA.CreateLib(kavName, themeInput)
 
                 local buy = create("TextButton", {
                     Position = UDim2.fromOffset(4, 53),
-                    Size = UDim2.new(0.32, -3, 0, 34),
+                    Size = UDim2.new(0.32, -3, 0, 32),
                     BackgroundColor3 = Color3.fromRGB(46, 156, 82),
                     AutoButtonColor = false,
                     Font = Enum.Font.GothamBold,
@@ -14706,7 +14728,7 @@ function LULA.CreateLib(kavName, themeInput)
 
                 local info = create("TextButton", {
                     Position = UDim2.new(0.34, 0, 0, 53),
-                    Size = UDim2.new(0.28, -2, 0, 34),
+                    Size = UDim2.new(0.28, -2, 0, 32),
                     BackgroundColor3 = PANEL_2,
                     AutoButtonColor = false,
                     Font = Enum.Font.GothamBold,
@@ -14722,7 +14744,7 @@ function LULA.CreateLib(kavName, themeInput)
                 local remove = create("TextButton", {
                     AnchorPoint = Vector2.new(1, 0),
                     Position = UDim2.new(1, -4, 0, 53),
-                    Size = UDim2.new(0.36, -2, 0, 34),
+                    Size = UDim2.new(0.36, -2, 0, 32),
                     BackgroundColor3 = Color3.fromRGB(78, 38, 48),
                     AutoButtonColor = false,
                     Font = Enum.Font.GothamBold,
