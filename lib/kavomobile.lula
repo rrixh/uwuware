@@ -1,8 +1,8 @@
---kavo ui 4.5.2
+--kavo ui 4.6
 local LULA = {}
 LULA.AnimationMarketplaceVersion = 4
 LULA.EmoteMarketplaceVersion = 1
-LULA.AvatarMarketplaceVersion = 3
+LULA.AvatarMarketplaceVersion = 4
 local env = (getgenv and getgenv()) or _G
 
 --kr
@@ -2670,7 +2670,7 @@ function LULA.CreateLib(kavName, themeInput)
     pages.ClipsDescendants = true
     pages.Parent = main
 
-    local footer = makeText(main, "Lollypop Hub v10.2.3", 11, Enum.Font.GothamMedium)
+    local footer = makeText(main, "Lollypop Hub v10.2.4", 11, Enum.Font.GothamMedium)
     footer.Name = "Footer"
     footer.Position = UDim2.new(0, 158, 1, -20)
     footer.Size = UDim2.new(1, -165, 0, 18)
@@ -10361,6 +10361,9 @@ function LULA.CreateLib(kavName, themeInput)
             CardRecords = {},
             CategoryButtons = {},
             DetailsItem = nil,
+            ViewerModifiedSlots = {},
+            OutfitRenderSerial = 0,
+            ViewerRenderSerial = 0,
             ExpandedPosition = UDim2.fromScale(0.5, 0.5),
             ExpandedAnchorPoint = Vector2.new(0.5, 0.5),
             ExpandedSize = UDim2.new(1, 0, 1, 0)
@@ -10443,6 +10446,63 @@ function LULA.CreateLib(kavName, themeInput)
             ZIndex = 5
         })
         LogoText.Parent = Logo
+
+        state.PageIcon = create("ImageLabel", {
+            BackgroundTransparency = 1,
+            Position = UDim2.fromOffset(2, 2),
+            Size = UDim2.new(1, -4, 1, -4),
+            Image = "",
+            ImageTransparency = 1,
+            ScaleType = Enum.ScaleType.Crop,
+            ZIndex = 6
+        })
+        addCorner(state.PageIcon, 6)
+        state.PageIcon.Parent = Logo
+
+        task.spawn(function()
+            local url = "https://raw.githubusercontent.com/rrixh/install/refs/heads/main/imgs/katalog.WEBP"
+            local asset
+
+            local fromUrl = getGlobal("getcustomassetfromurl")
+                or getGlobal("get_custom_asset_from_url")
+            if typeof(fromUrl) == "function" then
+                local ok, result = pcall(fromUrl, url)
+                if ok and type(result) == "string" and result ~= "" then asset = result end
+            end
+
+            if not asset then
+                local getAsset = getGlobal("getcustomasset")
+                    or getGlobal("getsynasset")
+                    or getGlobal("get_custom_asset")
+                local writeFile = getGlobal("writefile") or getGlobal("write_file")
+                local makeFolder = getGlobal("makefolder") or getGlobal("make_folder")
+                local isFolder = getGlobal("isfolder") or getGlobal("is_folder")
+                if typeof(getAsset) == "function" and typeof(writeFile) == "function" then
+                    local folder = "LollypopHub"
+                    pcall(function()
+                        if typeof(makeFolder) == "function"
+                            and (typeof(isFolder) ~= "function" or not isFolder(folder)) then
+                            makeFolder(folder)
+                        end
+                    end)
+                    local path = folder .. "/katalog.webp"
+                    local bodyOk, body = pcall(httpGet, url)
+                    if bodyOk and type(body) == "string" and #body > 0 then
+                        local writeOk = pcall(writeFile, path, body)
+                        if writeOk then
+                            local assetOk, result = pcall(getAsset, path)
+                            if assetOk and type(result) == "string" and result ~= "" then asset = result end
+                        end
+                    end
+                end
+            end
+
+            if asset and state.PageIcon and state.PageIcon.Parent then
+                state.PageIcon.Image = asset
+                state.PageIcon.ImageTransparency = 0
+                LogoText.Visible = false
+            end
+        end)
 
         local Title = create("TextLabel", {
             Position = UDim2.fromOffset(43, 2),
@@ -10541,7 +10601,7 @@ function LULA.CreateLib(kavName, themeInput)
         ModeRow.Parent = Controls
 
         local MarketplaceModeButton = create("TextButton", {
-            Size = UDim2.new(0.49, 0, 1, 0),
+            Size = UDim2.new(0.32, 0, 1, 0),
             BackgroundColor3 = ACCENT,
             AutoButtonColor = false,
             Font = Enum.Font.GothamBold,
@@ -10554,9 +10614,8 @@ function LULA.CreateLib(kavName, themeInput)
         MarketplaceModeButton.Parent = ModeRow
 
         local FavoritesModeButton = create("TextButton", {
-            AnchorPoint = Vector2.new(1, 0),
-            Position = UDim2.fromScale(1, 0),
-            Size = UDim2.new(0.49, 0, 1, 0),
+            Position = UDim2.new(0.34, 0, 0, 0),
+            Size = UDim2.new(0.32, 0, 1, 0),
             BackgroundColor3 = PANEL_2,
             AutoButtonColor = false,
             Font = Enum.Font.GothamBold,
@@ -10567,6 +10626,20 @@ function LULA.CreateLib(kavName, themeInput)
         })
         addCorner(FavoritesModeButton, 7)
         FavoritesModeButton.Parent = ModeRow
+
+        state.ViewerModeButton = create("TextButton", {
+            Position = UDim2.new(0.68, 0, 0, 0),
+            Size = UDim2.new(0.32, 0, 1, 0),
+            BackgroundColor3 = PANEL_2,
+            AutoButtonColor = false,
+            Font = Enum.Font.GothamBold,
+            Text = "Avatar Viewer",
+            TextColor3 = MUTED,
+            TextSize = 9,
+            ZIndex = 5
+        })
+        addCorner(state.ViewerModeButton, 7)
+        state.ViewerModeButton.Parent = ModeRow
 
         local SearchShell = create("Frame", {
             Position = UDim2.new(0, 8, 0, 30),
@@ -11124,30 +11197,50 @@ function LULA.CreateLib(kavName, themeInput)
 
         local DetailsTryButton = create("TextButton", {
             AnchorPoint = Vector2.new(0, 1),
-            Position = UDim2.new(0, 140, 1, -8),
-            Size = UDim2.new(1, -242, 0, 32),
+            Position = UDim2.new(0, 8, 1, -8),
+            Size = UDim2.new(0.32, -5, 0, 32),
             BackgroundColor3 = ACCENT,
             AutoButtonColor = false,
             Font = Enum.Font.GothamBold,
             Text = "Try On",
             TextColor3 = Color3.new(1, 1, 1),
-            TextSize = 10,
+            TextSize = 9.5,
             ZIndex = 43
         })
         addCorner(DetailsTryButton, 10)
         DetailsTryButton.Parent = DetailsHero
         bindButtonVisual(DetailsTryButton, ACCENT, ACCENT_HOVER)
 
+        state.DetailsBuyButton = create("TextButton", {
+            AnchorPoint = Vector2.new(0, 1),
+            Position = UDim2.new(0.34, 3, 1, -8),
+            Size = UDim2.new(0.30, -6, 0, 32),
+            BackgroundColor3 = Color3.fromRGB(46, 156, 82),
+            AutoButtonColor = false,
+            Font = Enum.Font.GothamBold,
+            Text = "Buy",
+            TextColor3 = Color3.new(1, 1, 1),
+            TextSize = 9.5,
+            ZIndex = 43
+        })
+        addCorner(state.DetailsBuyButton, 10)
+        state.DetailsBuyButton.Parent = DetailsHero
+        bindButtonVisual(
+            state.DetailsBuyButton,
+            Color3.fromRGB(46, 156, 82),
+            Color3.fromRGB(56, 180, 96)
+        )
+
         local DetailsCopyButton = create("TextButton", {
             AnchorPoint = Vector2.new(1, 1),
             Position = UDim2.new(1, -8, 1, -8),
-            Size = UDim2.fromOffset(86, 32),
+            Size = UDim2.new(0.32, -5, 0, 32),
             BackgroundColor3 = PANEL_2,
             AutoButtonColor = false,
             Font = Enum.Font.GothamBold,
             Text = "Kopy ID",
             TextColor3 = TEXT,
-            TextSize = 9.5,
+            TextSize = 9,
             ZIndex = 43
         })
         addCorner(DetailsCopyButton, 10)
@@ -11244,30 +11337,51 @@ function LULA.CreateLib(kavName, themeInput)
 
         local OutfitTitle = create("TextLabel", {
             Position = UDim2.fromOffset(82, 0),
-            Size = UDim2.new(1, -198, 1, 0),
+            Size = UDim2.new(1, -252, 1, 0),
             BackgroundTransparency = 1,
             Font = Enum.Font.GothamBold,
-            Text = "Current Local Outfit",
+            Text = "Kurrent Outfit",
             TextColor3 = TEXT,
-            TextSize = 15,
+            TextSize = 13,
+            TextTruncate = Enum.TextTruncate.AtEnd,
             TextXAlignment = Enum.TextXAlignment.Left,
             ZIndex = 52
         })
         OutfitTitle.Parent = OutfitHeader
 
+        state.BuyAllButton = create("TextButton", {
+            AnchorPoint = Vector2.new(1, 0.5),
+            Position = UDim2.new(1, -96, 0.5, 0),
+            Size = UDim2.fromOffset(76, 30),
+            BackgroundColor3 = Color3.fromRGB(46, 156, 82),
+            AutoButtonColor = false,
+            Font = Enum.Font.GothamBold,
+            Text = "Buy All",
+            TextColor3 = Color3.new(1, 1, 1),
+            TextSize = 10,
+            ZIndex = 52
+        })
+        addCorner(state.BuyAllButton, 9)
+        state.BuyAllButton.Parent = OutfitHeader
+        bindButtonVisual(
+            state.BuyAllButton,
+            Color3.fromRGB(46, 156, 82),
+            Color3.fromRGB(56, 180, 96)
+        )
+
         local ResetAllButton = create("TextButton", {
             AnchorPoint = Vector2.new(1, 0.5),
             Position = UDim2.new(1, -8, 0.5, 0),
-            Size = UDim2.fromOffset(102, 30),
+            Size = UDim2.fromOffset(80, 30),
             BackgroundColor3 = Color3.fromRGB(78, 38, 48),
             AutoButtonColor = false,
             Font = Enum.Font.GothamBold,
             Text = "Reset All",
             TextColor3 = Color3.fromRGB(255, 189, 198),
-            TextSize = 12,
+            TextSize = 9.5,
             ZIndex = 52
         })
-        addCorner(ResetAllButton, 10)
+        addCorner(ResetAllButton, 9)
         addStroke(ResetAllButton, ERROR_COLOR, 1, 0.45)
         ResetAllButton.Parent = OutfitHeader
         bindButtonVisual(ResetAllButton, Color3.fromRGB(78, 38, 48), Color3.fromRGB(95, 44, 56))
@@ -12766,7 +12880,8 @@ function LULA.CreateLib(kavName, themeInput)
         end
 
         local function updateOutfitButton()
-            OutfitButton.Text = "Outfit " .. tostring(countEquipped())
+            -- The Outfit page now shows the complete kurrent avatar, not only LH-added items.
+            OutfitButton.Text = "Outfit"
         end
 
         local function internalWearItem(item, silent)
@@ -12845,6 +12960,9 @@ function LULA.CreateLib(kavName, themeInput)
             updateOutfitButton()
             if refreshAllCardStates then refreshAllCardStates() end
             if rebuildOutfitList and OutfitOverlay.Visible then rebuildOutfitList() end
+            if state.Viewer and state.Viewer.Visible and state.Viewer.Refresh then
+                state.Viewer:Refresh()
+            end
 
             if state.DetailsItem then
                 if Wear.IsEquipped(state.DetailsItem) then
@@ -12875,10 +12993,26 @@ function LULA.CreateLib(kavName, themeInput)
         end
 
         local function resetAllItems(silent)
-            local slots = {}
-            for slot in pairs(state.EquippedBySlot) do slots[#slots + 1] = slot end
-            for _, slot in ipairs(slots) do removeSlot(slot, true) end
+            local slots, seen = {}, {}
+            for slot in pairs(state.EquippedBySlot) do
+                seen[slot] = true
+                slots[#slots + 1] = slot
+            end
+            for slot in pairs(state.ViewerModifiedSlots or {}) do
+                if not seen[slot] then
+                    seen[slot] = true
+                    slots[#slots + 1] = slot
+                end
+            end
+            for _, slot in ipairs(slots) do
+                if state.EquippedBySlot[slot] then
+                    removeSlot(slot, true)
+                else
+                    Wear.ApplySlotSelection(slot, {})
+                end
+            end
             state.EquippedBySlot = {}
+            state.ViewerModifiedSlots = {}
             refreshSelectedUi()
         end
 
@@ -12899,6 +13033,340 @@ function LULA.CreateLib(kavName, themeInput)
             end
 
             return "Price N/A"
+        end
+
+        state.Purchase = {}
+
+        function state.Purchase:IsSaleable(item)
+            if not item or not tonumber(item.Id) then return false, "Invalid item." end
+            local info = getProductInfo(item.Id)
+            if info then
+                if info.IsForSale == false then return false, "This item is off sale." end
+                if info.PriceInRobux ~= nil then item.Price = tonumber(info.PriceInRobux) end
+            end
+            if item.PriceStatus and containsPlain(tostring(item.PriceStatus), "off") then
+                return false, "This item is off sale."
+            end
+            return true
+        end
+
+        function state.Purchase:Owns(assetId)
+            assetId = tonumber(assetId)
+            if not assetId then return nil, "invalid asset id" end
+            local ok, result = pcall(
+                MarketplaceService.PlayerOwnsAssetAsync,
+                MarketplaceService,
+                LocalPlayer,
+                assetId
+            )
+            if ok then return result == true end
+            return nil, result
+        end
+
+        function state.Purchase:PromptSingleRaw(item)
+            if not item or not tonumber(item.Id) then return false, "invalid asset id" end
+            local saleable, saleError = self:IsSaleable(item)
+            if not saleable then return false, saleError end
+
+            local owns = self:Owns(item.Id)
+            if owns == true then return false, "owned" end
+
+            local ok, packed = Wear.WithRobloxIdentity(function()
+                MarketplaceService:PromptPurchase(LocalPlayer, tonumber(item.Id), false)
+            end)
+            if ok then return true end
+
+            local retryOk, retryError = pcall(
+                MarketplaceService.PromptPurchase,
+                MarketplaceService,
+                LocalPlayer,
+                tonumber(item.Id),
+                false
+            )
+            if retryOk then return true end
+            return false, tostring(retryError or packed)
+        end
+
+        function state.Purchase:Prompt(item)
+            task.spawn(function()
+                local ok, why = self:PromptSingleRaw(item)
+                if not ok then
+                    if why == "owned" then
+                        LULA:ShowIsland("Already Owned", tostring(item.Name or "This item") .. " is already in your inventory.", {Duration = 2.6})
+                    else
+                        notify(tostring(why or "Roblox could not open the purchase prompt."), "error", 4)
+                    end
+                end
+            end)
+        end
+
+        function state.Purchase:PrepareMany(items)
+            local eligible, seen = {}, {}
+            for _, item in ipairs(items or {}) do
+                local id = tonumber(item and item.Id)
+                if id and not seen[id] then
+                    seen[id] = true
+                    local saleable = self:IsSaleable(item)
+                    local owns = self:Owns(id)
+                    if saleable and owns ~= true then eligible[#eligible + 1] = item end
+                end
+            end
+            return eligible
+        end
+
+        function state.Purchase:PromptSequential(items)
+            for _, item in ipairs(items or {}) do
+                if state.Destroyed then return end
+                local id = tonumber(item.Id)
+                local finished = false
+                local connection
+                connection = MarketplaceService.PromptPurchaseFinished:Connect(function(player, assetId)
+                    if player == LocalPlayer and tonumber(assetId) == id then
+                        finished = true
+                    end
+                end)
+
+                local ok, why = self:PromptSingleRaw(item)
+                if not ok then
+                    if connection and connection.Connected then connection:Disconnect() end
+                    if why ~= "owned" then
+                        warn("[Avatar Kreator][Buy All] " .. tostring(item.Name) .. ": " .. tostring(why))
+                    end
+                else
+                    local deadline = os.clock() + 60
+                    while not finished and os.clock() < deadline and not state.Destroyed do
+                        task.wait(0.1)
+                    end
+                    if connection and connection.Connected then connection:Disconnect() end
+                end
+            end
+        end
+
+        function state.Purchase:PromptMany(items)
+            task.spawn(function()
+                local eligible = self:PrepareMany(items)
+                if #eligible == 0 then
+                    LULA:ShowIsland("Buy All", "Every available item is already owned or off sale.", {Duration = 2.8})
+                    return
+                end
+
+                local lineItems = {}
+                local enumOk, avatarAssetProductType = pcall(function()
+                    return Enum.MarketplaceProductType.AvatarAsset
+                end)
+                if enumOk and avatarAssetProductType then
+                    for _, item in ipairs(eligible) do
+                        lineItems[#lineItems + 1] = {
+                            Type = avatarAssetProductType,
+                            Id = tostring(item.Id)
+                        }
+                    end
+                end
+
+                if #lineItems > 0 then
+                    local bulkOk = Wear.WithRobloxIdentity(function()
+                        MarketplaceService:PromptBulkPurchase(LocalPlayer, lineItems, {})
+                    end)
+                    if bulkOk then return end
+                end
+
+                -- Universal fallback for environments where direct bulk prompting is blocked.
+                self:PromptSequential(eligible)
+            end)
+        end
+
+        function state.Purchase:ConfirmMany(items, title)
+            local count = 0
+            local seen = {}
+            for _, item in ipairs(items or {}) do
+                local id = tonumber(item and item.Id)
+                if id and not seen[id] then seen[id] = true; count = count + 1 end
+            end
+            if count <= 0 then
+                LULA:ShowIsland("Buy All", "There are no katalog items to buy.", {Duration = 2.3})
+                return
+            end
+            LULA:Confirm(
+                title or "Buy All?",
+                "Open Roblox purchase prompt(s) for up to " .. tostring(count) .. " outfit item(s)? You still approve every purchase through Roblox.",
+                function() self:PromptMany(items) end
+            )
+        end
+
+        state.GetCurrentWornAssetIds = function()
+            local ids, seen = {}, {}
+            local function add(assetId)
+                assetId = tonumber(assetId)
+                if assetId and assetId > 0 and not seen[assetId] then
+                    seen[assetId] = true
+                    ids[#ids + 1] = assetId
+                end
+            end
+
+            local character = getCharacter()
+            local humanoid = character and getHumanoid(character)
+            if humanoid then
+                local ok, description = pcall(function() return humanoid:GetAppliedDescription() end)
+                if ok and description then
+                    for _, property in ipairs({"GraphicTShirt", "Shirt", "Pants", "Face"}) do
+                        pcall(function() add(description[property]) end)
+                    end
+                    local accessoriesOk, accessories = pcall(function()
+                        return description:GetAccessories(true)
+                    end)
+                    if accessoriesOk and type(accessories) == "table" then
+                        for _, record in ipairs(accessories) do add(record.AssetId) end
+                    end
+                    pcall(function() description:Destroy() end)
+                end
+            end
+
+            for slot in pairs(state.EquippedBySlot) do
+                for _, item in ipairs(Wear.GetSlotItems(slot)) do add(item.Id) end
+            end
+
+            if character then
+                for _, object in ipairs(character:GetDescendants()) do
+                    if object:IsA("Accessory") then
+                        pcall(function() add(object.SourceAssetId) end)
+                        add(object:GetAttribute("LHAvatarItemId"))
+                    elseif object:IsA("Shirt") or object:IsA("Pants") or object:IsA("ShirtGraphic") then
+                        add(object:GetAttribute("LHAvatarItemId"))
+                    end
+                end
+            end
+            local backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
+            if backpack then
+                for _, object in ipairs(backpack:GetChildren()) do
+                    if object:IsA("Tool") then add(object:GetAttribute("LHAvatarItemId")) end
+                end
+            end
+
+            return ids
+        end
+
+        state.GetCurrentWornItems = function()
+            local items = {}
+            for _, assetId in ipairs(state.GetCurrentWornAssetIds()) do
+                local item = itemFromProductInfo(assetId)
+                if item then items[#items + 1] = item end
+            end
+            table.sort(items, function(a, b)
+                local ta = tostring(a.AssetTypeName or "")
+                local tb = tostring(b.AssetTypeName or "")
+                if ta == tb then return tostring(a.Name) < tostring(b.Name) end
+                return ta < tb
+            end)
+            return items
+        end
+
+        function Wear.RemoveCurrentAsset(item)
+            if not item or not Wear.ResolveMissingAssetType(item) then
+                return false, "This item type cannot be removed locally."
+            end
+            local slot = ASSET_TYPE_TO_SLOT[item.AssetTypeId]
+            local character = getCharacter()
+            local humanoid = character and getHumanoid(character)
+            if not slot or not character or not humanoid then
+                return false, "Character/Humanoid unavailable."
+            end
+
+            -- If LH itself equipped this item, use the tested slot-selection path.
+            local selected = Wear.CopyItems(Wear.GetSlotItems(slot))
+            local foundSelected = false
+            local remaining = {}
+            for _, existing in ipairs(selected) do
+                if not foundSelected and tonumber(existing.Id) == tonumber(item.Id) then
+                    foundSelected = true
+                else
+                    remaining[#remaining + 1] = existing
+                end
+            end
+            if foundSelected then
+                local ok, _, err = Wear.ApplySlotSelection(slot, remaining)
+                if ok then
+                    state.EquippedBySlot[slot] = #remaining > 0 and remaining or nil
+                    return true
+                end
+                return false, err
+            end
+
+            captureOriginalSlot(character, slot)
+            Wear.GetOriginalDescription(character, humanoid)
+            local pivot
+            pcall(function() pivot = character:GetPivot() end)
+
+            local descOk, description = pcall(function() return humanoid:GetAppliedDescription() end)
+            if descOk and description then
+                local changed = false
+                local propertyName = Wear.GetDescriptionProperty(slot)
+                if propertyName then
+                    local currentId
+                    pcall(function() currentId = tonumber(description[propertyName]) end)
+                    if currentId == tonumber(item.Id) then
+                        local writeOk = pcall(function() description[propertyName] = 0 end)
+                        changed = writeOk
+                    end
+                else
+                    local accessoriesOk, accessories = pcall(function()
+                        return description:GetAccessories(true)
+                    end)
+                    if accessoriesOk and type(accessories) == "table" then
+                        local rebuilt = {}
+                        for _, record in ipairs(accessories) do
+                            if tonumber(record.AssetId) == tonumber(item.Id) then
+                                changed = true
+                            else
+                                rebuilt[#rebuilt + 1] = record
+                            end
+                        end
+                        if changed then
+                            local setOk = pcall(function() description:SetAccessories(rebuilt, true) end)
+                            changed = setOk
+                        end
+                    end
+                end
+
+                if changed then
+                    local applied = Wear.WithRobloxIdentity(function()
+                        if typeof(humanoid.ApplyDescriptionAsync) == "function" then
+                            humanoid:ApplyDescriptionAsync(description, Enum.AssetTypeVerification.ClientOnly)
+                        else
+                            humanoid:ApplyDescription(description)
+                        end
+                    end)
+                    pcall(function() humanoid:BuildRigFromAttachments() end)
+                    for _ = 1, 2 do RunService.Heartbeat:Wait() end
+                    if pivot then pcall(function() character:PivotTo(pivot) end) end
+                    pcall(function() description:Destroy() end)
+                    if applied then
+                        state.ViewerModifiedSlots[slot] = true
+                        return true
+                    end
+                else
+                    pcall(function() description:Destroy() end)
+                end
+            end
+
+            -- Direct attachment fallback for locally-created / executor-loaded instances.
+            local removed = false
+            for _, object in ipairs(character:GetDescendants()) do
+                if object:IsA("Accessory") then
+                    local sourceId
+                    pcall(function() sourceId = tonumber(object.SourceAssetId) end)
+                    if sourceId == tonumber(item.Id)
+                        or tonumber(object:GetAttribute("LHAvatarItemId")) == tonumber(item.Id) then
+                        object:Destroy()
+                        removed = true
+                    end
+                end
+            end
+            if removed then
+                state.ViewerModifiedSlots[slot] = true
+                return true
+            end
+
+            return false, "The item was not found on the kurrent local avatar."
         end
 
         local function openDetails(item)
@@ -12935,6 +13403,12 @@ function LULA.CreateLib(kavName, themeInput)
             end
         end))
 
+        track(state.DetailsBuyButton.MouseButton1Click:Connect(function()
+            if state.DetailsItem then
+                state.Purchase:Prompt(state.DetailsItem)
+            end
+        end))
+
         track(DetailsCopyButton.MouseButton1Click:Connect(function()
             if not state.DetailsItem then
                 return
@@ -12956,106 +13430,133 @@ function LULA.CreateLib(kavName, themeInput)
         end
 
         rebuildOutfitList = function()
+            state.OutfitRenderSerial = (state.OutfitRenderSerial or 0) + 1
+            local serial = state.OutfitRenderSerial
             clearOutfitRows()
+            OutfitEmpty.Visible = true
+            OutfitEmpty.Text = "Loading kurrent avatar items..."
 
-            local entries = {}
-            for slot in pairs(state.EquippedBySlot) do
-                for _, item in ipairs(Wear.GetSlotItems(slot)) do
-                    entries[#entries + 1] = {Slot = slot, Item = item}
+            task.spawn(function()
+                local entries = state.GetCurrentWornItems()
+                if state.Destroyed or serial ~= state.OutfitRenderSerial then return end
+                clearOutfitRows()
+                OutfitEmpty.Visible = #entries == 0
+                OutfitEmpty.Text = "No katalog items were found on your kurrent avatar."
+
+                for index, item in ipairs(entries) do
+                    local row = create("Frame", {
+                        Name = "OutfitRow",
+                        Size = UDim2.new(1, -4, 0, 88),
+                        BackgroundColor3 = PANEL,
+                        BorderSizePixel = 0,
+                        LayoutOrder = index,
+                        ZIndex = 52
+                    })
+                    addCorner(row, 12)
+                    addStroke(row, STROKE, 1, 0.2)
+                    row.Parent = OutfitScroll
+
+                    local imageShell = create("Frame", {
+                        Position = UDim2.fromOffset(8, 8),
+                        Size = UDim2.fromOffset(72, 72),
+                        BackgroundColor3 = PANEL_2,
+                        BorderSizePixel = 0,
+                        ZIndex = 53
+                    })
+                    addCorner(imageShell, 10)
+                    imageShell.Parent = row
+
+                    local image = create("ImageLabel", {
+                        Position = UDim2.fromOffset(4, 4),
+                        Size = UDim2.new(1, -8, 1, -8),
+                        BackgroundTransparency = 1,
+                        Image = thumbnailFor(item.Id),
+                        ScaleType = Enum.ScaleType.Fit,
+                        ZIndex = 54
+                    })
+                    image.Parent = imageShell
+
+                    local name = create("TextLabel", {
+                        Position = UDim2.fromOffset(92, 12),
+                        Size = UDim2.new(1, -250, 0, 28),
+                        BackgroundTransparency = 1,
+                        Font = Enum.Font.GothamBold,
+                        Text = item.Name,
+                        TextColor3 = TEXT,
+                        TextSize = 11,
+                        TextTruncate = Enum.TextTruncate.AtEnd,
+                        TextXAlignment = Enum.TextXAlignment.Left,
+                        ZIndex = 53
+                    })
+                    name.Parent = row
+
+                    local meta = create("TextLabel", {
+                        Position = UDim2.fromOffset(92, 42),
+                        Size = UDim2.new(1, -250, 0, 30),
+                        BackgroundTransparency = 1,
+                        Font = Enum.Font.Gotham,
+                        Text = (item.AssetTypeName or "Avatar Item") .. " | " .. formatPrice(item),
+                        TextColor3 = MUTED,
+                        TextSize = 9,
+                        TextTruncate = Enum.TextTruncate.AtEnd,
+                        TextXAlignment = Enum.TextXAlignment.Left,
+                        ZIndex = 53
+                    })
+                    meta.Parent = row
+
+                    local buyButton = create("TextButton", {
+                        AnchorPoint = Vector2.new(1, 0.5),
+                        Position = UDim2.new(1, -94, 0.5, 0),
+                        Size = UDim2.fromOffset(62, 32),
+                        BackgroundColor3 = Color3.fromRGB(46, 156, 82),
+                        AutoButtonColor = false,
+                        Font = Enum.Font.GothamBold,
+                        Text = "Buy",
+                        TextColor3 = Color3.new(1, 1, 1),
+                        TextSize = 9.5,
+                        ZIndex = 53
+                    })
+                    addCorner(buyButton, 9)
+                    buyButton.Parent = row
+                    bindButtonVisual(
+                        buyButton,
+                        Color3.fromRGB(46, 156, 82),
+                        Color3.fromRGB(56, 180, 96)
+                    )
+
+                    local removeButton = create("TextButton", {
+                        AnchorPoint = Vector2.new(1, 0.5),
+                        Position = UDim2.new(1, -8, 0.5, 0),
+                        Size = UDim2.fromOffset(78, 32),
+                        BackgroundColor3 = Color3.fromRGB(78, 38, 48),
+                        AutoButtonColor = false,
+                        Font = Enum.Font.GothamBold,
+                        Text = "Take Off",
+                        TextColor3 = Color3.fromRGB(255, 189, 198),
+                        TextSize = 9.5,
+                        ZIndex = 53
+                    })
+                    addCorner(removeButton, 9)
+                    removeButton.Parent = row
+                    bindButtonVisual(removeButton, Color3.fromRGB(78, 38, 48), Color3.fromRGB(95, 44, 56))
+
+                    buyButton.MouseButton1Click:Connect(function()
+                        state.Purchase:Prompt(item)
+                    end)
+
+                    removeButton.MouseButton1Click:Connect(function()
+                        task.spawn(function()
+                            local ok, err = Wear.RemoveCurrentAsset(item)
+                            if not ok then
+                                notify(err or "The item kould not be removed.", "error", 4)
+                                return
+                            end
+                            refreshSelectedUi()
+                            rebuildOutfitList()
+                        end)
+                    end)
                 end
-            end
-            table.sort(entries, function(a, b)
-                if a.Slot == b.Slot then return tostring(a.Item.Name) < tostring(b.Item.Name) end
-                return a.Slot < b.Slot
             end)
-
-            OutfitEmpty.Visible = #entries == 0
-
-            for index, entry in ipairs(entries) do
-                local item = entry.Item
-                local row = create("Frame", {
-                    Name = "OutfitRow",
-                    Size = UDim2.new(1, -4, 0, 88),
-                    BackgroundColor3 = PANEL,
-                    BorderSizePixel = 0,
-                    LayoutOrder = index,
-                    ZIndex = 52
-                })
-                addCorner(row, 12)
-                addStroke(row, STROKE, 1, 0.2)
-                row.Parent = OutfitScroll
-
-                local imageShell = create("Frame", {
-                    Position = UDim2.fromOffset(8, 8),
-                    Size = UDim2.fromOffset(72, 72),
-                    BackgroundColor3 = PANEL_2,
-                    BorderSizePixel = 0,
-                    ZIndex = 53
-                })
-                addCorner(imageShell, 10)
-                imageShell.Parent = row
-
-                local image = create("ImageLabel", {
-                    Position = UDim2.fromOffset(4, 4),
-                    Size = UDim2.new(1, -8, 1, -8),
-                    BackgroundTransparency = 1,
-                    Image = thumbnailFor(item.Id),
-                    ScaleType = Enum.ScaleType.Fit,
-                    ZIndex = 54
-                })
-                image.Parent = imageShell
-
-                local name = create("TextLabel", {
-                    Position = UDim2.fromOffset(92, 12),
-                    Size = UDim2.new(1, -220, 0, 28),
-                    BackgroundTransparency = 1,
-                    Font = Enum.Font.GothamBold,
-                    Text = item.Name,
-                    TextColor3 = TEXT,
-                    TextSize = 13,
-                    TextTruncate = Enum.TextTruncate.AtEnd,
-                    TextXAlignment = Enum.TextXAlignment.Left,
-                    ZIndex = 53
-                })
-                name.Parent = row
-
-                local meta = create("TextLabel", {
-                    Position = UDim2.fromOffset(92, 42),
-                    Size = UDim2.new(1, -220, 0, 30),
-                    BackgroundTransparency = 1,
-                    Font = Enum.Font.Gotham,
-                    Text = (item.AssetTypeName or entry.Slot) .. " | ID " .. tostring(item.Id),
-                    TextColor3 = MUTED,
-                    TextSize = 11,
-                    TextTruncate = Enum.TextTruncate.AtEnd,
-                    TextXAlignment = Enum.TextXAlignment.Left,
-                    ZIndex = 53
-                })
-                meta.Parent = row
-
-                local removeButton = create("TextButton", {
-                    AnchorPoint = Vector2.new(1, 0.5),
-                    Position = UDim2.new(1, -10, 0.5, 0),
-                    Size = UDim2.fromOffset(104, 36),
-                    BackgroundColor3 = Color3.fromRGB(78, 38, 48),
-                    AutoButtonColor = false,
-                    Font = Enum.Font.GothamBold,
-                    Text = "Take Off",
-                    TextColor3 = Color3.fromRGB(255, 189, 198),
-                    TextSize = 12,
-                    ZIndex = 53
-                })
-                addCorner(removeButton, 10)
-                removeButton.Parent = row
-                bindButtonVisual(removeButton, Color3.fromRGB(78, 38, 48), Color3.fromRGB(95, 44, 56))
-
-                removeButton.MouseButton1Click:Connect(function()
-                    if removeItem(item, false) then
-                        refreshSelectedUi()
-                        rebuildOutfitList()
-                    end
-                end)
-            end
         end
 
         track(OutfitButton.MouseButton1Click:Connect(function()
@@ -13069,8 +13570,14 @@ function LULA.CreateLib(kavName, themeInput)
             OutfitOverlay.Visible = false
         end))
 
+        track(state.BuyAllButton.MouseButton1Click:Connect(function()
+            task.spawn(function()
+                state.Purchase:ConfirmMany(state.GetCurrentWornItems(), "Buy All Outfit Items?")
+            end)
+        end))
+
         track(ResetAllButton.MouseButton1Click:Connect(function()
-            if countEquipped() <= 0 then return end
+            if countEquipped() <= 0 and next(state.ViewerModifiedSlots or {}) == nil then return end
             LULA:Confirm(
                 "Remove all klothing?",
                 "Are you sure you want to remove all klothing?",
@@ -13246,34 +13753,54 @@ function LULA.CreateLib(kavName, themeInput)
             local tryButton = create("TextButton", {
                 AnchorPoint = Vector2.new(0, 1),
                 Position = UDim2.new(0, 7, 1, -7),
-                Size = UDim2.new(0.66, -4, 0, 27),
+                Size = UDim2.new(0.37, -4, 0, 27),
                 BackgroundColor3 = ACCENT,
                 AutoButtonColor = false,
                 Font = Enum.Font.GothamBold,
                 Text = "Try On",
                 TextColor3 = Color3.new(1, 1, 1),
-                TextSize = 9,
+                TextSize = 8.5,
                 ZIndex = 6
             })
             addCorner(tryButton, 7)
             tryButton.Parent = card
 
+            local buyButton = create("TextButton", {
+                AnchorPoint = Vector2.new(0, 1),
+                Position = UDim2.new(0.38, 3, 1, -7),
+                Size = UDim2.new(0.29, -4, 0, 27),
+                BackgroundColor3 = Color3.fromRGB(46, 156, 82),
+                AutoButtonColor = false,
+                Font = Enum.Font.GothamBold,
+                Text = "Buy",
+                TextColor3 = Color3.new(1, 1, 1),
+                TextSize = 8.5,
+                ZIndex = 6
+            })
+            addCorner(buyButton, 7)
+            buyButton.Parent = card
+
             local infoButton = create("TextButton", {
                 AnchorPoint = Vector2.new(1, 1),
                 Position = UDim2.new(1, -7, 1, -7),
-                Size = UDim2.new(0.34, -4, 0, 27),
+                Size = UDim2.new(0.31, -4, 0, 27),
                 BackgroundColor3 = PANEL_3,
                 AutoButtonColor = false,
                 Font = Enum.Font.GothamBold,
                 Text = "Info",
                 TextColor3 = TEXT,
-                TextSize = 9,
+                TextSize = 8.5,
                 ZIndex = 6
             })
             addCorner(infoButton, 7)
             infoButton.Parent = card
 
             bindButtonVisual(tryButton, ACCENT, ACCENT_HOVER)
+            bindButtonVisual(
+                buyButton,
+                Color3.fromRGB(46, 156, 82),
+                Color3.fromRGB(56, 180, 96)
+            )
             bindButtonVisual(infoButton, PANEL_3, blendColor(PANEL_3, TEXT, 0.08))
             bindButtonVisual(starButton, PANEL_3, blendColor(PANEL_3, TEXT, 0.08))
 
@@ -13296,6 +13823,10 @@ function LULA.CreateLib(kavName, themeInput)
 
             tryButton.MouseButton1Click:Connect(function()
                 toggleItem(item)
+            end)
+
+            buyButton.MouseButton1Click:Connect(function()
+                state.Purchase:Prompt(item)
             end)
 
             infoButton.MouseButton1Click:Connect(function()
@@ -13431,10 +13962,37 @@ function LULA.CreateLib(kavName, themeInput)
 
         local function updateModeVisuals()
             local marketplace = state.Mode == "marketplace"
+            local favorites = state.Mode == "favorites"
+            local viewer = state.Mode == "viewer"
+
             MarketplaceModeButton.BackgroundColor3 = marketplace and ACCENT or PANEL_2
             MarketplaceModeButton.TextColor3 = marketplace and Color3.new(1, 1, 1) or MUTED
-            FavoritesModeButton.BackgroundColor3 = marketplace and PANEL_2 or ACCENT
-            FavoritesModeButton.TextColor3 = marketplace and MUTED or Color3.new(1, 1, 1)
+            FavoritesModeButton.BackgroundColor3 = favorites and ACCENT or PANEL_2
+            FavoritesModeButton.TextColor3 = favorites and Color3.new(1, 1, 1) or MUTED
+            state.ViewerModeButton.BackgroundColor3 = viewer and ACCENT or PANEL_2
+            state.ViewerModeButton.TextColor3 = viewer and Color3.new(1, 1, 1) or MUTED
+
+            SearchShell.Visible = not viewer
+            CategoryScroll.Visible = not viewer
+            ResultsArea.Visible = not viewer
+            if state.ClassicSubScroll then
+                state.ClassicSubScroll.Visible = (not viewer)
+                    and (state.CurrentCategory.ParentKey == "classic" or state.CurrentCategory.Key == "classic")
+            end
+            if state.Viewer and state.Viewer.Area then
+                state.Viewer.Visible = viewer
+                state.Viewer.Area.Visible = viewer
+            end
+            if viewer then
+                Controls.Size = UDim2.new(1, 0, 0, 28)
+            else
+                local classicOpen = state.CurrentCategory.ParentKey == "classic"
+                    or state.CurrentCategory.Key == "classic"
+                Controls.Size = UDim2.new(1, 0, 0, classicOpen and 113 or 88)
+                ResultsArea.Position = UDim2.fromOffset(0, classicOpen and 153 or 128)
+                ResultsArea.Size = UDim2.new(1, 0, 1, classicOpen and -153 or -128)
+            end
+
             SearchBox.PlaceholderText = marketplace
                 and "Search Roblox avatar items or paste an ID..."
                 or "Search saved avatar favorites..."
@@ -13442,6 +14000,10 @@ function LULA.CreateLib(kavName, themeInput)
         end
 
         local function runActiveSearch()
+            if state.Mode == "viewer" then
+                if state.Viewer and state.Viewer.Refresh then state.Viewer:Refresh() end
+                return
+            end
             ResultsScroll.CanvasPosition = Vector2.zero
             if state.Mode == "favorites" then
                 renderFavorites(SearchBox.Text)
@@ -13453,8 +14015,8 @@ function LULA.CreateLib(kavName, themeInput)
         end
 
         local function setMode(mode)
-            mode = mode == "favorites" and "favorites" or "marketplace"
-            if mode == "favorites" then
+            if mode ~= "favorites" and mode ~= "viewer" then mode = "marketplace" end
+            if mode ~= "marketplace" then
                 state.SearchSerial = state.SearchSerial + 1
                 setLoading(false)
             end
@@ -13496,9 +14058,15 @@ function LULA.CreateLib(kavName, themeInput)
             VerticalAlignment = Enum.VerticalAlignment.Center
         })
         ClassicSubLayout.Parent = ClassicSubScroll
+        state.ClassicSubScroll = ClassicSubScroll
 
         local function setClassicSubmenuVisible(visible)
             visible = visible == true
+            if state.Mode == "viewer" then
+                ClassicSubScroll.Visible = false
+                Controls.Size = UDim2.new(1, 0, 0, 28)
+                return
+            end
             ClassicSubScroll.Visible = visible
             if visible then
                 Controls.Size = UDim2.new(1, 0, 0, 113)
@@ -13604,12 +14172,390 @@ function LULA.CreateLib(kavName, themeInput)
         setClassicSubmenuVisible(false)
         updateCategoryVisuals()
 
+        state.Viewer = {
+            Visible = false,
+            Rotation = 0
+        }
+
+        state.Viewer.Area = create("Frame", {
+            Name = "AvatarViewerArea",
+            Position = UDim2.fromOffset(0, 68),
+            Size = UDim2.new(1, 0, 1, -68),
+            BackgroundTransparency = 1,
+            BorderSizePixel = 0,
+            Visible = false,
+            ZIndex = 12
+        })
+        state.Viewer.Area.Parent = Main
+
+        state.Viewer.Hero = create("Frame", {
+            Position = UDim2.new(0, 8, 0, 4),
+            Size = UDim2.new(1, -16, 0, 166),
+            BackgroundColor3 = PANEL,
+            BorderSizePixel = 0,
+            ZIndex = 13
+        })
+        addCorner(state.Viewer.Hero, 12)
+        addStroke(state.Viewer.Hero, STROKE, 1, 0.2)
+        state.Viewer.Hero.Parent = state.Viewer.Area
+
+        state.Viewer.Viewport = create("ViewportFrame", {
+            Position = UDim2.fromOffset(7, 7),
+            Size = UDim2.new(0.49, -10, 1, -14),
+            BackgroundColor3 = PANEL_2,
+            BorderSizePixel = 0,
+            Ambient = Color3.fromRGB(205, 205, 218),
+            LightColor = Color3.fromRGB(255, 255, 255),
+            LightDirection = Vector3.new(-1, -1, -1),
+            ZIndex = 14
+        })
+        addCorner(state.Viewer.Viewport, 10)
+        state.Viewer.Viewport.Parent = state.Viewer.Hero
+
+        state.Viewer.Controls = create("Frame", {
+            Position = UDim2.new(0.50, 2, 0, 7),
+            Size = UDim2.new(0.50, -9, 1, -14),
+            BackgroundTransparency = 1,
+            ZIndex = 14
+        })
+        state.Viewer.Controls.Parent = state.Viewer.Hero
+
+        state.Viewer.Title = create("TextLabel", {
+            Size = UDim2.new(1, 0, 0, 25),
+            BackgroundTransparency = 1,
+            Font = Enum.Font.GothamBold,
+            Text = "Live Avatar Viewer",
+            TextColor3 = TEXT,
+            TextSize = 12,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            ZIndex = 15
+        })
+        state.Viewer.Title.Parent = state.Viewer.Controls
+
+        state.Viewer.Subtitle = create("TextLabel", {
+            Position = UDim2.fromOffset(0, 24),
+            Size = UDim2.new(1, 0, 0, 28),
+            BackgroundTransparency = 1,
+            Font = Enum.Font.Gotham,
+            Text = "Your kurrent local look updates here.",
+            TextColor3 = MUTED,
+            TextSize = 8.5,
+            TextWrapped = true,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            TextYAlignment = Enum.TextYAlignment.Top,
+            ZIndex = 15
+        })
+        state.Viewer.Subtitle.Parent = state.Viewer.Controls
+
+        function state.Viewer:MakeButton(textValue, position, sizeValue, danger)
+            local button = create("TextButton", {
+                Position = position,
+                Size = sizeValue,
+                BackgroundColor3 = danger and Color3.fromRGB(78, 38, 48) or PANEL_2,
+                AutoButtonColor = false,
+                Font = Enum.Font.GothamBold,
+                Text = textValue,
+                TextColor3 = danger and Color3.fromRGB(255, 189, 198) or TEXT,
+                TextSize = 8.5,
+                ZIndex = 15
+            })
+            addCorner(button, 8)
+            addStroke(button, danger and ERROR_COLOR or STROKE, 1, danger and 0.45 or 0.2)
+            button.Parent = self.Controls
+            bindButtonVisual(
+                button,
+                danger and Color3.fromRGB(78, 38, 48) or PANEL_2,
+                danger and Color3.fromRGB(95, 44, 56) or PANEL_3
+            )
+            return button
+        end
+
+        state.Viewer.RefreshButton = state.Viewer:MakeButton(
+            "Refresh",
+            UDim2.new(0, 0, 0, 56),
+            UDim2.new(0.49, -2, 0, 28)
+        )
+        state.Viewer.OutfitButton = state.Viewer:MakeButton(
+            "Outfit",
+            UDim2.new(0.51, 2, 0, 56),
+            UDim2.new(0.49, -2, 0, 28)
+        )
+        state.Viewer.BuyAllButton = state.Viewer:MakeButton(
+            "Buy All",
+            UDim2.new(0, 0, 0, 89),
+            UDim2.new(0.49, -2, 0, 28)
+        )
+        state.Viewer.SaveAvatarButton = state.Viewer:MakeButton(
+            "Save Avatar",
+            UDim2.new(0.51, 2, 0, 89),
+            UDim2.new(0.49, -2, 0, 28)
+        )
+        state.Viewer.ResetButton = state.Viewer:MakeButton(
+            "Reset All",
+            UDim2.new(0, 0, 1, -29),
+            UDim2.new(1, 0, 0, 28),
+            true
+        )
+
+        state.Viewer.WearingTitle = create("TextLabel", {
+            Position = UDim2.new(0, 8, 0, 178),
+            Size = UDim2.new(1, -16, 0, 20),
+            BackgroundTransparency = 1,
+            Font = Enum.Font.GothamBold,
+            Text = "Kurrently Wearing",
+            TextColor3 = TEXT,
+            TextSize = 11,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            ZIndex = 13
+        })
+        state.Viewer.WearingTitle.Parent = state.Viewer.Area
+
+        state.Viewer.Items = create("ScrollingFrame", {
+            Position = UDim2.new(0, 8, 0, 201),
+            Size = UDim2.new(1, -16, 1, -209),
+            BackgroundTransparency = 1,
+            BorderSizePixel = 0,
+            CanvasSize = UDim2.fromOffset(0, 0),
+            AutomaticCanvasSize = Enum.AutomaticSize.X,
+            ScrollBarThickness = 3,
+            ScrollBarImageColor3 = ACCENT,
+            ScrollingDirection = Enum.ScrollingDirection.X,
+            ZIndex = 13
+        })
+        state.Viewer.Items.Parent = state.Viewer.Area
+
+        state.Viewer.ItemsLayout = create("UIListLayout", {
+            FillDirection = Enum.FillDirection.Horizontal,
+            Padding = UDim.new(0, 7),
+            SortOrder = Enum.SortOrder.LayoutOrder,
+            VerticalAlignment = Enum.VerticalAlignment.Top
+        })
+        state.Viewer.ItemsLayout.Parent = state.Viewer.Items
+
+        function state.Viewer:ClearViewport()
+            for _, child in ipairs(self.Viewport:GetChildren()) do
+                child:Destroy()
+            end
+        end
+
+        function state.Viewer:RefreshViewport()
+            self:ClearViewport()
+            local character = getCharacter()
+            if not character then return end
+
+            local oldArchivable = character.Archivable
+            character.Archivable = true
+            local cloneOk, model = pcall(function() return character:Clone() end)
+            character.Archivable = oldArchivable
+            if not cloneOk or not model then return end
+
+            for _, object in ipairs(model:GetDescendants()) do
+                if object:IsA("Script") or object:IsA("LocalScript") or object:IsA("Tool") then
+                    object:Destroy()
+                elseif object:IsA("BasePart") then
+                    object.Anchored = true
+                    object.CanCollide = false
+                    object.CanTouch = false
+                end
+            end
+
+            local world = Instance.new("WorldModel")
+            world.Name = "AvatarViewerWorld"
+            world.Parent = self.Viewport
+            model.Name = "AvatarViewerModel"
+            model.Parent = world
+            pcall(function() model:PivotTo(CFrame.new()) end)
+
+            local camera = Instance.new("Camera")
+            camera.FieldOfView = 32
+            camera.Parent = self.Viewport
+            self.Viewport.CurrentCamera = camera
+
+            local boxCFrame, boxSize = model:GetBoundingBox()
+            local focus = boxCFrame.Position + Vector3.new(0, boxSize.Y * 0.03, 0)
+            local halfFov = math.rad(camera.FieldOfView * 0.5)
+            local distance = math.max(
+                4.5,
+                (boxSize.Y * 0.60) / math.max(0.05, math.tan(halfFov)),
+                (boxSize.X * 0.67) / math.max(0.05, math.tan(halfFov))
+            )
+            local angle = math.rad(self.Rotation or 0)
+            local offset = Vector3.new(math.sin(angle) * distance, boxSize.Y * 0.02, -math.cos(angle) * distance)
+            camera.CFrame = CFrame.lookAt(focus + offset, focus, Vector3.new(0, 1, 0))
+        end
+
+        function state.Viewer:ClearItems()
+            for _, child in ipairs(self.Items:GetChildren()) do
+                if child:IsA("Frame") and child.Name == "ViewerItem" then child:Destroy() end
+            end
+        end
+
+        function state.Viewer:RenderItems(items, serial)
+            if serial ~= state.ViewerRenderSerial or state.Destroyed then return end
+            self:ClearItems()
+            self.WearingTitle.Text = "Kurrently Wearing (" .. tostring(#items) .. ")"
+
+            for index, item in ipairs(items) do
+                local card = create("Frame", {
+                    Name = "ViewerItem",
+                    Size = UDim2.fromOffset(116, 126),
+                    BackgroundColor3 = PANEL,
+                    BorderSizePixel = 0,
+                    LayoutOrder = index,
+                    ZIndex = 14
+                })
+                addCorner(card, 10)
+                addStroke(card, STROKE, 1, 0.2)
+                card.Parent = self.Items
+
+                local image = create("ImageLabel", {
+                    Position = UDim2.fromOffset(5, 5),
+                    Size = UDim2.new(1, -10, 0, 66),
+                    BackgroundColor3 = PANEL_2,
+                    BorderSizePixel = 0,
+                    Active = true,
+                    Image = thumbnailFor(item.Id),
+                    ScaleType = Enum.ScaleType.Fit,
+                    ZIndex = 15
+                })
+                addCorner(image, 8)
+                image.Parent = card
+
+                local name = create("TextLabel", {
+                    Position = UDim2.fromOffset(6, 73),
+                    Size = UDim2.new(1, -12, 0, 22),
+                    BackgroundTransparency = 1,
+                    Font = Enum.Font.GothamBold,
+                    Text = item.Name,
+                    TextColor3 = TEXT,
+                    TextSize = 8,
+                    TextTruncate = Enum.TextTruncate.AtEnd,
+                    TextXAlignment = Enum.TextXAlignment.Left,
+                    ZIndex = 15
+                })
+                name.Parent = card
+
+                local buy = create("TextButton", {
+                    Position = UDim2.fromOffset(5, 98),
+                    Size = UDim2.new(0.48, -6, 0, 23),
+                    BackgroundColor3 = Color3.fromRGB(46, 156, 82),
+                    AutoButtonColor = false,
+                    Font = Enum.Font.GothamBold,
+                    Text = "Buy",
+                    TextColor3 = Color3.new(1, 1, 1),
+                    TextSize = 8,
+                    ZIndex = 15
+                })
+                addCorner(buy, 7)
+                buy.Parent = card
+                bindButtonVisual(buy, Color3.fromRGB(46, 156, 82), Color3.fromRGB(56, 180, 96))
+
+                local remove = create("TextButton", {
+                    AnchorPoint = Vector2.new(1, 0),
+                    Position = UDim2.new(1, -5, 0, 98),
+                    Size = UDim2.new(0.52, -6, 0, 23),
+                    BackgroundColor3 = Color3.fromRGB(78, 38, 48),
+                    AutoButtonColor = false,
+                    Font = Enum.Font.GothamBold,
+                    Text = "Remove",
+                    TextColor3 = Color3.fromRGB(255, 189, 198),
+                    TextSize = 7.5,
+                    ZIndex = 15
+                })
+                addCorner(remove, 7)
+                remove.Parent = card
+                bindButtonVisual(remove, Color3.fromRGB(78, 38, 48), Color3.fromRGB(95, 44, 56))
+
+                buy.MouseButton1Click:Connect(function() state.Purchase:Prompt(item) end)
+                remove.MouseButton1Click:Connect(function()
+                    task.spawn(function()
+                        local ok, err = Wear.RemoveCurrentAsset(item)
+                        if not ok then
+                            notify(err or "The item kould not be removed.", "error", 4)
+                            return
+                        end
+                        refreshSelectedUi()
+                    end)
+                end)
+
+                image.InputBegan:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseButton1
+                        or input.UserInputType == Enum.UserInputType.Touch then
+                        openDetails(item)
+                    end
+                end)
+            end
+        end
+
+        function state.Viewer:Refresh()
+            state.ViewerRenderSerial = (state.ViewerRenderSerial or 0) + 1
+            local serial = state.ViewerRenderSerial
+            self:RefreshViewport()
+            self.WearingTitle.Text = "Kurrently Wearing (loading...)"
+            task.spawn(function()
+                local items = state.GetCurrentWornItems()
+                if serial ~= state.ViewerRenderSerial or state.Destroyed then return end
+                self:RenderItems(items, serial)
+            end)
+        end
+
+        track(state.Viewer.RefreshButton.MouseButton1Click:Connect(function()
+            state.Viewer:Refresh()
+        end))
+        track(state.Viewer.OutfitButton.MouseButton1Click:Connect(function()
+            DetailsOverlay.Visible = false
+            state.DetailsItem = nil
+            OutfitOverlay.Visible = true
+            rebuildOutfitList()
+        end))
+        track(state.Viewer.BuyAllButton.MouseButton1Click:Connect(function()
+            task.spawn(function()
+                state.Purchase:ConfirmMany(state.GetCurrentWornItems(), "Buy All Kurrent Avatar Items?")
+            end)
+        end))
+        track(state.Viewer.SaveAvatarButton.MouseButton1Click:Connect(function()
+            task.spawn(function()
+                local character = getCharacter()
+                local humanoid = character and getHumanoid(character)
+                if not humanoid then
+                    notify("Character/Humanoid unavailable.", "error", 3)
+                    return
+                end
+                local ok, description = pcall(function() return humanoid:GetAppliedDescription() end)
+                if not ok or not description then
+                    notify("Kould not read the kurrent avatar description.", "error", 4)
+                    return
+                end
+                local promptOk, promptError = Wear.WithRobloxIdentity(function()
+                    AvatarEditorService:PromptSaveAvatar(description, humanoid.RigType)
+                end)
+                pcall(function() description:Destroy() end)
+                if not promptOk then
+                    notify("Save Avatar prompt is unavailable here: " .. tostring(promptError), "error", 4)
+                end
+            end)
+        end))
+        track(state.Viewer.ResetButton.MouseButton1Click:Connect(function()
+            LULA:Confirm(
+                "Reset Avatar Kreator changes?",
+                "Restore every avatar item changed or removed by Avatar Kreator?",
+                function()
+                    resetAllItems(true)
+                    state.Viewer:Refresh()
+                end
+            )
+        end))
+
         track(MarketplaceModeButton.MouseButton1Click:Connect(function()
             setMode("marketplace")
         end))
 
         track(FavoritesModeButton.MouseButton1Click:Connect(function()
             setMode("favorites")
+        end))
+
+        track(state.ViewerModeButton.MouseButton1Click:Connect(function()
+            setMode("viewer")
         end))
 
         track(SearchButton.MouseButton1Click:Connect(runActiveSearch))
@@ -13756,18 +14702,21 @@ function LULA.CreateLib(kavName, themeInput)
             state.CurrentCharacter = character
             state.SnapshotByCharacter[character] = nil
             state.OriginalDescriptionByCharacter[character] = nil
+            state.ViewerModifiedSlots = {}
 
             task.wait(1.4)
-            if state.Destroyed or countEquipped() == 0 then return end
+            if state.Destroyed then return end
 
-            state.Reapplying = true
-            for slot in pairs(state.EquippedBySlot) do
-                local selected = Wear.CopyItems(Wear.GetSlotItems(slot))
-                local ok, methodName = Wear.ApplySlotSelection(slot, selected)
-                Wear.Debug("Respawn Reapply " .. tostring(slot), ok, methodName)
-                task.wait(0.05)
+            if countEquipped() > 0 then
+                state.Reapplying = true
+                for slot in pairs(state.EquippedBySlot) do
+                    local selected = Wear.CopyItems(Wear.GetSlotItems(slot))
+                    local ok, methodName = Wear.ApplySlotSelection(slot, selected)
+                    Wear.Debug("Respawn Reapply " .. tostring(slot), ok, methodName)
+                    task.wait(0.05)
+                end
+                state.Reapplying = false
             end
-            state.Reapplying = false
             refreshSelectedUi()
         end)
 
@@ -13782,9 +14731,16 @@ function LULA.CreateLib(kavName, themeInput)
             if restoreAvatar ~= false then
                 local character = getCharacter()
                 if character then
-                    local slots = {}
+                    local slots, seen = {}, {}
                     for slot in pairs(state.EquippedBySlot) do
+                        seen[slot] = true
                         table.insert(slots, slot)
+                    end
+                    for slot in pairs(state.ViewerModifiedSlots or {}) do
+                        if not seen[slot] then
+                            seen[slot] = true
+                            table.insert(slots, slot)
+                        end
                     end
                     for _, slot in ipairs(slots) do
                         pcall(restoreOriginalSlot, character, slot)
@@ -14114,7 +15070,7 @@ function LULA.CreateLib(kavName, themeInput)
     function window:GetUIState()
         if not active then return nil end
         local state = {
-            Version = 3,
+            Version = 4,
             SelectedTab = active.SelectedTab and active.SelectedTab.Name or nil,
             Visible = active.ScreenGui.Enabled,
             Main = {
@@ -14123,19 +15079,9 @@ function LULA.CreateLib(kavName, themeInput)
             },
             TabList = {tabList.CanvasPosition.X, tabList.CanvasPosition.Y},
             Tabs = {},
-            Controls = {},
             BackStack = shallowCopyArray(active.BackStack),
             ForwardStack = shallowCopyArray(active.ForwardStack),
         }
-        for controlId, api in pairs(controlIdRegistry) do
-            if api and type(api.GetValue) == "function" and type(api.SetValue) == "function" then
-                local ok, value = pcall(function() return api:GetValue() end)
-                if ok then
-                    local encoded = encodeSessionValue(value)
-                    if encoded ~= nil then state.Controls[tostring(controlId)] = encoded end
-                end
-            end
-        end
         for _, tab in ipairs(active.Tabs) do
             local position = tab.Scroll and tab.Scroll.CanvasPosition or tab.LastCanvasPosition or Vector2.new()
             state.Tabs[tab.Name] = {
@@ -14186,34 +15132,8 @@ function LULA.CreateLib(kavName, themeInput)
             RunService.Heartbeat:Wait()
             if not active then return end
 
-            -- A restored session must reapply enabled toggles and kontrol values, not only
-            -- reopen the page. Build lazy tabs first so every saved kontrol can be resolved.
-            local savedControls = type(state.Controls) == "table" and state.Controls or {}
-            if next(savedControls) ~= nil then
-                for _, tab in ipairs(active.Tabs) do tab:EnsureBuilt() end
-                active.RestoringState = true
-                local function restoreKontrols(togglePass)
-                    for controlId, encoded in pairs(savedControls) do
-                        local api = controlIdRegistry[tostring(controlId)]
-                        local isToggle = api and api.Kind == "toggle"
-                        if api and isToggle == togglePass and type(api.SetValue) == "function" then
-                            local decoded, valid = decodeSessionValue(encoded)
-                            if valid and (api.Kind ~= "dropdown" or type(api.ContainsValue) ~= "function" or api:ContainsValue(decoded)) then
-                                -- Action dropdowns are selectors, not persistent toggles.
-                                -- Restore their displayed value without auto-running old
-                                -- remote loaders at startup. Other kontroller callbacks
-                                -- still restore normally, and toggles remain the final pass.
-                                local fireOnRestore = api.Kind ~= "dropdown"
-                                pcall(function() api:SetValue(decoded, fireOnRestore) end)
-                            end
-                        end
-                    end
-                end
-                -- Restore values/ranges/targets before enabling feature toggles that depend on them.
-                restoreKontrols(false)
-                restoreKontrols(true)
-                active.RestoringState = false
-            end
+            -- Crash/session restore is UI-only on purpose. Never replay saved feature
+            -- callbacks/toggles/textboxes here; those can change gameplay or execute stale actions.
 
             for _, tab in ipairs(active.Tabs) do
                 local animationTabName = utf8.char(0x2605) .. " Free Animations"
@@ -14227,7 +15147,9 @@ function LULA.CreateLib(kavName, themeInput)
                         tab:EnsureBuilt()
                         if tab.SearchBar and tab.SearchBar.TextBox then
                             tab.SearchBar.TextBox.Text = tostring(saved.Search)
-                            tab.SearchBar.Apply(saved.Search)
+                            if type(tab.SearchBar.Apply) == "function" then
+                                pcall(tab.SearchBar.Apply, saved.Search)
+                            end
                         end
                     end
                     if tab.Scroll then
