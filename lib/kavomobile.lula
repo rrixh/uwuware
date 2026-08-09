@@ -1,8 +1,9 @@
---kavo ui 4.6.3
+--kavo ui 4.6.3 - LH v10.3.0 patch
 local LULA = {}
 LULA.AnimationMarketplaceVersion = 4
 LULA.EmoteMarketplaceVersion = 1
-LULA.AvatarMarketplaceVersion = 4
+LULA.AvatarMarketplaceVersion = 5
+LULA.AutoExecuteManagerVersion = 1
 local env = (getgenv and getgenv()) or _G
 
 --kr
@@ -338,6 +339,9 @@ if settings.AnimationBundleAutoSave == nil then settings.AnimationBundleAutoSave
 if type(settings.FreeEmoteFavorites) ~= "table" then settings.FreeEmoteFavorites = {} end
 if settings.FreeEmoteAutoSave == nil then settings.FreeEmoteAutoSave = true end
 if type(settings.AvatarKreatorFavorites) ~= "table" then settings.AvatarKreatorFavorites = {} end
+if type(settings.AvatarKreatorSavedOutfits) ~= "table" then settings.AvatarKreatorSavedOutfits = {} end
+if type(settings.AutoExecuteScripts) ~= "table" then settings.AutoExecuteScripts = {} end
+if settings.ThemeBrightness == nil then settings.ThemeBrightness = 0 end
 if type(settings.FreeEmoteSpeeds) ~= "table" then settings.FreeEmoteSpeeds = {} end
 
 local active = nil
@@ -619,7 +623,20 @@ local function resolveTheme(theme)
     else
         base = cloneTheme(themes.Kandy)
     end
-    return applyAppearanceMode(base)
+    local resolved = applyAppearanceMode(base)
+    local brightness = math.clamp(tonumber(settings.ThemeBrightness) or 0, -80, 100) / 100
+    if brightness ~= 0 then
+        local target = brightness > 0 and rgb(255, 255, 255) or rgb(0, 0, 0)
+        local amount = math.abs(brightness) * 0.58
+        resolved.SchemeColor = blendColor(resolved.SchemeColor, target, amount)
+        resolved.Accent2 = blendColor(resolved.Accent2, target, amount)
+        resolved.Background = blendColor(resolved.Background, target, amount * 0.40)
+        resolved.Header = blendColor(resolved.Header, target, amount * 0.36)
+        resolved.ElementColor = blendColor(resolved.ElementColor, target, amount * 0.46)
+        resolved.MutedText = readableTextColor(blendColor(resolved.MutedText, target, amount * 0.28), resolved)
+        resolved.TextColor = readableTextColor(resolved.TextColor, resolved)
+    end
+    return resolved
 end
 
 local function bind(object, property, themeKey)
@@ -10365,6 +10382,9 @@ function LULA.CreateLib(kavName, themeInput)
             ViewerHiddenAssetIds = {},
             OutfitRenderSerial = 0,
             ViewerRenderSerial = 0,
+            PremiumIconAsset = nil,
+            PremiumBadgeImages = {},
+            SavedOutfitRenderSerial = 0,
             ExpandedPosition = UDim2.fromScale(0.5, 0.5),
             ExpandedAnchorPoint = Vector2.new(0.5, 0.5),
             ExpandedSize = UDim2.new(1, 0, 1, 0)
@@ -10460,10 +10480,8 @@ function LULA.CreateLib(kavName, themeInput)
         addCorner(state.PageIcon, 6)
         state.PageIcon.Parent = Logo
 
-        task.spawn(function()
-            local url = "https://raw.githubusercontent.com/rrixh/install/refs/heads/main/imgs/katalog.WEBP"
+        state.LoadRemoteCustomAsset = function(url, relativePath)
             local asset
-
             local fromUrl = getGlobal("getcustomassetfromurl")
                 or getGlobal("get_custom_asset_from_url")
             if typeof(fromUrl) == "function" then
@@ -10486,7 +10504,7 @@ function LULA.CreateLib(kavName, themeInput)
                             makeFolder(folder)
                         end
                     end)
-                    local path = folder .. "/katalog.webp"
+                    local path = folder .. "/" .. tostring(relativePath or "asset.bin")
                     local bodyOk, body = pcall(httpGet, url)
                     if bodyOk and type(body) == "string" and #body > 0 then
                         local writeOk = pcall(writeFile, path, body)
@@ -10497,11 +10515,33 @@ function LULA.CreateLib(kavName, themeInput)
                     end
                 end
             end
+            return asset
+        end
 
+        task.spawn(function()
+            local asset = state.LoadRemoteCustomAsset(
+                "https://raw.githubusercontent.com/rrixh/install/refs/heads/main/imgs/katalog.WEBP",
+                "katalog.webp"
+            )
             if asset and state.PageIcon and state.PageIcon.Parent then
                 state.PageIcon.Image = asset
                 state.PageIcon.ImageTransparency = 0
                 LogoText.Visible = false
+            end
+        end)
+
+        task.spawn(function()
+            state.PremiumIconAsset = state.LoadRemoteCustomAsset(
+                "https://raw.githubusercontent.com/rrixh/install/refs/heads/main/imgs/robloxpremium.JPEG",
+                "robloxpremium.jpeg"
+            )
+            if state.PremiumIconAsset then
+                for _, image in ipairs(state.PremiumBadgeImages or {}) do
+                    if image and image.Parent then
+                        image.Image = state.PremiumIconAsset
+                        image.ImageTransparency = 0
+                    end
+                end
             end
         end)
 
@@ -10518,17 +10558,29 @@ function LULA.CreateLib(kavName, themeInput)
             ZIndex = 4
         })
         Title.Parent = Topbar
+        state.TitleGradient = create("UIGradient", {
+            Color = ColorSequence.new({
+                ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255, 84, 150)),
+                ColorSequenceKeypoint.new(0.20, Color3.fromRGB(255, 178, 76)),
+                ColorSequenceKeypoint.new(0.40, Color3.fromRGB(255, 237, 92)),
+                ColorSequenceKeypoint.new(0.60, Color3.fromRGB(67, 222, 152)),
+                ColorSequenceKeypoint.new(0.80, Color3.fromRGB(84, 169, 255)),
+                ColorSequenceKeypoint.new(1.00, Color3.fromRGB(188, 108, 255))
+            })
+        })
+        state.TitleGradient.Parent = Title
 
         local Subtitle = create("TextLabel", {
-            Position = UDim2.fromOffset(43, 20),
-            Size = UDim2.new(1, -132, 0, 15),
+            Position = UDim2.fromOffset(43, 18),
+            Size = UDim2.new(1, -132, 0, 21),
             BackgroundTransparency = 1,
             Font = Enum.Font.Gotham,
-            Text = "Try on Roblox klothing locally",
+            Text = "Try on klothing direktly from Roblox's Marketplace. Designed to replicate 'Avatar Katalog Kreator' but inside the hub!",
             TextColor3 = MUTED,
-            TextSize = 9,
-            TextTruncate = Enum.TextTruncate.AtEnd,
+            TextSize = 7.4,
+            TextWrapped = true,
             TextXAlignment = Enum.TextXAlignment.Left,
+            TextYAlignment = Enum.TextYAlignment.Center,
             ZIndex = 4
         })
         Subtitle.Parent = Topbar
@@ -10602,7 +10654,7 @@ function LULA.CreateLib(kavName, themeInput)
         ModeRow.Parent = Controls
 
         local MarketplaceModeButton = create("TextButton", {
-            Size = UDim2.new(0.235, 0, 1, 0),
+            Size = UDim2.new(0.184, 0, 1, 0),
             BackgroundColor3 = ACCENT,
             AutoButtonColor = false,
             Font = Enum.Font.GothamBold,
@@ -10615,8 +10667,8 @@ function LULA.CreateLib(kavName, themeInput)
         MarketplaceModeButton.Parent = ModeRow
 
         local FavoritesModeButton = create("TextButton", {
-            Position = UDim2.new(0.255, 0, 0, 0),
-            Size = UDim2.new(0.235, 0, 1, 0),
+            Position = UDim2.new(0.204, 0, 0, 0),
+            Size = UDim2.new(0.184, 0, 1, 0),
             BackgroundColor3 = PANEL_2,
             AutoButtonColor = false,
             Font = Enum.Font.GothamBold,
@@ -10629,8 +10681,8 @@ function LULA.CreateLib(kavName, themeInput)
         FavoritesModeButton.Parent = ModeRow
 
         state.ViewerModeButton = create("TextButton", {
-            Position = UDim2.new(0.51, 0, 0, 0),
-            Size = UDim2.new(0.235, 0, 1, 0),
+            Position = UDim2.new(0.408, 0, 0, 0),
+            Size = UDim2.new(0.184, 0, 1, 0),
             BackgroundColor3 = PANEL_2,
             AutoButtonColor = false,
             Font = Enum.Font.GothamBold,
@@ -10643,8 +10695,8 @@ function LULA.CreateLib(kavName, themeInput)
         state.ViewerModeButton.Parent = ModeRow
 
         state.OutfitModeButton = create("TextButton", {
-            Position = UDim2.new(0.765, 0, 0, 0),
-            Size = UDim2.new(0.235, 0, 1, 0),
+            Position = UDim2.new(0.612, 0, 0, 0),
+            Size = UDim2.new(0.184, 0, 1, 0),
             BackgroundColor3 = PANEL_2,
             AutoButtonColor = false,
             Font = Enum.Font.GothamBold,
@@ -10655,6 +10707,20 @@ function LULA.CreateLib(kavName, themeInput)
         })
         addCorner(state.OutfitModeButton, 7)
         state.OutfitModeButton.Parent = ModeRow
+
+        state.SavedModeButton = create("TextButton", {
+            Position = UDim2.new(0.816, 0, 0, 0),
+            Size = UDim2.new(0.184, 0, 1, 0),
+            BackgroundColor3 = PANEL_2,
+            AutoButtonColor = false,
+            Font = Enum.Font.GothamBold,
+            Text = "Saved Outfits",
+            TextColor3 = MUTED,
+            TextSize = 7.7,
+            ZIndex = 5
+        })
+        addCorner(state.SavedModeButton, 7)
+        state.SavedModeButton.Parent = ModeRow
 
         local SearchShell = create("Frame", {
             Position = UDim2.new(0, 8, 0, 30),
@@ -11504,6 +11570,15 @@ function LULA.CreateLib(kavName, themeInput)
             if price ~= nil then
                 price = tonumber(price)
             end
+            local premiumPrice = raw.PremiumPrice or raw.premiumPrice or raw.PremiumPricing or raw.premiumPricing
+            if type(premiumPrice) == "table" then
+                premiumPrice = premiumPrice.Price or premiumPrice.price or premiumPrice.LowestPrice or premiumPrice.lowestPrice
+            end
+            premiumPrice = tonumber(premiumPrice)
+            local premiumText = string.lower(tostring(raw.PriceStatus or raw.priceStatus or ""))
+            local isPremium = raw.IsPremium == true or raw.isPremium == true or premiumPrice ~= nil
+                or raw.PremiumPricing ~= nil or raw.premiumPricing ~= nil
+                or string.find(premiumText, "premium", 1, true) ~= nil
 
             return {
                 Id = id,
@@ -11516,6 +11591,8 @@ function LULA.CreateLib(kavName, themeInput)
                 AssetTypeName = ASSET_TYPE_NAMES[assetTypeId] or assetTypeName or "Avatar Item",
                 Price = price,
                 PriceStatus = raw.PriceStatus or raw.priceStatus,
+                PremiumPrice = premiumPrice,
+                Premium = isPremium,
                 FavoriteCount = tonumber(raw.FavoriteCount or raw.favoriteCount),
                 Raw = raw
             }
@@ -11538,6 +11615,8 @@ function LULA.CreateLib(kavName, themeInput)
                 AssetTypeName = tostring(item.AssetTypeName or "Avatar Item"),
                 Price = tonumber(item.Price),
                 PriceStatus = item.PriceStatus,
+                PremiumPrice = tonumber(item.PremiumPrice),
+                Premium = item.Premium == true,
                 FavoriteCount = tonumber(item.FavoriteCount)
             }
         end
@@ -11791,6 +11870,8 @@ function LULA.CreateLib(kavName, themeInput)
                 AssetTypeId = info.AssetTypeId,
                 Price = info.PriceInRobux,
                 PriceStatus = info.IsForSale == false and "OffSale" or nil,
+                PremiumPrice = info.PremiumPriceInRobux or info.PremiumPrice,
+                IsPremium = info.IsPremium == true,
                 ItemType = "Asset"
             })
 
@@ -12188,23 +12269,9 @@ function LULA.CreateLib(kavName, themeInput)
                 return true, "Humanoid:AddAccessory + BuildRigFromAttachments"
             end
 
-            if accessory.Parent ~= character then
-                accessory.Parent = character
-            end
-
-            local manualOk, manualDetail = makeManualAttachmentWeld(character, accessory)
-            if manualOk then
-                return true, "Manual Attachment Weld"
-            end
-
-            local legacyOk, legacyDetail = makeLegacyHeadWeld(character, accessory)
-            if legacyOk then
-                return true, "Legacy Head Weld"
-            end
-
             return false,
-                "Humanoid:AddAccessory",
-                tostring(buildError or addError or manualDetail or legacyDetail or "Accessory stayed unattached.")
+                "Humanoid:AddAccessory + BuildRigFromAttachments",
+                tostring(buildError or addError or "Accessory stayed unattached after BuildRigFromAttachments.")
         end
 
         local function restoreOriginalSlot(character, slot)
@@ -12330,18 +12397,6 @@ function LULA.CreateLib(kavName, themeInput)
         end
 
         Wear.AssetLoaders = {
-            {
-                Name = "AssetService",
-                Run = function(assetId)
-                    return AssetService:LoadAssetAsync(assetId)
-                end
-            },
-            {
-                Name = "InsertService",
-                Run = function(assetId)
-                    return InsertService:LoadAsset(assetId)
-                end
-            },
             {
                 Name = "GetObjects",
                 Run = function(assetId)
@@ -12865,26 +12920,15 @@ function LULA.CreateLib(kavName, themeInput)
             captureOriginalSlot(character, slot)
             Wear.GetOriginalDescription(character, humanoid)
 
-            local accessorySelection = #selectedItems > 0 and Wear.IsAccessoryItem(selectedItems[1])
-
-            -- Stacking is intentionally a local attachment override. Try the verified
-            -- direct route first so Roblox's normal katalog accessory limits do not
-            -- silently discard extra same-type items.
-            if state.ItemStacking and accessorySelection then
-                local stackedOk, stackedMethod = Wear.TryDirectSlot(character, slot, selectedItems)
-                if stackedOk then return true, "Item Stacking + " .. tostring(stackedMethod) end
-                Wear.Debug("Item Stacking Direct", false, "verified direct stacking failed; trying HumanoidDescription")
+            local directOk, directMethod = Wear.TryDirectSlot(character, slot, selectedItems)
+            if directOk then
+                if state.ItemStacking and Wear.IsAccessoryItem(selectedItems[1]) then
+                    return true, "Item Stacking + " .. tostring(directMethod)
+                end
+                return true, directMethod
             end
 
-            local descriptionOk, descriptionMethod = Wear.TryDescription(
-                character, humanoid, slot, selectedItems
-            )
-            if descriptionOk then return true, descriptionMethod end
-
-            local directOk, directMethod = Wear.TryDirectSlot(character, slot, selectedItems)
-            if directOk then return true, directMethod end
-
-            return false, nil, "Every supported local Try On method failed. No unattached item was kept."
+            return false, nil, "The proven GetObjects local Try On path failed. No unattached item was kept."
         end
 
         local function countEquipped()
@@ -13394,6 +13438,171 @@ function LULA.CreateLib(kavName, themeInput)
             return ids
         end
 
+        state.GetSavedOutfits = function()
+            local output = {}
+            for index, raw in ipairs(settings.AvatarKreatorSavedOutfits or {}) do
+                if type(raw) == "table" and type(raw.Items) == "table" then
+                    local items = {}
+                    for _, rawItem in ipairs(raw.Items) do
+                        local item = normalizeCatalogItem(rawItem)
+                        if item then items[#items + 1] = item end
+                    end
+                    output[#output + 1] = {
+                        Name = tostring(raw.Name or ("Outfit " .. tostring(index))),
+                        SavedAt = tonumber(raw.SavedAt) or 0,
+                        Items = items
+                    }
+                end
+            end
+            return output
+        end
+
+        state.PersistSavedOutfits = function(outfits)
+            local clean = {}
+            for index, outfit in ipairs(outfits or {}) do
+                if type(outfit) == "table" and type(outfit.Items) == "table" then
+                    local items = {}
+                    for _, item in ipairs(outfit.Items) do
+                        if item and tonumber(item.Id) then items[#items + 1] = favoriteSerializable(item) end
+                    end
+                    clean[#clean + 1] = {
+                        Name = tostring(outfit.Name or ("Outfit " .. tostring(index))),
+                        SavedAt = tonumber(outfit.SavedAt) or os.time(),
+                        Items = items
+                    }
+                end
+            end
+            settings.AvatarKreatorSavedOutfits = clean
+            if type(env.LHUISettings) == "table" then env.LHUISettings.AvatarKreatorSavedOutfits = clean end
+            if type(env.LHSettings) == "table" then env.LHSettings.AvatarKreatorSavedOutfits = clean end
+            markSettingsDirty()
+            saveSettingsNow() -- independent autosave: Saved Outfits always persist.
+        end
+
+        state.SaveCurrentOutfit = function()
+            local items = state.GetCurrentWornItems()
+            if #items == 0 then
+                notify("No katalog items were found on the kurrent avatar.", "warning", 3)
+                return false
+            end
+            local outfits = state.GetSavedOutfits()
+            outfits[#outfits + 1] = {
+                Name = "Outfit " .. tostring(#outfits + 1),
+                SavedAt = os.time(),
+                Items = items
+            }
+            state.PersistSavedOutfits(outfits)
+            if state.RenderSavedOutfits then state.RenderSavedOutfits() end
+            notify("Saved " .. tostring(#items) .. " avatar item(s) as Outfit " .. tostring(#outfits) .. ".", "success", 3)
+            return true
+        end
+
+        state.WearSavedOutfit = function(outfit)
+            if type(outfit) ~= "table" or type(outfit.Items) ~= "table" then return false end
+            resetAllItems(true)
+            local previousStacking = state.ItemStacking
+            state.ItemStacking = true
+            local worn = 0
+            for _, item in ipairs(outfit.Items) do
+                if internalWearItem(item, true) then worn = worn + 1 end
+                task.wait()
+            end
+            state.ItemStacking = previousStacking
+            refreshSelectedUi()
+            notify("Wore " .. tostring(worn) .. "/" .. tostring(#outfit.Items) .. " saved outfit item(s).", worn > 0 and "success" or "warning", 3)
+            return worn > 0
+        end
+
+        state.RenderSavedOutfits = function()
+            if not state.SavedOutfitsScroll then return end
+            state.SavedOutfitRenderSerial = (state.SavedOutfitRenderSerial or 0) + 1
+            for _, child in ipairs(state.SavedOutfitsScroll:GetChildren()) do
+                if child:IsA("Frame") and child.Name == "SavedOutfitCard" then child:Destroy() end
+            end
+            local outfits = state.GetSavedOutfits()
+            state.SavedOutfitsEmpty.Visible = #outfits == 0
+            for index, outfit in ipairs(outfits) do
+                local card = create("Frame", {
+                    Name = "SavedOutfitCard",
+                    BackgroundColor3 = PANEL,
+                    BorderSizePixel = 0,
+                    LayoutOrder = index,
+                    ZIndex = 52
+                })
+                addCorner(card, 10)
+                addStroke(card, STROKE, 1, 0.25)
+                card.Parent = state.SavedOutfitsScroll
+
+                local preview = create("ImageLabel", {
+                    Position = UDim2.fromOffset(6, 6),
+                    Size = UDim2.new(1, -12, 0, 76),
+                    BackgroundColor3 = PANEL_2,
+                    BorderSizePixel = 0,
+                    Image = (#outfit.Items > 0 and thumbnailFor(outfit.Items[1].Id)) or "",
+                    ScaleType = Enum.ScaleType.Fit,
+                    ZIndex = 53
+                })
+                addCorner(preview, 8)
+                preview.Parent = card
+
+                local name = create("TextLabel", {
+                    Position = UDim2.fromOffset(6, 85),
+                    Size = UDim2.new(1, -12, 0, 18),
+                    BackgroundTransparency = 1,
+                    Font = Enum.Font.GothamBold,
+                    Text = tostring(outfit.Name) .. " (" .. tostring(#outfit.Items) .. ")",
+                    TextColor3 = TEXT,
+                    TextSize = 8.2,
+                    TextTruncate = Enum.TextTruncate.AtEnd,
+                    ZIndex = 53
+                })
+                name.Parent = card
+
+                local wear = create("TextButton", {
+                    Position = UDim2.fromOffset(6, 108),
+                    Size = UDim2.new(0.58, -5, 0, 34),
+                    BackgroundColor3 = ACCENT,
+                    AutoButtonColor = false,
+                    Font = Enum.Font.GothamBold,
+                    Text = "Wear Outfit",
+                    TextColor3 = Color3.new(1, 1, 1),
+                    TextSize = 7.5,
+                    ZIndex = 53
+                })
+                addCorner(wear, 7)
+                wear.Parent = card
+                bindButtonVisual(wear, ACCENT, ACCENT_HOVER)
+
+                local remove = create("TextButton", {
+                    AnchorPoint = Vector2.new(1, 0),
+                    Position = UDim2.new(1, -6, 0, 108),
+                    Size = UDim2.new(0.42, -5, 0, 34),
+                    BackgroundColor3 = Color3.fromRGB(78, 38, 48),
+                    AutoButtonColor = false,
+                    Font = Enum.Font.GothamBold,
+                    Text = "Remove Outfit",
+                    TextColor3 = Color3.fromRGB(255, 189, 198),
+                    TextSize = 6.6,
+                    TextWrapped = true,
+                    ZIndex = 53
+                })
+                addCorner(remove, 7)
+                remove.Parent = card
+                bindButtonVisual(remove, Color3.fromRGB(78, 38, 48), Color3.fromRGB(95, 44, 56))
+
+                wear.MouseButton1Click:Connect(function()
+                    task.spawn(function() state.WearSavedOutfit(outfit) end)
+                end)
+                remove.MouseButton1Click:Connect(function()
+                    local current = state.GetSavedOutfits()
+                    table.remove(current, index)
+                    state.PersistSavedOutfits(current)
+                    state.RenderSavedOutfits()
+                end)
+            end
+            if state.ResizeSavedOutfitGrid then state.ResizeSavedOutfitGrid() end
+        end
+
         function Wear.RemoveCurrentAsset(item)
             if not item or not Wear.ResolveMissingAssetType(item) then
                 return false, "This item type cannot be removed locally."
@@ -13593,6 +13802,7 @@ function LULA.CreateLib(kavName, themeInput)
         local function openDetails(item)
             state.DetailsItem = item
             OutfitOverlay.Visible = false
+            if state.SavedOutfitsArea then state.SavedOutfitsArea.Visible = false end
             DetailsOverlay.Visible = true
 
             DetailsImage.Image = thumbnailFor(item.Id)
@@ -13851,6 +14061,18 @@ function LULA.CreateLib(kavName, themeInput)
                 record.Stroke.Color = STROKE
                 record.Stroke.Transparency = 0.25
             end
+            if record.BuyButton then
+                if record.Owned == true then
+                    record.BuyButton.Text = "Owned"
+                    record.BuyButton.BackgroundColor3 = Color3.fromRGB(56, 92, 68)
+                elseif record.OffSale == true or (record.Item.PriceStatus and containsPlain(tostring(record.Item.PriceStatus), "off")) then
+                    record.BuyButton.Text = "Off Sale"
+                    record.BuyButton.BackgroundColor3 = Color3.fromRGB(88, 62, 67)
+                else
+                    record.BuyButton.Text = "Buy"
+                    record.BuyButton.BackgroundColor3 = Color3.fromRGB(46, 156, 82)
+                end
+            end
             if record.StarButton then
                 local favorite = isFavorite(record.Item)
                 record.StarButton.Text = favorite and STAR_FILLED or STAR_EMPTY
@@ -13932,6 +14154,25 @@ function LULA.CreateLib(kavName, themeInput)
             })
             addCorner(priceBadge, 6)
             priceBadge.Parent = imageShell
+            if item.Premium == true or item.PremiumPrice ~= nil then
+                local premiumBadge = create("ImageLabel", {
+                    Position = UDim2.fromOffset(3, 3),
+                    Size = UDim2.fromOffset(14, 14),
+                    BackgroundTransparency = 1,
+                    Image = state.PremiumIconAsset or "",
+                    ImageTransparency = state.PremiumIconAsset and 0 or 1,
+                    ScaleType = Enum.ScaleType.Fit,
+                    ZIndex = 8
+                })
+                premiumBadge:SetAttribute("LHPremiumBadge", true)
+                premiumBadge.Parent = priceBadge
+                table.insert(state.PremiumBadgeImages, premiumBadge)
+                local pricePadding = Instance.new("UIPadding")
+                pricePadding.PaddingLeft = UDim.new(0, 17)
+                pricePadding.PaddingRight = UDim.new(0, 2)
+                pricePadding.Parent = priceBadge
+                priceBadge.TextXAlignment = Enum.TextXAlignment.Right
+            end
 
             local starButton = create("TextButton", {
                 AnchorPoint = Vector2.new(1, 0),
@@ -14045,6 +14286,7 @@ function LULA.CreateLib(kavName, themeInput)
                 updateCardRecord({
                     Item = item,
                     TryButton = tryButton,
+                    BuyButton = buyButton,
                     StarButton = starButton,
                     Stroke = cardStroke
                 })
@@ -14071,11 +14313,21 @@ function LULA.CreateLib(kavName, themeInput)
                 Item = item,
                 Card = card,
                 TryButton = tryButton,
+                BuyButton = buyButton,
                 StarButton = starButton,
                 Stroke = cardStroke
             }
             table.insert(state.CardRecords[item.Id], record)
             updateCardRecord(record)
+            task.spawn(function()
+                local owns = state.Purchase:Owns(item.Id)
+                if record.Card and record.Card.Parent then
+                    record.Owned = owns == true
+                    local saleable = state.Purchase:IsSaleable(item)
+                    record.OffSale = saleable ~= true
+                    updateCardRecord(record)
+                end
+            end)
         end
 
         local function appendResults(results)
@@ -14194,6 +14446,7 @@ function LULA.CreateLib(kavName, themeInput)
             local favorites = state.Mode == "favorites"
             local viewer = state.Mode == "viewer"
             local outfit = state.Mode == "outfit"
+            local saved = state.Mode == "savedoutfits"
 
             MarketplaceModeButton.BackgroundColor3 = marketplace and ACCENT or PANEL_2
             MarketplaceModeButton.TextColor3 = marketplace and Color3.new(1, 1, 1) or MUTED
@@ -14203,12 +14456,17 @@ function LULA.CreateLib(kavName, themeInput)
             state.ViewerModeButton.TextColor3 = viewer and Color3.new(1, 1, 1) or MUTED
             state.OutfitModeButton.BackgroundColor3 = outfit and ACCENT or PANEL_2
             state.OutfitModeButton.TextColor3 = outfit and Color3.new(1, 1, 1) or MUTED
+            if state.SavedModeButton then
+                state.SavedModeButton.BackgroundColor3 = saved and ACCENT or PANEL_2
+                state.SavedModeButton.TextColor3 = saved and Color3.new(1, 1, 1) or MUTED
+            end
 
             local browse = marketplace or favorites
             SearchShell.Visible = browse
             CategoryScroll.Visible = browse
             ResultsArea.Visible = browse
             OutfitOverlay.Visible = outfit
+            if state.SavedOutfitsArea then state.SavedOutfitsArea.Visible = saved end
 
             if state.ClassicSubScroll then
                 state.ClassicSubScroll.Visible = browse
@@ -14221,7 +14479,7 @@ function LULA.CreateLib(kavName, themeInput)
                 state.Viewer.Area.Visible = viewer
             end
 
-            if viewer or outfit then
+            if viewer or outfit or saved then
                 Controls.Size = UDim2.new(1, 0, 0, 28)
             else
                 local classicOpen = state.CurrentCategory.ParentKey == "classic"
@@ -14244,6 +14502,9 @@ function LULA.CreateLib(kavName, themeInput)
             elseif state.Mode == "outfit" then
                 rebuildOutfitList()
                 return
+            elseif state.Mode == "savedoutfits" then
+                if state.RenderSavedOutfits then state.RenderSavedOutfits() end
+                return
             end
 
             ResultsScroll.CanvasPosition = Vector2.zero
@@ -14257,7 +14518,7 @@ function LULA.CreateLib(kavName, themeInput)
         end
 
         local function setMode(mode)
-            if mode ~= "favorites" and mode ~= "viewer" and mode ~= "outfit" then
+            if mode ~= "favorites" and mode ~= "viewer" and mode ~= "outfit" and mode ~= "savedoutfits" then
                 mode = "marketplace"
             end
             if mode ~= "marketplace" then
@@ -14286,6 +14547,108 @@ function LULA.CreateLib(kavName, themeInput)
         -- Delta/Luau caps a single function at 200 local registers; keeping this tail
         -- nested prevents the large builder above from exhausting that register budget.
         return (function()
+        -- Saved Outfits is intentionally isolated in its own function frame so the
+        -- already-large Avatar Kreator builder stays under Delta/Luau register limits.
+        (function()
+            state.SavedOutfitsArea = create("Frame", {
+                Name = "SavedOutfitsArea",
+                Position = UDim2.fromOffset(0, 68),
+                Size = UDim2.new(1, 0, 1, -68),
+                BackgroundColor3 = BACKGROUND,
+                BorderSizePixel = 0,
+                Visible = false,
+                ZIndex = 50
+            })
+            state.SavedOutfitsArea.Parent = Main
+
+            state.SavedOutfitsHeader = create("Frame", {
+                Size = UDim2.new(1, 0, 0, 44),
+                BackgroundColor3 = PANEL,
+                BorderSizePixel = 0,
+                ZIndex = 51
+            })
+            state.SavedOutfitsHeader.Parent = state.SavedOutfitsArea
+
+            state.SavedOutfitsTitle = create("TextLabel", {
+                Position = UDim2.fromOffset(10, 0),
+                Size = UDim2.new(1, -126, 1, 0),
+                BackgroundTransparency = 1,
+                Font = Enum.Font.GothamBold,
+                Text = "Saved Outfits",
+                TextColor3 = TEXT,
+                TextSize = 13,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                ZIndex = 52
+            })
+            state.SavedOutfitsTitle.Parent = state.SavedOutfitsHeader
+
+            state.SaveOutfitButton = create("TextButton", {
+                AnchorPoint = Vector2.new(1, 0.5),
+                Position = UDim2.new(1, -8, 0.5, 0),
+                Size = UDim2.fromOffset(104, 30),
+                BackgroundColor3 = ACCENT,
+                AutoButtonColor = false,
+                Font = Enum.Font.GothamBold,
+                Text = "Save Kurrent",
+                TextColor3 = Color3.new(1, 1, 1),
+                TextSize = 9,
+                ZIndex = 52
+            })
+            addCorner(state.SaveOutfitButton, 9)
+            state.SaveOutfitButton.Parent = state.SavedOutfitsHeader
+            bindButtonVisual(state.SaveOutfitButton, ACCENT, ACCENT_HOVER)
+            track(state.SaveOutfitButton.MouseButton1Click:Connect(function()
+                if state.SaveCurrentOutfit then task.spawn(state.SaveCurrentOutfit) end
+            end))
+
+            state.SavedOutfitsScroll = create("ScrollingFrame", {
+                Position = UDim2.fromOffset(8, 52),
+                Size = UDim2.new(1, -16, 1, -60),
+                BackgroundTransparency = 1,
+                BorderSizePixel = 0,
+                CanvasSize = UDim2.fromOffset(0, 0),
+                AutomaticCanvasSize = Enum.AutomaticSize.Y,
+                ScrollBarThickness = 3,
+                ScrollBarImageColor3 = ACCENT,
+                ZIndex = 51
+            })
+            state.SavedOutfitsScroll.Parent = state.SavedOutfitsArea
+
+            state.SavedOutfitsGrid = create("UIGridLayout", {
+                CellPadding = UDim2.fromOffset(6, 7),
+                CellSize = UDim2.fromOffset(108, 150),
+                FillDirection = Enum.FillDirection.Horizontal,
+                FillDirectionMaxCells = 3,
+                HorizontalAlignment = Enum.HorizontalAlignment.Left,
+                SortOrder = Enum.SortOrder.LayoutOrder
+            })
+            state.SavedOutfitsGrid.Parent = state.SavedOutfitsScroll
+
+            state.SavedOutfitsEmpty = create("TextLabel", {
+                Size = UDim2.new(1, 0, 0, 90),
+                BackgroundTransparency = 1,
+                Font = Enum.Font.GothamMedium,
+                Text = "No saved outfits yet. Wear wat u want, then press Save Kurrent.",
+                TextColor3 = MUTED,
+                TextSize = 11,
+                TextWrapped = true,
+                ZIndex = 52
+            })
+            state.SavedOutfitsEmpty.Parent = state.SavedOutfitsScroll
+
+            state.ResizeSavedOutfitGrid = function()
+                local width = state.SavedOutfitsScroll.AbsoluteSize.X
+                if width <= 0 then return end
+                local columns = width < 245 and 1 or (width < 340 and 2 or 3)
+                local padding = 6
+                local available = width - 2 - (padding * (columns - 1))
+                state.SavedOutfitsGrid.FillDirectionMaxCells = columns
+                state.SavedOutfitsGrid.CellSize = UDim2.fromOffset(math.max(104, math.floor(available / columns)), 150)
+            end
+            track(state.SavedOutfitsScroll:GetPropertyChangedSignal("AbsoluteSize"):Connect(state.ResizeSavedOutfitGrid))
+            task.defer(state.ResizeSavedOutfitGrid)
+        end)()
+
         local classicSubButtons = {}
 
         local ClassicSubScroll = create("ScrollingFrame", {
@@ -14859,6 +15222,10 @@ function LULA.CreateLib(kavName, themeInput)
             setMode("outfit")
         end))
 
+        track(state.SavedModeButton.MouseButton1Click:Connect(function()
+            setMode("savedoutfits")
+        end))
+
         track(SearchButton.MouseButton1Click:Connect(runActiveSearch))
 
         track(SearchBox.FocusLost:Connect(function(enterPressed)
@@ -14918,19 +15285,20 @@ function LULA.CreateLib(kavName, themeInput)
             if width <= 0 then return end
 
             local columns
-            if width < 285 then
+            if width < 245 then
                 columns = 1
-            elseif width >= 530 then
-                columns = 3
-            else
+            elseif width < 340 then
                 columns = 2
+            else
+                columns = 3
             end
 
-            local padding = 7
+            local padding = 6
             local available = width - 2 - (padding * (columns - 1))
             local cellWidth = math.floor(available / columns)
             Grid.FillDirectionMaxCells = columns
-            Grid.CellSize = UDim2.fromOffset(math.max(118, cellWidth), 194)
+            Grid.CellPadding = UDim2.fromOffset(padding, 7)
+            Grid.CellSize = UDim2.fromOffset(math.max(104, cellWidth), 194)
         end
 
         track(ResultsScroll:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateGrid))
@@ -14958,6 +15326,7 @@ function LULA.CreateLib(kavName, themeInput)
                 ResultsArea.Visible = false
                 DetailsOverlay.Visible = false
                 OutfitOverlay.Visible = false
+                if state.SavedOutfitsArea then state.SavedOutfitsArea.Visible = false end
                 Subtitle.Visible = false
                 OutfitButton.Visible = false
 
@@ -14982,9 +15351,9 @@ function LULA.CreateLib(kavName, themeInput)
                 OutfitButton.Visible = true
 
                 Title.Text = "Avatar Katalog Kreator"
-                Title.Size = UDim2.new(1, -270, 0, 23)
-                Title.Position = UDim2.fromOffset(56, 8)
-                Title.TextSize = 17
+                Title.Size = UDim2.new(1, -132, 0, 20)
+                Title.Position = UDim2.fromOffset(43, 2)
+                Title.TextSize = 13.5
                 Title.TextYAlignment = Enum.TextYAlignment.Center
                 MinimizeButton.Text = "-"
 
@@ -15087,6 +15456,8 @@ function LULA.CreateLib(kavName, themeInput)
                     else
                         OutfitOverlay.Visible = false
                     end
+                elseif state.SavedOutfitsArea and state.SavedOutfitsArea.Visible then
+                    if state.SetMode then state.SetMode("marketplace") end
                 end
             end
         end))
@@ -15109,6 +15480,275 @@ function LULA.CreateLib(kavName, themeInput)
         end
         return avatarTab
         end)()
+    end
+
+    function window:EnableAutoExecuteManager(tabName)
+        if active.AutoExecuteManager then return active.AutoExecuteManager.Tab end
+        local tab = self:NewTab(tabName or "Auto Execute")
+        tab:EnsureBuilt()
+        tab.Scroll.Visible = false
+
+        local state = {
+            Tab = tab,
+            Connections = {},
+            Selected = 1,
+            Destroyed = false
+        }
+        active.AutoExecuteManager = state
+
+        local function trackLocal(connection)
+            if connection then table.insert(state.Connections, connection) end
+            return connection
+        end
+        local function scripts()
+            if type(settings.AutoExecuteScripts) ~= "table" then settings.AutoExecuteScripts = {} end
+            if #settings.AutoExecuteScripts == 0 then
+                settings.AutoExecuteScripts[1] = {Name = "Script 1", Source = "-- write your auto-execute skript here\n", AutoExecute = false}
+            end
+            return settings.AutoExecuteScripts
+        end
+        local function persist()
+            if type(env.LHUISettings) == "table" then env.LHUISettings.AutoExecuteScripts = settings.AutoExecuteScripts end
+            if type(env.LHSettings) == "table" then env.LHSettings.AutoExecuteScripts = settings.AutoExecuteScripts end
+            markSettingsDirty()
+            saveSettingsNow()
+        end
+        local function executeRecord(record, startup)
+            if type(record) ~= "table" then return false end
+            local source = tostring(record.Source or "")
+            if source:match("^%s*$") then
+                if not startup then LULA:ShowIsland("Auto Execute", "This skript is empty.", {Duration = 2.2}) end
+                return false
+            end
+            local compileOk, fnOrError = pcall(loadstring, source)
+            if not compileOk or type(fnOrError) ~= "function" then
+                LULA:ShowIsland("Auto Execute Error", tostring(fnOrError or "Compile failed."), {Duration = 4})
+                return false
+            end
+            task.spawn(function()
+                local ok, err = pcall(fnOrError)
+                if not ok then LULA:ShowIsland("Auto Execute Error", tostring(err), {Duration = 4}) end
+            end)
+            if not startup then LULA:ShowIsland("Auto Execute", "Ran " .. tostring(record.Name or "Skript") .. ".", {Duration = 2}) end
+            return true
+        end
+
+        local root = Instance.new("Frame")
+        root.Name = "AutoExecuteSurface"
+        root.Size = UDim2.fromScale(1, 1)
+        root.BackgroundTransparency = 1
+        root.BorderSizePixel = 0
+        root.Parent = tab.Page
+
+        local header = Instance.new("Frame")
+        header.Size = UDim2.new(1, -16, 0, 40)
+        header.Position = UDim2.fromOffset(8, 8)
+        header.BorderSizePixel = 0
+        header.Parent = root
+        bind(header, "BackgroundColor3", "Header")
+        makeCorner(header, 10)
+
+        local title = makeText(header, "Auto Execute", 16, Enum.Font.GothamBold)
+        title.Position = UDim2.fromOffset(10, 3)
+        title.Size = UDim2.new(1, -20, 0, 18)
+        title.TextXAlignment = Enum.TextXAlignment.Left
+        title.TextWrapped = false
+
+        local subtitle = makeText(header, "Saved skripts marked Auto-Exec run whenever Lollypop Hub loads.", 9.5, Enum.Font.Gotham)
+        subtitle.Position = UDim2.fromOffset(10, 21)
+        subtitle.Size = UDim2.new(1, -20, 0, 15)
+        subtitle.TextXAlignment = Enum.TextXAlignment.Left
+        subtitle.TextWrapped = false
+
+        local tabs = Instance.new("ScrollingFrame")
+        tabs.Name = "ScriptTabs"
+        tabs.Position = UDim2.fromOffset(8, 54)
+        tabs.Size = UDim2.new(1, -16, 0, 34)
+        tabs.BackgroundTransparency = 1
+        tabs.BorderSizePixel = 0
+        tabs.AutomaticCanvasSize = Enum.AutomaticSize.X
+        tabs.CanvasSize = UDim2.fromOffset(0, 0)
+        tabs.ScrollBarThickness = 0
+        tabs.ScrollingDirection = Enum.ScrollingDirection.X
+        tabs.Parent = root
+        local tabLayout = Instance.new("UIListLayout")
+        tabLayout.FillDirection = Enum.FillDirection.Horizontal
+        tabLayout.Padding = UDim.new(0, 5)
+        tabLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        tabLayout.Parent = tabs
+
+        local editorShell = Instance.new("Frame")
+        editorShell.Position = UDim2.fromOffset(8, 94)
+        editorShell.Size = UDim2.new(1, -16, 1, -148)
+        editorShell.BorderSizePixel = 0
+        editorShell.Parent = root
+        bind(editorShell, "BackgroundColor3", "ElementColor")
+        makeCorner(editorShell, 10)
+        makeStroke(editorShell, active.Theme.SchemeColor, 0.55, 1)
+
+        local nameBox = Instance.new("TextBox")
+        nameBox.Position = UDim2.fromOffset(8, 7)
+        nameBox.Size = UDim2.new(1, -16, 0, 28)
+        nameBox.BackgroundTransparency = 0.14
+        nameBox.BorderSizePixel = 0
+        nameBox.ClearTextOnFocus = false
+        nameBox.Font = resolveUIFont(Enum.Font.GothamBold)
+        nameBox.PlaceholderText = "Skript name"
+        nameBox.Text = ""
+        nameBox.TextSize = 11
+        nameBox.TextXAlignment = Enum.TextXAlignment.Left
+        nameBox.Parent = editorShell
+        bind(nameBox, "BackgroundColor3", "Header")
+        bind(nameBox, "TextColor3", "TextColor")
+        makeCorner(nameBox, 7)
+        local namePad = Instance.new("UIPadding")
+        namePad.PaddingLeft = UDim.new(0, 8)
+        namePad.PaddingRight = UDim.new(0, 8)
+        namePad.Parent = nameBox
+
+        local sourceScroll = Instance.new("ScrollingFrame")
+        sourceScroll.Position = UDim2.fromOffset(8, 41)
+        sourceScroll.Size = UDim2.new(1, -16, 1, -49)
+        sourceScroll.BackgroundTransparency = 0.08
+        sourceScroll.BorderSizePixel = 0
+        sourceScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+        sourceScroll.CanvasSize = UDim2.fromOffset(0, 0)
+        sourceScroll.ScrollBarThickness = 3
+        sourceScroll.Parent = editorShell
+        bind(sourceScroll, "BackgroundColor3", "Background")
+        makeCorner(sourceScroll, 7)
+
+        local editor = Instance.new("TextBox")
+        editor.Position = UDim2.fromOffset(7, 7)
+        editor.Size = UDim2.new(1, -14, 0, 180)
+        editor.AutomaticSize = Enum.AutomaticSize.Y
+        editor.BackgroundTransparency = 1
+        editor.BorderSizePixel = 0
+        editor.ClearTextOnFocus = false
+        editor.MultiLine = true
+        editor.Font = resolveUIFont(Enum.Font.Code)
+        editor.PlaceholderText = "-- paste or write your skript here"
+        editor.Text = ""
+        editor.TextSize = 11
+        editor.TextWrapped = true
+        editor.TextXAlignment = Enum.TextXAlignment.Left
+        editor.TextYAlignment = Enum.TextYAlignment.Top
+        editor.Parent = sourceScroll
+        bind(editor, "TextColor3", "TextColor")
+
+        local controls = Instance.new("Frame")
+        controls.Position = UDim2.new(0, 8, 1, -47)
+        controls.Size = UDim2.new(1, -16, 0, 39)
+        controls.BackgroundTransparency = 1
+        controls.Parent = root
+
+        local run = makeButton(controls, "Run")
+        run.Position = UDim2.fromOffset(0, 3)
+        run.Size = UDim2.new(0.18, -3, 0, 33)
+        local save = makeButton(controls, "Save")
+        save.Position = UDim2.new(0.19, 0, 0, 3)
+        save.Size = UDim2.new(0.18, -3, 0, 33)
+        local delete = makeKolorButton(controls, "Delete", rgb(196, 53, 66))
+        delete.Position = UDim2.new(0.38, 0, 0, 3)
+        delete.Size = UDim2.new(0.19, -3, 0, 33)
+        local auto = makeButton(controls, "Auto-Exec: OFF")
+        auto.Position = UDim2.new(0.58, 0, 0, 3)
+        auto.Size = UDim2.new(0.42, 0, 0, 33)
+
+        local function selectedRecord()
+            local list = scripts()
+            state.Selected = math.clamp(tonumber(state.Selected) or 1, 1, #list)
+            return list[state.Selected]
+        end
+        local function saveEditor()
+            local record = selectedRecord()
+            record.Name = tostring(nameBox.Text or ""):match("^%s*(.-)%s*$")
+            if record.Name == "" then record.Name = "Script " .. tostring(state.Selected) end
+            record.Source = tostring(editor.Text or "")
+            persist()
+            return record
+        end
+        local renderTabs
+        local function updateEditor()
+            local record = selectedRecord()
+            nameBox.Text = tostring(record.Name or ("Script " .. tostring(state.Selected)))
+            editor.Text = tostring(record.Source or "")
+            auto.Text = record.AutoExecute == true and "Auto-Exec: ON" or "Auto-Exec: OFF"
+            auto.BackgroundColor3 = record.AutoExecute == true and TOGGLE_ON_COLOR or TOGGLE_OFF_COLOR
+        end
+        renderTabs = function()
+            for _, child in ipairs(tabs:GetChildren()) do
+                if child:IsA("TextButton") then child:Destroy() end
+            end
+            for index, record in ipairs(scripts()) do
+                local button = makeButton(tabs, tostring(record.Name or ("Script " .. tostring(index))))
+                button.Size = UDim2.fromOffset(92, 30)
+                button.LayoutOrder = index
+                if index == state.Selected then button.BackgroundColor3 = active.Theme.SchemeColor end
+                trackLocal(button.MouseButton1Click:Connect(function()
+                    saveEditor()
+                    state.Selected = index
+                    updateEditor()
+                    renderTabs()
+                end))
+            end
+            local plus = makeButton(tabs, "+")
+            plus.Size = UDim2.fromOffset(34, 30)
+            plus.LayoutOrder = 100000
+            plus.TextSize = 18
+            trackLocal(plus.MouseButton1Click:Connect(function()
+                saveEditor()
+                local list = scripts()
+                list[#list + 1] = {Name = "Script " .. tostring(#list + 1), Source = "-- new LH auto-execute skript\n", AutoExecute = false}
+                state.Selected = #list
+                persist()
+                updateEditor()
+                renderTabs()
+            end))
+        end
+
+        trackLocal(nameBox.FocusLost:Connect(function() saveEditor(); renderTabs() end))
+        trackLocal(editor.FocusLost:Connect(function() saveEditor() end))
+        trackLocal(run.MouseButton1Click:Connect(function() executeRecord(saveEditor(), false) end))
+        trackLocal(save.MouseButton1Click:Connect(function()
+            saveEditor(); renderTabs(); LULA:ShowIsland("Auto Execute", "Skript saved.", {Duration = 2})
+        end))
+        trackLocal(auto.MouseButton1Click:Connect(function()
+            local record = saveEditor()
+            record.AutoExecute = record.AutoExecute ~= true
+            persist()
+            updateEditor()
+            renderTabs()
+        end))
+        trackLocal(delete.MouseButton1Click:Connect(function()
+            local list = scripts()
+            if #list <= 1 then
+                list[1] = {Name = "Script 1", Source = "-- write your auto-execute skript here\n", AutoExecute = false}
+                state.Selected = 1
+            else
+                table.remove(list, state.Selected)
+                state.Selected = math.clamp(state.Selected, 1, #list)
+            end
+            persist(); updateEditor(); renderTabs()
+        end))
+
+        state.Cleanup = function()
+            if state.Destroyed then return end
+            state.Destroyed = true
+            for _, connection in ipairs(state.Connections) do
+                pcall(function() if connection and connection.Connected then connection:Disconnect() end end)
+            end
+            state.Connections = {}
+        end
+
+        updateEditor()
+        renderTabs()
+        task.defer(function()
+            for _, record in ipairs(scripts()) do
+                if record.AutoExecute == true then executeRecord(record, true) end
+            end
+        end)
+        return tab
     end
 
     function window:EnablePersonalShelf(tabName)
@@ -15540,6 +16180,16 @@ function LULA:SetAppearanceMode(mode)
     return mode
 end
 
+function LULA:SetThemeBrightness(value)
+    value = math.clamp(tonumber(value) or 0, -80, 100)
+    settings.ThemeBrightness = value
+    if active then
+        active.Theme = resolveTheme(active.ThemeSource or "Kandy")
+        applyTheme()
+    end
+    return value
+end
+
 function LULA:GetThemeNames()
     local copy = {}
     for index, name in ipairs(publicThemeNames) do copy[index] = name end
@@ -15634,6 +16284,9 @@ function LULA:Destroy()
     end
     if active.AvatarKreator and type(active.AvatarKreator.Cleanup) == "function" then
         pcall(function() active.AvatarKreator.Cleanup(true) end)
+    end
+    if active.AutoExecuteManager and type(active.AutoExecuteManager.Cleanup) == "function" then
+        pcall(active.AutoExecuteManager.Cleanup)
     end
     pcall(function() UserInputService.MouseIconEnabled = true end)
     disconnectAll()
