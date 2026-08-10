@@ -1,4 +1,4 @@
---kavo ui 4.6.3 - LH v10.3.2 patch
+--kavo ui 4.6.3 - LH v10.3.3 patch
 local LULA = {}
 LULA.AnimationMarketplaceVersion = 4
 LULA.EmoteMarketplaceVersion = 1
@@ -2688,7 +2688,7 @@ function LULA.CreateLib(kavName, themeInput)
     pages.ClipsDescendants = true
     pages.Parent = main
 
-    local footer = makeText(main, "Lollypop Hub v10.3.2", 11, Enum.Font.GothamMedium)
+    local footer = makeText(main, "Lollypop Hub v10.3.3", 11, Enum.Font.GothamMedium)
     footer.Name = "Footer"
     footer.Position = UDim2.new(0, 158, 1, -20)
     footer.Size = UDim2.new(1, -165, 0, 18)
@@ -10480,8 +10480,8 @@ function LULA.CreateLib(kavName, themeInput)
         TopbarBottom.Parent = Topbar
 
         local Logo = create("Frame", {
-            Position = UDim2.fromOffset(7, 4),
-            Size = UDim2.fromOffset(32, 32),
+            Position = UDim2.fromOffset(5, 2),
+            Size = UDim2.fromOffset(36, 36),
             BackgroundColor3 = ACCENT,
             BorderSizePixel = 0,
             ZIndex = 4
@@ -10502,8 +10502,8 @@ function LULA.CreateLib(kavName, themeInput)
 
         state.PageIcon = create("ImageLabel", {
             BackgroundTransparency = 1,
-            Position = UDim2.fromOffset(2, 2),
-            Size = UDim2.new(1, -4, 1, -4),
+            Position = UDim2.fromOffset(1, 1),
+            Size = UDim2.new(1, -2, 1, -2),
             Image = "",
             ImageTransparency = 1,
             ScaleType = Enum.ScaleType.Crop,
@@ -10578,8 +10578,8 @@ function LULA.CreateLib(kavName, themeInput)
         end)
 
         local Title = create("TextLabel", {
-            Position = UDim2.fromOffset(45, 2),
-            Size = UDim2.new(1, -134, 0, 20),
+            Position = UDim2.fromOffset(47, 2),
+            Size = UDim2.new(1, -136, 0, 20),
             BackgroundTransparency = 1,
             Font = Enum.Font.GothamBold,
             Text = "Avatar Katalog Kreator",
@@ -10603,8 +10603,8 @@ function LULA.CreateLib(kavName, themeInput)
         state.TitleGradient.Parent = Title
 
         local Subtitle = create("TextLabel", {
-            Position = UDim2.fromOffset(45, 18),
-            Size = UDim2.new(1, -134, 0, 21),
+            Position = UDim2.fromOffset(47, 18),
+            Size = UDim2.new(1, -136, 0, 21),
             BackgroundTransparency = 1,
             Font = Enum.Font.Gotham,
             Text = "Try on klothing direktly from Roblox's Marketplace. Designed to replicate 'Avatar Katalog Kreator' but inside the hub!",
@@ -13679,55 +13679,111 @@ function LULA.CreateLib(kavName, themeInput)
             return applied
         end
 
-        state.MakeSavedOutfitViewport = function(parent, descriptionData)
+        state.MakeSavedOutfitViewport = function(parent, descriptionData, fallbackItem)
             local viewport = create("ViewportFrame", {
                 Position = UDim2.fromOffset(6, 6),
                 Size = UDim2.new(1, -12, 0, 76),
                 BackgroundColor3 = PANEL_2,
                 BorderSizePixel = 0,
-                Ambient = Color3.fromRGB(190, 190, 200),
+                Ambient = Color3.fromRGB(205, 205, 218),
                 LightColor = Color3.fromRGB(255, 255, 255),
                 LightDirection = Vector3.new(-1, -1, -1),
                 ZIndex = 53
             })
             addCorner(viewport, 8)
             viewport.Parent = parent
+
+            local fallback = create("ImageLabel", {
+                BackgroundTransparency = 1,
+                Size = UDim2.fromScale(1, 1),
+                Image = fallbackItem and tonumber(fallbackItem.Id) and thumbnailFor(fallbackItem.Id) or "",
+                ImageTransparency = fallbackItem and 0.12 or 1,
+                ScaleType = Enum.ScaleType.Fit,
+                ZIndex = 53
+            })
+            fallback.Parent = viewport
+
+            local loading = create("TextLabel", {
+                BackgroundTransparency = 1,
+                Size = UDim2.fromScale(1, 1),
+                Font = Enum.Font.GothamMedium,
+                Text = "Loading avatar...",
+                TextColor3 = MUTED,
+                TextSize = 7.5,
+                ZIndex = 54
+            })
+            loading.Parent = viewport
+
             local world = Instance.new("WorldModel")
             world.Parent = viewport
             local camera = Instance.new("Camera")
-            camera.FieldOfView = 28
+            camera.FieldOfView = 32
             camera.Parent = viewport
             viewport.CurrentCamera = camera
+
             task.spawn(function()
                 local description = state.DeserializeDescription(descriptionData)
-                if not description or not viewport.Parent then return end
-                local rig
-                local rigType = Enum.HumanoidRigType[tostring(descriptionData.RigType or "")] or Enum.HumanoidRigType.R15
-                for _, verification in ipairs({Enum.AssetTypeVerification.ClientOnly, Enum.AssetTypeVerification.Default}) do
-                    local ok, result = pcall(function()
-                        return Players:CreateHumanoidModelFromDescriptionAsync(
-                            description,
-                            rigType,
-                            verification
-                        )
-                    end)
-                    if ok and typeof(result) == "Instance" then rig = result; break end
-                end
-                pcall(function() description:Destroy() end)
-                if typeof(rig) ~= "Instance" or not rig:IsA("Model") or not viewport.Parent then
-                    if rig then pcall(function() rig:Destroy() end) end
+                if not description or not viewport.Parent then
+                    loading.Text = fallback.Image ~= "" and "" or "Preview unavailable"
                     return
                 end
+
+                local rig
+                local rigType = Enum.HumanoidRigType[tostring(descriptionData.RigType or "")] or Enum.HumanoidRigType.R15
+                local asyncCreator = Players.CreateHumanoidModelFromDescriptionAsync
+                local syncCreator = Players.CreateHumanoidModelFromDescription
+
+                if typeof(asyncCreator) == "function" then
+                    for _, verification in ipairs({Enum.AssetTypeVerification.ClientOnly, Enum.AssetTypeVerification.Default}) do
+                        local ok, result = pcall(asyncCreator, Players, description, rigType, verification)
+                        if ok and typeof(result) == "Instance" then rig = result; break end
+                    end
+                end
+                if not rig and typeof(syncCreator) == "function" then
+                    for _, verification in ipairs({Enum.AssetTypeVerification.ClientOnly, Enum.AssetTypeVerification.Default}) do
+                        local ok, result = pcall(syncCreator, Players, description, rigType, verification)
+                        if ok and typeof(result) == "Instance" then rig = result; break end
+                    end
+                    if not rig then
+                        local ok, result = pcall(syncCreator, Players, description, rigType)
+                        if ok and typeof(result) == "Instance" then rig = result end
+                    end
+                end
+                pcall(function() description:Destroy() end)
+
+                if typeof(rig) ~= "Instance" or not rig:IsA("Model") or not viewport.Parent then
+                    if rig then pcall(function() rig:Destroy() end) end
+                    loading.Text = fallback.Image ~= "" and "" or "Preview unavailable"
+                    return
+                end
+
                 for _, object in ipairs(rig:GetDescendants()) do
-                    if object:IsA("BasePart") then object.Anchored = true; object.CanCollide = false end
-                    if object:IsA("Script") or object:IsA("LocalScript") then object:Destroy() end
+                    if object:IsA("Script") or object:IsA("LocalScript") or object:IsA("Tool") then
+                        object:Destroy()
+                    elseif object:IsA("BasePart") then
+                        object.Anchored = true
+                        object.CanCollide = false
+                        object.CanTouch = false
+                    end
                 end
                 rig.Parent = world
-                pcall(function() rig:PivotTo(CFrame.new(0, 0, 0)) end)
-                local cf, size = rig:GetBoundingBox()
-                local focus = cf.Position + Vector3.new(0, size.Y * 0.05, 0)
-                local distance = math.max(size.Y, size.X, size.Z) * 1.15
-                camera.CFrame = CFrame.new(focus + Vector3.new(0, size.Y * 0.02, distance), focus)
+                pcall(function() rig:PivotTo(CFrame.new()) end)
+
+                local boxCFrame, boxSize = rig:GetBoundingBox()
+                local focus = boxCFrame.Position + Vector3.new(0, boxSize.Y * 0.03, 0)
+                local halfFov = math.rad(camera.FieldOfView * 0.5)
+                local distance = math.max(
+                    4.5,
+                    (boxSize.Y * 0.60) / math.max(0.05, math.tan(halfFov)),
+                    (boxSize.X * 0.67) / math.max(0.05, math.tan(halfFov))
+                )
+                camera.CFrame = CFrame.lookAt(
+                    focus + Vector3.new(0, boxSize.Y * 0.02, -distance),
+                    focus,
+                    Vector3.new(0, 1, 0)
+                )
+                fallback.Visible = false
+                loading.Visible = false
             end)
             return viewport
         end
@@ -13803,24 +13859,30 @@ function LULA.CreateLib(kavName, themeInput)
 
         state.WearSavedOutfit = function(outfit)
             if type(outfit) ~= "table" or type(outfit.Items) ~= "table" then return false end
-            if type(outfit.Description) == "table" and state.ApplyDescriptionData(outfit.Description) then
-                state.EquippedBySlot = {}
-                state.ViewerModifiedSlots = {}
-                state.ViewerHiddenAssetIds = {}
-                refreshSelectedUi()
-                notify("Wore " .. tostring(outfit.Name or "saved outfit") .. ".", "success", 2.5)
-                return true
-            end
+
+            -- Apply the full saved appearance first when supported, then enforce every
+            -- saved katalog item through Avatar Kreator's normal Try On path. This avoids
+            -- executors reporting a successful description apply without visually changing the avatar.
+            if type(outfit.Description) == "table" then pcall(state.ApplyDescriptionData, outfit.Description) end
             resetAllItems(true)
+            task.wait()
+
             local previousStacking = state.ItemStacking
             state.ItemStacking = true
             local worn = 0
             for _, item in ipairs(outfit.Items) do
-                if internalWearItem(item, true) then worn = worn + 1 end
+                local itemCopy = normalizeCatalogItem(item)
+                if itemCopy then
+                    pcall(Wear.ResolveMissingAssetType, itemCopy)
+                    local ok = internalWearItem(itemCopy, true)
+                    if ok then worn = worn + 1 end
+                end
                 task.wait()
             end
             state.ItemStacking = previousStacking
+            state.ViewerHiddenAssetIds = {}
             refreshSelectedUi()
+            if state.Viewer and state.Viewer.Refresh then pcall(function() state.Viewer:Refresh() end) end
             notify("Wore " .. tostring(worn) .. "/" .. tostring(#outfit.Items) .. " saved outfit item(s).", worn > 0 and "success" or "warning", 3)
             return worn > 0
         end
@@ -13846,7 +13908,7 @@ function LULA.CreateLib(kavName, themeInput)
                 card.Parent = state.SavedOutfitsScroll
 
                 if type(outfit.Description) == "table" then
-                    state.MakeSavedOutfitViewport(card, outfit.Description)
+                    state.MakeSavedOutfitViewport(card, outfit.Description, outfit.Items[1])
                 else
                     local preview = create("ImageLabel", {
                         Position = UDim2.fromOffset(6, 6),
@@ -16141,21 +16203,60 @@ function LULA.CreateLib(kavName, themeInput)
             return ok and decoded or nil
         end
 
-        local function httpJson(url)
-            local compat = rawget(env, "LHCompat")
-            if type(compat) == "table" and type(compat.HttpGet) == "function" then
-                local callOk, httpOk, body = pcall(compat.HttpGet, tostring(url), false)
-                if callOk and httpOk and type(body) == "string" then
-                    local decoded = decodeJson(body)
-                    if decoded ~= nil then return decoded end
+        local function rawHttpBody(url)
+            url = tostring(url or "")
+            if url == "" then return nil end
+
+            local requesters = {
+                rawget(env, "request"), rawget(env, "http_request"), rawget(env, "httprequest"),
+            }
+            local synTable = rawget(env, "syn")
+            if type(synTable) == "table" then table.insert(requesters, synTable.request) end
+            local httpTable = rawget(env, "http")
+            if type(httpTable) == "table" then table.insert(requesters, httpTable.request) end
+
+            for _, requester in ipairs(requesters) do
+                if typeof(requester) == "function" then
+                    local ok, response = pcall(requester, {
+                        Url = url,
+                        Method = "GET",
+                        Headers = {Accept = "application/json"}
+                    })
+                    if ok then
+                        if type(response) == "string" and response ~= "" then return response end
+                        if type(response) == "table" then
+                            local status = tonumber(response.StatusCode or response.Status or response.status_code)
+                            local body = response.Body or response.body or response.ResponseBody
+                            if (not status or (status >= 200 and status < 300)) and type(body) == "string" and body ~= "" then
+                                return body
+                            end
+                        end
+                    end
                 end
             end
 
-            local ok, body = pcall(function()
-                return game:HttpGet(tostring(url), false)
-            end)
-            if ok then return decodeJson(body) end
+            local compat = rawget(env, "LHCompat")
+            if type(compat) == "table" and type(compat.HttpGet) == "function" then
+                local callOk, httpOk, body = pcall(compat.HttpGet, url, false)
+                if callOk and httpOk and type(body) == "string" and body ~= "" then return body end
+            end
+
+            local ok, body = pcall(function() return game:HttpGet(url, false) end)
+            if ok and type(body) == "string" and body ~= "" then return body end
             return nil
+        end
+
+        local function httpJson(url, timeoutSeconds)
+            local finished, decoded = false, nil
+            task.spawn(function()
+                local body = rawHttpBody(url)
+                decoded = decodeJson(body)
+                finished = true
+            end)
+            local deadline = os.clock() + math.max(2, tonumber(timeoutSeconds) or 8)
+            while not finished and os.clock() < deadline do task.wait(0.05) end
+            if not finished then return nil, "timeout" end
+            return decoded, decoded and nil or "request_failed"
         end
 
         local function copyText(text)
@@ -16219,19 +16320,17 @@ function LULA.CreateLib(kavName, themeInput)
             return assetOk and type(asset) == "string" and asset or nil
         end
 
-        local header = newRow(scroll, "UserLookupHeader", 76)
+        local header = newRow(scroll, "UserLookupHeader", 84)
         header.LayoutOrder = -1000
         header.BackgroundTransparency = 0.02
         makeStroke(header, active.Theme.SchemeColor, 0.28, 1)
 
         local logoShell = Instance.new("Frame")
-        logoShell.Position = UDim2.fromOffset(9, 8)
-        logoShell.Size = UDim2.fromOffset(58, 58)
+        logoShell.Position = UDim2.fromOffset(7, 8)
+        logoShell.Size = UDim2.fromOffset(66, 66)
+        logoShell.BackgroundTransparency = 1
         logoShell.BorderSizePixel = 0
         logoShell.Parent = header
-        bind(logoShell, "BackgroundColor3", "Header")
-        makeCorner(logoShell, 12)
-        makeStroke(logoShell, active.Theme.SchemeColor, 0.42, 1)
 
         local logoFallback = makeText(logoShell, "R", 25, Enum.Font.GothamBold)
         logoFallback.Size = UDim2.fromScale(1, 1)
@@ -16240,29 +16339,29 @@ function LULA.CreateLib(kavName, themeInput)
 
         local logoImage = Instance.new("ImageLabel")
         logoImage.BackgroundTransparency = 1
-        logoImage.Position = UDim2.fromOffset(4, 4)
-        logoImage.Size = UDim2.new(1, -8, 1, -8)
+        logoImage.Position = UDim2.fromOffset(1, 1)
+        logoImage.Size = UDim2.new(1, -2, 1, -2)
         logoImage.ScaleType = Enum.ScaleType.Fit
         logoImage.ImageTransparency = 1
         logoImage.Parent = logoShell
 
         local wordFallback = makeText(header, "ROBLOX", 24, Enum.Font.GothamBlack)
-        wordFallback.Position = UDim2.fromOffset(78, 7)
-        wordFallback.Size = UDim2.new(1, -88, 0, 43)
+        wordFallback.Position = UDim2.fromOffset(82, 3)
+        wordFallback.Size = UDim2.new(1, -92, 0, 58)
         wordFallback.TextXAlignment = Enum.TextXAlignment.Left
         wordFallback.TextYAlignment = Enum.TextYAlignment.Center
 
         local wordImage = Instance.new("ImageLabel")
         wordImage.BackgroundTransparency = 1
-        wordImage.Position = UDim2.fromOffset(76, 5)
-        wordImage.Size = UDim2.new(1, -86, 0, 47)
-        wordImage.ScaleType = Enum.ScaleType.Fit
+        wordImage.Position = UDim2.fromOffset(80, 3)
+        wordImage.Size = UDim2.new(1, -90, 0, 58)
+        wordImage.ScaleType = Enum.ScaleType.Stretch
         wordImage.ImageTransparency = 1
         wordImage.Parent = header
 
         local headerSub = makeText(header, "USER LOOKUP  |  public profile info", 9.5, Enum.Font.GothamMedium)
-        headerSub.Position = UDim2.fromOffset(79, 52)
-        headerSub.Size = UDim2.new(1, -90, 0, 15)
+        headerSub.Position = UDim2.fromOffset(82, 62)
+        headerSub.Size = UDim2.new(1, -94, 0, 15)
         headerSub.TextXAlignment = Enum.TextXAlignment.Left
         bind(headerSub, "TextColor3", "MutedText")
 
@@ -16311,8 +16410,16 @@ function LULA.CreateLib(kavName, themeInput)
         makeCorner(searchBox, 7)
         local searchPad = Instance.new("UIPadding")
         searchPad.PaddingLeft = UDim.new(0, 8)
-        searchPad.PaddingRight = UDim.new(0, 8)
+        searchPad.PaddingRight = UDim.new(0, 25)
         searchPad.Parent = searchBox
+        attachClearX(searchBox, function()
+            state.Serial = state.Serial + 1
+            state.LastQuery = ""
+            state.UserId = nil
+            state.Profile = nil
+            status.Text = "Enter part of a Roblox username, @username, User ID, or profile link."
+            if state.ClearSearchMatches then state.ClearSearchMatches() end
+        end)
 
         local searchButton = makeButton(searchRow, "Lookup")
         searchButton.AnchorPoint = Vector2.new(1, 0)
@@ -16322,7 +16429,7 @@ function LULA.CreateLib(kavName, themeInput)
         local statusRow = newRow(scroll, "UserLookupStatus", 29)
         statusRow.LayoutOrder = -980
         statusRow.BackgroundTransparency = 0.08
-        local status = makeText(statusRow, "Enter a Roblox username or User ID.", 10.5, Enum.Font.GothamMedium)
+        local status = makeText(statusRow, "Enter part of a Roblox username, @username, User ID, or profile link.", 10.5, Enum.Font.GothamMedium)
         status.Position = UDim2.fromOffset(9, 0)
         status.Size = UDim2.new(1, -18, 1, 0)
         status.TextXAlignment = Enum.TextXAlignment.Left
@@ -16548,6 +16655,7 @@ function LULA.CreateLib(kavName, themeInput)
             end
             searchResultsRow.Visible = false
         end
+        state.ClearSearchMatches = clearSearchMatches
 
         local lookup
         local function renderSearchMatches(entries, queryText)
@@ -16636,7 +16744,7 @@ function LULA.CreateLib(kavName, themeInput)
             rawQuery = trim(rawQuery)
             if rawQuery == "" then
                 setResultsVisible(false)
-                status.Text = "Enter a Roblox username or User ID."
+                status.Text = "Enter part of a Roblox username, @username, User ID, or profile link."
                 return
             end
 
@@ -16655,9 +16763,17 @@ function LULA.CreateLib(kavName, themeInput)
 
                 if not userId then
                     local encoded = HttpService:UrlEncode(cleanQuery)
-                    local searchData = httpJson(
-                        "https://users.roblox.com/v1/users/search?keyword=" .. encoded .. "&limit=10"
+                    local searchData, searchError = httpJson(
+                        "https://users.roblox.com/v1/users/search?keyword=" .. encoded .. "&limit=10",
+                        8
                     )
+                    if serial ~= state.Serial or state.Destroyed then return end
+                    if type(searchData) ~= "table" then
+                        searchData, searchError = httpJson(
+                            "https://users.roblox.com/v1/users/search?keyword=" .. encoded,
+                            6
+                        )
+                    end
                     if serial ~= state.Serial or state.Destroyed then return end
                     local matches = type(searchData) == "table" and searchData.data or nil
                     searchButton.Text = "Lookup"
@@ -16666,7 +16782,11 @@ function LULA.CreateLib(kavName, themeInput)
                         renderSearchMatches(matches, cleanQuery)
                     else
                         clearSearchMatches()
-                        status.Text = "No matching Roblox users found."
+                        if searchError == "timeout" then
+                            status.Text = "Roblox user search took too long. Press Lookup to retry."
+                        else
+                            status.Text = "No matching Roblox users found. Try a longer or different spelling."
+                        end
                     end
                     return
                 end
