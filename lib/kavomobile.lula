@@ -1,9 +1,10 @@
---kavo ui 4.6.3 - LH v10.3.0 patch
+--kavo ui 4.6.3 - LH v10.3.1 patch
 local LULA = {}
 LULA.AnimationMarketplaceVersion = 4
 LULA.EmoteMarketplaceVersion = 1
 LULA.AvatarMarketplaceVersion = 5
 LULA.AutoExecuteManagerVersion = 1
+LULA.UserLookupVersion = 1
 local env = (getgenv and getgenv()) or _G
 
 --kr
@@ -15513,23 +15514,21 @@ function LULA.CreateLib(kavName, themeInput)
             markSettingsDirty()
             saveSettingsNow()
         end
-        local function executeRecord(record, startup)
+        local function executeRecord(record)
             if type(record) ~= "table" then return false end
             local source = tostring(record.Source or "")
-            if source:match("^%s*$") then
-                if not startup then LULA:ShowIsland("Auto Execute", "This skript is empty.", {Duration = 2.2}) end
-                return false
-            end
+            if source:match("^%s*$") then return false end
             local compileOk, fnOrError = pcall(loadstring, source)
             if not compileOk or type(fnOrError) ~= "function" then
-                LULA:ShowIsland("Auto Execute Error", tostring(fnOrError or "Compile failed."), {Duration = 4})
+                warn("[Lollypop Hub Auto Execute] " .. tostring(fnOrError or "Compile failed."))
                 return false
             end
             task.spawn(function()
-                local ok, err = pcall(fnOrError)
-                if not ok then LULA:ShowIsland("Auto Execute Error", tostring(err), {Duration = 4}) end
+                local runOk, runError = pcall(fnOrError)
+                if not runOk then
+                    warn("[Lollypop Hub Auto Execute] " .. tostring(runError))
+                end
             end)
-            if not startup then LULA:ShowIsland("Auto Execute", "Ran " .. tostring(record.Name or "Skript") .. ".", {Duration = 2}) end
             return true
         end
 
@@ -15644,16 +15643,23 @@ function LULA.CreateLib(kavName, themeInput)
 
         local run = makeButton(controls, "Run")
         run.Position = UDim2.fromOffset(0, 3)
-        run.Size = UDim2.new(0.18, -3, 0, 33)
+        run.Size = UDim2.new(0.14, -2, 0, 33)
+
+        local clear = makeButton(controls, "Klear")
+        clear.Position = UDim2.new(0.145, 0, 0, 3)
+        clear.Size = UDim2.new(0.15, -2, 0, 33)
+
         local save = makeButton(controls, "Save")
-        save.Position = UDim2.new(0.19, 0, 0, 3)
-        save.Size = UDim2.new(0.18, -3, 0, 33)
+        save.Position = UDim2.new(0.30, 0, 0, 3)
+        save.Size = UDim2.new(0.14, -2, 0, 33)
+
         local delete = makeKolorButton(controls, "Delete", rgb(196, 53, 66))
-        delete.Position = UDim2.new(0.38, 0, 0, 3)
-        delete.Size = UDim2.new(0.19, -3, 0, 33)
+        delete.Position = UDim2.new(0.445, 0, 0, 3)
+        delete.Size = UDim2.new(0.16, -2, 0, 33)
+
         local auto = makeButton(controls, "Auto-Exec: OFF")
-        auto.Position = UDim2.new(0.58, 0, 0, 3)
-        auto.Size = UDim2.new(0.42, 0, 0, 33)
+        auto.Position = UDim2.new(0.61, 0, 0, 3)
+        auto.Size = UDim2.new(0.39, 0, 0, 33)
 
         local function selectedRecord()
             local list = scripts()
@@ -15675,6 +15681,7 @@ function LULA.CreateLib(kavName, themeInput)
             editor.Text = tostring(record.Source or "")
             auto.Text = record.AutoExecute == true and "Auto-Exec: ON" or "Auto-Exec: OFF"
             auto.BackgroundColor3 = record.AutoExecute == true and TOGGLE_ON_COLOR or TOGGLE_OFF_COLOR
+            run.Text = "Run"
         end
         renderTabs = function()
             for _, child in ipairs(tabs:GetChildren()) do
@@ -15709,9 +15716,32 @@ function LULA.CreateLib(kavName, themeInput)
 
         trackLocal(nameBox.FocusLost:Connect(function() saveEditor(); renderTabs() end))
         trackLocal(editor.FocusLost:Connect(function() saveEditor() end))
-        trackLocal(run.MouseButton1Click:Connect(function() executeRecord(saveEditor(), false) end))
+        trackLocal(run.MouseButton1Click:Connect(function()
+            local didRun = executeRecord(saveEditor())
+            if didRun then
+                run.Text = "Done"
+                local doneRecord = selectedRecord()
+                task.delay(1, function()
+                    if run and run.Parent and selectedRecord() == doneRecord then
+                        run.Text = "Run"
+                    end
+                end)
+            end
+        end))
+        trackLocal(clear.MouseButton1Click:Connect(function()
+            LULA:Confirm(
+                "Klear skript text?",
+                "Are you sure you want to klear the input text?",
+                function()
+                    editor.Text = ""
+                    saveEditor()
+                    run.Text = "Run"
+                end
+            )
+        end))
         trackLocal(save.MouseButton1Click:Connect(function()
-            saveEditor(); renderTabs(); LULA:ShowIsland("Auto Execute", "Skript saved.", {Duration = 2})
+            saveEditor()
+            renderTabs()
         end))
         trackLocal(auto.MouseButton1Click:Connect(function()
             local record = saveEditor()
@@ -15729,7 +15759,9 @@ function LULA.CreateLib(kavName, themeInput)
                 table.remove(list, state.Selected)
                 state.Selected = math.clamp(state.Selected, 1, #list)
             end
-            persist(); updateEditor(); renderTabs()
+            persist()
+            updateEditor()
+            renderTabs()
         end))
 
         state.Cleanup = function()
@@ -15745,9 +15777,637 @@ function LULA.CreateLib(kavName, themeInput)
         renderTabs()
         task.defer(function()
             for _, record in ipairs(scripts()) do
-                if record.AutoExecute == true then executeRecord(record, true) end
+                if record.AutoExecute == true then executeRecord(record) end
             end
         end)
+        return tab
+    end
+
+    function window:EnableUserLookup(tabName)
+        if active.UserLookup then return active.UserLookup.Tab end
+
+        local tab = self:NewTab(tabName or "User Lookup")
+        tab:EnsureBuilt()
+        local scroll = tab.Scroll
+        local state = {
+            Tab = tab,
+            Connections = {},
+            Destroyed = false,
+            Serial = 0,
+            LastQuery = "",
+            UserId = nil,
+            Profile = nil,
+        }
+        active.UserLookup = state
+
+        local function trackLocal(connection)
+            if connection then table.insert(state.Connections, connection) end
+            return connection
+        end
+
+        local function trim(value)
+            return tostring(value or ""):match("^%s*(.-)%s*$")
+        end
+
+        local function decodeJson(body)
+            if type(body) ~= "string" or body == "" then return nil end
+            local ok, decoded = pcall(function() return HttpService:JSONDecode(body) end)
+            return ok and decoded or nil
+        end
+
+        local function httpJson(url)
+            local compat = rawget(env, "LHCompat")
+            if type(compat) == "table" and type(compat.HttpGet) == "function" then
+                local callOk, httpOk, body = pcall(compat.HttpGet, tostring(url), false)
+                if callOk and httpOk and type(body) == "string" then
+                    local decoded = decodeJson(body)
+                    if decoded ~= nil then return decoded end
+                end
+            end
+
+            local ok, body = pcall(function()
+                return game:HttpGet(tostring(url), false)
+            end)
+            if ok then return decodeJson(body) end
+            return nil
+        end
+
+        local function copyText(text)
+            text = tostring(text or "")
+            local compat = rawget(env, "LHCompat")
+            if type(compat) == "table" and type(compat.SetClipboard) == "function" then
+                local ok, result = pcall(compat.SetClipboard, text)
+                if ok and result ~= false then return true end
+            end
+            local candidates = {
+                rawget(env, "setclipboard"),
+                rawget(env, "toclipboard"),
+                rawget(env, "writeclipboard"),
+            }
+            local synTable = rawget(env, "syn")
+            if type(synTable) == "table" then
+                table.insert(candidates, synTable.write_clipboard)
+                table.insert(candidates, synTable.setclipboard)
+            end
+            for _, writer in ipairs(candidates) do
+                if typeof(writer) == "function" and pcall(writer, text) then return true end
+            end
+            return false
+        end
+
+        local function loadRemoteAsset(url, relativePath)
+            local fromUrl = rawget(env, "getcustomassetfromurl") or rawget(env, "get_custom_asset_from_url")
+            if typeof(fromUrl) == "function" then
+                local ok, result = pcall(fromUrl, url)
+                if ok and type(result) == "string" and result ~= "" then return result end
+            end
+
+            local getAsset = rawget(env, "getcustomasset") or rawget(env, "getsynasset") or rawget(env, "get_custom_asset")
+            local writeFile = rawget(env, "writefile") or rawget(env, "write_file")
+            local makeFolder = rawget(env, "makefolder") or rawget(env, "make_folder")
+            local isFolder = rawget(env, "isfolder") or rawget(env, "is_folder")
+            if typeof(getAsset) ~= "function" or typeof(writeFile) ~= "function" then return nil end
+
+            pcall(function()
+                if typeof(makeFolder) == "function"
+                    and (typeof(isFolder) ~= "function" or not isFolder("LollypopHub")) then
+                    makeFolder("LollypopHub")
+                end
+            end)
+
+            local body
+            local compat = rawget(env, "LHCompat")
+            if type(compat) == "table" and type(compat.HttpGet) == "function" then
+                local callOk, httpOk, responseBody = pcall(compat.HttpGet, url, false)
+                if callOk and httpOk and type(responseBody) == "string" then body = responseBody end
+            end
+            if not body then
+                local bodyOk, responseBody = pcall(function() return game:HttpGet(url, false) end)
+                if bodyOk and type(responseBody) == "string" then body = responseBody end
+            end
+            if not body or body == "" then return nil end
+
+            local path = "LollypopHub/" .. tostring(relativePath or "userlookup.bin")
+            if not pcall(writeFile, path, body) then return nil end
+            local assetOk, asset = pcall(getAsset, path)
+            return assetOk and type(asset) == "string" and asset or nil
+        end
+
+        local header = newRow(scroll, "UserLookupHeader", 76)
+        header.LayoutOrder = -1000
+        header.BackgroundTransparency = 0.02
+        makeStroke(header, active.Theme.SchemeColor, 0.28, 1)
+
+        local logoShell = Instance.new("Frame")
+        logoShell.Position = UDim2.fromOffset(9, 8)
+        logoShell.Size = UDim2.fromOffset(58, 58)
+        logoShell.BorderSizePixel = 0
+        logoShell.Parent = header
+        bind(logoShell, "BackgroundColor3", "Header")
+        makeCorner(logoShell, 12)
+        makeStroke(logoShell, active.Theme.SchemeColor, 0.42, 1)
+
+        local logoFallback = makeText(logoShell, "R", 25, Enum.Font.GothamBold)
+        logoFallback.Size = UDim2.fromScale(1, 1)
+        logoFallback.TextXAlignment = Enum.TextXAlignment.Center
+        logoFallback.TextYAlignment = Enum.TextYAlignment.Center
+
+        local logoImage = Instance.new("ImageLabel")
+        logoImage.BackgroundTransparency = 1
+        logoImage.Position = UDim2.fromOffset(4, 4)
+        logoImage.Size = UDim2.new(1, -8, 1, -8)
+        logoImage.ScaleType = Enum.ScaleType.Fit
+        logoImage.ImageTransparency = 1
+        logoImage.Parent = logoShell
+
+        local wordFallback = makeText(header, "ROBLOX", 24, Enum.Font.GothamBlack)
+        wordFallback.Position = UDim2.fromOffset(78, 7)
+        wordFallback.Size = UDim2.new(1, -88, 0, 43)
+        wordFallback.TextXAlignment = Enum.TextXAlignment.Left
+        wordFallback.TextYAlignment = Enum.TextYAlignment.Center
+
+        local wordImage = Instance.new("ImageLabel")
+        wordImage.BackgroundTransparency = 1
+        wordImage.Position = UDim2.fromOffset(76, 5)
+        wordImage.Size = UDim2.new(1, -86, 0, 47)
+        wordImage.ScaleType = Enum.ScaleType.Fit
+        wordImage.ImageTransparency = 1
+        wordImage.Parent = header
+
+        local headerSub = makeText(header, "USER LOOKUP  |  public profile info", 9.5, Enum.Font.GothamMedium)
+        headerSub.Position = UDim2.fromOffset(79, 52)
+        headerSub.Size = UDim2.new(1, -90, 0, 15)
+        headerSub.TextXAlignment = Enum.TextXAlignment.Left
+        bind(headerSub, "TextColor3", "MutedText")
+
+        task.spawn(function()
+            local logoAsset = loadRemoteAsset(
+                "https://raw.githubusercontent.com/rrixh/install/refs/heads/main/imgs/robloxlogo.PNG",
+                "robloxlogo.png"
+            )
+            if logoAsset and logoImage.Parent then
+                logoImage.Image = logoAsset
+                logoImage.ImageTransparency = 0
+                logoFallback.Visible = false
+            end
+        end)
+
+        task.spawn(function()
+            local wordAsset = loadRemoteAsset(
+                "https://raw.githubusercontent.com/rrixh/install/refs/heads/main/imgs/oldroblox.PNG",
+                "oldroblox.png"
+            )
+            if wordAsset and wordImage.Parent then
+                wordImage.Image = wordAsset
+                wordImage.ImageTransparency = 0
+                wordFallback.Visible = false
+            end
+        end)
+
+        local searchRow = newRow(scroll, "UserLookupSearch", 43)
+        searchRow.LayoutOrder = -990
+        searchRow.BackgroundTransparency = 0.02
+
+        local searchBox = Instance.new("TextBox")
+        searchBox.Position = UDim2.fromOffset(7, 6)
+        searchBox.Size = UDim2.new(1, -105, 0, 31)
+        searchBox.BackgroundTransparency = 0.08
+        searchBox.BorderSizePixel = 0
+        searchBox.ClearTextOnFocus = false
+        searchBox.Font = resolveUIFont(Enum.Font.GothamMedium)
+        searchBox.PlaceholderText = "Username, @username, User ID, or profile link"
+        searchBox.Text = ""
+        searchBox.TextSize = 11
+        searchBox.TextXAlignment = Enum.TextXAlignment.Left
+        searchBox.Parent = searchRow
+        bind(searchBox, "BackgroundColor3", "Header")
+        bind(searchBox, "TextColor3", "TextColor")
+        makeCorner(searchBox, 7)
+        local searchPad = Instance.new("UIPadding")
+        searchPad.PaddingLeft = UDim.new(0, 8)
+        searchPad.PaddingRight = UDim.new(0, 8)
+        searchPad.Parent = searchBox
+
+        local searchButton = makeButton(searchRow, "Lookup")
+        searchButton.AnchorPoint = Vector2.new(1, 0)
+        searchButton.Position = UDim2.new(1, -7, 0, 6)
+        searchButton.Size = UDim2.fromOffset(91, 31)
+
+        local statusRow = newRow(scroll, "UserLookupStatus", 29)
+        statusRow.LayoutOrder = -980
+        statusRow.BackgroundTransparency = 0.08
+        local status = makeText(statusRow, "Enter a Roblox username or User ID.", 10.5, Enum.Font.GothamMedium)
+        status.Position = UDim2.fromOffset(9, 0)
+        status.Size = UDim2.new(1, -18, 1, 0)
+        status.TextXAlignment = Enum.TextXAlignment.Left
+        bind(status, "TextColor3", "MutedText")
+
+        local profileRow = newRow(scroll, "UserLookupProfile", 138)
+        profileRow.LayoutOrder = -970
+        profileRow.Visible = false
+        profileRow.BackgroundTransparency = 0.02
+
+        local avatar = Instance.new("ImageLabel")
+        avatar.Position = UDim2.fromOffset(9, 9)
+        avatar.Size = UDim2.fromOffset(116, 116)
+        avatar.BackgroundTransparency = 0.08
+        avatar.BorderSizePixel = 0
+        avatar.ScaleType = Enum.ScaleType.Crop
+        avatar.Image = ""
+        avatar.Parent = profileRow
+        bind(avatar, "BackgroundColor3", "Header")
+        makeCorner(avatar, 12)
+        makeStroke(avatar, active.Theme.SchemeColor, 0.38, 1)
+
+        local displayName = makeText(profileRow, "Display Name", 16, Enum.Font.GothamBold)
+        displayName.Position = UDim2.fromOffset(136, 10)
+        displayName.Size = UDim2.new(1, -145, 0, 24)
+        displayName.TextXAlignment = Enum.TextXAlignment.Left
+        displayName.TextWrapped = false
+
+        local username = makeText(profileRow, "@username", 12, Enum.Font.GothamMedium)
+        username.Position = UDim2.fromOffset(136, 35)
+        username.Size = UDim2.new(1, -145, 0, 19)
+        username.TextXAlignment = Enum.TextXAlignment.Left
+        bind(username, "TextColor3", "SchemeColor")
+
+        local idLine = makeText(profileRow, "User ID: --", 10.5, Enum.Font.Gotham)
+        idLine.Position = UDim2.fromOffset(136, 58)
+        idLine.Size = UDim2.new(1, -145, 0, 17)
+        idLine.TextXAlignment = Enum.TextXAlignment.Left
+        bind(idLine, "TextColor3", "MutedText")
+
+        local createdLine = makeText(profileRow, "Kreated: --", 10.5, Enum.Font.Gotham)
+        createdLine.Position = UDim2.fromOffset(136, 77)
+        createdLine.Size = UDim2.new(1, -145, 0, 17)
+        createdLine.TextXAlignment = Enum.TextXAlignment.Left
+        bind(createdLine, "TextColor3", "MutedText")
+
+        local accountLine = makeText(profileRow, "Account: --", 10.5, Enum.Font.Gotham)
+        accountLine.Position = UDim2.fromOffset(136, 96)
+        accountLine.Size = UDim2.new(1, -145, 0, 17)
+        accountLine.TextXAlignment = Enum.TextXAlignment.Left
+        bind(accountLine, "TextColor3", "MutedText")
+
+        local serverLine = makeText(profileRow, "In this server: --", 10.5, Enum.Font.Gotham)
+        serverLine.Position = UDim2.fromOffset(136, 115)
+        serverLine.Size = UDim2.new(1, -145, 0, 17)
+        serverLine.TextXAlignment = Enum.TextXAlignment.Left
+        bind(serverLine, "TextColor3", "MutedText")
+
+        local socialRow = newRow(scroll, "UserLookupSocial", 62)
+        socialRow.LayoutOrder = -960
+        socialRow.Visible = false
+        socialRow.BackgroundTransparency = 1
+
+        local socialValues = {}
+        for index, info in ipairs({
+            {"Friends", 0.00},
+            {"Followers", 0.335},
+            {"Following", 0.67},
+        }) do
+            local card = Instance.new("Frame")
+            card.Position = UDim2.new(info[2], index == 1 and 0 or 2, 0, 0)
+            card.Size = UDim2.new(0.33, -3, 1, 0)
+            card.BorderSizePixel = 0
+            card.Parent = socialRow
+            bind(card, "BackgroundColor3", "ElementColor")
+            makeCorner(card, 8)
+            local value = makeText(card, "--", 16, Enum.Font.GothamBold)
+            value.Position = UDim2.fromOffset(5, 7)
+            value.Size = UDim2.new(1, -10, 0, 23)
+            value.TextXAlignment = Enum.TextXAlignment.Center
+            bind(value, "TextColor3", "SchemeColor")
+            local label = makeText(card, info[1], 9.5, Enum.Font.GothamMedium)
+            label.Position = UDim2.fromOffset(5, 32)
+            label.Size = UDim2.new(1, -10, 0, 17)
+            label.TextXAlignment = Enum.TextXAlignment.Center
+            bind(label, "TextColor3", "MutedText")
+            socialValues[info[1]] = value
+        end
+
+        local bioRow = newRow(scroll, "UserLookupBio", 96)
+        bioRow.LayoutOrder = -950
+        bioRow.Visible = false
+        bioRow.BackgroundTransparency = 0.02
+        local bioTitle = makeText(bioRow, "About", 11.5, Enum.Font.GothamBold)
+        bioTitle.Position = UDim2.fromOffset(9, 6)
+        bioTitle.Size = UDim2.new(1, -18, 0, 18)
+        bioTitle.TextXAlignment = Enum.TextXAlignment.Left
+        bind(bioTitle, "TextColor3", "SchemeColor")
+        local bio = makeText(bioRow, "No description.", 10, Enum.Font.Gotham)
+        bio.Position = UDim2.fromOffset(9, 26)
+        bio.Size = UDim2.new(1, -18, 1, -33)
+        bio.TextXAlignment = Enum.TextXAlignment.Left
+        bio.TextYAlignment = Enum.TextYAlignment.Top
+        bio.TextWrapped = true
+        bind(bio, "TextColor3", "MutedText")
+
+        local extraRow = newRow(scroll, "UserLookupExtras", 88)
+        extraRow.LayoutOrder = -940
+        extraRow.Visible = false
+        extraRow.BackgroundTransparency = 0.02
+        local historyTitle = makeText(extraRow, "Past Usernames", 10.5, Enum.Font.GothamBold)
+        historyTitle.Position = UDim2.fromOffset(9, 6)
+        historyTitle.Size = UDim2.new(1, -18, 0, 17)
+        historyTitle.TextXAlignment = Enum.TextXAlignment.Left
+        bind(historyTitle, "TextColor3", "SchemeColor")
+        local history = makeText(extraRow, "None found", 9.5, Enum.Font.Gotham)
+        history.Position = UDim2.fromOffset(9, 24)
+        history.Size = UDim2.new(1, -18, 0, 31)
+        history.TextXAlignment = Enum.TextXAlignment.Left
+        history.TextYAlignment = Enum.TextYAlignment.Top
+        history.TextWrapped = true
+        bind(history, "TextColor3", "MutedText")
+        local group = makeText(extraRow, "Primary Group: None", 9.5, Enum.Font.GothamMedium)
+        group.Position = UDim2.fromOffset(9, 60)
+        group.Size = UDim2.new(1, -18, 0, 18)
+        group.TextXAlignment = Enum.TextXAlignment.Left
+        bind(group, "TextColor3", "MutedText")
+
+        local actionsRow = newRow(scroll, "UserLookupActions", 39)
+        actionsRow.LayoutOrder = -930
+        actionsRow.Visible = false
+        actionsRow.BackgroundTransparency = 1
+
+        local friendButton = makeButton(actionsRow, "Add Friend")
+        friendButton.Position = UDim2.fromOffset(0, 3)
+        friendButton.Size = UDim2.new(0.28, -3, 0, 33)
+        friendButton.TextSize = 10.5
+
+        local copyIdButton = makeButton(actionsRow, "Kopy ID")
+        copyIdButton.Position = UDim2.new(0.29, 0, 0, 3)
+        copyIdButton.Size = UDim2.new(0.20, -3, 0, 33)
+
+        local copyProfileButton = makeButton(actionsRow, "Kopy Profile")
+        copyProfileButton.Position = UDim2.new(0.50, 0, 0, 3)
+        copyProfileButton.Size = UDim2.new(0.28, -3, 0, 33)
+
+        local refreshButton = makeButton(actionsRow, "Refresh")
+        refreshButton.Position = UDim2.new(0.79, 0, 0, 3)
+        refreshButton.Size = UDim2.new(0.21, 0, 0, 33)
+
+        local function setResultsVisible(value)
+            value = value == true
+            profileRow.Visible = value
+            socialRow.Visible = value
+            bioRow.Visible = value
+            extraRow.Visible = value
+            actionsRow.Visible = value
+        end
+
+        local function flashButton(button, text, seconds)
+            if not button or not button.Parent then return end
+            local original = button.Text
+            button.Text = tostring(text)
+            task.delay(seconds or 0.9, function()
+                if button and button.Parent then button.Text = original end
+            end)
+        end
+
+        local function findServerPlayer(userId, userName)
+            local target = Players:GetPlayerByUserId(tonumber(userId) or 0)
+            if target then return target end
+            local wanted = string.lower(tostring(userName or ""))
+            if wanted ~= "" then
+                for _, player in ipairs(Players:GetPlayers()) do
+                    if string.lower(tostring(player.Name or "")) == wanted then return player end
+                end
+            end
+            return nil
+        end
+
+        local function refreshFriendButton()
+            local userId = tonumber(state.UserId)
+            if not userId then
+                friendButton.Text = "Add Friend"
+                friendButton.BackgroundColor3 = active.Theme.ElementColor
+                return
+            end
+            if userId == LocalPlayer.UserId then
+                friendButton.Text = "This Is You"
+                friendButton.BackgroundColor3 = active.Theme.Header
+                return
+            end
+
+            local isFriend = false
+            pcall(function() isFriend = LocalPlayer:IsFriendsWithAsync(userId) == true end)
+            if isFriend then
+                friendButton.Text = "Already Friends"
+                friendButton.BackgroundColor3 = TOGGLE_ON_COLOR
+                return
+            end
+
+            if findServerPlayer(userId, state.Profile and state.Profile.name) then
+                friendButton.Text = "Add Friend"
+                friendButton.BackgroundColor3 = active.Theme.SchemeColor
+            else
+                friendButton.Text = "Add Friend (Same Server)"
+                friendButton.BackgroundColor3 = active.Theme.Header
+            end
+        end
+
+        local function lookup(rawQuery)
+            rawQuery = trim(rawQuery)
+            if rawQuery == "" then
+                setResultsVisible(false)
+                status.Text = "Enter a Roblox username or User ID."
+                return
+            end
+
+            state.Serial = state.Serial + 1
+            local serial = state.Serial
+            state.LastQuery = rawQuery
+            searchButton.Text = "..."
+            status.Text = "Looking up " .. rawQuery .. "..."
+            setResultsVisible(false)
+
+            task.spawn(function()
+                local cleanQuery = rawQuery:gsub("^@", "")
+                local userId = tonumber(cleanQuery:match("^%d+$"))
+                    or tonumber(cleanQuery:match("[Rr][Oo][Bb][Ll][Oo][Xx]%.com/users/(%d+)"))
+                    or tonumber(cleanQuery:match("/users/(%d+)"))
+
+                if not userId then
+                    local ok, result = pcall(function()
+                        return Players:GetUserIdFromNameAsync(cleanQuery)
+                    end)
+                    if ok then userId = tonumber(result) end
+                end
+
+                if serial ~= state.Serial or state.Destroyed then return end
+                if not userId then
+                    searchButton.Text = "Lookup"
+                    status.Text = "User not found. Try the exact username or User ID."
+                    return
+                end
+
+                local profile = httpJson("https://users.roblox.com/v1/users/" .. tostring(userId))
+                if serial ~= state.Serial or state.Destroyed then return end
+                if type(profile) ~= "table" or tonumber(profile.id or userId) ~= userId then
+                    searchButton.Text = "Lookup"
+                    status.Text = "Could not load that Roblox profile."
+                    return
+                end
+
+                local verified = profile.hasVerifiedBadge == true
+                local userService = get.UserService
+                if userService then
+                    local infoOk, info = pcall(function()
+                        return userService:GetUserInfosByUserIdsAsync({userId})
+                    end)
+                    if infoOk and type(info) == "table" and type(info[1]) == "table" then
+                        if info[1].Username and not profile.name then profile.name = info[1].Username end
+                        if info[1].DisplayName and not profile.displayName then profile.displayName = info[1].DisplayName end
+                        verified = info[1].HasVerifiedBadge == true or verified
+                    end
+                end
+
+                local friendsData = httpJson("https://friends.roblox.com/v1/users/" .. tostring(userId) .. "/friends/count")
+                local followersData = httpJson("https://friends.roblox.com/v1/users/" .. tostring(userId) .. "/followers/count")
+                local followingData = httpJson("https://friends.roblox.com/v1/users/" .. tostring(userId) .. "/followings/count")
+                local historyData = httpJson("https://users.roblox.com/v1/users/" .. tostring(userId) .. "/username-history?limit=10&sortOrder=Desc")
+                local primaryData = httpJson("https://groups.roblox.com/v1/users/" .. tostring(userId) .. "/groups/primary/role")
+
+                if serial ~= state.Serial or state.Destroyed then return end
+
+                local thumb = ""
+                pcall(function()
+                    local image, ready = Players:GetUserThumbnailAsync(
+                        userId,
+                        Enum.ThumbnailType.HeadShot,
+                        Enum.ThumbnailSize.Size420x420
+                    )
+                    if ready or type(image) == "string" then thumb = tostring(image or "") end
+                end)
+
+                state.UserId = userId
+                state.Profile = profile
+                searchBox.Text = tostring(profile.name or cleanQuery)
+                avatar.Image = thumb
+                displayName.Text = tostring(profile.displayName or profile.name or "Roblox User")
+                    .. (verified and (" " .. utf8.char(0x2713)) or "")
+                username.Text = "@" .. tostring(profile.name or cleanQuery)
+                idLine.Text = "User ID: " .. tostring(userId)
+
+                local created = tostring(profile.created or "Unknown")
+                local dateOnly = created:match("^(%d%d%d%d%-%d%d%-%d%d)") or created
+                local accountAge = nil
+                pcall(function()
+                    local made = DateTime.fromIsoDate(created)
+                    local now = DateTime.now()
+                    accountAge = math.max(0, math.floor((now.UnixTimestamp - made.UnixTimestamp) / 86400))
+                end)
+                createdLine.Text = accountAge
+                    and ("Kreated: " .. dateOnly .. "  |  " .. tostring(accountAge) .. " days ago")
+                    or ("Kreated: " .. dateOnly)
+
+                accountLine.Text = "Account: " .. (profile.isBanned == true and "Banned" or "Active")
+                    .. (verified and "  |  Verified" or "")
+
+                local serverPlayer = findServerPlayer(userId, profile.name)
+                serverLine.Text = "In this server: " .. (serverPlayer and "Yes" or "No")
+
+                socialValues.Friends.Text = tostring(type(friendsData) == "table" and friendsData.count or "--")
+                socialValues.Followers.Text = tostring(type(followersData) == "table" and followersData.count or "--")
+                socialValues.Following.Text = tostring(type(followingData) == "table" and followingData.count or "--")
+
+                local description = trim(profile.description)
+                bio.Text = description ~= "" and description or "No description."
+
+                local oldNames = {}
+                if type(historyData) == "table" and type(historyData.data) == "table" then
+                    for index, entry in ipairs(historyData.data) do
+                        if index > 5 then break end
+                        local oldName = type(entry) == "table" and entry.name or nil
+                        if oldName and oldName ~= "" then table.insert(oldNames, tostring(oldName)) end
+                    end
+                end
+                history.Text = #oldNames > 0 and table.concat(oldNames, "  |  ") or "None found"
+
+                local primaryName = "None"
+                if type(primaryData) == "table" and type(primaryData.group) == "table" then
+                    primaryName = tostring(primaryData.group.name or "None")
+                    if type(primaryData.role) == "table" and primaryData.role.name then
+                        primaryName = primaryName .. "  |  " .. tostring(primaryData.role.name)
+                    end
+                end
+                group.Text = "Primary Group: " .. primaryName
+
+                setResultsVisible(true)
+                refreshFriendButton()
+                status.Text = "Showing public info for @" .. tostring(profile.name or cleanQuery) .. "."
+                searchButton.Text = "Lookup"
+            end)
+        end
+
+        trackLocal(searchButton.MouseButton1Click:Connect(function()
+            lookup(searchBox.Text)
+        end))
+        trackLocal(searchBox.FocusLost:Connect(function(enterPressed)
+            if enterPressed then lookup(searchBox.Text) end
+        end))
+        trackLocal(refreshButton.MouseButton1Click:Connect(function()
+            lookup(state.LastQuery ~= "" and state.LastQuery or searchBox.Text)
+        end))
+        trackLocal(copyIdButton.MouseButton1Click:Connect(function()
+            if state.UserId and copyText(tostring(state.UserId)) then
+                flashButton(copyIdButton, "Kopied", 0.9)
+            end
+        end))
+        trackLocal(copyProfileButton.MouseButton1Click:Connect(function()
+            if state.UserId then
+                local link = "https://www.roblox.com/users/" .. tostring(state.UserId) .. "/profile"
+                if copyText(link) then flashButton(copyProfileButton, "Kopied", 0.9) end
+            end
+        end))
+        trackLocal(friendButton.MouseButton1Click:Connect(function()
+            local userId = tonumber(state.UserId)
+            if not userId or userId == LocalPlayer.UserId then return end
+
+            local isFriend = false
+            pcall(function() isFriend = LocalPlayer:IsFriendsWithAsync(userId) == true end)
+            if isFriend then
+                refreshFriendButton()
+                return
+            end
+
+            local target = findServerPlayer(userId, state.Profile and state.Profile.name)
+            if not target then
+                flashButton(friendButton, "Same Server Needed", 1.25)
+                return
+            end
+
+            local starterGui = get.StarterGui
+            local prompted = false
+            for _ = 1, 8 do
+                local ok = pcall(function()
+                    starterGui:SetCore("PromptSendFriendRequest", target)
+                end)
+                if ok then
+                    prompted = true
+                    break
+                end
+                task.wait(0.15)
+            end
+            if prompted then
+                flashButton(friendButton, "Opened", 1)
+            else
+                flashButton(friendButton, "Unavailable", 1)
+            end
+        end))
+
+        state.Lookup = lookup
+        state.Cleanup = function()
+            if state.Destroyed then return end
+            state.Destroyed = true
+            state.Serial = state.Serial + 1
+            for _, connection in ipairs(state.Connections) do
+                pcall(function() if connection and connection.Connected then connection:Disconnect() end end)
+            end
+            state.Connections = {}
+        end
+
         return tab
     end
 
@@ -16287,6 +16947,9 @@ function LULA:Destroy()
     end
     if active.AutoExecuteManager and type(active.AutoExecuteManager.Cleanup) == "function" then
         pcall(active.AutoExecuteManager.Cleanup)
+    end
+    if active.UserLookup and type(active.UserLookup.Cleanup) == "function" then
+        pcall(active.UserLookup.Cleanup)
     end
     pcall(function() UserInputService.MouseIconEnabled = true end)
     disconnectAll()
