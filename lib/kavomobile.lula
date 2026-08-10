@@ -1,4 +1,4 @@
---kavo ui 4.6.3 - LH v10.3.7 patch
+--kavo ui 4.6.3 - LH v10.3.8 patch
 local LULA = {}
 LULA.AnimationMarketplaceVersion = 4
 LULA.EmoteMarketplaceVersion = 1
@@ -2834,7 +2834,7 @@ function LULA.CreateLib(kavName, themeInput)
     pages.ClipsDescendants = true
     pages.Parent = main
 
-    local footer = makeText(main, "Lollypop Hub v10.3.7", 11, Enum.Font.GothamMedium)
+    local footer = makeText(main, "Lollypop Hub v10.3.8", 11, Enum.Font.GothamMedium)
     footer.Name = "Footer"
     footer.Position = UDim2.new(0, 158, 1, -20)
     footer.Size = UDim2.new(1, -165, 0, 18)
@@ -10728,7 +10728,7 @@ function LULA.CreateLib(kavName, themeInput)
             Size = UDim2.new(1, -136, 0, 20),
             BackgroundTransparency = 1,
             Font = Enum.Font.GothamBold,
-            Text = "Avatar Katalog Kreator",
+            Text = "Avatar Katalog Kreator [BETA]",
             TextColor3 = TEXT,
             TextSize = 13.5,
             TextTruncate = Enum.TextTruncate.AtEnd,
@@ -13913,45 +13913,47 @@ function LULA.CreateLib(kavName, themeInput)
                     end
                 end
                 rig.Parent = world
-                pcall(function() rig:PivotTo(CFrame.new()) end)
 
-                local bodyMin, bodyMax
-                for _, object in ipairs(rig:GetDescendants()) do
-                    if object:IsA("BasePart")
-                        and not object:FindFirstAncestorOfClass("Accessory")
-                        and not object:FindFirstAncestorOfClass("Tool") then
-                        local half = object.Size * 0.5
-                        local p = object.Position
-                        local lo, hi = p - half, p + half
-                        bodyMin = bodyMin and Vector3.new(
-                            math.min(bodyMin.X, lo.X), math.min(bodyMin.Y, lo.Y), math.min(bodyMin.Z, lo.Z)
-                        ) or lo
-                        bodyMax = bodyMax and Vector3.new(
-                            math.max(bodyMax.X, hi.X), math.max(bodyMax.Y, hi.Y), math.max(bodyMax.Z, hi.Z)
-                        ) or hi
-                    end
-                end
-                local boxCFrame, boxSize = rig:GetBoundingBox()
-                local focus, bodySize
-                if bodyMin and bodyMax then
-                    bodySize = bodyMax - bodyMin
-                    focus = (bodyMin + bodyMax) * 0.5
+                local root = rig:FindFirstChild("HumanoidRootPart")
+                local head = rig:FindFirstChild("Head")
+                local humanoid = rig:FindFirstChildOfClass("Humanoid")
+
+                if root then
+                    pcall(function()
+                        rig.PrimaryPart = root
+                        rig:PivotTo(CFrame.new(0, 0, 0) * CFrame.Angles(0, math.rad(180), 0))
+                    end)
                 else
-                    bodySize = boxSize
-                    focus = boxCFrame.Position
+                    pcall(function()
+                        rig:PivotTo(CFrame.new())
+                    end)
                 end
-                bodySize = Vector3.new(
-                    math.clamp(bodySize.X, 2.5, 8),
-                    math.clamp(bodySize.Y, 4.5, 9),
-                    math.clamp(bodySize.Z, 1.5, 6)
-                )
-                local halfFov = math.rad(camera.FieldOfView * 0.5)
-                local distance = math.max(5.8, (bodySize.Y * 0.62) / math.max(0.05, math.tan(halfFov)))
+
+                RunService.Heartbeat:Wait()
+
+                local boxCFrame, boxSize = rig:GetBoundingBox()
+                local focus = boxCFrame.Position
+                local height = math.clamp(boxSize.Y, 4.5, 9.5)
+                local width = math.clamp(math.max(boxSize.X, boxSize.Z), 2.5, 7)
+                local distance = math.max(7, height * 1.15, width * 1.7)
+
+                if root then
+                    focus = root.Position + Vector3.new(0, math.clamp(height * 0.16, 0.8, 1.5), 0)
+                elseif head then
+                    focus = head.Position - Vector3.new(0, math.clamp(height * 0.28, 1.2, 2.2), 0)
+                end
+
+                camera.FieldOfView = 34
                 camera.CFrame = CFrame.lookAt(
-                    focus + Vector3.new(0, bodySize.Y * 0.01, -distance),
-                    focus + Vector3.new(0, bodySize.Y * 0.03, 0),
+                    focus + Vector3.new(0, 0.15, distance),
+                    focus,
                     Vector3.new(0, 1, 0)
                 )
+
+                if humanoid then
+                    pcall(function() humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None end)
+                end
+
                 fallback.Visible = false
                 loading.Visible = false
             end)
@@ -15889,7 +15891,7 @@ function LULA.CreateLib(kavName, themeInput)
                 Subtitle.Visible = false
                 OutfitButton.Visible = false
 
-                Title.Text = "Avatar Katalog Kreator"
+                Title.Text = "Avatar Katalog Kreator [BETA]"
                 Title.Size = UDim2.new(1, -144, 1, 0)
                 Title.Position = UDim2.fromOffset(56, 0)
                 Title.TextSize = 15
@@ -15909,7 +15911,7 @@ function LULA.CreateLib(kavName, themeInput)
                 Subtitle.Visible = true
                 OutfitButton.Visible = true
 
-                Title.Text = "Avatar Katalog Kreator"
+                Title.Text = "Avatar Katalog Kreator [BETA]"
                 Title.Size = UDim2.new(1, -132, 0, 20)
                 Title.Position = UDim2.fromOffset(43, 2)
                 Title.TextSize = 13.5
