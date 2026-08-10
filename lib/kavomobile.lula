@@ -1,10 +1,10 @@
---kavo ui 4.6.3 - LH v10.3.3 patch
+--kavo ui 4.6.3 - LH v10.3.4 patch
 local LULA = {}
 LULA.AnimationMarketplaceVersion = 4
 LULA.EmoteMarketplaceVersion = 1
 LULA.AvatarMarketplaceVersion = 5
 LULA.AutoExecuteManagerVersion = 1
-LULA.UserLookupVersion = 1
+LULA.UserLookupVersion = 2
 local env = (getgenv and getgenv()) or _G
 
 --kr
@@ -2688,7 +2688,7 @@ function LULA.CreateLib(kavName, themeInput)
     pages.ClipsDescendants = true
     pages.Parent = main
 
-    local footer = makeText(main, "Lollypop Hub v10.3.3", 11, Enum.Font.GothamMedium)
+    local footer = makeText(main, "Lollypop Hub v10.3.4", 11, Enum.Font.GothamMedium)
     footer.Name = "Footer"
     footer.Position = UDim2.new(0, 158, 1, -20)
     footer.Size = UDim2.new(1, -165, 0, 18)
@@ -16345,17 +16345,17 @@ function LULA.CreateLib(kavName, themeInput)
         logoImage.ImageTransparency = 1
         logoImage.Parent = logoShell
 
-        local wordFallback = makeText(header, "ROBLOX", 24, Enum.Font.GothamBlack)
-        wordFallback.Position = UDim2.fromOffset(82, 3)
-        wordFallback.Size = UDim2.new(1, -92, 0, 58)
+        local wordFallback = makeText(header, "ROBLOX", 22, Enum.Font.GothamBlack)
+        wordFallback.Position = UDim2.fromOffset(94, 8)
+        wordFallback.Size = UDim2.new(1, -142, 0, 45)
         wordFallback.TextXAlignment = Enum.TextXAlignment.Left
         wordFallback.TextYAlignment = Enum.TextYAlignment.Center
 
         local wordImage = Instance.new("ImageLabel")
         wordImage.BackgroundTransparency = 1
-        wordImage.Position = UDim2.fromOffset(80, 3)
-        wordImage.Size = UDim2.new(1, -90, 0, 58)
-        wordImage.ScaleType = Enum.ScaleType.Stretch
+        wordImage.Position = UDim2.fromOffset(92, 8)
+        wordImage.Size = UDim2.new(1, -138, 0, 45)
+        wordImage.ScaleType = Enum.ScaleType.Fit
         wordImage.ImageTransparency = 1
         wordImage.Parent = header
 
@@ -16664,12 +16664,12 @@ function LULA.CreateLib(kavName, themeInput)
 
             -- Keep username matches first so short searches feel like Roblox's
             -- player finder instead of burying the closest username under display names.
-            local queryLower = lower(trim(queryText))
+            local queryLower = string.lower(trim(queryText))
             table.sort(entries, function(a, b)
-                local aName = lower(tostring(type(a) == "table" and a.name or ""))
-                local bName = lower(tostring(type(b) == "table" and b.name or ""))
-                local aDisplay = lower(tostring(type(a) == "table" and a.displayName or ""))
-                local bDisplay = lower(tostring(type(b) == "table" and b.displayName or ""))
+                local aName = string.lower(tostring(type(a) == "table" and a.name or ""))
+                local bName = string.lower(tostring(type(b) == "table" and b.name or ""))
+                local aDisplay = string.lower(tostring(type(a) == "table" and a.displayName or ""))
+                local bDisplay = string.lower(tostring(type(b) == "table" and b.displayName or ""))
                 local function rank(name, displayName)
                     if name == queryLower then return 0 end
                     if string.sub(name, 1, #queryLower) == queryLower then return 1 end
@@ -16779,14 +16779,32 @@ function LULA.CreateLib(kavName, themeInput)
                     searchButton.Text = "Lookup"
                     setResultsVisible(false)
                     if type(matches) == "table" and #matches > 0 then
-                        renderSearchMatches(matches, cleanQuery)
-                    else
-                        clearSearchMatches()
-                        if searchError == "timeout" then
-                            status.Text = "Roblox user search took too long. Press Lookup to retry."
-                        else
-                            status.Text = "No matching Roblox users found. Try a longer or different spelling."
+                        local renderedOk = pcall(renderSearchMatches, matches, cleanQuery)
+                        if not renderedOk then
+                            clearSearchMatches()
+                            status.Text = "Could not show those results. Press Lookup to retry."
                         end
+                        return
+                    end
+
+                    -- Keyword search is the preferred route because it supports partial names.
+                    -- If it is unavailable, fall baxk to Roblox's exact-name resolver.
+                    local exactId = nil
+                    local exactOk, exactResult = pcall(function()
+                        return Players:GetUserIdFromNameAsync(cleanQuery)
+                    end)
+                    if exactOk then exactId = tonumber(exactResult) end
+                    if serial ~= state.Serial or state.Destroyed then return end
+                    if exactId then
+                        lookup(tostring(exactId))
+                        return
+                    end
+
+                    clearSearchMatches()
+                    if searchError == "timeout" then
+                        status.Text = "Roblox user search took too long. Press Lookup to retry."
+                    else
+                        status.Text = "No matching Roblox users found. Try a longer or different spelling."
                     end
                     return
                 end
