@@ -1,10 +1,10 @@
---kavo ui 4.6.3 - LH v10.3.5 patch
+--kavo ui 4.6.3 - LH v10.3.6 patch
 local LULA = {}
 LULA.AnimationMarketplaceVersion = 4
 LULA.EmoteMarketplaceVersion = 1
 LULA.AvatarMarketplaceVersion = 5
 LULA.AutoExecuteManagerVersion = 1
-LULA.UserLookupVersion = 3
+LULA.UserLookupVersion = 4
 local env = (getgenv and getgenv()) or _G
 
 --kr
@@ -2834,7 +2834,7 @@ function LULA.CreateLib(kavName, themeInput)
     pages.ClipsDescendants = true
     pages.Parent = main
 
-    local footer = makeText(main, "Lollypop Hub v10.3.5", 11, Enum.Font.GothamMedium)
+    local footer = makeText(main, "Lollypop Hub v10.3.6", 11, Enum.Font.GothamMedium)
     footer.Name = "Footer"
     footer.Position = UDim2.new(0, 158, 1, -20)
     footer.Size = UDim2.new(1, -165, 0, 18)
@@ -16341,6 +16341,77 @@ function LULA.CreateLib(kavName, themeInput)
         return tab
     end
 
+
+    function window:StyleSpecialActionButton(button, variant)
+        if not button or not button:IsA("TextButton") then return button end
+        variant = tostring(variant or "accent")
+        button.AutoButtonColor = false
+        button.TextColor3 = rgb(255, 255, 255)
+        button.Font = resolveUIFont(Enum.Font.GothamBold)
+        button.BackgroundTransparency = 0.02
+
+        local oldCorner = button:FindFirstChildOfClass("UICorner")
+        if oldCorner then oldCorner.CornerRadius = UDim.new(0, 11) else makeCorner(button, 11) end
+
+        local stroke = button:FindFirstChild("LHSpecialStroke")
+        if not stroke then
+            stroke = Instance.new("UIStroke")
+            stroke.Name = "LHSpecialStroke"
+            stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+            stroke.Thickness = 1.15
+            stroke.Transparency = 0.24
+            stroke.Parent = button
+        end
+
+        local glow = button:FindFirstChild("LHSpecialGradient")
+        if not glow then
+            glow = Instance.new("UIGradient")
+            glow.Name = "LHSpecialGradient"
+            glow.Rotation = 12
+            glow.Parent = button
+        end
+
+        local accentA = active and active.Theme and active.Theme.SchemeColor or defaultAccent
+        local accentB = active and active.Theme and active.Theme.Accent2 or brightenAccent(defaultAccent, 0.18)
+        if variant == "soft" then
+            button.BackgroundColor3 = blendColor(accentA, active.Theme.ElementColor, 0.48)
+            glow.Color = ColorSequence.new({
+                ColorSequenceKeypoint.new(0, blendColor(accentA, rgb(255,255,255), 0.08)),
+                ColorSequenceKeypoint.new(1, blendColor(accentB, active.Theme.ElementColor, 0.34)),
+            })
+        elseif variant == "glass" then
+            button.BackgroundColor3 = active.Theme.ElementColor
+            glow.Color = ColorSequence.new({
+                ColorSequenceKeypoint.new(0, blendColor(active.Theme.ElementColor, accentA, 0.32)),
+                ColorSequenceKeypoint.new(0.55, active.Theme.ElementColor),
+                ColorSequenceKeypoint.new(1, blendColor(active.Theme.ElementColor, accentB, 0.28)),
+            })
+        else
+            button.BackgroundColor3 = accentA
+            glow.Color = ColorSequence.new({
+                ColorSequenceKeypoint.new(0, brightenAccent(accentA, 0.10)),
+                ColorSequenceKeypoint.new(1, brightenAccent(accentB, 0.08)),
+            })
+        end
+        stroke.Color = brightenAccent(accentA, 0.22)
+
+        local shine = button:FindFirstChild("LHSpecialShine")
+        if not shine then
+            shine = Instance.new("Frame")
+            shine.Name = "LHSpecialShine"
+            shine.Active = false
+            shine.BorderSizePixel = 0
+            shine.BackgroundColor3 = rgb(255,255,255)
+            shine.BackgroundTransparency = 0.88
+            shine.Position = UDim2.new(0, 8, 0, 4)
+            shine.Size = UDim2.new(1, -16, 0, 2)
+            shine.ZIndex = button.ZIndex + 1
+            shine.Parent = button
+            makeCorner(shine, 999)
+        end
+        return button
+    end
+
     function window:EnableUserLookup(tabName)
         if active.UserLookup then return active.UserLookup.Tab end
 
@@ -16609,6 +16680,7 @@ function LULA.CreateLib(kavName, themeInput)
         end)
 
         local searchButton = makeButton(searchRow, "Lookup")
+        self:StyleSpecialActionButton(searchButton, "accent")
         searchButton.AnchorPoint = Vector2.new(1, 0)
         searchButton.Position = UDim2.new(1, -7, 0, 6)
         searchButton.Size = UDim2.fromOffset(91, 31)
@@ -16769,19 +16841,23 @@ function LULA.CreateLib(kavName, themeInput)
         actionsRow.BackgroundTransparency = 1
 
         local friendButton = makeButton(actionsRow, "Add Friend")
+        self:StyleSpecialActionButton(friendButton, "accent")
         friendButton.Position = UDim2.fromOffset(0, 3)
         friendButton.Size = UDim2.new(0.28, -3, 0, 33)
         friendButton.TextSize = 10.5
 
         local copyIdButton = makeButton(actionsRow, "Kopy ID")
+        self:StyleSpecialActionButton(copyIdButton, "glass")
         copyIdButton.Position = UDim2.new(0.29, 0, 0, 3)
         copyIdButton.Size = UDim2.new(0.20, -3, 0, 33)
 
         local copyProfileButton = makeButton(actionsRow, "Kopy Profile")
+        self:StyleSpecialActionButton(copyProfileButton, "glass")
         copyProfileButton.Position = UDim2.new(0.50, 0, 0, 3)
         copyProfileButton.Size = UDim2.new(0.28, -3, 0, 33)
 
         local refreshButton = makeButton(actionsRow, "Refresh")
+        self:StyleSpecialActionButton(refreshButton, "soft")
         refreshButton.Position = UDim2.new(0.79, 0, 0, 3)
         refreshButton.Size = UDim2.new(0.21, 0, 0, 33)
 
@@ -16887,6 +16963,7 @@ function LULA.CreateLib(kavName, themeInput)
                     local row = newRow(searchResultsRow, "UserMatch", 54)
                     row.LayoutOrder = index
                     row.BackgroundTransparency = 0.03
+                    makeStroke(row, active.Theme.SchemeColor, 0.62, 1)
 
                     local icon = Instance.new("ImageLabel")
                     icon.Position = UDim2.fromOffset(6, 6)
@@ -16913,6 +16990,7 @@ function LULA.CreateLib(kavName, themeInput)
                     bind(sub, "TextColor3", "MutedText")
 
                     local open = makeButton(row, "View")
+                    self:StyleSpecialActionButton(open, "accent")
                     open.AnchorPoint = Vector2.new(1, 0.5)
                     open.Position = UDim2.new(1, -7, 0.5, 0)
                     open.Size = UDim2.fromOffset(78, 32)
