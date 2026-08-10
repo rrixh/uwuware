@@ -1,4 +1,4 @@
---kavo ui 4.6.3 - LH v10.3.6 patch
+--kavo ui 4.6.3 - LH v10.3.7 patch
 local LULA = {}
 LULA.AnimationMarketplaceVersion = 4
 LULA.EmoteMarketplaceVersion = 1
@@ -2834,7 +2834,7 @@ function LULA.CreateLib(kavName, themeInput)
     pages.ClipsDescendants = true
     pages.Parent = main
 
-    local footer = makeText(main, "Lollypop Hub v10.3.6", 11, Enum.Font.GothamMedium)
+    local footer = makeText(main, "Lollypop Hub v10.3.7", 11, Enum.Font.GothamMedium)
     footer.Name = "Footer"
     footer.Position = UDim2.new(0, 158, 1, -20)
     footer.Size = UDim2.new(1, -165, 0, 18)
