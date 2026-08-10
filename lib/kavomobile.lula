@@ -1,10 +1,10 @@
---kavo ui 4.6.3 - LH v10.3.4 patch
+--kavo ui 4.6.3 - LH v10.3.5 patch
 local LULA = {}
 LULA.AnimationMarketplaceVersion = 4
 LULA.EmoteMarketplaceVersion = 1
 LULA.AvatarMarketplaceVersion = 5
 LULA.AutoExecuteManagerVersion = 1
-LULA.UserLookupVersion = 2
+LULA.UserLookupVersion = 3
 local env = (getgenv and getgenv()) or _G
 
 --kr
@@ -312,12 +312,158 @@ themes.Emerald = {
     ElementColor = rgb(15, 42, 33), Danger = rgb(255, 72, 91),
 }
 
+themes["Cherry Soda"] = {
+    SchemeColor = rgb(255, 64, 92), Accent2 = rgb(255, 150, 92),
+    Background = rgb(35, 13, 22), Header = rgb(25, 8, 15),
+    TextColor = rgb(255, 244, 247), MutedText = rgb(221, 170, 183),
+    ElementColor = rgb(57, 21, 33), Danger = rgb(255, 72, 92),
+}
+themes["Lemon Drop"] = {
+    SchemeColor = rgb(255, 215, 64), Accent2 = rgb(255, 151, 54),
+    Background = rgb(32, 27, 12), Header = rgb(23, 18, 8),
+    TextColor = rgb(255, 252, 235), MutedText = rgb(215, 200, 146),
+    ElementColor = rgb(52, 43, 18), Danger = rgb(255, 72, 92),
+}
+themes.Watermelon = {
+    SchemeColor = rgb(255, 72, 117), Accent2 = rgb(71, 222, 151),
+    Background = rgb(30, 16, 24), Header = rgb(20, 10, 16),
+    TextColor = rgb(255, 242, 248), MutedText = rgb(215, 169, 187),
+    ElementColor = rgb(49, 27, 39), Danger = rgb(255, 72, 92),
+}
+themes["Electric Blue"] = {
+    SchemeColor = rgb(48, 121, 255), Accent2 = rgb(64, 227, 255),
+    Background = rgb(9, 18, 39), Header = rgb(6, 12, 28),
+    TextColor = rgb(239, 247, 255), MutedText = rgb(159, 188, 224),
+    ElementColor = rgb(17, 31, 63), Danger = rgb(255, 72, 92),
+}
+themes["Hot Pink"] = {
+    SchemeColor = rgb(255, 38, 169), Accent2 = rgb(255, 112, 221),
+    Background = rgb(36, 10, 29), Header = rgb(25, 7, 20),
+    TextColor = rgb(255, 240, 250), MutedText = rgb(219, 160, 200),
+    ElementColor = rgb(58, 16, 45), Danger = rgb(255, 72, 92),
+}
+themes.Amethyst = {
+    SchemeColor = rgb(159, 77, 255), Accent2 = rgb(226, 103, 255),
+    Background = rgb(24, 13, 38), Header = rgb(16, 9, 27),
+    TextColor = rgb(250, 243, 255), MutedText = rgb(196, 169, 220),
+    ElementColor = rgb(41, 23, 62), Danger = rgb(255, 72, 92),
+}
+themes.Ruby = {
+    SchemeColor = rgb(222, 38, 78), Accent2 = rgb(255, 94, 117),
+    Background = rgb(30, 10, 18), Header = rgb(20, 7, 12),
+    TextColor = rgb(255, 241, 245), MutedText = rgb(211, 161, 176),
+    ElementColor = rgb(50, 17, 29), Danger = rgb(255, 72, 92),
+}
+themes.Sapphire = {
+    SchemeColor = rgb(48, 91, 220), Accent2 = rgb(90, 158, 255),
+    Background = rgb(8, 15, 34), Header = rgb(5, 10, 24),
+    TextColor = rgb(239, 245, 255), MutedText = rgb(157, 179, 218),
+    ElementColor = rgb(16, 27, 55), Danger = rgb(255, 72, 92),
+}
+themes.Platinum = {
+    SchemeColor = rgb(198, 205, 218), Accent2 = rgb(128, 143, 169),
+    Background = rgb(25, 27, 32), Header = rgb(17, 19, 23),
+    TextColor = rgb(248, 249, 252), MutedText = rgb(188, 193, 205),
+    ElementColor = rgb(40, 44, 52), Danger = rgb(255, 72, 92),
+}
+themes.Obsidian = {
+    SchemeColor = rgb(104, 83, 132), Accent2 = rgb(170, 84, 226),
+    Background = rgb(10, 9, 13), Header = rgb(6, 6, 9),
+    TextColor = rgb(240, 236, 245), MutedText = rgb(164, 153, 176),
+    ElementColor = rgb(23, 19, 29), Danger = rgb(255, 72, 92),
+}
+themes["Candy Apple"] = {
+    SchemeColor = rgb(255, 49, 49), Accent2 = rgb(255, 197, 54),
+    Background = rgb(34, 12, 11), Header = rgb(23, 8, 7),
+    TextColor = rgb(255, 244, 240), MutedText = rgb(219, 169, 157),
+    ElementColor = rgb(54, 20, 17), Danger = rgb(255, 72, 92),
+}
+themes.Sky = {
+    SchemeColor = rgb(79, 183, 255), Accent2 = rgb(128, 226, 255),
+    Background = rgb(12, 27, 39), Header = rgb(8, 19, 28),
+    TextColor = rgb(240, 251, 255), MutedText = rgb(166, 207, 224),
+    ElementColor = rgb(22, 44, 60), Danger = rgb(255, 72, 92),
+}
+themes.Lilac = {
+    SchemeColor = rgb(204, 143, 255), Accent2 = rgb(255, 166, 231),
+    Background = rgb(28, 20, 38), Header = rgb(19, 13, 27),
+    TextColor = rgb(253, 247, 255), MutedText = rgb(207, 187, 221),
+    ElementColor = rgb(45, 33, 59), Danger = rgb(255, 72, 92),
+}
+themes.Teal = {
+    SchemeColor = rgb(34, 204, 190), Accent2 = rgb(72, 151, 255),
+    Background = rgb(8, 29, 30), Header = rgb(5, 20, 21),
+    TextColor = rgb(237, 255, 254), MutedText = rgb(150, 207, 202),
+    ElementColor = rgb(15, 47, 48), Danger = rgb(255, 72, 92),
+}
+themes.Crimson = {
+    SchemeColor = rgb(207, 24, 62), Accent2 = rgb(255, 89, 89),
+    Background = rgb(29, 8, 14), Header = rgb(19, 5, 9),
+    TextColor = rgb(255, 239, 243), MutedText = rgb(208, 156, 169),
+    ElementColor = rgb(49, 14, 23), Danger = rgb(255, 72, 92),
+}
+themes.Solar = {
+    SchemeColor = rgb(255, 172, 40), Accent2 = rgb(255, 83, 55),
+    Background = rgb(34, 20, 7), Header = rgb(23, 13, 5),
+    TextColor = rgb(255, 248, 235), MutedText = rgb(219, 184, 145),
+    ElementColor = rgb(55, 33, 12), Danger = rgb(255, 72, 92),
+}
+themes.Moonlight = {
+    SchemeColor = rgb(132, 153, 255), Accent2 = rgb(203, 175, 255),
+    Background = rgb(16, 18, 38), Header = rgb(10, 12, 28),
+    TextColor = rgb(244, 246, 255), MutedText = rgb(180, 188, 222),
+    ElementColor = rgb(29, 32, 62), Danger = rgb(255, 72, 92),
+}
+themes.Toxic = {
+    SchemeColor = rgb(154, 255, 46), Accent2 = rgb(0, 228, 144),
+    Background = rgb(15, 29, 8), Header = rgb(10, 20, 5),
+    TextColor = rgb(246, 255, 238), MutedText = rgb(183, 215, 155),
+    ElementColor = rgb(28, 49, 17), Danger = rgb(255, 72, 92),
+}
+themes.Coral = {
+    SchemeColor = rgb(255, 105, 109), Accent2 = rgb(255, 180, 128),
+    Background = rgb(34, 20, 22), Header = rgb(23, 13, 14),
+    TextColor = rgb(255, 246, 244), MutedText = rgb(220, 182, 177),
+    ElementColor = rgb(55, 34, 35), Danger = rgb(255, 72, 92),
+}
+themes.Denim = {
+    SchemeColor = rgb(78, 126, 184), Accent2 = rgb(115, 170, 229),
+    Background = rgb(18, 24, 34), Header = rgb(12, 16, 24),
+    TextColor = rgb(243, 248, 255), MutedText = rgb(172, 188, 208),
+    ElementColor = rgb(31, 40, 55), Danger = rgb(255, 72, 92),
+}
+themes.Vanilla = {
+    SchemeColor = rgb(236, 205, 151), Accent2 = rgb(188, 148, 102),
+    Background = rgb(32, 27, 21), Header = rgb(22, 18, 14),
+    TextColor = rgb(255, 250, 239), MutedText = rgb(210, 195, 171),
+    ElementColor = rgb(50, 42, 32), Danger = rgb(255, 72, 92),
+}
+themes.Dragonfruit = {
+    SchemeColor = rgb(255, 72, 181), Accent2 = rgb(175, 255, 92),
+    Background = rgb(34, 15, 30), Header = rgb(23, 10, 20),
+    TextColor = rgb(255, 241, 250), MutedText = rgb(215, 166, 200),
+    ElementColor = rgb(55, 24, 47), Danger = rgb(255, 72, 92),
+}
+themes.Arctic = {
+    SchemeColor = rgb(150, 235, 255), Accent2 = rgb(105, 149, 255),
+    Background = rgb(11, 25, 35), Header = rgb(7, 17, 25),
+    TextColor = rgb(241, 252, 255), MutedText = rgb(171, 209, 219),
+    ElementColor = rgb(20, 41, 55), Danger = rgb(255, 72, 92),
+}
+themes.Retro = {
+    SchemeColor = rgb(255, 119, 72), Accent2 = rgb(77, 220, 201),
+    Background = rgb(32, 19, 21), Header = rgb(22, 13, 14),
+    TextColor = rgb(255, 246, 240), MutedText = rgb(215, 180, 172),
+    ElementColor = rgb(51, 31, 33), Danger = rgb(255, 72, 92),
+}
+
 local publicThemeNames = {
     "Kandy", "Dark", "Blood", "Sakura", "Neon", "Minimal",
     "Grape", "Ocean", "Midnight", "Sentinel", "Synapse", "Serpent", "Light",
     "Sunset", "Galaxy", "Royal", "Cyber", "Mint", "Rose Gold", "Blueberry",
     "Orange Cream", "Lavender", "Ice", "Forest", "Lava", "Bubblegum", "Gold",
     "Aqua", "Peach", "Cotton Candy", "Espresso", "Storm", "Emerald",
+    "Cherry Soda", "Lemon Drop", "Watermelon", "Electric Blue", "Hot Pink", "Amethyst", "Ruby", "Sapphire", "Platinum", "Obsidian", "Candy Apple", "Sky", "Lilac", "Teal", "Crimson", "Solar", "Moonlight", "Toxic", "Coral", "Denim", "Vanilla", "Dragonfruit", "Arctic", "Retro"
 }
 
 local settings = env.LHUISettings or {}
@@ -2688,7 +2834,7 @@ function LULA.CreateLib(kavName, themeInput)
     pages.ClipsDescendants = true
     pages.Parent = main
 
-    local footer = makeText(main, "Lollypop Hub v10.3.4", 11, Enum.Font.GothamMedium)
+    local footer = makeText(main, "Lollypop Hub v10.3.5", 11, Enum.Font.GothamMedium)
     footer.Name = "Footer"
     footer.Position = UDim2.new(0, 158, 1, -20)
     footer.Size = UDim2.new(1, -165, 0, 18)
@@ -13769,17 +13915,41 @@ function LULA.CreateLib(kavName, themeInput)
                 rig.Parent = world
                 pcall(function() rig:PivotTo(CFrame.new()) end)
 
+                local bodyMin, bodyMax
+                for _, object in ipairs(rig:GetDescendants()) do
+                    if object:IsA("BasePart")
+                        and not object:FindFirstAncestorOfClass("Accessory")
+                        and not object:FindFirstAncestorOfClass("Tool") then
+                        local half = object.Size * 0.5
+                        local p = object.Position
+                        local lo, hi = p - half, p + half
+                        bodyMin = bodyMin and Vector3.new(
+                            math.min(bodyMin.X, lo.X), math.min(bodyMin.Y, lo.Y), math.min(bodyMin.Z, lo.Z)
+                        ) or lo
+                        bodyMax = bodyMax and Vector3.new(
+                            math.max(bodyMax.X, hi.X), math.max(bodyMax.Y, hi.Y), math.max(bodyMax.Z, hi.Z)
+                        ) or hi
+                    end
+                end
                 local boxCFrame, boxSize = rig:GetBoundingBox()
-                local focus = boxCFrame.Position + Vector3.new(0, boxSize.Y * 0.03, 0)
-                local halfFov = math.rad(camera.FieldOfView * 0.5)
-                local distance = math.max(
-                    4.5,
-                    (boxSize.Y * 0.60) / math.max(0.05, math.tan(halfFov)),
-                    (boxSize.X * 0.67) / math.max(0.05, math.tan(halfFov))
+                local focus, bodySize
+                if bodyMin and bodyMax then
+                    bodySize = bodyMax - bodyMin
+                    focus = (bodyMin + bodyMax) * 0.5
+                else
+                    bodySize = boxSize
+                    focus = boxCFrame.Position
+                end
+                bodySize = Vector3.new(
+                    math.clamp(bodySize.X, 2.5, 8),
+                    math.clamp(bodySize.Y, 4.5, 9),
+                    math.clamp(bodySize.Z, 1.5, 6)
                 )
+                local halfFov = math.rad(camera.FieldOfView * 0.5)
+                local distance = math.max(5.8, (bodySize.Y * 0.62) / math.max(0.05, math.tan(halfFov)))
                 camera.CFrame = CFrame.lookAt(
-                    focus + Vector3.new(0, boxSize.Y * 0.02, -distance),
-                    focus,
+                    focus + Vector3.new(0, bodySize.Y * 0.01, -distance),
+                    focus + Vector3.new(0, bodySize.Y * 0.03, 0),
                     Vector3.new(0, 1, 0)
                 )
                 fallback.Visible = false
@@ -16353,8 +16523,8 @@ function LULA.CreateLib(kavName, themeInput)
 
         local wordImage = Instance.new("ImageLabel")
         wordImage.BackgroundTransparency = 1
-        wordImage.Position = UDim2.fromOffset(92, 8)
-        wordImage.Size = UDim2.new(1, -138, 0, 45)
+        wordImage.Position = UDim2.fromOffset(98, 11)
+        wordImage.Size = UDim2.new(1, -154, 0, 38)
         wordImage.ScaleType = Enum.ScaleType.Fit
         wordImage.ImageTransparency = 1
         wordImage.Parent = header
@@ -16364,6 +16534,21 @@ function LULA.CreateLib(kavName, themeInput)
         headerSub.Size = UDim2.new(1, -94, 0, 15)
         headerSub.TextXAlignment = Enum.TextXAlignment.Left
         bind(headerSub, "TextColor3", "MutedText")
+
+        local headerAccent = Instance.new("Frame")
+        headerAccent.AnchorPoint = Vector2.new(0, 1)
+        headerAccent.Position = UDim2.new(0, 8, 1, -5)
+        headerAccent.Size = UDim2.new(1, -16, 0, 3)
+        headerAccent.BorderSizePixel = 0
+        headerAccent.Parent = header
+        bind(headerAccent, "BackgroundColor3", "SchemeColor")
+        makeCorner(headerAccent, 999)
+        local headerAccentGradient = Instance.new("UIGradient")
+        headerAccentGradient.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, active.Theme.SchemeColor),
+            ColorSequenceKeypoint.new(1, active.Theme.Accent2),
+        })
+        headerAccentGradient.Parent = headerAccent
 
         task.spawn(function()
             local logoAsset = loadRemoteAsset(
@@ -16392,7 +16577,9 @@ function LULA.CreateLib(kavName, themeInput)
         local searchRow = newRow(scroll, "UserLookupSearch", 43)
         searchRow.LayoutOrder = -990
         searchRow.BackgroundTransparency = 0.02
+        makeStroke(searchRow, active.Theme.SchemeColor, 0.62, 1)
 
+        local status
         local searchBox = Instance.new("TextBox")
         searchBox.Position = UDim2.fromOffset(7, 6)
         searchBox.Size = UDim2.new(1, -105, 0, 31)
@@ -16429,11 +16616,18 @@ function LULA.CreateLib(kavName, themeInput)
         local statusRow = newRow(scroll, "UserLookupStatus", 29)
         statusRow.LayoutOrder = -980
         statusRow.BackgroundTransparency = 0.08
-        local status = makeText(statusRow, "Enter part of a Roblox username, @username, User ID, or profile link.", 10.5, Enum.Font.GothamMedium)
+        status = makeText(statusRow, "Enter part of a Roblox username, @username, User ID, or profile link.", 10.5, Enum.Font.GothamMedium)
         status.Position = UDim2.fromOffset(9, 0)
         status.Size = UDim2.new(1, -18, 1, 0)
         status.TextXAlignment = Enum.TextXAlignment.Left
         bind(status, "TextColor3", "MutedText")
+        local statusAccent = Instance.new("Frame")
+        statusAccent.Position = UDim2.fromOffset(0, 4)
+        statusAccent.Size = UDim2.fromOffset(3, 21)
+        statusAccent.BorderSizePixel = 0
+        statusAccent.Parent = statusRow
+        bind(statusAccent, "BackgroundColor3", "SchemeColor")
+        makeCorner(statusAccent, 999)
 
         local searchResultsRow = newRow(scroll, "UserLookupMatches", 0)
         searchResultsRow.LayoutOrder = -975
@@ -16449,6 +16643,7 @@ function LULA.CreateLib(kavName, themeInput)
         profileRow.LayoutOrder = -970
         profileRow.Visible = false
         profileRow.BackgroundTransparency = 0.02
+        makeStroke(profileRow, active.Theme.SchemeColor, 0.58, 1)
 
         local avatar = Instance.new("ImageLabel")
         avatar.Position = UDim2.fromOffset(9, 9)
