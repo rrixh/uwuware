@@ -1,4 +1,4 @@
---kavo ui 4.6.3 - LH v10.3.9 patch
+--kavo ui 4.6.3 - LH v10.3.11 patch
 local LULA = {}
 LULA.AnimationMarketplaceVersion = 4
 LULA.EmoteMarketplaceVersion = 1
@@ -2080,6 +2080,41 @@ local function normalizeAnimationAssetId(value)
     return "rbxassetid://" .. digits
 end
 
+local function mirrorCurrentAvatarPose(targetModel, ownerGui)
+    if not targetModel then return end
+
+    local targetMotors = {}
+    for _, motor in ipairs(targetModel:GetDescendants()) do
+        if motor:IsA("Motor6D") then
+            local part0 = motor.Part0 and motor.Part0.Name or ""
+            local part1 = motor.Part1 and motor.Part1.Name or ""
+            targetMotors[motor.Name .. "|" .. part0 .. "|" .. part1] = motor
+        end
+    end
+
+    task.spawn(function()
+        while targetModel.Parent and (not ownerGui or ownerGui.Parent) do
+            local sourceCharacter = LocalPlayer and LocalPlayer.Character
+            if sourceCharacter then
+                for _, sourceMotor in ipairs(sourceCharacter:GetDescendants()) do
+                    if sourceMotor:IsA("Motor6D") then
+                        local key = sourceMotor.Name .. "|"
+                            .. (sourceMotor.Part0 and sourceMotor.Part0.Name or "") .. "|"
+                            .. (sourceMotor.Part1 and sourceMotor.Part1.Name or "")
+                        local targetMotor = targetMotors[key]
+                        if targetMotor then
+                            pcall(function()
+                                targetMotor.Transform = sourceMotor.Transform
+                            end)
+                        end
+                    end
+                end
+            end
+            RunService.RenderStepped:Wait()
+        end
+    end)
+end
+
 local function createAnimatedAvatarViewport(parent, options)
     options = options or {}
     local userId = tonumber(options.UserId) or (LocalPlayer and LocalPlayer.UserId) or 1
@@ -2834,7 +2869,7 @@ function LULA.CreateLib(kavName, themeInput)
     pages.ClipsDescendants = true
     pages.Parent = main
 
-    local footer = makeText(main, "Lollypop Hub v10.3.9", 11, Enum.Font.GothamMedium)
+    local footer = makeText(main, "Lollypop Hub v10.3.11", 11, Enum.Font.GothamMedium)
     footer.Name = "Footer"
     footer.Position = UDim2.new(0, 158, 1, -20)
     footer.Size = UDim2.new(1, -165, 0, 18)
@@ -13828,7 +13863,7 @@ function LULA.CreateLib(kavName, themeInput)
         state.MakeSavedOutfitViewport = function(parent, descriptionData, fallbackItem)
             local viewport = create("ViewportFrame", {
                 Position = UDim2.fromOffset(6, 6),
-                Size = UDim2.new(1, -12, 0, 76),
+                Size = UDim2.new(1, -12, 0, 142),
                 BackgroundColor3 = PANEL_2,
                 BorderSizePixel = 0,
                 Ambient = Color3.fromRGB(205, 205, 218),
@@ -13907,9 +13942,10 @@ function LULA.CreateLib(kavName, themeInput)
                     if object:IsA("Script") or object:IsA("LocalScript") or object:IsA("Tool") then
                         object:Destroy()
                     elseif object:IsA("BasePart") then
-                        object.Anchored = true
+                        object.Anchored = false
                         object.CanCollide = false
                         object.CanTouch = false
+                        object.Massless = true
                     end
                 end
                 rig.Parent = world
@@ -13935,7 +13971,7 @@ function LULA.CreateLib(kavName, themeInput)
                 local focus = boxCFrame.Position
                 local height = math.clamp(boxSize.Y, 4.5, 9.5)
                 local width = math.clamp(math.max(boxSize.X, boxSize.Z), 2.5, 7)
-                local distance = math.max(7, height * 1.15, width * 1.7)
+                local distance = math.max(6.2, height * 1.02, width * 1.45)
 
                 if root then
                     focus = root.Position + Vector3.new(0, math.clamp(height * 0.16, 0.8, 1.5), 0)
@@ -13943,7 +13979,7 @@ function LULA.CreateLib(kavName, themeInput)
                     focus = head.Position - Vector3.new(0, math.clamp(height * 0.28, 1.2, 2.2), 0)
                 end
 
-                camera.FieldOfView = 34
+                camera.FieldOfView = 30
                 camera.CFrame = CFrame.lookAt(
                     focus + Vector3.new(0, 0.15, distance),
                     focus,
@@ -13953,6 +13989,9 @@ function LULA.CreateLib(kavName, themeInput)
                 if humanoid then
                     pcall(function() humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None end)
                 end
+
+                if root then root.Anchored = true end
+                mirrorCurrentAvatarPose(rig, viewport)
 
                 fallback.Visible = false
                 loading.Visible = false
@@ -14084,7 +14123,7 @@ function LULA.CreateLib(kavName, themeInput)
                 else
                     local preview = create("ImageLabel", {
                         Position = UDim2.fromOffset(6, 6),
-                        Size = UDim2.new(1, -12, 0, 76),
+                        Size = UDim2.new(1, -12, 0, 142),
                         BackgroundColor3 = PANEL_2,
                         BorderSizePixel = 0,
                         Image = (#outfit.Items > 0 and thumbnailFor(outfit.Items[1].Id)) or "",
@@ -14096,7 +14135,7 @@ function LULA.CreateLib(kavName, themeInput)
                 end
 
                 local name = create("TextLabel", {
-                    Position = UDim2.fromOffset(6, 85),
+                    Position = UDim2.fromOffset(6, 151),
                     Size = UDim2.new(1, -12, 0, 18),
                     BackgroundTransparency = 1,
                     Font = Enum.Font.GothamBold,
@@ -14109,8 +14148,8 @@ function LULA.CreateLib(kavName, themeInput)
                 name.Parent = card
 
                 local wear = create("TextButton", {
-                    Position = UDim2.fromOffset(6, 108),
-                    Size = UDim2.new(0.58, -5, 0, 34),
+                    Position = UDim2.fromOffset(6, 177),
+                    Size = UDim2.new(0.44, -4, 0, 39),
                     BackgroundColor3 = ACCENT,
                     AutoButtonColor = false,
                     Font = Enum.Font.GothamBold,
@@ -14123,17 +14162,31 @@ function LULA.CreateLib(kavName, themeInput)
                 wear.Parent = card
                 bindButtonVisual(wear, ACCENT, ACCENT_HOVER)
 
+                local rename = create("TextButton", {
+                    Position = UDim2.new(0.45, 2, 0, 177),
+                    Size = UDim2.new(0.25, -4, 0, 39),
+                    BackgroundColor3 = PANEL_2,
+                    AutoButtonColor = false,
+                    Font = Enum.Font.GothamBold,
+                    Text = "Rename",
+                    TextColor3 = TEXT,
+                    TextSize = 7.1,
+                    ZIndex = 53
+                })
+                addCorner(rename, 7)
+                rename.Parent = card
+                bindButtonVisual(rename, PANEL_2, PANEL_HOVER)
+
                 local remove = create("TextButton", {
                     AnchorPoint = Vector2.new(1, 0),
-                    Position = UDim2.new(1, -6, 0, 108),
-                    Size = UDim2.new(0.42, -5, 0, 34),
+                    Position = UDim2.new(1, -6, 0, 177),
+                    Size = UDim2.new(0.29, -3, 0, 39),
                     BackgroundColor3 = Color3.fromRGB(78, 38, 48),
                     AutoButtonColor = false,
                     Font = Enum.Font.GothamBold,
-                    Text = "Remove Outfit",
+                    Text = "Remove",
                     TextColor3 = Color3.fromRGB(255, 189, 198),
-                    TextSize = 6.6,
-                    TextWrapped = true,
+                    TextSize = 7.0,
                     ZIndex = 53
                 })
                 addCorner(remove, 7)
@@ -14143,6 +14196,115 @@ function LULA.CreateLib(kavName, themeInput)
                 wear.MouseButton1Click:Connect(function()
                     task.spawn(function() state.WearSavedOutfit(outfit) end)
                 end)
+
+                rename.MouseButton1Click:Connect(function()
+                    local overlay = create("Frame", {
+                        Size = UDim2.fromScale(1, 1),
+                        BackgroundColor3 = Color3.fromRGB(0, 0, 0),
+                        BackgroundTransparency = 0.36,
+                        BorderSizePixel = 0,
+                        ZIndex = 200
+                    })
+                    overlay.Parent = state.SavedOutfitsArea
+
+                    local popup = create("Frame", {
+                        AnchorPoint = Vector2.new(0.5, 0.5),
+                        Position = UDim2.fromScale(0.5, 0.5),
+                        Size = UDim2.fromOffset(270, 132),
+                        BackgroundColor3 = PANEL,
+                        BorderSizePixel = 0,
+                        ZIndex = 201
+                    })
+                    addCorner(popup, 12)
+                    addStroke(popup, ACCENT, 1.2, 0.16)
+                    popup.Parent = overlay
+
+                    local title = create("TextLabel", {
+                        Position = UDim2.fromOffset(12, 9),
+                        Size = UDim2.new(1, -24, 0, 24),
+                        BackgroundTransparency = 1,
+                        Font = Enum.Font.GothamBold,
+                        Text = "Rename Saved Outfit",
+                        TextColor3 = TEXT,
+                        TextSize = 12,
+                        ZIndex = 202
+                    })
+                    title.Parent = popup
+
+                    local box = create("TextBox", {
+                        Position = UDim2.fromOffset(12, 40),
+                        Size = UDim2.new(1, -24, 0, 36),
+                        BackgroundColor3 = PANEL_2,
+                        BorderSizePixel = 0,
+                        ClearTextOnFocus = false,
+                        Font = Enum.Font.GothamMedium,
+                        Text = tostring(outfit.Name or ("Outfit " .. tostring(index))),
+                        PlaceholderText = "Outfit name...",
+                        TextColor3 = TEXT,
+                        PlaceholderColor3 = MUTED,
+                        TextSize = 11,
+                        ZIndex = 202
+                    })
+                    addCorner(box, 8)
+                    addStroke(box, STROKE, 1, 0.2)
+                    box.Parent = popup
+
+                    local cancel = create("TextButton", {
+                        Position = UDim2.fromOffset(12, 86),
+                        Size = UDim2.new(0.5, -17, 0, 34),
+                        BackgroundColor3 = PANEL_2,
+                        AutoButtonColor = false,
+                        Font = Enum.Font.GothamBold,
+                        Text = "Kancel",
+                        TextColor3 = TEXT,
+                        TextSize = 9,
+                        ZIndex = 202
+                    })
+                    addCorner(cancel, 8)
+                    cancel.Parent = popup
+                    bindButtonVisual(cancel, PANEL_2, PANEL_HOVER)
+
+                    local save = create("TextButton", {
+                        AnchorPoint = Vector2.new(1, 0),
+                        Position = UDim2.new(1, -12, 0, 86),
+                        Size = UDim2.new(0.5, -17, 0, 34),
+                        BackgroundColor3 = ACCENT,
+                        AutoButtonColor = false,
+                        Font = Enum.Font.GothamBold,
+                        Text = "Save Name",
+                        TextColor3 = Color3.new(1, 1, 1),
+                        TextSize = 9,
+                        ZIndex = 202
+                    })
+                    addCorner(save, 8)
+                    save.Parent = popup
+                    bindButtonVisual(save, ACCENT, ACCENT_HOVER)
+
+                    local function closeRename()
+                        if overlay then overlay:Destroy() end
+                    end
+
+                    cancel.MouseButton1Click:Connect(closeRename)
+                    save.MouseButton1Click:Connect(function()
+                        local newName = tostring(box.Text or ""):match("^%s*(.-)%s*$")
+                        if newName == "" then newName = "Outfit " .. tostring(index) end
+                        if #newName > 28 then newName = newName:sub(1, 28) end
+                        local current = state.GetSavedOutfits()
+                        if current[index] then
+                            current[index].Name = newName
+                            state.PersistSavedOutfits(current)
+                            state.RenderSavedOutfits()
+                        end
+                        closeRename()
+                    end)
+                    box.FocusLost:Connect(function(enterPressed)
+                        if enterPressed and save.Parent then
+                            save:Activate()
+                        end
+                    end)
+                    task.defer(function() pcall(function() box:CaptureFocus() end) end)
+                end)
+
                 remove.MouseButton1Click:Connect(function()
                     local current = state.GetSavedOutfits()
                     table.remove(current, index)
@@ -15177,7 +15339,7 @@ function LULA.CreateLib(kavName, themeInput)
 
             state.SavedOutfitsGrid = create("UIGridLayout", {
                 CellPadding = UDim2.fromOffset(6, 7),
-                CellSize = UDim2.fromOffset(108, 150),
+                CellSize = UDim2.fromOffset(108, 226),
                 FillDirection = Enum.FillDirection.Horizontal,
                 FillDirectionMaxCells = 3,
                 HorizontalAlignment = Enum.HorizontalAlignment.Left,
@@ -15204,7 +15366,7 @@ function LULA.CreateLib(kavName, themeInput)
                 local padding = 6
                 local available = width - 2 - (padding * (columns - 1))
                 state.SavedOutfitsGrid.FillDirectionMaxCells = columns
-                state.SavedOutfitsGrid.CellSize = UDim2.fromOffset(math.max(104, math.floor(available / columns)), 150)
+                state.SavedOutfitsGrid.CellSize = UDim2.fromOffset(math.max(104, math.floor(available / columns)), 226)
             end
             track(state.SavedOutfitsScroll:GetPropertyChangedSignal("AbsoluteSize"):Connect(state.ResizeSavedOutfitGrid))
             task.defer(state.ResizeSavedOutfitGrid)
@@ -15421,7 +15583,7 @@ function LULA.CreateLib(kavName, themeInput)
             Size = UDim2.new(1, 0, 0, 28),
             BackgroundTransparency = 1,
             Font = Enum.Font.Gotham,
-            Text = "Your kurrent local look updates here.",
+            Text = "Your kurrent local look and animation move live here.",
             TextColor3 = MUTED,
             TextSize = 8.5,
             TextWrapped = true,
@@ -15551,9 +15713,10 @@ function LULA.CreateLib(kavName, themeInput)
                 if object:IsA("Script") or object:IsA("LocalScript") or object:IsA("Tool") then
                     object:Destroy()
                 elseif object:IsA("BasePart") then
-                    object.Anchored = true
+                    object.Anchored = false
                     object.CanCollide = false
                     object.CanTouch = false
+                    object.Massless = true
                 end
             end
 
@@ -15580,6 +15743,10 @@ function LULA.CreateLib(kavName, themeInput)
             local angle = math.rad(self.Rotation or 0)
             local offset = Vector3.new(math.sin(angle) * distance, boxSize.Y * 0.02, -math.cos(angle) * distance)
             camera.CFrame = CFrame.lookAt(focus + offset, focus, Vector3.new(0, 1, 0))
+
+            local root = model:FindFirstChild("HumanoidRootPart")
+            if root then root.Anchored = true end
+            mirrorCurrentAvatarPose(model, self.Viewport)
         end
 
         function state.Viewer:ClearItems()
@@ -16376,17 +16543,17 @@ function LULA.CreateLib(kavName, themeInput)
         local accentA = active and active.Theme and active.Theme.SchemeColor or defaultAccent
         local accentB = active and active.Theme and active.Theme.Accent2 or brightenAccent(defaultAccent, 0.18)
         if variant == "soft" then
-            button.BackgroundColor3 = blendColor(accentA, active.Theme.ElementColor, 0.48)
+            button.BackgroundColor3 = blendColor(accentA, active.Theme.ElementColor, 0.28)
             glow.Color = ColorSequence.new({
-                ColorSequenceKeypoint.new(0, blendColor(accentA, rgb(255,255,255), 0.08)),
-                ColorSequenceKeypoint.new(1, blendColor(accentB, active.Theme.ElementColor, 0.34)),
+                ColorSequenceKeypoint.new(0, brightenAccent(accentA, 0.12)),
+                ColorSequenceKeypoint.new(1, blendColor(accentB, active.Theme.ElementColor, 0.18)),
             })
         elseif variant == "glass" then
-            button.BackgroundColor3 = active.Theme.ElementColor
+            button.BackgroundColor3 = blendColor(active.Theme.ElementColor, accentA, 0.24)
             glow.Color = ColorSequence.new({
-                ColorSequenceKeypoint.new(0, blendColor(active.Theme.ElementColor, accentA, 0.32)),
-                ColorSequenceKeypoint.new(0.55, active.Theme.ElementColor),
-                ColorSequenceKeypoint.new(1, blendColor(active.Theme.ElementColor, accentB, 0.28)),
+                ColorSequenceKeypoint.new(0, brightenAccent(blendColor(active.Theme.ElementColor, accentA, 0.38), 0.06)),
+                ColorSequenceKeypoint.new(0.55, blendColor(active.Theme.ElementColor, accentA, 0.24)),
+                ColorSequenceKeypoint.new(1, blendColor(active.Theme.ElementColor, accentB, 0.36)),
             })
         else
             button.BackgroundColor3 = accentA
@@ -16395,22 +16562,13 @@ function LULA.CreateLib(kavName, themeInput)
                 ColorSequenceKeypoint.new(1, brightenAccent(accentB, 0.08)),
             })
         end
-        stroke.Color = brightenAccent(accentA, 0.22)
+        stroke.Color = brightenAccent(accentA, 0.34)
+        stroke.Transparency = 0.10
+        button.TextTransparency = 0
+        button.TextStrokeTransparency = 0.88
 
-        local shine = button:FindFirstChild("LHSpecialShine")
-        if not shine then
-            shine = Instance.new("Frame")
-            shine.Name = "LHSpecialShine"
-            shine.Active = false
-            shine.BorderSizePixel = 0
-            shine.BackgroundColor3 = rgb(255,255,255)
-            shine.BackgroundTransparency = 0.88
-            shine.Position = UDim2.new(0, 8, 0, 4)
-            shine.Size = UDim2.new(1, -16, 0, 2)
-            shine.ZIndex = button.ZIndex + 1
-            shine.Parent = button
-            makeCorner(shine, 999)
-        end
+        local oldShine = button:FindFirstChild("LHSpecialShine")
+        if oldShine then oldShine:Destroy() end
         return button
     end
 
