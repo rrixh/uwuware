@@ -1,4 +1,4 @@
---kavo ui 4.7.4 - LH v10.4.0 COMPILE FIX
+--kavo ui 4.7.5 - LH v10.4.0
 local LULA = {}
 LULA.AnimationMarketplaceVersion = 4
 LULA.EmoteMarketplaceVersion = 1
@@ -803,6 +803,12 @@ local function applyTheme()
             table.remove(bindings, i)
         else
             local value = active.Theme[record.Key]
+            if record.Property == "BackgroundColor3" then
+                local fixedBackground = record.Object:GetAttribute("LHFixedBackgroundColor")
+                if typeof(fixedBackground) == "Color3" then
+                    value = fixedBackground
+                end
+            end
             if record.Property == "TextColor3" and record.Object:GetAttribute("LHForceWhiteText") then
                 value = rgb(255, 255, 255)
             end
@@ -4114,9 +4120,9 @@ function LULA.CreateLib(kavName, themeInput)
                 end
 
                 local function render(fire)
-                    if saturation <= 0.012 then saturation = 0 end
-                    if brightness >= 0.988 then brightness = 1 end
-                    if brightness <= 0.012 then brightness = 0 end
+                    hue = math.clamp(tonumber(hue) or 0, 0, 1)
+                    saturation = math.clamp(tonumber(saturation) or 0, 0, 1)
+                    brightness = math.clamp(tonumber(brightness) or 0, 0, 1)
                     value = Color3.fromHSV(hue, saturation, brightness)
                     preview.BackgroundColor3 = value
                     colorCursor.Position = UDim2.fromScale(hue, saturation)
@@ -17917,7 +17923,11 @@ function LULA.CreateLib(kavName, themeInput)
             b.Size = UDim2.new(1/#names, -6, 1, -8)
             b.TextSize = 10.5
             b.BackgroundTransparency = 0.15
-            b.BackgroundColor3 = ({rgb(64,134,255), rgb(76,192,132), rgb(255,153,73), rgb(181,95,255), rgb(255,91,160)})[i]
+            local fixedColor = ({rgb(64,134,255), rgb(76,192,132), rgb(255,153,73), rgb(181,95,255), rgb(255,91,160)})[i]
+            b.BackgroundColor3 = fixedColor
+            b:SetAttribute("LHFixedBackgroundColor", fixedColor)
+            b:SetAttribute("LHForceWhiteText", true)
+            b.TextColor3 = rgb(255,255,255)
             navButtons[name] = b
         end
 
@@ -18020,18 +18030,19 @@ function LULA.CreateLib(kavName, themeInput)
         serverStatus.TextXAlignment = Enum.TextXAlignment.Left
         local sortLow = makeButton(serverTools, "Least Players")
         sortLow.Position = UDim2.new(0, 8, 0, 31); sortLow.Size = UDim2.new(0.25, -6, 0, 34)
-        sortLow.BackgroundColor3 = rgb(64, 140, 255); sortLow.BackgroundTransparency = 0.04
+        sortLow.BackgroundColor3 = rgb(64, 140, 255); sortLow:SetAttribute("LHFixedBackgroundColor", rgb(64, 140, 255)); sortLow:SetAttribute("LHForceWhiteText", true); sortLow.BackgroundTransparency = 0.04
         local sortHigh = makeButton(serverTools, "Most Players")
         sortHigh.Position = UDim2.new(0.25, 5, 0, 31); sortHigh.Size = UDim2.new(0.25, -6, 0, 34)
-        sortHigh.BackgroundColor3 = rgb(70, 190, 135); sortHigh.BackgroundTransparency = 0.04
+        sortHigh.BackgroundColor3 = rgb(70, 190, 135); sortHigh:SetAttribute("LHFixedBackgroundColor", rgb(70, 190, 135)); sortHigh:SetAttribute("LHForceWhiteText", true); sortHigh.BackgroundTransparency = 0.04
         local sortPing = makeButton(serverTools, "Ping / FPS")
         sortPing.Position = UDim2.new(0.50, 2, 0, 31); sortPing.Size = UDim2.new(0.25, -6, 0, 34)
-        sortPing.BackgroundColor3 = rgb(255, 156, 70); sortPing.BackgroundTransparency = 0.04
+        sortPing.BackgroundColor3 = rgb(255, 156, 70); sortPing:SetAttribute("LHFixedBackgroundColor", rgb(255, 156, 70)); sortPing:SetAttribute("LHForceWhiteText", true); sortPing.BackgroundTransparency = 0.04
         local refreshServers = makeButton(serverTools, "Refresh")
         refreshServers.Position = UDim2.new(0.75, -1, 0, 31); refreshServers.Size = UDim2.new(0.25, -7, 0, 34)
-        refreshServers.BackgroundColor3 = rgb(191, 96, 255); refreshServers.BackgroundTransparency = 0.04
+        refreshServers.BackgroundColor3 = rgb(191, 96, 255); refreshServers:SetAttribute("LHFixedBackgroundColor", rgb(191, 96, 255)); refreshServers:SetAttribute("LHForceWhiteText", true); refreshServers.BackgroundTransparency = 0.04
 
         local serverList = Instance.new("Frame")
+        serverList.LayoutOrder = 2
         serverList.Size = UDim2.new(1, -4, 0, 0)
         serverList.AutomaticSize = Enum.AutomaticSize.Y
         serverList.BackgroundTransparency = 1
@@ -18193,7 +18204,12 @@ function LULA.CreateLib(kavName, themeInput)
                     jid.Position = UDim2.fromOffset(9, 27); jid.Size = UDim2.new(1, -120, 0, 16); jid.TextXAlignment = Enum.TextXAlignment.Left; bind(jid, "TextColor3", "MutedText")
                     local join = makeButton(row, isCurrent and "Here" or "Join")
                     join.Position = UDim2.new(1, -103, 0, 9); join.Size = UDim2.fromOffset(94, 34)
-                    join.BackgroundColor3 = isCurrent and rgb(91, 91, 102) or rgb(69, 181, 119); join.BackgroundTransparency = 0.04
+                    local joinColor = isCurrent and rgb(91, 91, 102) or rgb(69, 181, 119)
+                    join.BackgroundColor3 = joinColor
+                    join:SetAttribute("LHFixedBackgroundColor", joinColor)
+                    join:SetAttribute("LHForceWhiteText", true)
+                    join.TextColor3 = rgb(255,255,255)
+                    join.BackgroundTransparency = 0.04
                     if not isCurrent then
                         trackLocal(join.MouseButton1Click:Connect(function()
                             pcall(function() get.TeleportService:TeleportToPlaceInstance(game.PlaceId, tostring(server.id), LocalPlayer) end)
@@ -18771,7 +18787,6 @@ function LULA:ChangeColor(property, color)
     local aliases = {Accent = "SchemeColor", Scheme = "SchemeColor", Text = "TextColor"}
     property = aliases[property] or property
     if active.Theme[property] == nil then return false end
-    if property == "TextColor" then color = readableTextColor(color, active.Theme) end
     active.Theme[property] = color
     if property == "SchemeColor" then
         -- A custom accent should be the actual selected color everywhere.
@@ -18785,9 +18800,9 @@ function LULA:ChangeColor(property, color)
 end
 
 function LULA:SetTextColor(color)
-    local ok, safeColor = self:ChangeColor("TextColor", color)
+    local ok, exactColor = self:ChangeColor("TextColor", color)
     if not ok then return nil end
-    return safeColor
+    return exactColor
 end
 
 function LULA:SetTheme(themeInput)
