@@ -1,4 +1,4 @@
---kavo ui 4.7.0 - LH v10.4.0
+--kavo ui 4.7.1 - LH v10.4.0
 local LULA = {}
 LULA.AnimationMarketplaceVersion = 4
 LULA.EmoteMarketplaceVersion = 1
@@ -472,6 +472,7 @@ env.LHUISettings = settings
 if settings.ReducedMotion == nil then settings.ReducedMotion = false end
 if settings.LowPerformance == nil then settings.LowPerformance = false end
 if settings.DragLocked == nil then settings.DragLocked = false end
+if settings.ScrollArrowsEnabled == nil then settings.ScrollArrowsEnabled = true end
 if settings.EdgeSnap == nil then settings.EdgeSnap = true end
 if settings.ScaleMode == nil then settings.ScaleMode = "Auto" end
 if settings.GlassBlur == nil then settings.GlassBlur = false end
@@ -3224,6 +3225,130 @@ function LULA.CreateLib(kavName, themeInput)
             LastCanvasPosition = Vector2.new(),
             SearchBar = nil,
         }
+
+        -- Every top-level LH page gets the same navigation controls.
+        -- If a specialized page hides tab.Scroll (Auto Execute, etc.), choose
+        -- the largest visible descendant ScrollingFrame instead.
+        function tab:GetQuickScrollTarget()
+            if self.Scroll and self.Scroll.Visible and self.Scroll.ScrollingEnabled ~= false then
+                return self.Scroll
+            end
+            local best, bestArea = nil, -1
+            for _, object in ipairs(self.Page:GetDescendants()) do
+                if object:IsA("ScrollingFrame") and object.Visible and object.ScrollingEnabled ~= false then
+                    local size = object.AbsoluteSize
+                    local area = math.max(0, size.X) * math.max(0, size.Y)
+                    if area > bestArea then
+                        best, bestArea = object, area
+                    end
+                end
+            end
+            return best or self.Scroll
+        end
+
+        function tab:QuickScrollBy(amount)
+            local target = self:GetQuickScrollTarget()
+            if not target then return end
+            local maxY = math.max(0, target.AbsoluteCanvasSize.Y - target.AbsoluteWindowSize.Y)
+            local nextY = math.clamp(target.CanvasPosition.Y + (tonumber(amount) or 0), 0, maxY)
+            local goal = Vector2.new(target.CanvasPosition.X, nextY)
+            pcall(function()
+                TweenService:Create(
+                    target,
+                    TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                    {CanvasPosition = goal}
+                ):Play()
+            end)
+        end
+
+        function tab:QuickScrollTop()
+            local target = self:GetQuickScrollTarget()
+            if not target then return end
+            pcall(function()
+                TweenService:Create(
+                    target,
+                    TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                    {CanvasPosition = Vector2.new(target.CanvasPosition.X, 0)}
+                ):Play()
+            end)
+        end
+
+        local backToTop = makeButton(page, "Back to Top")
+        backToTop.Name = "LHBackToTop"
+        backToTop.AnchorPoint = Vector2.new(1, 1)
+        backToTop.Position = UDim2.new(1, -10, 1, -10)
+        backToTop.Size = UDim2.fromOffset(86, 27)
+        backToTop.TextSize = 10
+        backToTop.ZIndex = 180
+        backToTop.BackgroundTransparency = 0.04
+        bind(backToTop, "BackgroundColor3", "SchemeColor")
+        backToTop.TextColor3 = rgb(255, 255, 255)
+        tab.BackToTopButton = backToTop
+        track(backToTop.MouseButton1Click:Connect(function()
+            tab:QuickScrollTop()
+        end))
+
+        local scrollUp = makeButton(page, "^")
+        scrollUp.Name = "LHScrollUp"
+        scrollUp.AnchorPoint = Vector2.new(1, 0.5)
+        scrollUp.Position = UDim2.new(1, -10, 0.5, -22)
+        scrollUp.Size = UDim2.fromOffset(34, 34)
+        scrollUp.TextSize = 19
+        scrollUp.ZIndex = 180
+        scrollUp.BackgroundTransparency = 0.04
+        bind(scrollUp, "BackgroundColor3", "SchemeColor")
+        scrollUp.TextColor3 = rgb(255, 255, 255)
+
+        local scrollDown = makeButton(page, "v")
+        scrollDown.Name = "LHScrollDown"
+        scrollDown.AnchorPoint = Vector2.new(1, 0.5)
+        scrollDown.Position = UDim2.new(1, -10, 0.5, 18)
+        scrollDown.Size = UDim2.fromOffset(34, 34)
+        scrollDown.TextSize = 17
+        scrollDown.ZIndex = 180
+        scrollDown.BackgroundTransparency = 0.04
+        bind(scrollDown, "BackgroundColor3", "SchemeColor")
+        scrollDown.TextColor3 = rgb(255, 255, 255)
+
+        tab.ScrollUpButton = scrollUp
+        tab.ScrollDownButton = scrollDown
+
+        function tab:RefreshQuickScrollVisibility()
+            local arrows = settings.ScrollArrowsEnabled ~= false
+            if self.ScrollUpButton then self.ScrollUpButton.Visible = arrows end
+            if self.ScrollDownButton then self.ScrollDownButton.Visible = arrows end
+            -- Back to Top is intentionally always available on every page.
+            if self.BackToTopButton then self.BackToTopButton.Visible = true end
+        end
+        tab:RefreshQuickScrollVisibility()
+
+        local function bindQuickScrollHold(button, direction)
+            track(button.MouseButton1Click:Connect(function()
+                tab:QuickScrollBy(direction * 145)
+            end))
+            track(button.InputBegan:Connect(function(inputObject)
+                if inputObject.UserInputType ~= Enum.UserInputType.Touch
+                    and inputObject.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
+                tab.QuickScrollHoldToken = (tab.QuickScrollHoldToken or 0) + 1
+                local token = tab.QuickScrollHoldToken
+                task.delay(0.32, function()
+                    while tab.Page and tab.Page.Parent
+                        and tab.QuickScrollHoldToken == token do
+                        tab:QuickScrollBy(direction * 92)
+                        task.wait(0.10)
+                    end
+                end)
+            end))
+            track(button.InputEnded:Connect(function(inputObject)
+                if inputObject.UserInputType == Enum.UserInputType.Touch
+                    or inputObject.UserInputType == Enum.UserInputType.MouseButton1 then
+                    tab.QuickScrollHoldToken = (tab.QuickScrollHoldToken or 0) + 1
+                end
+            end))
+        end
+
+        bindQuickScrollHold(scrollUp, -1)
+        bindQuickScrollHold(scrollDown, 1)
         track(scroll:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
             tab.LastCanvasPosition = scroll.CanvasPosition
         end))
@@ -15887,6 +16012,23 @@ function LULA.CreateLib(kavName, themeInput)
         track(state.Viewer.RefreshButton.MouseButton1Click:Connect(function()
             state.Viewer:Refresh()
         end))
+
+        -- Auto-refresh the same avatar data the Refresh button uses, but only
+        -- while the Avatar Kreator tab AND the Viewer mode are actually open.
+        -- This avoids a permanent background polling loop when the page is unused.
+        task.spawn(function()
+            while not state.Destroyed do
+                if avatarTab.Page.Visible
+                    and state.Viewer
+                    and state.Viewer.Visible
+                    and type(state.Viewer.Refresh) == "function" then
+                    pcall(function() state.Viewer:Refresh() end)
+                    task.wait(1.5)
+                else
+                    task.wait(0.35)
+                end
+            end
+        end)
         track(state.Viewer.OutfitButton.MouseButton1Click:Connect(function()
             DetailsOverlay.Visible = false
             state.DetailsItem = nil
@@ -18538,6 +18680,7 @@ function LULA.CreateLib(kavName, themeInput)
     function window:GetRoot() return main end
     function window:SetFooter(text) footer.Text = tostring(text or "") end
     function window:SetFont(fontName) return LULA:SetFont(fontName) end
+    function window:SetScrollArrowsEnabled(value) return LULA:SetScrollArrowsEnabled(value) end
     function window:Notify(...) return LULA:Notify(...) end
     function window:ShowIsland(...) return LULA:ShowIsland(...) end
     function window:SetVisible(value) return LULA:SetUIVisible(value) end
@@ -18647,6 +18790,19 @@ end
 function LULA:SetDragLocked(value)
     settings.DragLocked = value and true or false
 end
+
+function LULA:SetScrollArrowsEnabled(value)
+    settings.ScrollArrowsEnabled = value ~= false
+    if active and active.Tabs then
+        for _, tab in ipairs(active.Tabs) do
+            if tab.RefreshQuickScrollVisibility then
+                pcall(function() tab:RefreshQuickScrollVisibility() end)
+            end
+        end
+    end
+    return settings.ScrollArrowsEnabled
+end
+
 
 function LULA:SetEdgeSnap(value)
     settings.EdgeSnap = value and true or false
