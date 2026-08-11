@@ -1,4 +1,4 @@
---kavo ui 4.7.3 - LH v10.4.0
+--kavo ui 4.7.4 - LH v10.4.0 COMPILE FIX
 local LULA = {}
 LULA.AnimationMarketplaceVersion = 4
 LULA.EmoteMarketplaceVersion = 1
@@ -16012,7 +16012,7 @@ function LULA.CreateLib(kavName, themeInput)
         state.Viewer.LiveAddedConnection = nil
         state.Viewer.LiveRemovingConnection = nil
 
-        state.Viewer:DisconnectLiveAppearanceWatch = function()
+        function state.Viewer:DisconnectLiveAppearanceWatch()
             if self.LiveAddedConnection then
                 pcall(function() self.LiveAddedConnection:Disconnect() end)
                 self.LiveAddedConnection = nil
@@ -16024,7 +16024,7 @@ function LULA.CreateLib(kavName, themeInput)
             self.LiveCharacter = nil
         end
 
-        state.Viewer:BindLiveAppearanceWatch = function(character)
+        function state.Viewer:BindLiveAppearanceWatch(character)
             self:DisconnectLiveAppearanceWatch()
             if not character then return end
             self.LiveCharacter = character
