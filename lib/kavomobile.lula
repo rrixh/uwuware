@@ -1,4 +1,4 @@
---kavo ui 4.7.5 - LH v10.4.0
+--kavo ui 4.7.6 - LH v10.4.0 NOTIF FIX
 local LULA = {}
 LULA.AnimationMarketplaceVersion = 4
 LULA.EmoteMarketplaceVersion = 1
@@ -1436,8 +1436,9 @@ end
 
 local notificationDedup = {}
 local function isDuplicateNotification(channel, kind, title, text, actionText)
+    -- Channel is intentionally excluded from the dedupe key so the same message
+    -- cannot appear once as a normal notification and again as an action popup.
     local key = table.concat({
-        tostring(channel or "normal"),
         tostring(kind or "info"),
         tostring(title or ""),
         tostring(text or ""),
@@ -1447,9 +1448,9 @@ local function isDuplicateNotification(channel, kind, title, text, actionText)
     local previous = notificationDedup[key]
     notificationDedup[key] = now
     for oldKey, timestamp in pairs(notificationDedup) do
-        if now - timestamp > 8 then notificationDedup[oldKey] = nil end
+        if now - timestamp > 10 then notificationDedup[oldKey] = nil end
     end
-    return previous ~= nil and now - previous < 1.25
+    return previous ~= nil and now - previous < 3
 end
 
 local kindColors = {
@@ -1476,6 +1477,16 @@ function LULA:Notify(kind, title, text, seconds, progress, force)
     })
     while #notificationHistory > 100 do table.remove(notificationHistory) end
     if (settings.NotificationMuted and force ~= true) or not active or not active.NotificationHost then return nil end
+
+    -- Single-popup policy: never let popup notifications overlap.
+    if active.CurrentPopupDestroy then
+        pcall(active.CurrentPopupDestroy)
+        active.CurrentPopupDestroy = nil
+    end
+    if active.Island and active.Island.Frame and active.Island.Frame.Visible then
+        active.IslandToken = (active.IslandToken or 0) + 1
+        active.Island.Frame.Visible = false
+    end
 
     local width = 310
     local bodyWidth = width - 34
@@ -1550,6 +1561,14 @@ function LULA:Notify(kind, title, text, seconds, progress, force)
 
     tween(card, {Position = UDim2.fromOffset(0, 0)}, 0.22)
     local dead = false
+
+    active.CurrentPopupDestroy = function()
+        dead = true
+        if holder and holder.Parent then
+            holder:Destroy()
+        end
+    end
+
     local function dismiss()
         if dead then return end
         dead = true
@@ -1607,6 +1626,16 @@ function LULA:NotifyAction(kind, title, text, seconds, buttonText, callback)
     })
     while #notificationHistory > 100 do table.remove(notificationHistory) end
     if not active or not active.ActionNotificationHost then return nil end
+
+    -- Action popups share the same single-popup lane as normal notifications.
+    if active.CurrentPopupDestroy then
+        pcall(active.CurrentPopupDestroy)
+        active.CurrentPopupDestroy = nil
+    end
+    if active.Island and active.Island.Frame and active.Island.Frame.Visible then
+        active.IslandToken = (active.IslandToken or 0) + 1
+        active.Island.Frame.Visible = false
+    end
 
     local width, cardHeight = 330, 82
     local holder = Instance.new("Frame")
@@ -1667,6 +1696,14 @@ function LULA:NotifyAction(kind, title, text, seconds, buttonText, callback)
     bind(action, "BackgroundColor3", "SchemeColor")
 
     local dead = false
+
+    active.CurrentPopupDestroy = function()
+        dead = true
+        if holder and holder.Parent then
+            holder:Destroy()
+        end
+    end
+
     local function dismiss()
         if dead then return false end
         dead = true
@@ -1975,6 +2012,14 @@ end
 
 function LULA:ShowIsland(titleText, bodyText, options)
     if not active or not active.Island then return nil end
+
+    -- Dynamic Island uses the same popup lane. A new island replaces any
+    -- notification immediately instead of drawing on top of it.
+    if active.CurrentPopupDestroy then
+        pcall(active.CurrentPopupDestroy)
+        active.CurrentPopupDestroy = nil
+    end
+
     options = type(options) == "table" and options or {}
     active.IslandToken = (active.IslandToken or 0) + 1
     local token = active.IslandToken
