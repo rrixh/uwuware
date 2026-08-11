@@ -1,4 +1,4 @@
---kavo ui 4.6.7 - LH v10.4.0
+--kavo ui 4.6.8 - LH v10.4.0
 local LULA = {}
 LULA.AnimationMarketplaceVersion = 4
 LULA.EmoteMarketplaceVersion = 1
@@ -16495,6 +16495,9 @@ function LULA.CreateLib(kavName, themeInput)
         state.Cleanup = function()
             if state.Destroyed then return end
             state.Destroyed = true
+            if state.SpectatingUserId then
+                stopSpectating()
+            end
             for _, connection in ipairs(state.Connections) do
                 pcall(function() if connection and connection.Connected then connection:Disconnect() end end)
             end
@@ -16879,7 +16882,7 @@ function LULA.CreateLib(kavName, themeInput)
         searchButton.TextColor3 = rgb(255, 255, 255)
         searchButton.TextTransparency = 0
         searchButton.BackgroundTransparency = 0
-        searchButton.BackgroundColor3 = brightenAccent(active.Theme.SchemeColor, 0.30)
+        searchButton.BackgroundColor3 = rgb(57, 126, 255)
         local searchButtonStroke = searchButton:FindFirstChildOfClass("UIStroke")
         if searchButtonStroke then
             searchButtonStroke.Color = rgb(255, 255, 255)
@@ -16888,8 +16891,8 @@ function LULA.CreateLib(kavName, themeInput)
         local searchGlow = searchButton:FindFirstChild("LHSpecialGradient")
         if searchGlow then
             searchGlow.Color = ColorSequence.new({
-                ColorSequenceKeypoint.new(0, brightenAccent(active.Theme.SchemeColor, 0.42)),
-                ColorSequenceKeypoint.new(1, brightenAccent(active.Theme.Accent2, 0.32)),
+                ColorSequenceKeypoint.new(0, rgb(82, 157, 255)),
+                ColorSequenceKeypoint.new(1, rgb(37, 105, 236)),
             })
         end
 
@@ -17215,6 +17218,8 @@ function LULA.CreateLib(kavName, themeInput)
 
                     local open = makeButton(row, "View")
                     self:StyleSpecialActionButton(open, "accent")
+                    open.TextColor3 = rgb(255, 255, 255)
+                    open.TextTransparency = 0
                     open.AnchorPoint = Vector2.new(1, 0.5)
                     open.Position = UDim2.new(1, -7, 0.5, 0)
                     open.Size = UDim2.fromOffset(78, 32)
@@ -17503,6 +17508,8 @@ function LULA.CreateLib(kavName, themeInput)
             GameData = nil,
             Votes = nil,
             Creator = nil,
+            SpectatingUserId = nil,
+            SpectateButtons = {},
         }
         active.ExperienceHub = state
 
@@ -17711,31 +17718,52 @@ function LULA.CreateLib(kavName, themeInput)
         local likesValue = makeStat(statsRow, 0.50, "LIKES", "--", rgb(255, 167, 69))
         local ratingValue = makeStat(statsRow, 0.75, "RATING", "--", rgb(202, 99, 255))
 
-        local infoRow = makeCard(overview, 116, 2)
-        local infoTitle = makeText(infoRow, "EXPERIENCE INFO", 11, Enum.Font.GothamBold)
+        local infoRow = makeCard(overview, 64, 2)
+        local infoTitle = makeText(infoRow, "EXPERIENCE INFO", 11.5, Enum.Font.GothamBold)
         infoTitle.Position = UDim2.fromOffset(10, 7)
-        infoTitle.Size = UDim2.new(1, -20, 0, 17)
+        infoTitle.Size = UDim2.new(1, -20, 0, 18)
         infoTitle.TextXAlignment = Enum.TextXAlignment.Left
-        local infoText = makeText(infoRow, "Loading...", 10, Enum.Font.GothamMedium)
+        local infoText = makeText(infoRow, "Loading...", 11.5, Enum.Font.GothamMedium)
         infoText.Position = UDim2.fromOffset(10, 29)
-        infoText.Size = UDim2.new(1, -20, 1, -35)
+        infoText.Size = UDim2.new(1, -20, 0, 22)
         infoText.TextXAlignment = Enum.TextXAlignment.Left
         infoText.TextYAlignment = Enum.TextYAlignment.Top
         infoText.TextWrapped = true
-        bind(infoText, "TextColor3", "MutedText")
+        infoText.TextColor3 = rgb(255, 255, 255)
 
-        local descRow = makeCard(overview, 118, 3)
-        local descTitle = makeText(descRow, "ABOUT", 11, Enum.Font.GothamBold)
+        local descRow = makeCard(overview, 60, 3)
+        local descTitle = makeText(descRow, "ABOUT", 11.5, Enum.Font.GothamBold)
         descTitle.Position = UDim2.fromOffset(10, 7)
-        descTitle.Size = UDim2.new(1, -20, 0, 17)
+        descTitle.Size = UDim2.new(1, -20, 0, 18)
         descTitle.TextXAlignment = Enum.TextXAlignment.Left
-        local description = makeText(descRow, "Loading description...", 10, Enum.Font.GothamMedium)
+        local description = makeText(descRow, "Loading description...", 10.5, Enum.Font.GothamMedium)
         description.Position = UDim2.fromOffset(10, 29)
-        description.Size = UDim2.new(1, -20, 1, -35)
+        description.Size = UDim2.new(1, -20, 0, 20)
         description.TextXAlignment = Enum.TextXAlignment.Left
         description.TextYAlignment = Enum.TextYAlignment.Top
         description.TextWrapped = true
-        bind(description, "TextColor3", "MutedText")
+        description.TextColor3 = rgb(255, 255, 255)
+
+        local function fitOverviewTextCard(row, label, minimumHeight, maximumHeight)
+            local width = math.max(180, (row.AbsoluteSize.X > 0 and row.AbsoluteSize.X or scroll.AbsoluteSize.X) - 20)
+            local ok, bounds = pcall(function()
+                return TextService:GetTextSize(
+                    tostring(label.Text or ""),
+                    label.TextSize,
+                    label.Font,
+                    Vector2.new(width, 1000)
+                )
+            end)
+            local textHeight = ok and bounds and bounds.Y or 20
+            local rowHeight = math.clamp(math.ceil(29 + textHeight + 11), minimumHeight, maximumHeight)
+            row.Size = UDim2.new(1, 0, 0, rowHeight)
+            label.Size = UDim2.new(1, -20, 0, math.max(20, textHeight + 2))
+        end
+
+        local function fitOverviewCards()
+            fitOverviewTextCard(infoRow, infoText, 60, 150)
+            fitOverviewTextCard(descRow, description, 56, 220)
+        end
 
         local serverTools = makeCard(servers, 82, 1)
         local serverStatus = makeText(serverTools, "Loading public servers...", 10, Enum.Font.GothamMedium)
@@ -17788,7 +17816,65 @@ function LULA.CreateLib(kavName, themeInput)
         passesList.Size = UDim2.new(1, -4, 0, 0); passesList.AutomaticSize = Enum.AutomaticSize.Y; passesList.BackgroundTransparency = 1; passesList.Parent = passesPane
         local passesLayout = Instance.new("UIListLayout"); passesLayout.Padding = UDim.new(0, 5); passesLayout.Parent = passesList
 
+        local function restoreLocalCamera()
+            local camera = workspace.CurrentCamera
+            local character = LocalPlayer.Character
+            local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+            if camera and humanoid then
+                pcall(function()
+                    camera.CameraType = Enum.CameraType.Custom
+                    camera.CameraSubject = humanoid
+                end)
+            end
+        end
+
+        local function refreshSpectateButtons()
+            for userId, button in pairs(state.SpectateButtons) do
+                if button and button.Parent then
+                    if state.SpectatingUserId == userId then
+                        button.Text = "Stop Spectating"
+                        button.BackgroundColor3 = rgb(235, 83, 96)
+                    else
+                        button.Text = "Spectate"
+                        button.BackgroundColor3 = rgb(255, 156, 70)
+                    end
+                    button.TextColor3 = rgb(255, 255, 255)
+                    button.TextTransparency = 0
+                end
+            end
+        end
+
+        local function stopSpectating()
+            state.SpectatingUserId = nil
+            restoreLocalCamera()
+            refreshSpectateButtons()
+        end
+
+        local function spectatePlayer(player)
+            if not player or player == LocalPlayer then return end
+            if state.SpectatingUserId == player.UserId then
+                stopSpectating()
+                return
+            end
+
+            local character = player.Character
+            local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+            local camera = workspace.CurrentCamera
+            if not camera or not humanoid then
+                LULA:ShowIsland("Spectate", "That player's character is not ready.", {Duration=2.5})
+                return
+            end
+
+            state.SpectatingUserId = player.UserId
+            pcall(function()
+                camera.CameraType = Enum.CameraType.Custom
+                camera.CameraSubject = humanoid
+            end)
+            refreshSpectateButtons()
+        end
+
         local function renderPlayers()
+            state.SpectateButtons = {}
             local keep = {[playerLayout]=true}
             clearChildren(playerList, keep)
             local list = Players:GetPlayers()
@@ -17814,8 +17900,15 @@ function LULA.CreateLib(kavName, themeInput)
                 inspect.Position = UDim2.new(1, -166, 0, 8); inspect.Size = UDim2.fromOffset(76, 27); inspect.BackgroundColor3 = rgb(81, 145, 255); inspect.BackgroundTransparency = 0.03
                 local friend = makeButton(row, player == LocalPlayer and "You" or "Add Friend")
                 friend.Position = UDim2.new(1, -84, 0, 8); friend.Size = UDim2.fromOffset(76, 27); friend.BackgroundColor3 = rgb(68, 198, 121); friend.BackgroundTransparency = 0.03
-                local tp = makeButton(row, "View")
-                tp.Position = UDim2.new(1, -166, 0, 41); tp.Size = UDim2.fromOffset(158, 26); tp.BackgroundColor3 = rgb(255, 156, 70); tp.BackgroundTransparency = 0.06
+                local spectate = makeButton(row, player == LocalPlayer and "You" or "Spectate")
+                spectate.Position = UDim2.new(1, -166, 0, 41); spectate.Size = UDim2.fromOffset(158, 26); spectate.BackgroundColor3 = rgb(255, 156, 70); spectate.BackgroundTransparency = 0.06
+                spectate.TextColor3 = rgb(255, 255, 255)
+                spectate.TextTransparency = 0
+                if player ~= LocalPlayer then
+                    state.SpectateButtons[player.UserId] = spectate
+                else
+                    spectate.AutoButtonColor = false
+                end
                 trackLocal(inspect.MouseButton1Click:Connect(function()
                     local ok = pcall(function() get.GuiService:InspectPlayerFromUserId(player.UserId) end)
                     if not ok then LULA:ShowIsland("Examine Avatar", "Roblox's Inspect Menu is unavailable on this client.", {Duration=2.8}) end
@@ -17832,10 +17925,13 @@ function LULA.CreateLib(kavName, themeInput)
                 else
                     friend.AutoButtonColor = false
                 end
-                trackLocal(tp.MouseButton1Click:Connect(function()
-                    LULA:ShowIsland(player.DisplayName, "@"..player.Name.."  |  UserId "..tostring(player.UserId), {Duration=2.5})
-                end))
+                if player ~= LocalPlayer then
+                    trackLocal(spectate.MouseButton1Click:Connect(function()
+                        spectatePlayer(player)
+                    end))
+                end
             end
+            refreshSpectateButtons()
         end
 
         local function renderServers()
@@ -17966,6 +18062,7 @@ function LULA.CreateLib(kavName, themeInput)
                 local iconData = httpJson("https://thumbnails.roblox.com/v1/games/icons?universeIds="..tostring(game.GameId).."&returnPolicy=PlaceHolder&size=512x512&format=Png&isCircular=false")
                 local icon = type(iconData)=="table" and type(iconData.data)=="table" and iconData.data[1]
                 if icon and icon.imageUrl then gameIcon.Image = tostring(icon.imageUrl) end
+                task.defer(fitOverviewCards)
             end)
         end
 
@@ -17994,7 +18091,17 @@ function LULA.CreateLib(kavName, themeInput)
         trackLocal(refreshServers.MouseButton1Click:Connect(renderServers))
         trackLocal(refreshPlayers.MouseButton1Click:Connect(renderPlayers))
         trackLocal(Players.PlayerAdded:Connect(renderPlayers))
-        trackLocal(Players.PlayerRemoving:Connect(function() task.defer(renderPlayers) end))
+        trackLocal(Players.PlayerRemoving:Connect(function(player)
+            if state.SpectatingUserId == player.UserId then
+                stopSpectating()
+            end
+            task.defer(renderPlayers)
+        end))
+        trackLocal(LocalPlayer.CharacterAdded:Connect(function()
+            if not state.SpectatingUserId then
+                task.defer(restoreLocalCamera)
+            end
+        end))
 
         refreshGameInfo()
         renderServers()
