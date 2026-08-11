@@ -1,4 +1,4 @@
---kavo ui 4.6.4 - LH v10.4.0 patch
+--kavo ui 4.6.5 - LH v10.4.0 hotfix
 local LULA = {}
 LULA.AnimationMarketplaceVersion = 4
 LULA.EmoteMarketplaceVersion = 1
@@ -16727,35 +16727,75 @@ function LULA.CreateLib(kavName, themeInput)
         header.BackgroundTransparency = 0.02
         makeStroke(header, active.Theme.SchemeColor, 0.28, 1)
 
-        local robloxTitle = makeText(header, "R O B L O X", 25, Enum.Font.GothamBlack)
-        robloxTitle.Position = UDim2.fromOffset(14, 8)
-        robloxTitle.Size = UDim2.new(1, -28, 0, 45)
-        robloxTitle.TextXAlignment = Enum.TextXAlignment.Center
+        -- Keep the original Roblox square icon; only the old red/white ROBLOX word image is removed.
+        local logoShell = Instance.new("Frame")
+        logoShell.Position = UDim2.fromOffset(8, 9)
+        logoShell.Size = UDim2.fromOffset(62, 62)
+        logoShell.BackgroundColor3 = rgb(32, 35, 45)
+        logoShell.BackgroundTransparency = 0.12
+        logoShell.BorderSizePixel = 0
+        logoShell.Parent = header
+        makeCorner(logoShell, 13)
+        makeStroke(logoShell, rgb(255, 255, 255), 0.78, 1)
+
+        local logoFallback = makeText(logoShell, utf8.char(0x25C8), 27, Enum.Font.GothamBlack)
+        logoFallback.Size = UDim2.fromScale(1, 1)
+        logoFallback.TextXAlignment = Enum.TextXAlignment.Center
+        logoFallback.TextYAlignment = Enum.TextYAlignment.Center
+        logoFallback.TextColor3 = rgb(255, 255, 255)
+
+        local logoImage = Instance.new("ImageLabel")
+        logoImage.BackgroundTransparency = 1
+        logoImage.Position = UDim2.fromOffset(3, 3)
+        logoImage.Size = UDim2.new(1, -6, 1, -6)
+        logoImage.ScaleType = Enum.ScaleType.Fit
+        logoImage.ImageTransparency = 1
+        logoImage.Parent = logoShell
+
+        local robloxTitle = makeText(header, "R O B L O X", 24, Enum.Font.GothamBlack)
+        robloxTitle.Position = UDim2.fromOffset(84, 8)
+        robloxTitle.Size = UDim2.new(1, -98, 0, 45)
+        robloxTitle.TextXAlignment = Enum.TextXAlignment.Left
         robloxTitle.TextYAlignment = Enum.TextYAlignment.Center
         robloxTitle.TextColor3 = rgb(255, 255, 255)
-        robloxTitle.TextStrokeTransparency = 0.72
+        robloxTitle.TextStrokeColor3 = rgb(255, 255, 255)
+        robloxTitle.TextStrokeTransparency = 0.82
         local titleGradient = Instance.new("UIGradient")
         titleGradient.Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0.00, rgb(255, 76, 92)),
-            ColorSequenceKeypoint.new(0.24, rgb(255, 181, 72)),
-            ColorSequenceKeypoint.new(0.48, rgb(80, 214, 255)),
-            ColorSequenceKeypoint.new(0.72, rgb(125, 104, 255)),
-            ColorSequenceKeypoint.new(1.00, rgb(255, 92, 196)),
+            ColorSequenceKeypoint.new(0.00, rgb(255, 105, 112)),
+            ColorSequenceKeypoint.new(0.20, rgb(255, 193, 76)),
+            ColorSequenceKeypoint.new(0.42, rgb(90, 231, 184)),
+            ColorSequenceKeypoint.new(0.63, rgb(89, 199, 255)),
+            ColorSequenceKeypoint.new(0.82, rgb(141, 116, 255)),
+            ColorSequenceKeypoint.new(1.00, rgb(255, 101, 205)),
         })
-        titleGradient.Rotation = 8
-        titleGradient.Transparency = NumberSequence.new({
-            NumberSequenceKeypoint.new(0, 0.04),
-            NumberSequenceKeypoint.new(0.40, 0.04),
-            NumberSequenceKeypoint.new(0.50, 0.00),
-            NumberSequenceKeypoint.new(0.60, 0.04),
-            NumberSequenceKeypoint.new(1, 0.04),
-        })
+        titleGradient.Rotation = 4
         titleGradient.Parent = robloxTitle
 
+        -- Soft decorative glow blocks keep the header from looking flat/basic.
+        local glowA = Instance.new("Frame")
+        glowA.Position = UDim2.new(1, -100, 0, 10)
+        glowA.Size = UDim2.fromOffset(72, 28)
+        glowA.BorderSizePixel = 0
+        glowA.BackgroundColor3 = rgb(112, 94, 255)
+        glowA.BackgroundTransparency = 0.86
+        glowA.Parent = header
+        makeCorner(glowA, 999)
+
+        local glowB = Instance.new("Frame")
+        glowB.Position = UDim2.new(1, -135, 0, 41)
+        glowB.Size = UDim2.fromOffset(102, 20)
+        glowB.BorderSizePixel = 0
+        glowB.BackgroundColor3 = rgb(255, 91, 171)
+        glowB.BackgroundTransparency = 0.91
+        glowB.Parent = header
+        makeCorner(glowB, 999)
+
         local headerSub = makeText(header, "USER LOOKUP  |  public profile info", 9.5, Enum.Font.GothamMedium)
-        headerSub.Position = UDim2.fromOffset(82, 62)
-        headerSub.Size = UDim2.new(1, -94, 0, 15)
+        headerSub.Position = UDim2.fromOffset(84, 57)
+        headerSub.Size = UDim2.new(1, -98, 0, 17)
         headerSub.TextXAlignment = Enum.TextXAlignment.Left
+        headerSub.TextTransparency = 0.04
         bind(headerSub, "TextColor3", "MutedText")
 
         local headerAccent = Instance.new("Frame")
@@ -16773,22 +16813,42 @@ function LULA.CreateLib(kavName, themeInput)
         })
         headerAccentGradient.Parent = headerAccent
 
-        local searchRow = newRow(scroll, "UserLookupSearch", 43)
+        task.spawn(function()
+            local logoAsset = loadRemoteAsset(
+                "https://raw.githubusercontent.com/rrixh/install/refs/heads/main/imgs/robloxlogo.PNG",
+                "robloxlogo.png"
+            )
+            if logoAsset and logoImage.Parent then
+                logoImage.Image = logoAsset
+                logoImage.ImageTransparency = 0
+                logoFallback.Visible = false
+            end
+        end)
+
+        local searchRow = newRow(scroll, "UserLookupSearch", 50)
         searchRow.LayoutOrder = -990
-        searchRow.BackgroundTransparency = 0.02
-        makeStroke(searchRow, active.Theme.SchemeColor, 0.62, 1)
+        searchRow.BackgroundTransparency = 0.01
+        makeStroke(searchRow, active.Theme.SchemeColor, 0.42, 1)
+        local searchRowGradient = Instance.new("UIGradient")
+        searchRowGradient.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, brightenAccent(active.Theme.Header, 0.04)),
+            ColorSequenceKeypoint.new(0.55, active.Theme.Header),
+            ColorSequenceKeypoint.new(1, brightenAccent(active.Theme.SchemeColor, 0.08)),
+        })
+        searchRowGradient.Rotation = 0
+        searchRowGradient.Parent = searchRow
 
         local status
         local searchBox = Instance.new("TextBox")
-        searchBox.Position = UDim2.fromOffset(7, 6)
-        searchBox.Size = UDim2.new(1, -105, 0, 31)
+        searchBox.Position = UDim2.fromOffset(8, 7)
+        searchBox.Size = UDim2.new(1, -70, 0, 36)
         searchBox.BackgroundTransparency = 0.08
         searchBox.BorderSizePixel = 0
         searchBox.ClearTextOnFocus = false
         searchBox.Font = resolveUIFont(Enum.Font.GothamMedium)
         searchBox.PlaceholderText = "Username, @username, User ID, or profile link"
         searchBox.Text = ""
-        searchBox.TextSize = 11
+        searchBox.TextSize = 11.5
         searchBox.TextXAlignment = Enum.TextXAlignment.Left
         searchBox.Parent = searchRow
         bind(searchBox, "BackgroundColor3", "Header")
@@ -16807,23 +16867,36 @@ function LULA.CreateLib(kavName, themeInput)
             if state.ClearSearchMatches then state.ClearSearchMatches() end
         end)
 
-        local searchButton = makeButton(searchRow, "Lookup")
+        local SEARCH_ICON = utf8.char(0x1F50D)
+        local searchButton = makeButton(searchRow, SEARCH_ICON)
         self:StyleSpecialActionButton(searchButton, "accent")
-        searchButton.BackgroundColor3 = brightenAccent(active.Theme.SchemeColor, 0.24)
+        searchButton.AnchorPoint = Vector2.new(1, 0)
+        searchButton.Position = UDim2.new(1, -8, 0, 7)
+        searchButton.Size = UDim2.fromOffset(50, 36)
+        searchButton.Text = SEARCH_ICON
+        searchButton.TextSize = 19
+        searchButton.Font = resolveUIFont(Enum.Font.GothamBold)
+        searchButton.TextColor3 = rgb(255, 255, 255)
+        searchButton.TextTransparency = 0
+        searchButton.BackgroundTransparency = 0
+        searchButton.BackgroundColor3 = brightenAccent(active.Theme.SchemeColor, 0.30)
+        local searchButtonStroke = searchButton:FindFirstChildOfClass("UIStroke")
+        if searchButtonStroke then
+            searchButtonStroke.Color = rgb(255, 255, 255)
+            searchButtonStroke.Transparency = 0.72
+        end
         local searchGlow = searchButton:FindFirstChild("LHSpecialGradient")
         if searchGlow then
             searchGlow.Color = ColorSequence.new({
-                ColorSequenceKeypoint.new(0, brightenAccent(active.Theme.SchemeColor, 0.36)),
-                ColorSequenceKeypoint.new(1, brightenAccent(active.Theme.Accent2, 0.28)),
+                ColorSequenceKeypoint.new(0, brightenAccent(active.Theme.SchemeColor, 0.42)),
+                ColorSequenceKeypoint.new(1, brightenAccent(active.Theme.Accent2, 0.32)),
             })
         end
-        searchButton.AnchorPoint = Vector2.new(1, 0)
-        searchButton.Position = UDim2.new(1, -7, 0, 6)
-        searchButton.Size = UDim2.fromOffset(91, 31)
 
         local statusRow = newRow(scroll, "UserLookupStatus", 29)
         statusRow.LayoutOrder = -980
-        statusRow.BackgroundTransparency = 0.08
+        statusRow.BackgroundTransparency = 0.035
+        makeStroke(statusRow, active.Theme.Accent2, 0.76, 1)
         status = makeText(statusRow, "Enter part of a Roblox username, @username, User ID, or profile link.", 10.5, Enum.Font.GothamMedium)
         status.Position = UDim2.fromOffset(9, 0)
         status.Size = UDim2.new(1, -18, 1, 0)
@@ -16977,7 +17050,11 @@ function LULA.CreateLib(kavName, themeInput)
         actionsRow.BackgroundTransparency = 1
 
         local friendButton = makeButton(actionsRow, "Add Friend")
+        friendButton.TextColor3 = rgb(255, 255, 255)
+        friendButton.TextTransparency = 0
         self:StyleSpecialActionButton(friendButton, "accent")
+        friendButton.TextColor3 = rgb(255, 255, 255)
+        friendButton.TextTransparency = 0
         friendButton.BackgroundTransparency = 0
         friendButton.BackgroundColor3 = rgb(72, 214, 132)
         local friendGlow = friendButton:FindFirstChild("LHSpecialGradient")
@@ -16992,6 +17069,8 @@ function LULA.CreateLib(kavName, themeInput)
         friendButton.TextSize = 10.5
 
         local copyIdButton = makeButton(actionsRow, "Kopy ID")
+        copyIdButton.TextColor3 = rgb(255, 255, 255)
+        copyIdButton.TextTransparency = 0
         self:StyleSpecialActionButton(copyIdButton, "glass")
         copyIdButton.Position = UDim2.new(0.29, 0, 0, 3)
         copyIdButton.Size = UDim2.new(0.20, -3, 0, 33)
@@ -17169,7 +17248,8 @@ function LULA.CreateLib(kavName, themeInput)
             state.Serial = state.Serial + 1
             local serial = state.Serial
             state.LastQuery = rawQuery
-            searchButton.Text = "..."
+            searchButton.Text = SEARCH_ICON
+            searchButton.TextTransparency = 0.38
             status.Text = "Looking up " .. rawQuery .. "..."
             setResultsVisible(false)
 
@@ -17194,7 +17274,8 @@ function LULA.CreateLib(kavName, themeInput)
                     end
                     if serial ~= state.Serial or state.Destroyed then return end
                     local matches = type(searchData) == "table" and searchData.data or nil
-                    searchButton.Text = "Lookup"
+                    searchButton.Text = SEARCH_ICON
+                    searchButton.TextTransparency = 0
                     setResultsVisible(false)
                     if type(matches) == "table" and #matches > 0 then
                         local renderedOk = pcall(renderSearchMatches, matches, cleanQuery)
@@ -17233,7 +17314,8 @@ function LULA.CreateLib(kavName, themeInput)
                 local profile = httpJson("https://users.roblox.com/v1/users/" .. tostring(userId))
                 if serial ~= state.Serial or state.Destroyed then return end
                 if type(profile) ~= "table" or tonumber(profile.id or userId) ~= userId then
-                    searchButton.Text = "Lookup"
+                    searchButton.Text = SEARCH_ICON
+                    searchButton.TextTransparency = 0
                     status.Text = "Could not load that Roblox profile."
                     return
                 end
@@ -17325,7 +17407,8 @@ function LULA.CreateLib(kavName, themeInput)
                 setResultsVisible(true)
                 refreshFriendButton()
                 status.Text = "Showing public info for @" .. tostring(profile.name or cleanQuery) .. "."
-                searchButton.Text = "Lookup"
+                searchButton.Text = SEARCH_ICON
+                searchButton.TextTransparency = 0
             end)
         end
 
