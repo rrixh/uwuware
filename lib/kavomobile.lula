@@ -1,10 +1,11 @@
---kavo ui 4.6.3 - LH v10.3.11 patch
+--kavo ui 4.6.4 - LH v10.4.0 patch
 local LULA = {}
 LULA.AnimationMarketplaceVersion = 4
 LULA.EmoteMarketplaceVersion = 1
 LULA.AvatarMarketplaceVersion = 5
 LULA.AutoExecuteManagerVersion = 1
-LULA.UserLookupVersion = 4
+LULA.UserLookupVersion = 5
+LULA.ExperienceHubVersion = 1
 local env = (getgenv and getgenv()) or _G
 
 --kr
@@ -2869,7 +2870,7 @@ function LULA.CreateLib(kavName, themeInput)
     pages.ClipsDescendants = true
     pages.Parent = main
 
-    local footer = makeText(main, "Lollypop Hub v10.3.11", 11, Enum.Font.GothamMedium)
+    local footer = makeText(main, "Lollypop Hub v10.4.0", 11, Enum.Font.GothamMedium)
     footer.Name = "Footer"
     footer.Position = UDim2.new(0, 158, 1, -20)
     footer.Size = UDim2.new(1, -165, 0, 18)
@@ -16726,39 +16727,30 @@ function LULA.CreateLib(kavName, themeInput)
         header.BackgroundTransparency = 0.02
         makeStroke(header, active.Theme.SchemeColor, 0.28, 1)
 
-        local logoShell = Instance.new("Frame")
-        logoShell.Position = UDim2.fromOffset(7, 8)
-        logoShell.Size = UDim2.fromOffset(66, 66)
-        logoShell.BackgroundTransparency = 1
-        logoShell.BorderSizePixel = 0
-        logoShell.Parent = header
-
-        local logoFallback = makeText(logoShell, "R", 25, Enum.Font.GothamBold)
-        logoFallback.Size = UDim2.fromScale(1, 1)
-        logoFallback.TextXAlignment = Enum.TextXAlignment.Center
-        logoFallback.TextYAlignment = Enum.TextYAlignment.Center
-
-        local logoImage = Instance.new("ImageLabel")
-        logoImage.BackgroundTransparency = 1
-        logoImage.Position = UDim2.fromOffset(1, 1)
-        logoImage.Size = UDim2.new(1, -2, 1, -2)
-        logoImage.ScaleType = Enum.ScaleType.Fit
-        logoImage.ImageTransparency = 1
-        logoImage.Parent = logoShell
-
-        local wordFallback = makeText(header, "ROBLOX", 22, Enum.Font.GothamBlack)
-        wordFallback.Position = UDim2.fromOffset(94, 8)
-        wordFallback.Size = UDim2.new(1, -142, 0, 45)
-        wordFallback.TextXAlignment = Enum.TextXAlignment.Left
-        wordFallback.TextYAlignment = Enum.TextYAlignment.Center
-
-        local wordImage = Instance.new("ImageLabel")
-        wordImage.BackgroundTransparency = 1
-        wordImage.Position = UDim2.fromOffset(98, 11)
-        wordImage.Size = UDim2.new(1, -154, 0, 38)
-        wordImage.ScaleType = Enum.ScaleType.Fit
-        wordImage.ImageTransparency = 1
-        wordImage.Parent = header
+        local robloxTitle = makeText(header, "R O B L O X", 25, Enum.Font.GothamBlack)
+        robloxTitle.Position = UDim2.fromOffset(14, 8)
+        robloxTitle.Size = UDim2.new(1, -28, 0, 45)
+        robloxTitle.TextXAlignment = Enum.TextXAlignment.Center
+        robloxTitle.TextYAlignment = Enum.TextYAlignment.Center
+        robloxTitle.TextColor3 = rgb(255, 255, 255)
+        robloxTitle.TextStrokeTransparency = 0.72
+        local titleGradient = Instance.new("UIGradient")
+        titleGradient.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0.00, rgb(255, 76, 92)),
+            ColorSequenceKeypoint.new(0.24, rgb(255, 181, 72)),
+            ColorSequenceKeypoint.new(0.48, rgb(80, 214, 255)),
+            ColorSequenceKeypoint.new(0.72, rgb(125, 104, 255)),
+            ColorSequenceKeypoint.new(1.00, rgb(255, 92, 196)),
+        })
+        titleGradient.Rotation = 8
+        titleGradient.Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0.04),
+            NumberSequenceKeypoint.new(0.40, 0.04),
+            NumberSequenceKeypoint.new(0.50, 0.00),
+            NumberSequenceKeypoint.new(0.60, 0.04),
+            NumberSequenceKeypoint.new(1, 0.04),
+        })
+        titleGradient.Parent = robloxTitle
 
         local headerSub = makeText(header, "USER LOOKUP  |  public profile info", 9.5, Enum.Font.GothamMedium)
         headerSub.Position = UDim2.fromOffset(82, 62)
@@ -16780,30 +16772,6 @@ function LULA.CreateLib(kavName, themeInput)
             ColorSequenceKeypoint.new(1, active.Theme.Accent2),
         })
         headerAccentGradient.Parent = headerAccent
-
-        task.spawn(function()
-            local logoAsset = loadRemoteAsset(
-                "https://raw.githubusercontent.com/rrixh/install/refs/heads/main/imgs/robloxlogo.PNG",
-                "robloxlogo.png"
-            )
-            if logoAsset and logoImage.Parent then
-                logoImage.Image = logoAsset
-                logoImage.ImageTransparency = 0
-                logoFallback.Visible = false
-            end
-        end)
-
-        task.spawn(function()
-            local wordAsset = loadRemoteAsset(
-                "https://raw.githubusercontent.com/rrixh/install/refs/heads/main/imgs/oldroblox.PNG",
-                "oldroblox.png"
-            )
-            if wordAsset and wordImage.Parent then
-                wordImage.Image = wordAsset
-                wordImage.ImageTransparency = 0
-                wordFallback.Visible = false
-            end
-        end)
 
         local searchRow = newRow(scroll, "UserLookupSearch", 43)
         searchRow.LayoutOrder = -990
@@ -16841,6 +16809,14 @@ function LULA.CreateLib(kavName, themeInput)
 
         local searchButton = makeButton(searchRow, "Lookup")
         self:StyleSpecialActionButton(searchButton, "accent")
+        searchButton.BackgroundColor3 = brightenAccent(active.Theme.SchemeColor, 0.24)
+        local searchGlow = searchButton:FindFirstChild("LHSpecialGradient")
+        if searchGlow then
+            searchGlow.Color = ColorSequence.new({
+                ColorSequenceKeypoint.new(0, brightenAccent(active.Theme.SchemeColor, 0.36)),
+                ColorSequenceKeypoint.new(1, brightenAccent(active.Theme.Accent2, 0.28)),
+            })
+        end
         searchButton.AnchorPoint = Vector2.new(1, 0)
         searchButton.Position = UDim2.new(1, -7, 0, 6)
         searchButton.Size = UDim2.fromOffset(91, 31)
@@ -17002,6 +16978,15 @@ function LULA.CreateLib(kavName, themeInput)
 
         local friendButton = makeButton(actionsRow, "Add Friend")
         self:StyleSpecialActionButton(friendButton, "accent")
+        friendButton.BackgroundTransparency = 0
+        friendButton.BackgroundColor3 = rgb(72, 214, 132)
+        local friendGlow = friendButton:FindFirstChild("LHSpecialGradient")
+        if friendGlow then
+            friendGlow.Color = ColorSequence.new({
+                ColorSequenceKeypoint.new(0, rgb(102, 235, 157)),
+                ColorSequenceKeypoint.new(1, rgb(49, 179, 118)),
+            })
+        end
         friendButton.Position = UDim2.fromOffset(0, 3)
         friendButton.Size = UDim2.new(0.28, -3, 0, 33)
         friendButton.TextSize = 10.5
@@ -17074,9 +17059,9 @@ function LULA.CreateLib(kavName, themeInput)
 
             friendButton.Text = "Add Friend"
             if findServerPlayer(userId, state.Profile and state.Profile.name) then
-                friendButton.BackgroundColor3 = active.Theme.SchemeColor
+                friendButton.BackgroundColor3 = rgb(72, 214, 132)
             else
-                friendButton.BackgroundColor3 = active.Theme.Header
+                friendButton.BackgroundColor3 = brightenAccent(active.Theme.Header, 0.16)
             end
         end
 
@@ -17409,6 +17394,534 @@ function LULA.CreateLib(kavName, themeInput)
             if state.Destroyed then return end
             state.Destroyed = true
             state.Serial = state.Serial + 1
+            for _, connection in ipairs(state.Connections) do
+                pcall(function() if connection and connection.Connected then connection:Disconnect() end end)
+            end
+            state.Connections = {}
+        end
+
+        return tab
+    end
+
+
+    function window:EnableExperienceHub(tabName)
+        if active.ExperienceHub then return active.ExperienceHub.Tab end
+
+        local tab = self:NewTab(tabName or "Experience")
+        tab:EnsureBuilt()
+        local scroll = tab.Scroll
+        local state = {
+            Tab = tab,
+            Connections = {},
+            Destroyed = false,
+            ServerSort = "players_low",
+            ServerCursor = nil,
+            Servers = {},
+            GameData = nil,
+            Votes = nil,
+            Creator = nil,
+        }
+        active.ExperienceHub = state
+
+        local function trackLocal(connection)
+            if connection then table.insert(state.Connections, connection) end
+            return connection
+        end
+
+        local function trim(value)
+            return tostring(value or ""):match("^%s*(.-)%s*$")
+        end
+
+        local function fmt(n)
+            n = tonumber(n)
+            if not n then return "--" end
+            local s = tostring(math.floor(n))
+            local out = s
+            while true do
+                local nextValue, count = out:gsub("^(-?%d+)(%d%d%d)", "%1,%2")
+                out = nextValue
+                if count == 0 then break end
+            end
+            return out
+        end
+
+        local function decodeJson(body)
+            if type(body) ~= "string" or body == "" then return nil end
+            local ok, decoded = pcall(function() return HttpService:JSONDecode(body) end)
+            return ok and decoded or nil
+        end
+
+        local function rawHttpBody(url)
+            local requesters = {rawget(env, "request"), rawget(env, "http_request"), rawget(env, "httprequest")}
+            local synTable = rawget(env, "syn")
+            if type(synTable) == "table" then table.insert(requesters, synTable.request) end
+            local httpTable = rawget(env, "http")
+            if type(httpTable) == "table" then table.insert(requesters, httpTable.request) end
+            for _, requester in ipairs(requesters) do
+                if typeof(requester) == "function" then
+                    local ok, response = pcall(requester, {Url=url, Method="GET", Headers={Accept="application/json"}})
+                    if ok and type(response) == "table" then
+                        local code = tonumber(response.StatusCode or response.Status or response.status_code)
+                        local body = response.Body or response.body or response.ResponseBody
+                        if (not code or (code >= 200 and code < 300)) and type(body) == "string" then return body end
+                    elseif ok and type(response) == "string" then
+                        return response
+                    end
+                end
+            end
+            local compat = rawget(env, "LHCompat")
+            if type(compat) == "table" and type(compat.HttpGet) == "function" then
+                local callOk, httpOk, body = pcall(compat.HttpGet, url, false)
+                if callOk and httpOk and type(body) == "string" then return body end
+            end
+            local ok, body = pcall(function() return game:HttpGet(url, false) end)
+            return ok and body or nil
+        end
+
+        local function httpJson(url)
+            return decodeJson(rawHttpBody(url))
+        end
+
+        local function makeCard(parent, height, order)
+            local row = newRow(parent, "ExperienceCard", height)
+            row.LayoutOrder = order or 0
+            row.BackgroundTransparency = 0.04
+            makeStroke(row, active.Theme.SchemeColor, 0.45, 1)
+            return row
+        end
+
+        local function makeStat(parent, xScale, titleText, valueText, accent)
+            local card = Instance.new("Frame")
+            card.Position = UDim2.new(xScale, 4, 0, 5)
+            card.Size = UDim2.new(0.25, -7, 1, -10)
+            card.BorderSizePixel = 0
+            card.BackgroundColor3 = accent
+            card.BackgroundTransparency = 0.18
+            card.Parent = parent
+            makeCorner(card, 8)
+            local value = makeText(card, valueText, 17, Enum.Font.GothamBold)
+            value.Position = UDim2.fromOffset(7, 5)
+            value.Size = UDim2.new(1, -14, 0, 23)
+            value.TextXAlignment = Enum.TextXAlignment.Left
+            local title = makeText(card, titleText, 9, Enum.Font.GothamMedium)
+            title.Position = UDim2.fromOffset(7, 28)
+            title.Size = UDim2.new(1, -14, 0, 15)
+            title.TextXAlignment = Enum.TextXAlignment.Left
+            title.TextTransparency = 0.15
+            return value
+        end
+
+        local function clearChildren(holder, keep)
+            for _, child in ipairs(holder:GetChildren()) do
+                if not keep[child] then child:Destroy() end
+            end
+        end
+
+        local header = makeCard(scroll, 142, -1000)
+        local gameIcon = Instance.new("ImageLabel")
+        gameIcon.Position = UDim2.fromOffset(10, 10)
+        gameIcon.Size = UDim2.fromOffset(86, 86)
+        gameIcon.BackgroundColor3 = rgb(30, 34, 44)
+        gameIcon.BorderSizePixel = 0
+        gameIcon.ScaleType = Enum.ScaleType.Crop
+        gameIcon.Parent = header
+        makeCorner(gameIcon, 13)
+
+        local gameName = makeText(header, "Loading experience...", 18, Enum.Font.GothamBold)
+        gameName.Position = UDim2.fromOffset(108, 10)
+        gameName.Size = UDim2.new(1, -118, 0, 27)
+        gameName.TextXAlignment = Enum.TextXAlignment.Left
+        gameName.TextWrapped = true
+
+        local creatorAvatar = Instance.new("ImageLabel")
+        creatorAvatar.Position = UDim2.fromOffset(108, 45)
+        creatorAvatar.Size = UDim2.fromOffset(34, 34)
+        creatorAvatar.BackgroundTransparency = 1
+        creatorAvatar.ScaleType = Enum.ScaleType.Crop
+        creatorAvatar.Parent = header
+        makeCorner(creatorAvatar, 999)
+
+        local creatorLine = makeText(header, "By ...", 11, Enum.Font.GothamMedium)
+        creatorLine.Position = UDim2.fromOffset(149, 45)
+        creatorLine.Size = UDim2.new(1, -159, 0, 34)
+        creatorLine.TextXAlignment = Enum.TextXAlignment.Left
+        creatorLine.TextWrapped = true
+
+        local idLine = makeText(header, "PlaceId: "..tostring(game.PlaceId).."  |  UniverseId: "..tostring(game.GameId), 9, Enum.Font.Code)
+        idLine.Position = UDim2.fromOffset(108, 81)
+        idLine.Size = UDim2.new(1, -118, 0, 16)
+        idLine.TextXAlignment = Enum.TextXAlignment.Left
+        bind(idLine, "TextColor3", "MutedText")
+
+        local liveLine = makeText(header, "Kurrent server: loading metrics...", 9, Enum.Font.GothamMedium)
+        liveLine.Position = UDim2.fromOffset(10, 108)
+        liveLine.Size = UDim2.new(1, -20, 0, 20)
+        liveLine.TextXAlignment = Enum.TextXAlignment.Left
+        bind(liveLine, "TextColor3", "MutedText")
+
+        local accentBar = Instance.new("Frame")
+        accentBar.Position = UDim2.new(0, 10, 1, -6)
+        accentBar.Size = UDim2.new(1, -20, 0, 3)
+        accentBar.BorderSizePixel = 0
+        accentBar.Parent = header
+        makeCorner(accentBar, 999)
+        local accentGradient = Instance.new("UIGradient")
+        accentGradient.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, rgb(60, 140, 255)),
+            ColorSequenceKeypoint.new(0.33, rgb(0, 220, 176)),
+            ColorSequenceKeypoint.new(0.66, rgb(255, 176, 64)),
+            ColorSequenceKeypoint.new(1, rgb(255, 82, 164)),
+        })
+        accentGradient.Parent = accentBar
+
+        local nav = makeCard(scroll, 42, -990)
+        local pages = {}
+        local navButtons = {}
+        local names = {"Overview", "Servers", "Players", "Badges", "Passes"}
+        for i, name in ipairs(names) do
+            local b = makeButton(nav, name)
+            b.Position = UDim2.new((i-1)/#names, 3, 0, 4)
+            b.Size = UDim2.new(1/#names, -6, 1, -8)
+            b.TextSize = 10.5
+            b.BackgroundTransparency = 0.15
+            b.BackgroundColor3 = ({rgb(64,134,255), rgb(76,192,132), rgb(255,153,73), rgb(181,95,255), rgb(255,91,160)})[i]
+            navButtons[name] = b
+        end
+
+        local function pane(name)
+            local holder = Instance.new("Frame")
+            holder.Name = name.."Pane"
+            holder.Size = UDim2.new(1, -4, 0, 0)
+            holder.AutomaticSize = Enum.AutomaticSize.Y
+            holder.BackgroundTransparency = 1
+            holder.Visible = false
+            holder.Parent = scroll
+            local layout = Instance.new("UIListLayout")
+            layout.Padding = UDim.new(0, 5)
+            layout.SortOrder = Enum.SortOrder.LayoutOrder
+            layout.Parent = holder
+            pages[name] = holder
+            return holder
+        end
+
+        local overview = pane("Overview")
+        local servers = pane("Servers")
+        local playersPane = pane("Players")
+        local badgesPane = pane("Badges")
+        local passesPane = pane("Passes")
+
+        local function showPane(name)
+            for pageName, holder in pairs(pages) do holder.Visible = pageName == name end
+            for buttonName, button in pairs(navButtons) do
+                button.TextTransparency = buttonName == name and 0 or 0.18
+                button.BackgroundTransparency = buttonName == name and 0.02 or 0.22
+            end
+        end
+        for name, button in pairs(navButtons) do
+            trackLocal(button.MouseButton1Click:Connect(function() showPane(name) end))
+        end
+        showPane("Overview")
+
+        local statsRow = makeCard(overview, 54, 1)
+        local playingValue = makeStat(statsRow, 0.00, "PLAYING", "--", rgb(65, 141, 255))
+        local visitsValue = makeStat(statsRow, 0.25, "VISITS", "--", rgb(69, 194, 139))
+        local likesValue = makeStat(statsRow, 0.50, "LIKES", "--", rgb(255, 167, 69))
+        local ratingValue = makeStat(statsRow, 0.75, "RATING", "--", rgb(202, 99, 255))
+
+        local infoRow = makeCard(overview, 116, 2)
+        local infoTitle = makeText(infoRow, "EXPERIENCE INFO", 11, Enum.Font.GothamBold)
+        infoTitle.Position = UDim2.fromOffset(10, 7)
+        infoTitle.Size = UDim2.new(1, -20, 0, 17)
+        infoTitle.TextXAlignment = Enum.TextXAlignment.Left
+        local infoText = makeText(infoRow, "Loading...", 10, Enum.Font.GothamMedium)
+        infoText.Position = UDim2.fromOffset(10, 29)
+        infoText.Size = UDim2.new(1, -20, 1, -35)
+        infoText.TextXAlignment = Enum.TextXAlignment.Left
+        infoText.TextYAlignment = Enum.TextYAlignment.Top
+        infoText.TextWrapped = true
+        bind(infoText, "TextColor3", "MutedText")
+
+        local descRow = makeCard(overview, 118, 3)
+        local descTitle = makeText(descRow, "ABOUT", 11, Enum.Font.GothamBold)
+        descTitle.Position = UDim2.fromOffset(10, 7)
+        descTitle.Size = UDim2.new(1, -20, 0, 17)
+        descTitle.TextXAlignment = Enum.TextXAlignment.Left
+        local description = makeText(descRow, "Loading description...", 10, Enum.Font.GothamMedium)
+        description.Position = UDim2.fromOffset(10, 29)
+        description.Size = UDim2.new(1, -20, 1, -35)
+        description.TextXAlignment = Enum.TextXAlignment.Left
+        description.TextYAlignment = Enum.TextYAlignment.Top
+        description.TextWrapped = true
+        bind(description, "TextColor3", "MutedText")
+
+        local serverTools = makeCard(servers, 82, 1)
+        local serverStatus = makeText(serverTools, "Loading public servers...", 10, Enum.Font.GothamMedium)
+        serverStatus.Position = UDim2.fromOffset(8, 6)
+        serverStatus.Size = UDim2.new(1, -16, 0, 18)
+        serverStatus.TextXAlignment = Enum.TextXAlignment.Left
+        local sortLow = makeButton(serverTools, "Least Players")
+        sortLow.Position = UDim2.new(0, 8, 0, 31); sortLow.Size = UDim2.new(0.25, -6, 0, 34)
+        sortLow.BackgroundColor3 = rgb(64, 140, 255); sortLow.BackgroundTransparency = 0.04
+        local sortHigh = makeButton(serverTools, "Most Players")
+        sortHigh.Position = UDim2.new(0.25, 5, 0, 31); sortHigh.Size = UDim2.new(0.25, -6, 0, 34)
+        sortHigh.BackgroundColor3 = rgb(70, 190, 135); sortHigh.BackgroundTransparency = 0.04
+        local sortPing = makeButton(serverTools, "Ping / FPS")
+        sortPing.Position = UDim2.new(0.50, 2, 0, 31); sortPing.Size = UDim2.new(0.25, -6, 0, 34)
+        sortPing.BackgroundColor3 = rgb(255, 156, 70); sortPing.BackgroundTransparency = 0.04
+        local refreshServers = makeButton(serverTools, "Refresh")
+        refreshServers.Position = UDim2.new(0.75, -1, 0, 31); refreshServers.Size = UDim2.new(0.25, -7, 0, 34)
+        refreshServers.BackgroundColor3 = rgb(191, 96, 255); refreshServers.BackgroundTransparency = 0.04
+
+        local serverList = Instance.new("Frame")
+        serverList.Size = UDim2.new(1, -4, 0, 0)
+        serverList.AutomaticSize = Enum.AutomaticSize.Y
+        serverList.BackgroundTransparency = 1
+        serverList.Parent = servers
+        local serverLayout = Instance.new("UIListLayout")
+        serverLayout.Padding = UDim.new(0, 5); serverLayout.Parent = serverList
+
+        local playersHeader = makeCard(playersPane, 42, 1)
+        local playersStatus = makeText(playersHeader, "Players in this server", 11, Enum.Font.GothamBold)
+        playersStatus.Position = UDim2.fromOffset(9, 4); playersStatus.Size = UDim2.new(0.65, -10, 1, -8); playersStatus.TextXAlignment = Enum.TextXAlignment.Left
+        local refreshPlayers = makeButton(playersHeader, "Refresh")
+        refreshPlayers.Position = UDim2.new(0.70, 0, 0, 4); refreshPlayers.Size = UDim2.new(0.30, -8, 1, -8)
+        refreshPlayers.BackgroundColor3 = rgb(71, 174, 255); refreshPlayers.BackgroundTransparency = 0.04
+
+        local playerList = Instance.new("Frame")
+        playerList.Size = UDim2.new(1, -4, 0, 0); playerList.AutomaticSize = Enum.AutomaticSize.Y; playerList.BackgroundTransparency = 1; playerList.Parent = playersPane
+        local playerLayout = Instance.new("UIListLayout"); playerLayout.Padding = UDim.new(0, 5); playerLayout.Parent = playerList
+
+        local badgesHeader = makeCard(badgesPane, 42, 1)
+        local badgesStatus = makeText(badgesHeader, "Experience badges", 11, Enum.Font.GothamBold)
+        badgesStatus.Position = UDim2.fromOffset(9, 4); badgesStatus.Size = UDim2.new(1, -18, 1, -8); badgesStatus.TextXAlignment = Enum.TextXAlignment.Left
+        local badgesList = Instance.new("Frame")
+        badgesList.Size = UDim2.new(1, -4, 0, 0); badgesList.AutomaticSize = Enum.AutomaticSize.Y; badgesList.BackgroundTransparency = 1; badgesList.Parent = badgesPane
+        local badgesLayout = Instance.new("UIListLayout"); badgesLayout.Padding = UDim.new(0, 5); badgesLayout.Parent = badgesList
+
+        local passesHeader = makeCard(passesPane, 42, 1)
+        local passesStatus = makeText(passesHeader, "Experience passes", 11, Enum.Font.GothamBold)
+        passesStatus.Position = UDim2.fromOffset(9, 4); passesStatus.Size = UDim2.new(1, -18, 1, -8); passesStatus.TextXAlignment = Enum.TextXAlignment.Left
+        local passesList = Instance.new("Frame")
+        passesList.Size = UDim2.new(1, -4, 0, 0); passesList.AutomaticSize = Enum.AutomaticSize.Y; passesList.BackgroundTransparency = 1; passesList.Parent = passesPane
+        local passesLayout = Instance.new("UIListLayout"); passesLayout.Padding = UDim.new(0, 5); passesLayout.Parent = passesList
+
+        local function renderPlayers()
+            local keep = {[playerLayout]=true}
+            clearChildren(playerList, keep)
+            local list = Players:GetPlayers()
+            table.sort(list, function(a,b) return string.lower(a.Name) < string.lower(b.Name) end)
+            playersStatus.Text = "Players in this server  |  "..tostring(#list).."/"..tostring(Players.MaxPlayers)
+            for index, player in ipairs(list) do
+                local row = makeCard(playerList, 76, index)
+                local avatar = Instance.new("ImageLabel")
+                avatar.Position = UDim2.fromOffset(7, 7); avatar.Size = UDim2.fromOffset(60, 60); avatar.BackgroundTransparency = 1; avatar.ScaleType = Enum.ScaleType.Crop; avatar.Parent = row
+                makeCorner(avatar, 10)
+                task.spawn(function()
+                    local ok, image = pcall(function()
+                        local content = Players:GetUserThumbnailAsync(player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size150x150)
+                        return content
+                    end)
+                    if ok and avatar.Parent then avatar.Image = image end
+                end)
+                local display = makeText(row, tostring(player.DisplayName), 12, Enum.Font.GothamBold)
+                display.Position = UDim2.fromOffset(76, 8); display.Size = UDim2.new(1, -250, 0, 20); display.TextXAlignment = Enum.TextXAlignment.Left
+                local user = makeText(row, "@"..player.Name.."  |  ID "..tostring(player.UserId), 9, Enum.Font.GothamMedium)
+                user.Position = UDim2.fromOffset(76, 29); user.Size = UDim2.new(1, -250, 0, 18); user.TextXAlignment = Enum.TextXAlignment.Left; bind(user, "TextColor3", "MutedText")
+                local inspect = makeButton(row, "Examine")
+                inspect.Position = UDim2.new(1, -166, 0, 8); inspect.Size = UDim2.fromOffset(76, 27); inspect.BackgroundColor3 = rgb(81, 145, 255); inspect.BackgroundTransparency = 0.03
+                local friend = makeButton(row, player == LocalPlayer and "You" or "Add Friend")
+                friend.Position = UDim2.new(1, -84, 0, 8); friend.Size = UDim2.fromOffset(76, 27); friend.BackgroundColor3 = rgb(68, 198, 121); friend.BackgroundTransparency = 0.03
+                local tp = makeButton(row, "View")
+                tp.Position = UDim2.new(1, -166, 0, 41); tp.Size = UDim2.fromOffset(158, 26); tp.BackgroundColor3 = rgb(255, 156, 70); tp.BackgroundTransparency = 0.06
+                trackLocal(inspect.MouseButton1Click:Connect(function()
+                    local ok = pcall(function() get.GuiService:InspectPlayerFromUserId(player.UserId) end)
+                    if not ok then LULA:ShowIsland("Examine Avatar", "Roblox's Inspect Menu is unavailable on this client.", {Duration=2.8}) end
+                end))
+                if player ~= LocalPlayer then
+                    trackLocal(friend.MouseButton1Click:Connect(function()
+                        local isFriend = false
+                        pcall(function() isFriend = LocalPlayer:IsFriendsWithAsync(player.UserId) == true end)
+                        if isFriend then friend.Text = "Friends"; return end
+                        local opened = pcall(function() get.StarterGui:SetCore("PromptSendFriendRequest", player) end)
+                        friend.Text = opened and "Opened" or "Unavailable"
+                        task.delay(1.2, function() if friend.Parent then friend.Text = "Add Friend" end end)
+                    end))
+                else
+                    friend.AutoButtonColor = false
+                end
+                trackLocal(tp.MouseButton1Click:Connect(function()
+                    LULA:ShowIsland(player.DisplayName, "@"..player.Name.."  |  UserId "..tostring(player.UserId), {Duration=2.5})
+                end))
+            end
+        end
+
+        local function renderServers()
+            clearChildren(serverList, {[serverLayout]=true})
+            serverStatus.Text = "Loading public servers..."
+            task.spawn(function()
+                local data = httpJson("https://games.roblox.com/v1/games/"..tostring(game.PlaceId).."/servers/Public?sortOrder=Asc&excludeFullGames=false&limit=100")
+                local rows = type(data) == "table" and data.data or {}
+                if type(rows) ~= "table" then rows = {} end
+                state.Servers = rows
+                table.sort(rows, function(a,b)
+                    local ap, bp = tonumber(a.playing) or 0, tonumber(b.playing) or 0
+                    if state.ServerSort == "players_high" then return ap > bp end
+                    return ap < bp
+                end)
+                serverStatus.Text = "Public servers  |  "..tostring(#rows).." loaded  |  "..(state.ServerSort == "players_high" and "Most players first" or "Least players first")
+                for index, server in ipairs(rows) do
+                    local row = makeCard(serverList, 52, index)
+                    local isCurrent = tostring(server.id or "") == tostring(game.JobId)
+                    local title = makeText(row, (isCurrent and "KURRENT SERVER  |  " or "")..fmt(server.playing).."/"..fmt(server.maxPlayers).." players", 11, Enum.Font.GothamBold)
+                    title.Position = UDim2.fromOffset(9, 5); title.Size = UDim2.new(1, -120, 0, 19); title.TextXAlignment = Enum.TextXAlignment.Left
+                    local jid = makeText(row, "JobId: "..tostring(server.id or "Unknown"), 8.5, Enum.Font.Code)
+                    jid.Position = UDim2.fromOffset(9, 27); jid.Size = UDim2.new(1, -120, 0, 16); jid.TextXAlignment = Enum.TextXAlignment.Left; bind(jid, "TextColor3", "MutedText")
+                    local join = makeButton(row, isCurrent and "Here" or "Join")
+                    join.Position = UDim2.new(1, -103, 0, 9); join.Size = UDim2.fromOffset(94, 34)
+                    join.BackgroundColor3 = isCurrent and rgb(91, 91, 102) or rgb(69, 181, 119); join.BackgroundTransparency = 0.04
+                    if not isCurrent then
+                        trackLocal(join.MouseButton1Click:Connect(function()
+                            pcall(function() get.TeleportService:TeleportToPlaceInstance(game.PlaceId, tostring(server.id), LocalPlayer) end)
+                        end))
+                    end
+                end
+                if #rows == 0 then serverStatus.Text = "No public servers returned by Roblox." end
+            end)
+        end
+
+        local function renderBadges()
+            clearChildren(badgesList, {[badgesLayout]=true})
+            task.spawn(function()
+                local data = httpJson("https://badges.roblox.com/v1/universes/"..tostring(game.GameId).."/badges?limit=100&sortOrder=Asc")
+                local rows = type(data) == "table" and data.data or {}
+                if type(rows) ~= "table" then rows = {} end
+                badgesStatus.Text = "Experience badges  |  "..tostring(#rows).." loaded"
+                for index, badge in ipairs(rows) do
+                    local row = makeCard(badgesList, 66, index)
+                    local icon = Instance.new("ImageLabel")
+                    icon.Position = UDim2.fromOffset(7,7); icon.Size = UDim2.fromOffset(52,52); icon.BackgroundTransparency = 1
+                    icon.Image = "rbxthumb://type=BadgeIcon&id="..tostring(badge.id or 0).."&w=150&h=150"; icon.Parent = row; makeCorner(icon,8)
+                    local title = makeText(row, tostring(badge.displayName or badge.name or "Badge"), 11, Enum.Font.GothamBold)
+                    title.Position = UDim2.fromOffset(68,6); title.Size = UDim2.new(1,-77,0,19); title.TextXAlignment = Enum.TextXAlignment.Left
+                    local desc = makeText(row, trim(badge.description) ~= "" and trim(badge.description) or "No description.", 9, Enum.Font.GothamMedium)
+                    desc.Position = UDim2.fromOffset(68,27); desc.Size = UDim2.new(1,-77,0,32); desc.TextXAlignment = Enum.TextXAlignment.Left; desc.TextYAlignment = Enum.TextYAlignment.Top; desc.TextWrapped = true; bind(desc,"TextColor3","MutedText")
+                end
+                if #rows == 0 then badgesStatus.Text = "No badges found or Roblox blocked the request." end
+            end)
+        end
+
+        local function renderPasses()
+            clearChildren(passesList, {[passesLayout]=true})
+            task.spawn(function()
+                local url = "https://apis.roblox.com/game-passes/v1/universes/"..tostring(game.GameId).."/game-passes?passView=Full&pageSize=100"
+                local data = httpJson(url)
+                local rows = type(data) == "table" and (data.gamePasses or data.data) or {}
+                if type(rows) ~= "table" then rows = {} end
+                passesStatus.Text = "Experience passes  |  "..tostring(#rows).." loaded"
+                for index, pass in ipairs(rows) do
+                    local row = makeCard(passesList, 58, index)
+                    local title = makeText(row, tostring(pass.displayName or pass.name or "Game Pass"), 11, Enum.Font.GothamBold)
+                    title.Position = UDim2.fromOffset(9,5); title.Size = UDim2.new(1,-130,0,20); title.TextXAlignment = Enum.TextXAlignment.Left
+                    local sub = makeText(row, "ID "..tostring(pass.id or "--").."  |  "..(pass.price and (fmt(pass.price).." Robux") or "Off sale / no price"), 9, Enum.Font.GothamMedium)
+                    sub.Position = UDim2.fromOffset(9,28); sub.Size = UDim2.new(1,-130,0,18); sub.TextXAlignment = Enum.TextXAlignment.Left; bind(sub,"TextColor3","MutedText")
+                    local buy = makeButton(row, pass.isOwned and "Owned" or "View")
+                    buy.Position = UDim2.new(1,-112,0,10); buy.Size = UDim2.fromOffset(102,34); buy.BackgroundColor3 = pass.isOwned and rgb(80,170,112) or rgb(79,139,255); buy.BackgroundTransparency = 0.04
+                    if tonumber(pass.id) then
+                        trackLocal(buy.MouseButton1Click:Connect(function()
+                            if pass.isOwned then return end
+                            pcall(function() MarketplaceService:PromptGamePassPurchase(LocalPlayer, tonumber(pass.id)) end)
+                        end))
+                    end
+                end
+                if #rows == 0 then passesStatus.Text = "No passes found or this endpoint needs Roblox authorization." end
+            end)
+        end
+
+        local function refreshGameInfo()
+            task.spawn(function()
+                local gameResponse = httpJson("https://games.roblox.com/v1/games?universeIds="..tostring(game.GameId))
+                local data = type(gameResponse) == "table" and type(gameResponse.data) == "table" and gameResponse.data[1] or nil
+                state.GameData = data
+                local votesResponse = httpJson("https://games.roblox.com/v1/games/votes?universeIds="..tostring(game.GameId))
+                local vote = type(votesResponse) == "table" and type(votesResponse.data) == "table" and votesResponse.data[1] or nil
+                state.Votes = vote
+
+                if data then
+                    gameName.Text = tostring(data.name or game.Name or "Roblox Experience")
+                    description.Text = trim(data.description) ~= "" and tostring(data.description) or "No description."
+                    playingValue.Text = fmt(data.playing)
+                    visitsValue.Text = fmt(data.visits)
+                    local up = tonumber(vote and vote.upVotes) or 0
+                    local down = tonumber(vote and vote.downVotes) or 0
+                    likesValue.Text = fmt(up)
+                    local total = up + down
+                    ratingValue.Text = total > 0 and string.format("%.1f%%", (up/total)*100) or "--"
+                    local created = tostring(data.created or "Unknown"):match("^(%d%d%d%d%-%d%d%-%d%d)") or tostring(data.created or "Unknown")
+                    local updated = tostring(data.updated or "Unknown"):match("^(%d%d%d%d%-%d%d%-%d%d)") or tostring(data.updated or "Unknown")
+                    infoText.Text =
+                        "Favorites: "..fmt(data.favoritedCount).."   |   Max Players: "..fmt(data.maxPlayers).."\n"..
+                        "Kreated: "..created.."   |   Updated: "..updated.."\n"..
+                        "Genre: "..tostring(data.genre or data.genre_l1 or "Unknown").."   |   Voice: "..tostring(data.voiceEnabled == true and "Enabled" or "Not listed").."\n"..
+                        "Kopyable: "..tostring(data.copyingAllowed == true and "Yes" or "No")
+                    local creator = data.creator
+                    if type(creator) == "table" then
+                        creatorLine.Text = "By "..tostring(creator.name or "Unknown").."  |  "..tostring(creator.type or "Creator").." ID "..tostring(creator.id or "--")
+                        if tostring(creator.type) == "User" and tonumber(creator.id) then
+                            pcall(function()
+                                local image = Players:GetUserThumbnailAsync(tonumber(creator.id), Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size150x150)
+                                creatorAvatar.Image = image
+                            end)
+                        elseif tostring(creator.type) == "Group" and tonumber(creator.id) then
+                            creatorAvatar.Image = "rbxthumb://type=GroupIcon&id="..tostring(creator.id).."&w=150&h=150"
+                        end
+                    end
+                else
+                    gameName.Text = game.Name
+                    infoText.Text = "Roblox experience metadata could not be loaded. PlaceId and UniverseId are still available."
+                end
+
+                local iconData = httpJson("https://thumbnails.roblox.com/v1/games/icons?universeIds="..tostring(game.GameId).."&returnPolicy=PlaceHolder&size=512x512&format=Png&isCircular=false")
+                local icon = type(iconData)=="table" and type(iconData.data)=="table" and iconData.data[1]
+                if icon and icon.imageUrl then gameIcon.Image = tostring(icon.imageUrl) end
+            end)
+        end
+
+        local frameCounter, frameClock, currentFps = 0, os.clock(), 0
+        trackLocal(RunService.RenderStepped:Connect(function()
+            frameCounter = frameCounter + 1
+            local now = os.clock()
+            if now - frameClock >= 0.75 then
+                currentFps = math.floor(frameCounter / (now-frameClock) + 0.5)
+                frameCounter, frameClock = 0, now
+                local ping = "--"
+                pcall(function()
+                    local network = get.Stats.Network.ServerStatsItem
+                    local item = network and network:FindFirstChild("Data Ping")
+                    if item then ping = item:GetValueString() end
+                end)
+                liveLine.Text = "Kurrent server: "..tostring(#Players:GetPlayers()).."/"..tostring(Players.MaxPlayers).." players  |  FPS "..tostring(currentFps).."  |  Ping "..tostring(ping)
+            end
+        end))
+
+        trackLocal(sortLow.MouseButton1Click:Connect(function() state.ServerSort="players_low"; renderServers() end))
+        trackLocal(sortHigh.MouseButton1Click:Connect(function() state.ServerSort="players_high"; renderServers() end))
+        trackLocal(sortPing.MouseButton1Click:Connect(function()
+            LULA:ShowIsland("Ping / FPS Sort", "Roblox's public server list does not provide remote server ping or FPS before joining. LH only shows live metrics for your kurrent server.", {Duration=4})
+        end))
+        trackLocal(refreshServers.MouseButton1Click:Connect(renderServers))
+        trackLocal(refreshPlayers.MouseButton1Click:Connect(renderPlayers))
+        trackLocal(Players.PlayerAdded:Connect(renderPlayers))
+        trackLocal(Players.PlayerRemoving:Connect(function() task.defer(renderPlayers) end))
+
+        refreshGameInfo()
+        renderServers()
+        renderPlayers()
+        renderBadges()
+        renderPasses()
+
+        state.Cleanup = function()
+            if state.Destroyed then return end
+            state.Destroyed = true
             for _, connection in ipairs(state.Connections) do
                 pcall(function() if connection and connection.Connected then connection:Disconnect() end end)
             end
@@ -17957,6 +18470,9 @@ function LULA:Destroy()
     end
     if active.UserLookup and type(active.UserLookup.Cleanup) == "function" then
         pcall(active.UserLookup.Cleanup)
+    end
+    if active.ExperienceHub and type(active.ExperienceHub.Cleanup) == "function" then
+        pcall(active.ExperienceHub.Cleanup)
     end
     pcall(function() UserInputService.MouseIconEnabled = true end)
     disconnectAll()
