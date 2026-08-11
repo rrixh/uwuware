@@ -1,4 +1,4 @@
---kavo ui 4.7.1 - LH v10.4.0
+--kavo ui 4.7.2 - LH v10.4.0
 local LULA = {}
 LULA.AnimationMarketplaceVersion = 4
 LULA.EmoteMarketplaceVersion = 1
@@ -2851,7 +2851,7 @@ function LULA.CreateLib(kavName, themeInput)
     local tabList = Instance.new("ScrollingFrame")
     tabList.Name = "TabList"
     tabList.Position = UDim2.fromOffset(7, 0)
-    tabList.Size = UDim2.new(0, 135, 1, 0)
+    tabList.Size = UDim2.new(0, 135, 1, -39)
     tabList.BackgroundTransparency = 1
     tabList.BorderSizePixel = 0
     tabList.ScrollBarThickness = 2
@@ -2862,6 +2862,44 @@ function LULA.CreateLib(kavName, themeInput)
     tabLayout.Padding = UDim.new(0, 0)
     tabLayout.SortOrder = Enum.SortOrder.LayoutOrder
     tabLayout.Parent = tabList
+
+    local quickNav = Instance.new("Frame")
+    quickNav.Name = "LHPageQuickNav"
+    quickNav.Position = UDim2.new(0, 7, 1, -37)
+    quickNav.Size = UDim2.fromOffset(135, 33)
+    quickNav.BorderSizePixel = 0
+    quickNav.BackgroundTransparency = 0.08
+    quickNav.Parent = sidebar
+    bind(quickNav, "BackgroundColor3", "Background")
+    makeCorner(quickNav, 8)
+    makeStroke(quickNav, theme.SchemeColor, 0.72, 1)
+
+    local quickUp = makeButton(quickNav, "^")
+    quickUp.Name = "LHScrollUp"
+    quickUp.Position = UDim2.fromOffset(3, 3)
+    quickUp.Size = UDim2.fromOffset(31, 27)
+    quickUp.TextSize = 17
+    quickUp.TextColor3 = rgb(255, 255, 255)
+    quickUp.BackgroundTransparency = 0.04
+    bind(quickUp, "BackgroundColor3", "SchemeColor")
+
+    local quickTop = makeButton(quickNav, "Top")
+    quickTop.Name = "LHBackToTop"
+    quickTop.Position = UDim2.fromOffset(38, 3)
+    quickTop.Size = UDim2.fromOffset(59, 27)
+    quickTop.TextSize = 10
+    quickTop.TextColor3 = rgb(255, 255, 255)
+    quickTop.BackgroundTransparency = 0.04
+    bind(quickTop, "BackgroundColor3", "SchemeColor")
+
+    local quickDown = makeButton(quickNav, "v")
+    quickDown.Name = "LHScrollDown"
+    quickDown.Position = UDim2.fromOffset(101, 3)
+    quickDown.Size = UDim2.fromOffset(31, 27)
+    quickDown.TextSize = 15
+    quickDown.TextColor3 = rgb(255, 255, 255)
+    quickDown.BackgroundTransparency = 0.04
+    bind(quickDown, "BackgroundColor3", "SchemeColor")
 
     local pages = Instance.new("Frame")
     pages.Name = "Pages"
@@ -2976,6 +3014,10 @@ function LULA.CreateLib(kavName, themeInput)
         BackButton = backButton,
         ForwardButton = forwardButton,
         UndoButton = undoButton,
+        QuickNav = quickNav,
+        QuickScrollUp = quickUp,
+        QuickBackToTop = quickTop,
+        QuickScrollDown = quickDown,
         IslandToken = 0,
         Island = {
             Frame = islandFrame,
@@ -2991,6 +3033,64 @@ function LULA.CreateLib(kavName, themeInput)
         AnimationBundles = nil,
     }
     applyTheme()
+
+    local function selectedQuickTab()
+        return active and active.SelectedTab or nil
+    end
+
+    local function quickMove(amount)
+        local tab = selectedQuickTab()
+        if tab and tab.QuickScrollBy then
+            tab:QuickScrollBy(amount)
+        end
+    end
+
+    local function quickTopPage()
+        local tab = selectedQuickTab()
+        if tab and tab.QuickScrollTop then
+            tab:QuickScrollTop()
+        end
+    end
+
+    local function refreshGlobalQuickNav()
+        if not active then return end
+        local arrows = settings.ScrollArrowsEnabled ~= false
+        if active.QuickScrollUp then active.QuickScrollUp.Visible = arrows end
+        if active.QuickScrollDown then active.QuickScrollDown.Visible = arrows end
+        if active.QuickBackToTop then active.QuickBackToTop.Visible = true end
+    end
+
+    local function bindGlobalQuickHold(button, direction)
+        track(button.MouseButton1Click:Connect(function()
+            quickMove(direction * 145)
+        end))
+        track(button.InputBegan:Connect(function(inputObject)
+            if inputObject.UserInputType ~= Enum.UserInputType.Touch
+                and inputObject.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
+            active.QuickScrollHoldToken = (active.QuickScrollHoldToken or 0) + 1
+            local token = active.QuickScrollHoldToken
+            task.delay(0.32, function()
+                while active and active.Main and active.Main.Parent
+                    and active.QuickScrollHoldToken == token do
+                    quickMove(direction * 92)
+                    task.wait(0.10)
+                end
+            end)
+        end))
+        track(button.InputEnded:Connect(function(inputObject)
+            if inputObject.UserInputType == Enum.UserInputType.Touch
+                or inputObject.UserInputType == Enum.UserInputType.MouseButton1 then
+                if active then
+                    active.QuickScrollHoldToken = (active.QuickScrollHoldToken or 0) + 1
+                end
+            end
+        end))
+    end
+
+    track(quickTop.MouseButton1Click:Connect(quickTopPage))
+    bindGlobalQuickHold(quickUp, -1)
+    bindGlobalQuickHold(quickDown, 1)
+    refreshGlobalQuickNav()
     setGlassBlur(true)
     LULA:DraggingEnabled(header, main)
 
@@ -3273,82 +3373,8 @@ function LULA.CreateLib(kavName, themeInput)
             end)
         end
 
-        local backToTop = makeButton(page, "Back to Top")
-        backToTop.Name = "LHBackToTop"
-        backToTop.AnchorPoint = Vector2.new(1, 1)
-        backToTop.Position = UDim2.new(1, -10, 1, -10)
-        backToTop.Size = UDim2.fromOffset(86, 27)
-        backToTop.TextSize = 10
-        backToTop.ZIndex = 180
-        backToTop.BackgroundTransparency = 0.04
-        bind(backToTop, "BackgroundColor3", "SchemeColor")
-        backToTop.TextColor3 = rgb(255, 255, 255)
-        tab.BackToTopButton = backToTop
-        track(backToTop.MouseButton1Click:Connect(function()
-            tab:QuickScrollTop()
-        end))
-
-        local scrollUp = makeButton(page, "^")
-        scrollUp.Name = "LHScrollUp"
-        scrollUp.AnchorPoint = Vector2.new(1, 0.5)
-        scrollUp.Position = UDim2.new(1, -10, 0.5, -22)
-        scrollUp.Size = UDim2.fromOffset(34, 34)
-        scrollUp.TextSize = 19
-        scrollUp.ZIndex = 180
-        scrollUp.BackgroundTransparency = 0.04
-        bind(scrollUp, "BackgroundColor3", "SchemeColor")
-        scrollUp.TextColor3 = rgb(255, 255, 255)
-
-        local scrollDown = makeButton(page, "v")
-        scrollDown.Name = "LHScrollDown"
-        scrollDown.AnchorPoint = Vector2.new(1, 0.5)
-        scrollDown.Position = UDim2.new(1, -10, 0.5, 18)
-        scrollDown.Size = UDim2.fromOffset(34, 34)
-        scrollDown.TextSize = 17
-        scrollDown.ZIndex = 180
-        scrollDown.BackgroundTransparency = 0.04
-        bind(scrollDown, "BackgroundColor3", "SchemeColor")
-        scrollDown.TextColor3 = rgb(255, 255, 255)
-
-        tab.ScrollUpButton = scrollUp
-        tab.ScrollDownButton = scrollDown
-
-        function tab:RefreshQuickScrollVisibility()
-            local arrows = settings.ScrollArrowsEnabled ~= false
-            if self.ScrollUpButton then self.ScrollUpButton.Visible = arrows end
-            if self.ScrollDownButton then self.ScrollDownButton.Visible = arrows end
-            -- Back to Top is intentionally always available on every page.
-            if self.BackToTopButton then self.BackToTopButton.Visible = true end
-        end
-        tab:RefreshQuickScrollVisibility()
-
-        local function bindQuickScrollHold(button, direction)
-            track(button.MouseButton1Click:Connect(function()
-                tab:QuickScrollBy(direction * 145)
-            end))
-            track(button.InputBegan:Connect(function(inputObject)
-                if inputObject.UserInputType ~= Enum.UserInputType.Touch
-                    and inputObject.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
-                tab.QuickScrollHoldToken = (tab.QuickScrollHoldToken or 0) + 1
-                local token = tab.QuickScrollHoldToken
-                task.delay(0.32, function()
-                    while tab.Page and tab.Page.Parent
-                        and tab.QuickScrollHoldToken == token do
-                        tab:QuickScrollBy(direction * 92)
-                        task.wait(0.10)
-                    end
-                end)
-            end))
-            track(button.InputEnded:Connect(function(inputObject)
-                if inputObject.UserInputType == Enum.UserInputType.Touch
-                    or inputObject.UserInputType == Enum.UserInputType.MouseButton1 then
-                    tab.QuickScrollHoldToken = (tab.QuickScrollHoldToken or 0) + 1
-                end
-            end))
-        end
-
-        bindQuickScrollHold(scrollUp, -1)
-        bindQuickScrollHold(scrollDown, 1)
+        -- Quick-scroll methods are kept per tab, but the visible navigation
+        -- controls live in a reserved Sidebar footer so they never cover page content.
         track(scroll:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
             tab.LastCanvasPosition = scroll.CanvasPosition
         end))
@@ -18793,12 +18819,10 @@ end
 
 function LULA:SetScrollArrowsEnabled(value)
     settings.ScrollArrowsEnabled = value ~= false
-    if active and active.Tabs then
-        for _, tab in ipairs(active.Tabs) do
-            if tab.RefreshQuickScrollVisibility then
-                pcall(function() tab:RefreshQuickScrollVisibility() end)
-            end
-        end
+    if active then
+        if active.QuickScrollUp then active.QuickScrollUp.Visible = settings.ScrollArrowsEnabled end
+        if active.QuickScrollDown then active.QuickScrollDown.Visible = settings.ScrollArrowsEnabled end
+        if active.QuickBackToTop then active.QuickBackToTop.Visible = true end
     end
     return settings.ScrollArrowsEnabled
 end
