@@ -1,4 +1,4 @@
---kavo ui 4.6.9 - LH v10.4.0
+--kavo ui 4.7.0 - LH v10.4.0
 local LULA = {}
 LULA.AnimationMarketplaceVersion = 4
 LULA.EmoteMarketplaceVersion = 1
@@ -17569,6 +17569,55 @@ function LULA.CreateLib(kavName, themeInput)
             return decodeJson(rawHttpBody(url))
         end
 
+        state.LoadRemoteImage = function(url, filename)
+            url = tostring(url or "")
+            if url == "" then return nil end
+
+            local fromUrl = rawget(env, "getcustomassetfromurl") or rawget(env, "get_custom_asset_from_url")
+            if typeof(fromUrl) == "function" then
+                local ok, asset = pcall(fromUrl, url)
+                if ok and type(asset) == "string" and asset ~= "" then return asset end
+            end
+
+            local getAsset = rawget(env, "getcustomasset") or rawget(env, "getsynasset") or rawget(env, "get_custom_asset")
+            local writeFile = rawget(env, "writefile") or rawget(env, "write_file")
+            local makeFolder = rawget(env, "makefolder") or rawget(env, "make_folder")
+            local isFolder = rawget(env, "isfolder") or rawget(env, "is_folder")
+            if typeof(getAsset) ~= "function" or typeof(writeFile) ~= "function" then return nil end
+
+            pcall(function()
+                if typeof(makeFolder) == "function" and (typeof(isFolder) ~= "function" or not isFolder("LollypopHub")) then
+                    makeFolder("LollypopHub")
+                end
+            end)
+
+            local body = nil
+            local requesters = {rawget(env,"request"), rawget(env,"http_request"), rawget(env,"httprequest")}
+            local synTable = rawget(env,"syn")
+            if type(synTable)=="table" then table.insert(requesters,synTable.request) end
+            for _, requester in ipairs(requesters) do
+                if typeof(requester)=="function" then
+                    local ok, response = pcall(requester, {Url=url, Method="GET", Headers={Accept="image/png,image/webp,image/*"}})
+                    if ok and type(response)=="table" then
+                        local responseBody=response.Body or response.body or response.ResponseBody
+                        if type(responseBody)=="string" and responseBody~="" then body=responseBody; break end
+                    elseif ok and type(response)=="string" and response~="" then
+                        body=response; break
+                    end
+                end
+            end
+            if not body then
+                local ok, response = pcall(function() return game:HttpGet(url, false) end)
+                if ok and type(response)=="string" and response~="" then body=response end
+            end
+            if not body then return nil end
+
+            local path = "LollypopHub/" .. tostring(filename or "experience_thumbnail.png")
+            if not pcall(writeFile, path, body) then return nil end
+            local ok, asset = pcall(getAsset, path)
+            return ok and type(asset)=="string" and asset or nil
+        end
+
         local function makeCard(parent, height, order)
             local row = newRow(parent, "ExperienceCard", height)
             row.LayoutOrder = order or 0
@@ -17741,20 +17790,31 @@ function LULA.CreateLib(kavName, themeInput)
         description.TextWrapped = true
         description.TextColor3 = rgb(255, 255, 255)
 
-        state.FitOverviewTextCard = function(row, label, minimumHeight, maximumHeight)
+        state.FitOverviewTextCard = function(row, label, minimumHeight)
             local width = math.max(180, (row.AbsoluteSize.X > 0 and row.AbsoluteSize.X or scroll.AbsoluteSize.X) - 20)
             local ok, bounds = pcall(function()
-                return TextService:GetTextSize(tostring(label.Text or ""), label.TextSize, label.Font, Vector2.new(width, 1000))
+                return TextService:GetTextSize(tostring(label.Text or ""), label.TextSize, label.Font, Vector2.new(width, 10000))
             end)
-            local textHeight = ok and bounds and bounds.Y or 18
-            row.Size = UDim2.new(1, 0, 0, math.clamp(math.ceil(29 + textHeight + 10), minimumHeight, maximumHeight))
-            label.Size = UDim2.new(1, -20, 0, math.max(18, textHeight + 2))
+            local measured = ok and bounds and bounds.Y or label.TextBounds.Y
+            local textHeight = math.max(18, tonumber(measured) or 18)
+            label.Size = UDim2.new(1, -20, 0, math.ceil(textHeight + 4))
+            row.Size = UDim2.new(1, 0, 0, math.max(minimumHeight, math.ceil(29 + textHeight + 14)))
         end
 
         state.FitOverviewCards = function()
-            state.FitOverviewTextCard(infoRow, infoText, 60, 150)
-            state.FitOverviewTextCard(descRow, description, 56, 220)
+            state.FitOverviewTextCard(infoRow, infoText, 60)
+            state.FitOverviewTextCard(descRow, description, 56)
         end
+
+        trackLocal(infoText:GetPropertyChangedSignal("Text"):Connect(function()
+            task.defer(state.FitOverviewCards)
+        end))
+        trackLocal(description:GetPropertyChangedSignal("Text"):Connect(function()
+            task.defer(state.FitOverviewCards)
+        end))
+        trackLocal(scroll:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+            task.defer(state.FitOverviewCards)
+        end))
 
         local serverTools = makeCard(servers, 82, 1)
         local serverStatus = makeText(serverTools, "Loading public servers...", 10, Enum.Font.GothamMedium)
@@ -18038,9 +18098,29 @@ function LULA.CreateLib(kavName, themeInput)
                     infoText.Text = "Roblox experience metadata could not be loaded. PlaceId and UniverseId are still available."
                 end
 
-                local iconData = httpJson("https://thumbnails.roblox.com/v1/games/icons?universeIds="..tostring(game.GameId).."&returnPolicy=PlaceHolder&size=512x512&format=Png&isCircular=false")
-                local icon = type(iconData)=="table" and type(iconData.data)=="table" and iconData.data[1]
-                if icon and icon.imageUrl then gameIcon.Image = tostring(icon.imageUrl) end
+                -- Roblox's thumbnail API resolves to the same tr.rbxcdn.com image URLs
+                -- visible when copying the image address from the Roblox game page.
+                local mediaData = httpJson("https://thumbnails.roblox.com/v1/games/multiget/thumbnails?universeIds="..tostring(game.GameId).."&countPerUniverse=1&defaults=true&size=768x432&format=Png&isCircular=false")
+                local mediaEntry = type(mediaData)=="table" and type(mediaData.data)=="table" and mediaData.data[1] or nil
+                local mediaList = mediaEntry and (mediaEntry.thumbnails or mediaEntry.data) or nil
+                local media = type(mediaList)=="table" and mediaList[1] or nil
+                local imageUrl = media and media.imageUrl or nil
+
+                if not imageUrl then
+                    local iconData = httpJson("https://thumbnails.roblox.com/v1/games/icons?universeIds="..tostring(game.GameId).."&returnPolicy=PlaceHolder&size=512x512&format=Png&isCircular=false")
+                    local icon = type(iconData)=="table" and type(iconData.data)=="table" and iconData.data[1] or nil
+                    imageUrl = icon and icon.imageUrl or nil
+                end
+
+                if imageUrl then
+                    state.GameThumbnailUrl = tostring(imageUrl)
+                    local loadedImage = state.LoadRemoteImage(state.GameThumbnailUrl, "experience_"..tostring(game.GameId)..".png")
+                    if loadedImage then
+                        gameIcon.Image = loadedImage
+                    else
+                        gameIcon.Image = tostring(imageUrl)
+                    end
+                end
                 task.defer(state.FitOverviewCards)
             end)
         end
