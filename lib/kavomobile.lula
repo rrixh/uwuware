@@ -1,4 +1,4 @@
---kavo ui 4.7.2 - LH v10.4.0
+--kavo ui 4.7.3 - LH v10.4.0
 local LULA = {}
 LULA.AnimationMarketplaceVersion = 4
 LULA.EmoteMarketplaceVersion = 1
@@ -2107,6 +2107,10 @@ local function mirrorCurrentAvatarPose(targetModel, ownerGui)
                         if targetMotor then
                             pcall(function()
                                 targetMotor.Transform = sourceMotor.Transform
+                                -- Some experiences animate Motor6D C0/C1 directly
+                                -- instead of only Transform.
+                                targetMotor.C0 = sourceMotor.C0
+                                targetMotor.C1 = sourceMotor.C1
                             end)
                         end
                     end
@@ -2863,44 +2867,6 @@ function LULA.CreateLib(kavName, themeInput)
     tabLayout.SortOrder = Enum.SortOrder.LayoutOrder
     tabLayout.Parent = tabList
 
-    local quickNav = Instance.new("Frame")
-    quickNav.Name = "LHPageQuickNav"
-    quickNav.Position = UDim2.new(0, 7, 1, -37)
-    quickNav.Size = UDim2.fromOffset(135, 33)
-    quickNav.BorderSizePixel = 0
-    quickNav.BackgroundTransparency = 0.08
-    quickNav.Parent = sidebar
-    bind(quickNav, "BackgroundColor3", "Background")
-    makeCorner(quickNav, 8)
-    makeStroke(quickNav, theme.SchemeColor, 0.72, 1)
-
-    local quickUp = makeButton(quickNav, "^")
-    quickUp.Name = "LHScrollUp"
-    quickUp.Position = UDim2.fromOffset(3, 3)
-    quickUp.Size = UDim2.fromOffset(31, 27)
-    quickUp.TextSize = 17
-    quickUp.TextColor3 = rgb(255, 255, 255)
-    quickUp.BackgroundTransparency = 0.04
-    bind(quickUp, "BackgroundColor3", "SchemeColor")
-
-    local quickTop = makeButton(quickNav, "Top")
-    quickTop.Name = "LHBackToTop"
-    quickTop.Position = UDim2.fromOffset(38, 3)
-    quickTop.Size = UDim2.fromOffset(59, 27)
-    quickTop.TextSize = 10
-    quickTop.TextColor3 = rgb(255, 255, 255)
-    quickTop.BackgroundTransparency = 0.04
-    bind(quickTop, "BackgroundColor3", "SchemeColor")
-
-    local quickDown = makeButton(quickNav, "v")
-    quickDown.Name = "LHScrollDown"
-    quickDown.Position = UDim2.fromOffset(101, 3)
-    quickDown.Size = UDim2.fromOffset(31, 27)
-    quickDown.TextSize = 15
-    quickDown.TextColor3 = rgb(255, 255, 255)
-    quickDown.BackgroundTransparency = 0.04
-    bind(quickDown, "BackgroundColor3", "SchemeColor")
-
     local pages = Instance.new("Frame")
     pages.Name = "Pages"
     pages.Position = UDim2.fromOffset(149, 29)
@@ -3014,10 +2980,6 @@ function LULA.CreateLib(kavName, themeInput)
         BackButton = backButton,
         ForwardButton = forwardButton,
         UndoButton = undoButton,
-        QuickNav = quickNav,
-        QuickScrollUp = quickUp,
-        QuickBackToTop = quickTop,
-        QuickScrollDown = quickDown,
         IslandToken = 0,
         Island = {
             Frame = islandFrame,
@@ -3034,63 +2996,61 @@ function LULA.CreateLib(kavName, themeInput)
     }
     applyTheme()
 
-    local function selectedQuickTab()
-        return active and active.SelectedTab or nil
-    end
+    -- Reserved Sidebar navigation rail. Stored directly on active so this adds
+    -- no long-lived local variables to the already-large CreateLib function.
+    active.QuickNav = Instance.new("Frame")
+    active.QuickNav.Name = "LHPageQuickNav"
+    active.QuickNav.Position = UDim2.new(0, 7, 1, -37)
+    active.QuickNav.Size = UDim2.fromOffset(135, 33)
+    active.QuickNav.BorderSizePixel = 0
+    active.QuickNav.BackgroundTransparency = 0.08
+    active.QuickNav.Parent = sidebar
+    bind(active.QuickNav, "BackgroundColor3", "Background")
+    makeCorner(active.QuickNav, 8)
+    active.QuickNavStroke = makeStroke(active.QuickNav, active.Theme.SchemeColor, 0.72, 1)
+    bind(active.QuickNavStroke, "Color", "SchemeColor")
 
-    local function quickMove(amount)
-        local tab = selectedQuickTab()
-        if tab and tab.QuickScrollBy then
-            tab:QuickScrollBy(amount)
-        end
-    end
+    active.QuickScrollUp = makeButton(active.QuickNav, "^")
+    active.QuickScrollUp.Position = UDim2.fromOffset(3, 3)
+    active.QuickScrollUp.Size = UDim2.fromOffset(31, 27)
+    active.QuickScrollUp.TextSize = 17
+    active.QuickScrollUp.TextColor3 = rgb(255, 255, 255)
+    active.QuickScrollUp.BackgroundTransparency = 0.04
+    bind(active.QuickScrollUp, "BackgroundColor3", "SchemeColor")
 
-    local function quickTopPage()
-        local tab = selectedQuickTab()
-        if tab and tab.QuickScrollTop then
-            tab:QuickScrollTop()
-        end
-    end
+    active.QuickBackToTop = makeButton(active.QuickNav, "Top")
+    active.QuickBackToTop.Position = UDim2.fromOffset(38, 3)
+    active.QuickBackToTop.Size = UDim2.fromOffset(59, 27)
+    active.QuickBackToTop.TextSize = 10
+    active.QuickBackToTop.TextColor3 = rgb(255, 255, 255)
+    active.QuickBackToTop.BackgroundTransparency = 0.04
+    bind(active.QuickBackToTop, "BackgroundColor3", "SchemeColor")
 
-    local function refreshGlobalQuickNav()
-        if not active then return end
-        local arrows = settings.ScrollArrowsEnabled ~= false
-        if active.QuickScrollUp then active.QuickScrollUp.Visible = arrows end
-        if active.QuickScrollDown then active.QuickScrollDown.Visible = arrows end
-        if active.QuickBackToTop then active.QuickBackToTop.Visible = true end
-    end
+    active.QuickScrollDown = makeButton(active.QuickNav, "v")
+    active.QuickScrollDown.Position = UDim2.fromOffset(101, 3)
+    active.QuickScrollDown.Size = UDim2.fromOffset(31, 27)
+    active.QuickScrollDown.TextSize = 15
+    active.QuickScrollDown.TextColor3 = rgb(255, 255, 255)
+    active.QuickScrollDown.BackgroundTransparency = 0.04
+    bind(active.QuickScrollDown, "BackgroundColor3", "SchemeColor")
 
-    local function bindGlobalQuickHold(button, direction)
-        track(button.MouseButton1Click:Connect(function()
-            quickMove(direction * 145)
-        end))
-        track(button.InputBegan:Connect(function(inputObject)
-            if inputObject.UserInputType ~= Enum.UserInputType.Touch
-                and inputObject.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
-            active.QuickScrollHoldToken = (active.QuickScrollHoldToken or 0) + 1
-            local token = active.QuickScrollHoldToken
-            task.delay(0.32, function()
-                while active and active.Main and active.Main.Parent
-                    and active.QuickScrollHoldToken == token do
-                    quickMove(direction * 92)
-                    task.wait(0.10)
-                end
-            end)
-        end))
-        track(button.InputEnded:Connect(function(inputObject)
-            if inputObject.UserInputType == Enum.UserInputType.Touch
-                or inputObject.UserInputType == Enum.UserInputType.MouseButton1 then
-                if active then
-                    active.QuickScrollHoldToken = (active.QuickScrollHoldToken or 0) + 1
-                end
-            end
-        end))
-    end
+    active.QuickScrollUp.Visible = settings.ScrollArrowsEnabled ~= false
+    active.QuickScrollDown.Visible = settings.ScrollArrowsEnabled ~= false
 
-    track(quickTop.MouseButton1Click:Connect(quickTopPage))
-    bindGlobalQuickHold(quickUp, -1)
-    bindGlobalQuickHold(quickDown, 1)
-    refreshGlobalQuickNav()
+    track(active.QuickBackToTop.MouseButton1Click:Connect(function()
+        local selected = active and active.SelectedTab
+        if selected and selected.QuickScrollTop then selected:QuickScrollTop() end
+    end))
+
+    track(active.QuickScrollUp.MouseButton1Click:Connect(function()
+        local selected = active and active.SelectedTab
+        if selected and selected.QuickScrollBy then selected:QuickScrollBy(-145) end
+    end))
+
+    track(active.QuickScrollDown.MouseButton1Click:Connect(function()
+        local selected = active and active.SelectedTab
+        if selected and selected.QuickScrollBy then selected:QuickScrollBy(145) end
+    end))
     setGlassBlur(true)
     LULA:DraggingEnabled(header, main)
 
@@ -3373,8 +3333,7 @@ function LULA.CreateLib(kavName, themeInput)
             end)
         end
 
-        -- Quick-scroll methods are kept per tab, but the visible navigation
-        -- controls live in a reserved Sidebar footer so they never cover page content.
+        -- Visible quick-scroll controls are in the reserved Sidebar footer.
         track(scroll:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
             tab.LastCanvasPosition = scroll.CanvasPosition
         end))
@@ -4155,6 +4114,9 @@ function LULA.CreateLib(kavName, themeInput)
                 end
 
                 local function render(fire)
+                    if saturation <= 0.012 then saturation = 0 end
+                    if brightness >= 0.988 then brightness = 1 end
+                    if brightness <= 0.012 then brightness = 0 end
                     value = Color3.fromHSV(hue, saturation, brightness)
                     preview.BackgroundColor3 = value
                     colorCursor.Position = UDim2.fromScale(hue, saturation)
@@ -14067,13 +14029,13 @@ function LULA.CreateLib(kavName, themeInput)
                 local syncCreator = Players.CreateHumanoidModelFromDescription
 
                 if typeof(asyncCreator) == "function" then
-                    for _, verification in ipairs({Enum.AssetTypeVerification.ClientOnly, Enum.AssetTypeVerification.Default}) do
+                    for _, verification in ipairs({Enum.AssetTypeVerification.Default, Enum.AssetTypeVerification.ClientOnly}) do
                         local ok, result = pcall(asyncCreator, Players, description, rigType, verification)
                         if ok and typeof(result) == "Instance" then rig = result; break end
                     end
                 end
                 if not rig and typeof(syncCreator) == "function" then
-                    for _, verification in ipairs({Enum.AssetTypeVerification.ClientOnly, Enum.AssetTypeVerification.Default}) do
+                    for _, verification in ipairs({Enum.AssetTypeVerification.Default, Enum.AssetTypeVerification.ClientOnly}) do
                         local ok, result = pcall(syncCreator, Players, description, rigType, verification)
                         if ok and typeof(result) == "Instance" then rig = result; break end
                     end
@@ -14106,6 +14068,12 @@ function LULA.CreateLib(kavName, themeInput)
                 local head = rig:FindFirstChild("Head")
                 local humanoid = rig:FindFirstChildOfClass("Humanoid")
 
+                if humanoid then
+                    pcall(function() humanoid:BuildRigFromAttachments() end)
+                    RunService.Heartbeat:Wait()
+                    RunService.Heartbeat:Wait()
+                end
+
                 if root then
                     pcall(function()
                         rig.PrimaryPart = root
@@ -14120,20 +14088,17 @@ function LULA.CreateLib(kavName, themeInput)
                 RunService.Heartbeat:Wait()
 
                 local boxCFrame, boxSize = rig:GetBoundingBox()
+                -- Center the REAL complete bounding box so hats, hair, layered
+                -- accessories, shoes, etc. are included instead of framing only
+                -- around HumanoidRootPart.
                 local focus = boxCFrame.Position
-                local height = math.clamp(boxSize.Y, 4.5, 9.5)
-                local width = math.clamp(math.max(boxSize.X, boxSize.Z), 2.5, 7)
-                local distance = math.max(6.2, height * 1.02, width * 1.45)
+                local height = math.clamp(boxSize.Y, 4.5, 12)
+                local width = math.clamp(math.max(boxSize.X, boxSize.Z), 2.5, 9)
+                local distance = math.max(7.2, height * 1.18, width * 1.62)
 
-                if root then
-                    focus = root.Position + Vector3.new(0, math.clamp(height * 0.16, 0.8, 1.5), 0)
-                elseif head then
-                    focus = head.Position - Vector3.new(0, math.clamp(height * 0.28, 1.2, 2.2), 0)
-                end
-
-                camera.FieldOfView = 30
+                camera.FieldOfView = 32
                 camera.CFrame = CFrame.lookAt(
-                    focus + Vector3.new(0, 0.15, distance),
+                    focus + Vector3.new(0, height * 0.015, distance),
                     focus,
                     Vector3.new(0, 1, 0)
                 )
@@ -16039,21 +16004,85 @@ function LULA.CreateLib(kavName, themeInput)
             state.Viewer:Refresh()
         end))
 
-        -- Auto-refresh the same avatar data the Refresh button uses, but only
-        -- while the Avatar Kreator tab AND the Viewer mode are actually open.
-        -- This avoids a permanent background polling loop when the page is unused.
+        -- Live movement is mirrored every rendered frame by mirrorCurrentAvatarPose.
+        -- Do NOT rebuild the viewport on a timer because that causes visible stutter.
+        -- Instead, watch the live character for outfit/accessory changes and only
+        -- rebuild when appearance actually changes, while Viewer is open.
+        state.Viewer.LiveCharacter = nil
+        state.Viewer.LiveAddedConnection = nil
+        state.Viewer.LiveRemovingConnection = nil
+
+        state.Viewer:DisconnectLiveAppearanceWatch = function()
+            if self.LiveAddedConnection then
+                pcall(function() self.LiveAddedConnection:Disconnect() end)
+                self.LiveAddedConnection = nil
+            end
+            if self.LiveRemovingConnection then
+                pcall(function() self.LiveRemovingConnection:Disconnect() end)
+                self.LiveRemovingConnection = nil
+            end
+            self.LiveCharacter = nil
+        end
+
+        state.Viewer:BindLiveAppearanceWatch = function(character)
+            self:DisconnectLiveAppearanceWatch()
+            if not character then return end
+            self.LiveCharacter = character
+
+            local function relevant(object)
+                return object
+                    and (
+                        object:IsA("Accessory")
+                        or object:IsA("Shirt")
+                        or object:IsA("Pants")
+                        or object:IsA("ShirtGraphic")
+                        or object:IsA("BodyColors")
+                        or object:IsA("CharacterMesh")
+                    )
+            end
+
+            self.LiveAddedConnection = character.DescendantAdded:Connect(function(object)
+                if relevant(object)
+                    and avatarTab.Page.Visible
+                    and state.Viewer.Visible then
+                    task.defer(function()
+                        if not state.Destroyed and state.Viewer.Visible then
+                            state.Viewer:Refresh()
+                        end
+                    end)
+                end
+            end)
+
+            self.LiveRemovingConnection = character.DescendantRemoving:Connect(function(object)
+                if relevant(object)
+                    and avatarTab.Page.Visible
+                    and state.Viewer.Visible then
+                    task.defer(function()
+                        if not state.Destroyed and state.Viewer.Visible then
+                            state.Viewer:Refresh()
+                        end
+                    end)
+                end
+            end)
+        end
+
         task.spawn(function()
             while not state.Destroyed do
-                if avatarTab.Page.Visible
-                    and state.Viewer
-                    and state.Viewer.Visible
-                    and type(state.Viewer.Refresh) == "function" then
-                    pcall(function() state.Viewer:Refresh() end)
-                    task.wait(1.5)
+                if avatarTab.Page.Visible and state.Viewer and state.Viewer.Visible then
+                    local character = getCharacter()
+                    if state.Viewer.LiveCharacter ~= character then
+                        state.Viewer:BindLiveAppearanceWatch(character)
+                        pcall(function() state.Viewer:Refresh() end)
+                    end
+                    task.wait(0.18)
                 else
-                    task.wait(0.35)
+                    if state.Viewer.LiveCharacter then
+                        state.Viewer:DisconnectLiveAppearanceWatch()
+                    end
+                    task.wait(0.40)
                 end
             end
+            state.Viewer:DisconnectLiveAppearanceWatch()
         end)
         track(state.Viewer.OutfitButton.MouseButton1Click:Connect(function()
             DetailsOverlay.Visible = false
@@ -18744,7 +18773,13 @@ function LULA:ChangeColor(property, color)
     if active.Theme[property] == nil then return false end
     if property == "TextColor" then color = readableTextColor(color, active.Theme) end
     active.Theme[property] = color
-    if property == "SchemeColor" then env.LollypopTheme = color end
+    if property == "SchemeColor" then
+        -- A custom accent should be the actual selected color everywhere.
+        -- Keeping Accent2 synchronized also makes pure white/gray/black choices
+        -- apply immediately instead of leaving an old colored gradient behind.
+        active.Theme.Accent2 = color
+        env.LollypopTheme = color
+    end
     applyTheme()
     return true, color
 end
