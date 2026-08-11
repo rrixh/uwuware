@@ -1,4 +1,4 @@
---kavo ui 4.6.5 - LH v10.4.0 hotfix
+--kavo ui 4.6.6 - LH v10.4.0 FINALSAFE
 local LULA = {}
 LULA.AnimationMarketplaceVersion = 4
 LULA.EmoteMarketplaceVersion = 1
