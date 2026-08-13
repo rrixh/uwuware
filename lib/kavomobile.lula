@@ -1,11 +1,13 @@
---kavo ui 4.7.6 - LH v10.4.0 NOTIF FIX
+--kavo ui 4.7.6 - LH v10.5.0
 local LULA = {}
-LULA.AnimationMarketplaceVersion = 4
-LULA.EmoteMarketplaceVersion = 1
-LULA.AvatarMarketplaceVersion = 5
+LULA.AnimationMarketplaceVersion = 5
+LULA.EmoteMarketplaceVersion = 2
+LULA.AvatarMarketplaceVersion = 6
 LULA.AutoExecuteManagerVersion = 1
 LULA.UserLookupVersion = 5
-LULA.ExperienceHubVersion = 1
+LULA.ExperienceHubVersion = 2
+LULA.UniversalSearchVersion = 1
+LULA.PlayerFeatureVersion = 1
 local env = (getgenv and getgenv()) or _G
 
 --kr
@@ -489,6 +491,7 @@ if type(settings.FreeEmoteFavorites) ~= "table" then settings.FreeEmoteFavorites
 if settings.FreeEmoteAutoSave == nil then settings.FreeEmoteAutoSave = true end
 if type(settings.AvatarKreatorFavorites) ~= "table" then settings.AvatarKreatorFavorites = {} end
 if type(settings.AvatarKreatorSavedOutfits) ~= "table" then settings.AvatarKreatorSavedOutfits = {} end
+if type(settings.AvatarOwnedAssetIds) ~= "table" then settings.AvatarOwnedAssetIds = {} end
 if type(settings.AutoExecuteScripts) ~= "table" then settings.AutoExecuteScripts = {} end
 if settings.ThemeBrightness == nil then settings.ThemeBrightness = 0 end
 if type(settings.FreeEmoteSpeeds) ~= "table" then settings.FreeEmoteSpeeds = {} end
@@ -2926,7 +2929,7 @@ function LULA.CreateLib(kavName, themeInput)
     pages.ClipsDescendants = true
     pages.Parent = main
 
-    local footer = makeText(main, "Lollypop Hub v10.4.0", 11, Enum.Font.GothamMedium)
+    local footer = makeText(main, "Lollypop Hub v10.5.0", 11, Enum.Font.GothamMedium)
     footer.Name = "Footer"
     footer.Position = UDim2.new(0, 158, 1, -20)
     footer.Size = UDim2.new(1, -165, 0, 18)
@@ -3200,6 +3203,419 @@ function LULA.CreateLib(kavName, themeInput)
     end))
 
     local window = {}
+
+    --==================================================
+    -- V10.5.0 SHARED PLAYER + ANIMATION SERVICE
+    -- One observer powers Activity, Dance Sync, Detector and player search.
+    --==================================================
+    local function ensurePlayerFeatureService()
+        if active.PlayerFeatures then return active.PlayerFeatures end
+
+        local service = {
+            SyncTarget = nil,
+            SyncTrack = nil,
+            SyncAnimation = nil,
+            SyncTrackId = nil,
+            SyncNextCorrection = 0,
+            DetectorTrack = nil,
+            DetectorAnimation = nil,
+            DetectorTarget = nil,
+            ActivityTarget = nil,
+            ActivityCard = nil,
+            StatusCard = nil,
+            LiveRows = {},
+            NameCache = {},
+            NameLoading = {},
+            PlayerListRefreshers = {},
+            Destroyed = false,
+        }
+        active.PlayerFeatures = service
+        env.LHPlayerFeatures = service
+
+        local PlayersService = get.Players
+        local Marketplace = get.MarketplaceService
+        local Run = get.RunService
+        local Local = PlayersService.LocalPlayer
+
+        local function normalizeAnimationId(value)
+            if typeof(value) == "Instance" then value = value.AnimationId end
+            return tonumber(tostring(value or ""):match("%d+"))
+        end
+        service.NormalizeAnimationId = normalizeAnimationId
+
+        local function getHumanoid(player)
+            local character = player and player.Character
+            return character and character:FindFirstChildOfClass("Humanoid") or nil
+        end
+        local function getAnimator(player)
+            local humanoid = getHumanoid(player)
+            if not humanoid then return nil, nil end
+            return humanoid:FindFirstChildOfClass("Animator"), humanoid
+        end
+
+        function service:GetPrimaryTrack(player)
+            local animator, humanoid = getAnimator(player)
+            if not humanoid then return nil end
+            local tracks = {}
+            local ok = pcall(function()
+                if animator and animator.GetPlayingAnimationTracks then
+                    tracks = animator:GetPlayingAnimationTracks()
+                else
+                    tracks = humanoid:GetPlayingAnimationTracks()
+                end
+            end)
+            if not ok then return nil end
+            local best, bestScore = nil, -math.huge
+            for _, candidate in ipairs(tracks or {}) do
+                local animationId = candidate.Animation and normalizeAnimationId(candidate.Animation.AnimationId)
+                local isPlaying = false
+                pcall(function() isPlaying = candidate.IsPlaying end)
+                if animationId and isPlaying then
+                    local weight, priority = 0, 0
+                    pcall(function() weight = tonumber(candidate.WeightCurrent) or 0 end)
+                    pcall(function() priority = tonumber(candidate.Priority.Value) or 0 end)
+                    local score = priority * 10 + weight
+                    if score > bestScore then best, bestScore = candidate, score end
+                end
+            end
+            return best
+        end
+
+        function service:ResolveAnimationName(animationId, callback)
+            animationId = normalizeAnimationId(animationId)
+            if not animationId then
+                if callback then callback("Unknown Animation") end
+                return "Unknown Animation"
+            end
+            if self.NameCache[animationId] then
+                if callback then callback(self.NameCache[animationId]) end
+                return self.NameCache[animationId]
+            end
+            local fallback = "Animation " .. tostring(animationId)
+            self.NameLoading[animationId] = self.NameLoading[animationId] or {}
+            if callback then table.insert(self.NameLoading[animationId], callback) end
+            if self.NameLoading[animationId].Working then return fallback end
+            self.NameLoading[animationId].Working = true
+            task.spawn(function()
+                local name
+                local animationState = active and active.AnimationBundles
+                if animationState and type(animationState.ResolveAnimationName) == "function" then
+                    local ok, result = pcall(animationState.ResolveAnimationName, animationId)
+                    if ok and type(result) == "string" and result ~= "" then name = result end
+                end
+                local emoteState = active and active.FreeEmotes
+                if not name and emoteState and type(emoteState.ResolveAnimationName) == "function" then
+                    local ok, result = pcall(emoteState.ResolveAnimationName, animationId)
+                    if ok and type(result) == "string" and result ~= "" then name = result end
+                end
+                if not name then
+                    local ok, info = pcall(Marketplace.GetProductInfo, Marketplace, animationId, Enum.InfoType.Asset)
+                    if ok and type(info) == "table" and tostring(info.Name or "") ~= "" then name = tostring(info.Name) end
+                end
+                name = name or fallback
+                self.NameCache[animationId] = name
+                local callbacks = self.NameLoading[animationId] or {}
+                self.NameLoading[animationId] = nil
+                for _, cb in ipairs(callbacks) do
+                    if type(cb) == "function" then pcall(cb, name) end
+                end
+            end)
+            return fallback
+        end
+
+        function service:GetSnapshot(player)
+            local track = self:GetPrimaryTrack(player)
+            if not track then return nil end
+            local id = track.Animation and normalizeAnimationId(track.Animation.AnimationId)
+            if not id then return nil end
+            local snapshot = {Id=id, Track=track, TimePosition=0, Speed=1, Looped=false, Name=self.NameCache[id]}
+            pcall(function() snapshot.TimePosition = tonumber(track.TimePosition) or 0 end)
+            pcall(function() snapshot.Speed = tonumber(track.Speed) or 1 end)
+            pcall(function() snapshot.Looped = track.Looped == true end)
+            snapshot.Name = snapshot.Name or self:ResolveAnimationName(id)
+            return snapshot
+        end
+
+        local function stopTrack(track)
+            if track then pcall(function() track:Stop(0.12) end) end
+        end
+
+        function service:PlayAnimationId(animationId, options)
+            options = type(options) == "table" and options or {}
+            animationId = normalizeAnimationId(animationId)
+            if not animationId then return nil, "invalid animation id" end
+            local animator, humanoid = getAnimator(Local)
+            if not humanoid then return nil, "local humanoid not found" end
+            if not animator then
+                animator = Instance.new("Animator")
+                animator.Parent = humanoid
+            end
+            local animation = Instance.new("Animation")
+            animation.AnimationId = "rbxassetid://" .. tostring(animationId)
+            local ok, loaded = pcall(animator.LoadAnimation, animator, animation)
+            if not ok or not loaded then animation:Destroy(); return nil, loaded end
+            pcall(function() loaded.Looped = options.Looped == true end)
+            pcall(function() loaded.Priority = options.Priority or Enum.AnimationPriority.Action end)
+            loaded:Play(tonumber(options.FadeTime) or 0.08, 1, tonumber(options.Speed) or 1)
+            if tonumber(options.TimePosition) then pcall(function() loaded.TimePosition = math.max(0, tonumber(options.TimePosition)) end) end
+            if tonumber(options.Speed) then pcall(function() loaded:AdjustSpeed(tonumber(options.Speed)) end) end
+            return loaded, animation
+        end
+
+        function service:StopDetected()
+            stopTrack(self.DetectorTrack)
+            if self.DetectorAnimation then pcall(function() self.DetectorAnimation:Destroy() end) end
+            self.DetectorTrack, self.DetectorAnimation, self.DetectorTarget = nil, nil, nil
+        end
+
+        function service:PlayDetected(player)
+            local snap = self:GetSnapshot(player)
+            if not snap then return false, "No playing animation detected." end
+            self:StopDetected()
+            local track, animation = self:PlayAnimationId(snap.Id, snap)
+            if not track then return false, animation end
+            self.DetectorTrack, self.DetectorAnimation, self.DetectorTarget = track, animation, player
+            track.Stopped:Connect(function()
+                if self.DetectorTrack == track then
+                    self.DetectorTrack = nil
+                    self.DetectorTarget = nil
+                    if self.DetectorAnimation == animation then self.DetectorAnimation = nil end
+                    pcall(function() animation:Destroy() end)
+                end
+            end)
+            return true, snap
+        end
+
+        function service:SaveDetected(player)
+            local snap = self:GetSnapshot(player)
+            if not snap then return false, "No playing animation detected." end
+            local animationState = active and active.AnimationBundles
+            if not animationState or type(animationState.SaveDetectedAnimation) ~= "function" then
+                return false, "Free Animations is not ready yet."
+            end
+            return animationState.SaveDetectedAnimation(snap, player)
+        end
+
+        function service:Unsync(silent)
+            self.SyncTarget = nil
+            self.SyncTrackId = nil
+            self.SyncLocalCharacter = nil
+            stopTrack(self.SyncTrack)
+            if self.SyncAnimation then pcall(function() self.SyncAnimation:Destroy() end) end
+            self.SyncTrack, self.SyncAnimation = nil, nil
+            if self.StatusCard then self.StatusCard.Visible = false end
+            if not silent then LULA:ShowIsland("Dance Sync", "Unsynced.", {Duration=2}) end
+        end
+
+        function service:SyncPlayer(player)
+            if not player or player == Local then return false, "Choose another player." end
+            self:Unsync(true)
+            self.SyncTarget = player
+            self.SyncNextCorrection = 0
+            self:EnsureStatusCard()
+            self.StatusCard.Visible = true
+            return true
+        end
+
+        function service:EnsureStatusCard()
+            if self.StatusCard and self.StatusCard.Parent then return self.StatusCard end
+            local card = Instance.new("Frame")
+            card.Name = "LHDanceSyncStatusCard"
+            card.AnchorPoint = Vector2.new(1, 1)
+            card.Position = UDim2.new(1, -12, 1, -12)
+            card.Size = UDim2.fromOffset(250, 76)
+            card.BackgroundTransparency = 0.03
+            card.BorderSizePixel = 0
+            card.ZIndex = 850
+            card.Visible = false
+            card.Parent = main
+            bind(card, "BackgroundColor3", "Header")
+            makeCorner(card, 11); makeStroke(card, active.Theme.SchemeColor, 0.2, 1)
+            local title = makeText(card, "Dance Sync", 11.5, Enum.Font.GothamBold)
+            title.Position = UDim2.fromOffset(10, 6); title.Size = UDim2.new(1,-80,0,18); title.TextXAlignment = Enum.TextXAlignment.Left; title.ZIndex=851
+            local detail = makeText(card, "Not synced", 9.5, Enum.Font.GothamMedium)
+            detail.Position = UDim2.fromOffset(10, 25); detail.Size = UDim2.new(1,-20,0,38); detail.TextXAlignment=Enum.TextXAlignment.Left; detail.TextYAlignment=Enum.TextYAlignment.Top; detail.TextWrapped=true; detail.ZIndex=851
+            bind(detail,"TextColor3","MutedText")
+            local unsync = makeButton(card,"Unsync")
+            unsync.AnchorPoint=Vector2.new(1,0); unsync.Position=UDim2.new(1,-8,0,7); unsync.Size=UDim2.fromOffset(62,24); unsync.TextSize=9.5; unsync.ZIndex=852
+            track(unsync.Activated:Connect(function() self:Unsync(false) end))
+            self.StatusCard, self.StatusTitle, self.StatusDetail = card, title, detail
+            return card
+        end
+
+        function service:OpenActivityCard(player)
+            if not player then return false end
+            self.ActivityTarget = player
+            if not self.ActivityCard or not self.ActivityCard.Parent then
+                local card = Instance.new("Frame")
+                card.Name="LHPlayerActivityCard"; card.AnchorPoint=Vector2.new(0.5,0.5); card.Position=UDim2.fromScale(0.5,0.5); card.Size=UDim2.fromOffset(390,300); card.BorderSizePixel=0; card.ZIndex=900; card.Parent=main
+                bind(card,"BackgroundColor3","Header"); makeCorner(card,14); makeStroke(card,active.Theme.SchemeColor,0.12,1.3)
+                local avatar=Instance.new("ImageLabel"); avatar.Name="Avatar"; avatar.Position=UDim2.fromOffset(12,12); avatar.Size=UDim2.fromOffset(68,68); avatar.BackgroundTransparency=0.08; avatar.BorderSizePixel=0; avatar.ScaleType=Enum.ScaleType.Crop; avatar.ZIndex=901; avatar.Parent=card; bind(avatar,"BackgroundColor3","ElementColor"); makeCorner(avatar,12)
+                local name=makeText(card,"Player",15,Enum.Font.GothamBold); name.Position=UDim2.fromOffset(90,12); name.Size=UDim2.new(1,-132,0,24); name.TextXAlignment=Enum.TextXAlignment.Left; name.ZIndex=901
+                local identity=makeText(card,"@user | ID 0",10.5,Enum.Font.GothamMedium); identity.Position=UDim2.fromOffset(90,38); identity.Size=UDim2.new(1,-132,0,20); identity.TextXAlignment=Enum.TextXAlignment.Left; identity.ZIndex=901; bind(identity,"TextColor3","MutedText")
+                local close=makeKolorButton(card,"X",rgb(190,48,65)); close.AnchorPoint=Vector2.new(1,0); close.Position=UDim2.new(1,-9,0,9); close.Size=UDim2.fromOffset(28,28); close.ZIndex=902
+                local info=makeText(card,"",10.5,Enum.Font.GothamMedium); info.Position=UDim2.fromOffset(12,90); info.Size=UDim2.new(1,-24,0,130); info.TextXAlignment=Enum.TextXAlignment.Left; info.TextYAlignment=Enum.TextYAlignment.Top; info.TextWrapped=true; info.ZIndex=901
+                local sync=makeButton(card,"Sync"); sync.Position=UDim2.fromOffset(12,232); sync.Size=UDim2.fromOffset(82,30); sync.ZIndex=902
+                local detect=makeButton(card,"Play Anim"); detect.Position=UDim2.fromOffset(101,232); detect.Size=UDim2.fromOffset(82,30); detect.ZIndex=902
+                local save=makeButton(card,"Save Anim"); save.Position=UDim2.fromOffset(190,232); save.Size=UDim2.fromOffset(82,30); save.ZIndex=902
+                local avatarBtn=makeButton(card,"Avatar"); avatarBtn.Position=UDim2.fromOffset(279,232); avatarBtn.Size=UDim2.fromOffset(82,30); avatarBtn.ZIndex=902
+                local spectate=makeButton(card,"Spectate"); spectate.Position=UDim2.fromOffset(12,268); spectate.Size=UDim2.fromOffset(82,24); spectate.TextSize=9.5; spectate.ZIndex=902
+                track(close.Activated:Connect(function() self.ActivityTarget=nil; card.Visible=false end))
+                track(sync.Activated:Connect(function()
+                    local target=self.ActivityTarget; if not target then return end
+                    if self.SyncTarget==target then self:Unsync(false) else local ok,why=self:SyncPlayer(target); if not ok then LULA:ShowIsland("Dance Sync",tostring(why),{Duration=3}) end end
+                end))
+                track(detect.Activated:Connect(function()
+                    local target=self.ActivityTarget; if not target then return end
+                    if self.DetectorTarget==target and self.DetectorTrack then self:StopDetected() else local ok,why=self:PlayDetected(target); if not ok then LULA:ShowIsland("Animation Detector",tostring(why),{Duration=3}) end end
+                end))
+                track(save.Activated:Connect(function() local ok,why=self:SaveDetected(self.ActivityTarget); if not ok then LULA:ShowIsland("Animation Detector",tostring(why),{Duration=3}) end end))
+                track(avatarBtn.Activated:Connect(function()
+                    local target=self.ActivityTarget; if not target then return end
+                    if active.AvatarKreator and type(active.AvatarKreator.InspectPlayer)=="function" then active.AvatarKreator.InspectPlayer(target) else pcall(function() get.GuiService:InspectPlayerFromUserId(target.UserId) end) end
+                end))
+                track(spectate.Activated:Connect(function() local target=self.ActivityTarget; if target and type(env.LHStartSpectate)=="function" then pcall(env.LHStartSpectate,target) end end))
+                self.ActivityCard=card; self.ActivityAvatar=avatar; self.ActivityName=name; self.ActivityIdentity=identity; self.ActivityInfo=info; self.ActivitySync=sync; self.ActivityDetect=detect
+            end
+            self.ActivityCard.Visible=true
+            self.ActivityName.Text=tostring(player.DisplayName)
+            self.ActivityIdentity.Text="@"..tostring(player.Name).."  |  ID "..tostring(player.UserId)
+            task.spawn(function()
+                local ok,img=pcall(PlayersService.GetUserThumbnailAsync,PlayersService,player.UserId,Enum.ThumbnailType.HeadShot,Enum.ThumbnailSize.Size150x150)
+                if ok and self.ActivityTarget==player and self.ActivityAvatar then self.ActivityAvatar.Image=img end
+            end)
+            return true
+        end
+
+        local function toolName(character)
+            if not character then return "None" end
+            local tool=character:FindFirstChildOfClass("Tool")
+            return tool and tool.Name or "None"
+        end
+        local function seatName(humanoid)
+            if not humanoid or not humanoid.SeatPart then return "None" end
+            local seat=humanoid.SeatPart
+            return tostring(seat.Name)..(seat:IsA("VehicleSeat") and " (Vehicle)" or "")
+        end
+
+        function service:RefreshLiveRows()
+            for row, meta in pairs(self.LiveRows) do
+                if not row.Parent or not meta.Player or meta.Player.Parent~=PlayersService then self.LiveRows[row]=nil else
+                    local snap=self:GetSnapshot(meta.Player)
+                    if meta.AnimationLabel then meta.AnimationLabel.Text=snap and (snap.Name or ("Animation "..snap.Id)) or "No animation" end
+                    if meta.SyncButton then meta.SyncButton.Text=self.SyncTarget==meta.Player and "Unsync" or "Sync" end
+                    if meta.PlayButton then meta.PlayButton.Text=(self.DetectorTarget==meta.Player and self.DetectorTrack) and "Stop" or "Play" end
+                end
+            end
+        end
+
+        function service:CreatePlayerPanel(parent, mode, layoutOrder)
+            local section=Instance.new("Frame"); section.Name="LH"..mode.."PlayerPanel"; section.LayoutOrder=layoutOrder or 5000; section.Size=UDim2.new(1,-4,0,0); section.AutomaticSize=Enum.AutomaticSize.Y; section.BackgroundTransparency=1; section.Parent=parent
+            local title=makeText(section, mode=="sync" and "DANCE SYNC" or "ANIMATION DETECTOR",13,Enum.Font.GothamBold); title.Size=UDim2.new(1,0,0,28); title.TextXAlignment=Enum.TextXAlignment.Left
+            local holder=Instance.new("Frame"); holder.Position=UDim2.fromOffset(0,31); holder.Size=UDim2.new(1,0,0,0); holder.AutomaticSize=Enum.AutomaticSize.Y; holder.BackgroundTransparency=1; holder.Parent=section
+            local layout=Instance.new("UIListLayout",holder); layout.Padding=UDim.new(0,5); layout.SortOrder=Enum.SortOrder.LayoutOrder
+            local function rebuild()
+                for _,child in ipairs(holder:GetChildren()) do if child:IsA("Frame") then self.LiveRows[child]=nil; child:Destroy() end end
+                local list=PlayersService:GetPlayers(); table.sort(list,function(a,b) return string.lower(a.Name)<string.lower(b.Name) end)
+                local order=0
+                for _,player in ipairs(list) do
+                    if player~=Local then
+                        order+=1
+                        local row=Instance.new("Frame"); row.Name="Player_"..player.Name; row.LayoutOrder=order; row.Size=UDim2.new(1,0,0,68); row.BorderSizePixel=0; row.BackgroundTransparency=0.03; row.Parent=holder; bind(row,"BackgroundColor3","ElementColor"); makeCorner(row,9)
+                        local avatar=Instance.new("ImageLabel"); avatar.Position=UDim2.fromOffset(6,6); avatar.Size=UDim2.fromOffset(56,56); avatar.BackgroundTransparency=1; avatar.ScaleType=Enum.ScaleType.Crop; avatar.Parent=row; makeCorner(avatar,9)
+                        task.spawn(function() local ok,img=pcall(PlayersService.GetUserThumbnailAsync,PlayersService,player.UserId,Enum.ThumbnailType.HeadShot,Enum.ThumbnailSize.Size150x150); if ok and avatar.Parent then avatar.Image=img end end)
+                        local name=makeText(row,tostring(player.DisplayName),11,Enum.Font.GothamBold); name.Position=UDim2.fromOffset(69,7); name.Size=UDim2.new(1,-240,0,18); name.TextXAlignment=Enum.TextXAlignment.Left
+                        local user=makeText(row,"@"..player.Name,9.5,Enum.Font.GothamMedium); user.Position=UDim2.fromOffset(69,26); user.Size=UDim2.new(1,-240,0,17); user.TextXAlignment=Enum.TextXAlignment.Left; bind(user,"TextColor3","MutedText")
+                        local anim=makeText(row,"No animation",9,Enum.Font.GothamMedium); anim.Position=UDim2.fromOffset(69,44); anim.Size=UDim2.new(1,-240,0,17); anim.TextXAlignment=Enum.TextXAlignment.Left; anim.TextTruncate=Enum.TextTruncate.AtEnd; bind(anim,"TextColor3","MutedText")
+                        local primary=makeButton(row,mode=="sync" and "Sync" or "Play"); primary.AnchorPoint=Vector2.new(1,0.5); primary.Position=UDim2.new(1,-83,0.5,0); primary.Size=UDim2.fromOffset(70,28); primary.TextSize=9.5
+                        local secondary=makeButton(row,mode=="sync" and "Activity" or "Save"); secondary.AnchorPoint=Vector2.new(1,0.5); secondary.Position=UDim2.new(1,-8,0.5,0); secondary.Size=UDim2.fromOffset(68,28); secondary.TextSize=9.2
+                        if mode=="sync" then
+                            primary.Activated:Connect(function() if self.SyncTarget==player then self:Unsync(false) else local ok,why=self:SyncPlayer(player); if not ok then LULA:ShowIsland("Dance Sync",tostring(why),{Duration=3}) end end end)
+                            secondary.Activated:Connect(function() self:OpenActivityCard(player) end)
+                            self.LiveRows[row]={Player=player,AnimationLabel=anim,SyncButton=primary}
+                        else
+                            primary.Activated:Connect(function() if self.DetectorTarget==player and self.DetectorTrack then self:StopDetected() else local ok,why=self:PlayDetected(player); if not ok then LULA:ShowIsland("Animation Detector",tostring(why),{Duration=3}) end end end)
+                            secondary.Activated:Connect(function() local ok,why=self:SaveDetected(player); if not ok then LULA:ShowIsland("Animation Detector",tostring(why),{Duration=3}) end end)
+                            self.LiveRows[row]={Player=player,AnimationLabel=anim,PlayButton=primary}
+                        end
+                    end
+                end
+            end
+            table.insert(self.PlayerListRefreshers,rebuild); rebuild()
+            return section
+        end
+
+        local heartbeatAccumulator=0
+        track(Run.Heartbeat:Connect(function(dt)
+            if service.Destroyed then return end
+            heartbeatAccumulator += dt
+            local now=os.clock()
+            if service.SyncTarget then
+                if service.SyncTarget.Parent~=PlayersService then service:Unsync(true) else
+                    local snap=service:GetSnapshot(service.SyncTarget)
+                    if not snap then
+                        if service.SyncTrack then stopTrack(service.SyncTrack); service.SyncTrack=nil; service.SyncTrackId=nil end
+                        service:EnsureStatusCard(); service.StatusDetail.Text="@"..service.SyncTarget.Name.."\nWaiting for animation..."
+                    else
+                        local syncPlaying = false
+                        if service.SyncTrack then pcall(function() syncPlaying = service.SyncTrack.IsPlaying == true end) end
+                        if service.SyncTrackId~=snap.Id or not service.SyncTrack or not syncPlaying then
+                            stopTrack(service.SyncTrack); if service.SyncAnimation then pcall(function() service.SyncAnimation:Destroy() end) end
+                            service.SyncTrack,service.SyncAnimation=service:PlayAnimationId(snap.Id,snap); service.SyncTrackId=snap.Id; service.SyncLocalCharacter=Local.Character; service.SyncNextCorrection=now+0.2
+                        elseif service.SyncLocalCharacter ~= Local.Character then
+                            stopTrack(service.SyncTrack); if service.SyncAnimation then pcall(function() service.SyncAnimation:Destroy() end) end
+                            service.SyncTrack,service.SyncAnimation=service:PlayAnimationId(snap.Id,snap); service.SyncTrackId=snap.Id; service.SyncLocalCharacter=Local.Character; service.SyncNextCorrection=now+0.2
+                        elseif now>=service.SyncNextCorrection then
+                            service.SyncNextCorrection=now+0.32
+                            local localTime=0; pcall(function() localTime=service.SyncTrack.TimePosition end)
+                            if math.abs(localTime-snap.TimePosition)>0.18 then pcall(function() service.SyncTrack.TimePosition=snap.TimePosition end) end
+                            pcall(function() if math.abs((service.SyncTrack.Speed or 1)-snap.Speed)>0.02 then service.SyncTrack:AdjustSpeed(snap.Speed) end end)
+                            pcall(function() service.SyncTrack.Looped=snap.Looped end)
+                        end
+                        service:EnsureStatusCard(); service.StatusDetail.Text="Synced with @"..service.SyncTarget.Name.."\n"..tostring(snap.Name or ("Animation "..snap.Id)).."  |  Synced"
+                    end
+                end
+            end
+            if heartbeatAccumulator>=0.25 then
+                heartbeatAccumulator=0
+                service:RefreshLiveRows()
+                local player=service.ActivityTarget
+                if player and service.ActivityCard and service.ActivityCard.Visible then
+                    if player.Parent~=PlayersService then service.ActivityTarget=nil; service.ActivityCard.Visible=false else
+                        local hum=getHumanoid(player); local root=player.Character and player.Character:FindFirstChild("HumanoidRootPart"); local localRoot=Local.Character and Local.Character:FindFirstChild("HumanoidRootPart")
+                        local health=hum and math.floor(hum.Health+0.5) or 0; local maxHealth=hum and math.floor(hum.MaxHealth+0.5) or 0
+                        local distance="N/A"; if root and localRoot then distance=tostring(math.floor((root.Position-localRoot.Position).Magnitude+0.5)).." studs" end
+                        local stateName="Unknown"; if hum then pcall(function() stateName=hum:GetState().Name end) end
+                        local snap=service:GetSnapshot(player); local animation=snap and (snap.Name or ("Animation "..snap.Id)) or "None"
+                        local team=player.Team and player.Team.Name or "None"
+                        service.ActivityInfo.Text="Health: "..health.." / "..maxHealth.."    Distance: "..distance.."\nState: "..stateName.."    Team: "..team.."\nTool: "..toolName(player.Character).."    Seat: "..seatName(hum).."\nAnimation: "..animation
+                        service.ActivitySync.Text=service.SyncTarget==player and "Unsync" or "Sync"
+                        service.ActivityDetect.Text=(service.DetectorTarget==player and service.DetectorTrack) and "Stop Anim" or "Play Anim"
+                    end
+                end
+            end
+        end))
+
+        local function refreshLists()
+            for _,fn in ipairs(service.PlayerListRefreshers) do pcall(fn) end
+        end
+        track(PlayersService.PlayerAdded:Connect(refreshLists))
+        track(PlayersService.PlayerRemoving:Connect(function(player)
+            if service.SyncTarget==player then service:Unsync(true) end
+            if service.DetectorTarget==player then service:StopDetected() end
+            if service.ActivityTarget==player and service.ActivityCard then service.ActivityTarget=nil; service.ActivityCard.Visible=false end
+            task.defer(refreshLists)
+        end))
+
+        function service:Cleanup()
+            if self.Destroyed then return end
+            self.Destroyed=true; self:Unsync(true); self:StopDetected(); self.LiveRows={}; self.PlayerListRefreshers={}
+            if self.ActivityCard then pcall(function() self.ActivityCard:Destroy() end) end
+            if self.StatusCard then pcall(function() self.StatusCard:Destroy() end) end
+            if env.LHPlayerFeatures==self then env.LHPlayerFeatures=nil end
+        end
+        return service
+    end
 
     local function selectTab(tab, mode)
         if not tab or active.SelectedTab == tab then
@@ -4547,6 +4963,128 @@ function LULA.CreateLib(kavName, themeInput)
             end
         end
         return false
+    end
+
+    --==================================================
+    -- V10.5.0 UNIVERSAL SEARCH
+    --==================================================
+    function window:EnableUniversalSearch(tabName)
+        if active.UniversalSearch then return active.UniversalSearch.Tab end
+        local tab=self:NewTab(tabName or (utf8.char(0x2605).." Universal Search")); tab:EnsureBuilt()
+        local scroll=tab.Scroll; scroll.AutomaticCanvasSize=Enum.AutomaticSize.Y; scroll.CanvasSize=UDim2.new()
+        local state={Tab=tab}; active.UniversalSearch=state
+        local service=ensurePlayerFeatureService()
+
+        local searchRow=newRow(scroll,"UniversalSearchBoxRow",44); searchRow.LayoutOrder=-10000
+        local box=Instance.new("TextBox"); box.Position=UDim2.fromOffset(8,6); box.Size=UDim2.new(1,-48,0,32); box.BackgroundTransparency=1; box.BorderSizePixel=0; box.ClearTextOnFocus=false; box.Font=resolveUIFont(Enum.Font.Gotham); box.TextSize=13; box.TextXAlignment=Enum.TextXAlignment.Left; box.PlaceholderText="Search all of Lollypop Hub..."; box.Parent=searchRow; bind(box,"TextColor3","TextColor")
+        local clear=makeKolorButton(searchRow,"X",rgb(205,48,66)); clear.AnchorPoint=Vector2.new(1,0.5); clear.Position=UDim2.new(1,-7,0.5,0); clear.Size=UDim2.fromOffset(28,28)
+        local hint=makeText(scroll,"Search tabs, features, settings, kommands, players, animations, emotes, avatar items and saved content.",10.5,Enum.Font.GothamMedium); hint.LayoutOrder=-9990; hint.Size=UDim2.new(1,-4,0,40); hint.TextWrapped=true; hint.TextXAlignment=Enum.TextXAlignment.Left; bind(hint,"TextColor3","MutedText")
+        local holder=Instance.new("Frame"); holder.Name="UniversalSearchResults"; holder.LayoutOrder=-9980; holder.Size=UDim2.new(1,-4,0,0); holder.AutomaticSize=Enum.AutomaticSize.Y; holder.BackgroundTransparency=1; holder.Parent=scroll
+        local layout=Instance.new("UIListLayout",holder); layout.Padding=UDim.new(0,5); layout.SortOrder=Enum.SortOrder.LayoutOrder
+
+        local function clearResults() for _,child in ipairs(holder:GetChildren()) do if child~=layout then child:Destroy() end end end
+        local function header(text,order) local h=makeText(holder,string.upper(text),10.5,Enum.Font.GothamBold); h.LayoutOrder=order; h.Size=UDim2.new(1,0,0,22); h.TextXAlignment=Enum.TextXAlignment.Left; bind(h,"TextColor3","SchemeColor") end
+        local function addResult(category,title,subtitle,order,callback)
+            local row=Instance.new("TextButton"); row.Name="UniversalResult"; row.LayoutOrder=order; row.Size=UDim2.new(1,0,0,48); row.AutoButtonColor=false; row.BorderSizePixel=0; row.BackgroundTransparency=0.04; row.Text=""; row.Parent=holder; bind(row,"BackgroundColor3","ElementColor"); makeCorner(row,8)
+            local t=makeText(row,tostring(title),11,Enum.Font.GothamBold); t.Position=UDim2.fromOffset(8,5); t.Size=UDim2.new(1,-16,0,18); t.TextXAlignment=Enum.TextXAlignment.Left
+            local sub=makeText(row,tostring(subtitle or category),9.2,Enum.Font.GothamMedium); sub.Position=UDim2.fromOffset(8,25); sub.Size=UDim2.new(1,-16,0,17); sub.TextXAlignment=Enum.TextXAlignment.Left; sub.TextTruncate=Enum.TextTruncate.AtEnd; bind(sub,"TextColor3","MutedText")
+            row.Activated:Connect(callback); return row
+        end
+        local function navigateControl(api)
+            if not api then return end
+            self:SelectTab(api.TabName)
+            task.defer(function()
+                if api.Frame and api.Frame.Parent then
+                    local ownerTab
+                    for _,candidate in ipairs(active.Tabs) do if candidate.Name==api.TabName then ownerTab=candidate break end end
+                    if ownerTab and ownerTab.Scroll then
+                        local y=math.max(0,api.Frame.AbsolutePosition.Y-ownerTab.Scroll.AbsolutePosition.Y+ownerTab.Scroll.CanvasPosition.Y-20)
+                        ownerTab.Scroll.CanvasPosition=Vector2.new(0,y)
+                    end
+                    if api.SetSearchHighlighted then api:SetSearchHighlighted(true); task.delay(2,function() if api.Frame and api.Frame.Parent then api:SetSearchHighlighted(false) end end) end
+                end
+            end)
+        end
+        local function showPlayerResult(player,order)
+            local row=Instance.new("Frame"); row.Name="UniversalPlayer_"..player.Name; row.LayoutOrder=order; row.Size=UDim2.new(1,0,0,86); row.BorderSizePixel=0; row.BackgroundTransparency=0.03; row.Parent=holder; bind(row,"BackgroundColor3","ElementColor"); makeCorner(row,9)
+            local avatar=Instance.new("ImageLabel"); avatar.Position=UDim2.fromOffset(7,7); avatar.Size=UDim2.fromOffset(54,54); avatar.BackgroundTransparency=1; avatar.ScaleType=Enum.ScaleType.Crop; avatar.Parent=row; makeCorner(avatar,9)
+            task.spawn(function() local ok,img=pcall(get.Players.GetUserThumbnailAsync,get.Players,player.UserId,Enum.ThumbnailType.HeadShot,Enum.ThumbnailSize.Size150x150); if ok and avatar.Parent then avatar.Image=img end end)
+            local title=makeText(row,tostring(player.DisplayName),11,Enum.Font.GothamBold); title.Position=UDim2.fromOffset(68,6); title.Size=UDim2.new(1,-76,0,18); title.TextXAlignment=Enum.TextXAlignment.Left
+            local ident=makeText(row,"@"..player.Name.."  |  ID "..player.UserId,9.2,Enum.Font.GothamMedium); ident.Position=UDim2.fromOffset(68,25); ident.Size=UDim2.new(1,-76,0,16); ident.TextXAlignment=Enum.TextXAlignment.Left; bind(ident,"TextColor3","MutedText")
+            local buttons={{"Activity",function() service:OpenActivityCard(player) end},{"Sync",function() service:SyncPlayer(player) end},{"Detect",function() local ok,why=service:PlayDetected(player); if not ok then LULA:ShowIsland("Animation Detector",tostring(why),{Duration=3}) end end},{"Avatar",function() if active.AvatarKreator and active.AvatarKreator.InspectPlayer then active.AvatarKreator.InspectPlayer(player) else pcall(function() get.GuiService:InspectPlayerFromUserId(player.UserId) end) end end}}
+            for i,data in ipairs(buttons) do local b=makeButton(row,data[1]); b.Position=UDim2.new(0,68+(i-1)*70,0,49); b.Size=UDim2.fromOffset(64,27); b.TextSize=8.8; b.Activated:Connect(data[2]) end
+        end
+
+        local function matches(text,q) return string.find(string.lower(tostring(text or "")),q,1,true)~=nil end
+        local function render(query)
+            clearResults(); query=string.lower(tostring(query or "")):match("^%s*(.-)%s*$") or ""; if query=="" then hint.Visible=true; return end; hint.Visible=false
+            local order=0; local counts={}; local pending={}
+            local function push(cat,title,sub,cb) counts[cat]=(counts[cat] or 0)+1; table.insert(pending,{Cat=cat,Title=title,Sub=sub,Callback=cb}) end
+            for _,t in ipairs(active.Tabs) do if t~=tab and matches(t.Name,query) then local tabName=t.Name; push("Tabs",tabName,"Open tab",function() self:SelectTab(tabName) end) end end
+            local subtabs = {
+                {"Free Animations Favorites", "Free Animations", function() local st=active.AnimationBundles; if st and st.OpenFavorites then st.OpenFavorites("") end end},
+                {"Free Emotes Favorites", "Free Emotes", function() local st=active.FreeEmotes; if st and st.OpenFavorites then st.OpenFavorites("") end end},
+                {"Avatar Kreator Favorites", "Avatar Kreator", function() local st=active.AvatarKreator; if st and st.SetMode then st.SetMode("favorites") end end},
+                {"Avatar Kurrent Outfit", "Avatar Kreator", function() local st=active.AvatarKreator; if st and st.SetMode then st.SetMode("outfit") end end},
+                {"Avatar Saved Outfits", "Avatar Kreator", function() local st=active.AvatarKreator; if st and st.SetMode then st.SetMode("savedoutfits") end end},
+                {"Avatar Viewer", "Avatar Kreator", function() local st=active.AvatarKreator; if st then st.ViewerTargetPlayer=nil; if st.SetMode then st.SetMode("viewer") end; if st.Viewer and st.Viewer.Refresh then st.Viewer:Refresh() end end end},
+                {"Dance Sync", "Free Emotes", function() end},
+                {"Animation Detector", "Free Animations", function() end},
+            }
+            for _, subtab in ipairs(subtabs) do
+                if matches(subtab[1], query) then
+                    local title, parentTab, action = subtab[1], subtab[2], subtab[3]
+                    push("Subtabs", title, parentTab, function() self:SelectTab(parentTab); task.defer(action) end)
+                end
+            end
+            local seenControlIds = {}
+            for _,t in ipairs(active.Tabs) do
+                for _,section in ipairs(t.Sections or {}) do
+                    for _,api in ipairs(sectionControlRegistry[section] or {}) do
+                        if api.ControlId then seenControlIds[tostring(api.ControlId)] = true end
+                        if matches((api.DisplayName or api.Name).." "..(api.SearchText or "").." "..(api.SectionName or ""),query) then
+                            local captured=api
+                            push("Features",captured.DisplayName or captured.Name,(captured.TabName or "").."  >  "..(captured.SectionName or ""),function() navigateControl(captured) end)
+                        end
+                    end
+                end
+            end
+            for _, indexed in ipairs(type(env.LHUniversalIndex)=="table" and env.LHUniversalIndex or {}) do
+                local id=tostring(indexed.ControlId or "")
+                if id~="" and not seenControlIds[id] and matches(tostring(indexed.DisplayName or "").." "..tostring(indexed.Tip or "").." "..tostring(indexed.SectionName or "").." "..tostring(indexed.TabName or ""),query) then
+                    local item=indexed
+                    push("Features",item.DisplayName,(item.TabName or "").."  >  "..(item.SectionName or ""),function()
+                        self:SelectTab(item.TabName)
+                        task.defer(function()
+                            local api=controlIdRegistry[tostring(item.ControlId)]
+                            if api then navigateControl(api) end
+                        end)
+                    end)
+                end
+            end
+            local runtime=rawget(env,"LHRuntime")
+            if runtime and type(runtime.CommandOrder)=="table" then for _,command in ipairs(runtime.CommandOrder) do local aliases=table.concat(command.Aliases or {}," "); if matches(command.Name.." "..aliases.." "..tostring(command.Description),query) then local name=command.Name; push("Kommands",(runtime.Prefix or "!")..name,tostring(command.Description),function() self:SelectTab("Admin"); if type(env.LHSetPaletteText)=="function" then env.LHSetPaletteText((runtime.Prefix or "!")..name.." ",true) end end) end end end
+            if runtime and type(runtime.CustomAliases)=="table" then for alias,target in pairs(runtime.CustomAliases) do if matches(alias.." "..target,query) then push("Kommand Aliases","!"..alias,"Alias for !"..target,function() self:SelectTab("Admin"); if type(env.LHSetPaletteText)=="function" then env.LHSetPaletteText("!"..alias.." ",true) end end) end end end
+            local players={}; for _,player in ipairs(get.Players:GetPlayers()) do if matches(player.Name,query) or matches(player.DisplayName,query) or matches("@"..player.Name,query) or tostring(player.UserId)==query then table.insert(players,player) end end
+            for _,fav in ipairs(settings.AnimationBundleFavorites or {}) do if matches(fav.Name,query) then local item=fav; push("Saved Animations",item.Name,item.DetectedAnimation and "Detected from @"..tostring(item.SourceUsername or "player") or "Free Animations favorite",function() self:SelectTab("Free Animations"); local st=active.AnimationBundles; if st and st.OpenFavorites then st.OpenFavorites(item.Name) end end) end end
+            for _,fav in ipairs(settings.FreeEmoteFavorites or {}) do if matches(fav.Name,query) then local item=fav; push("Saved Emotes",item.Name,"Free Emotes favorite",function() self:SelectTab("Free Emotes"); local st=active.FreeEmotes; if st and st.OpenFavorites then st.OpenFavorites(item.Name) end end) end end
+            for _,fav in ipairs(settings.AvatarKreatorFavorites or {}) do if matches(fav.Name,query) then local item=fav; push("Avatar Favorites",item.Name,"Avatar Kreator favorite",function() self:SelectTab("Avatar Kreator"); local st=active.AvatarKreator; if st and st.OpenFavorites then st.OpenFavorites(item.Name) end end) end end
+            for _,outfit in ipairs(settings.AvatarKreatorSavedOutfits or {}) do if matches(outfit.Name,query) then local item=outfit; push("Saved Outfits",tostring(item.Name),"Avatar Kreator saved outfit",function() self:SelectTab("Avatar Kreator"); local st=active.AvatarKreator; if st and st.SetMode then st.SetMode("savedoutfits") end end) end end
+            for _,scriptItem in ipairs(settings.AutoExecuteScripts or {}) do if matches(scriptItem.Name or scriptItem.Title,query) then local item=scriptItem; push("Saved Scripts",tostring(item.Name or item.Title or "Saved Skript"),"Auto Execute saved skript",function() self:SelectTab("Auto Execute") end) end end
+            push("Search Actions","Search Free Animations for \""..query.."\"","Open marketplace animation results",function() self:SelectTab("Free Animations"); if active.AnimationBundles and active.AnimationBundles.Search then active.AnimationBundles.Search(query) end end)
+            push("Search Actions","Search Free Emotes for \""..query.."\"","Open marketplace emote results",function() self:SelectTab("Free Emotes"); if active.FreeEmotes and active.FreeEmotes.Search then active.FreeEmotes.Search(query) end end)
+            push("Search Actions","Search Avatar Kreator for \""..query.."\"","Open avatar katalog results",function() self:SelectTab("Avatar Kreator"); if active.AvatarKreator and active.AvatarKreator.Search then active.AvatarKreator.Search(query) end end)
+            local catOrder={"Tabs","Subtabs","Features","Kommands","Kommand Aliases","Players","Saved Animations","Saved Emotes","Avatar Favorites","Saved Outfits","Saved Scripts","Search Actions"}
+            for _,cat in ipairs(catOrder) do
+                if cat=="Players" and #players>0 then order+=1; header(cat,order); for _,player in ipairs(players) do order+=1; showPlayerResult(player,order) end
+                else
+                    local any=false; for _,r in ipairs(pending) do if r.Cat==cat then if not any then order+=1; header(cat,order); any=true end; order+=1; addResult(cat,r.Title,r.Sub,order,r.Callback) end end
+                end
+            end
+            if order==0 then local empty=makeText(holder,"No matching LH results.",11,Enum.Font.GothamMedium); empty.Size=UDim2.new(1,0,0,36); empty.TextXAlignment=Enum.TextXAlignment.Left; bind(empty,"TextColor3","MutedText") end
+        end
+        state.Search=render; track(box:GetPropertyChangedSignal("Text"):Connect(function() render(box.Text) end)); track(clear.Activated:Connect(function() box.Text=""; render(""); box:CaptureFocus() end)); render("")
+        return tab
     end
 
     function window:Back() return goBack() end
@@ -6374,7 +6912,7 @@ function LULA.CreateLib(kavName, themeInput)
 
         local function cleanFavorite(raw)
             if type(raw) ~= "table" then return nil end
-            local id = tonumber(raw.Id or raw.id or raw.BundleId or raw.bundleId)
+            local id = tonumber(raw.Id or raw.id or raw.BundleId or raw.bundleId or raw.AnimationId or raw.animationId)
             local name = raw.Name or raw.name
             if not id or type(name) ~= "string" or trim(name) == "" then return nil end
             return {
@@ -6382,6 +6920,12 @@ function LULA.CreateLib(kavName, themeInput)
                 Name = name,
                 CreatorName = raw.CreatorName or raw.creatorName or "Unknown creator",
                 Description = raw.Description or raw.description or "",
+                DetectedAnimation = raw.DetectedAnimation == true,
+                AnimationId = tonumber(raw.AnimationId or raw.animationId),
+                SourceUserId = tonumber(raw.SourceUserId or raw.sourceUserId),
+                SourceUsername = raw.SourceUsername or raw.sourceUsername,
+                Looped = raw.Looped == true,
+                Speed = tonumber(raw.Speed) or 1,
             }
         end
 
@@ -7416,7 +7960,9 @@ function LULA.CreateLib(kavName, themeInput)
             thumbnail.BackgroundTransparency = 0.08
             thumbnail.BorderSizePixel = 0
             thumbnail.ScaleType = Enum.ScaleType.Fit
-            thumbnail.Image = "rbxthumb://type=BundleThumbnail&id=" .. tostring(item.Id) .. "&w=150&h=150"
+            thumbnail.Image = item.DetectedAnimation
+                and ("rbxthumb://type=Asset&id=" .. tostring(item.AnimationId or item.Id) .. "&w=150&h=150")
+                or ("rbxthumb://type=BundleThumbnail&id=" .. tostring(item.Id) .. "&w=150&h=150")
             thumbnail.Parent = row
             bind(thumbnail, "BackgroundColor3", "Header")
             makeCorner(thumbnail, 7)
@@ -7428,13 +7974,20 @@ function LULA.CreateLib(kavName, themeInput)
             nameLabel.TextYAlignment = Enum.TextYAlignment.Center
             nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
 
-            local infoButton = makeButton(row, "Info")
+            local infoButton = makeButton(row, item.DetectedAnimation and "Play" or "Info")
             infoButton.AnchorPoint = Vector2.new(1, 0.5)
             infoButton.Position = UDim2.new(1, -84, 0.5, 0)
             infoButton.Size = UDim2.fromOffset(42, 25)
             infoButton.TextSize = 9.5
             track(infoButton.Activated:Connect(function()
-                task.defer(function() openDetails(item) end)
+                if item.DetectedAnimation then
+                    local service = ensurePlayerFeatureService()
+                    service:StopDetected()
+                    local trackObject, animationObject = service:PlayAnimationId(item.AnimationId or item.Id, {Looped=item.Looped == true, Speed=tonumber(item.Speed) or 1})
+                    if trackObject then service.DetectorTrack, service.DetectorAnimation, service.DetectorTarget = trackObject, animationObject, nil else bundleNotify("Could not play this detected animation.", "error", 3) end
+                else
+                    task.defer(function() openDetails(item) end)
+                end
             end))
 
             local remove = makeKolorButton(row, "X", ANIMATION_RED)
@@ -7446,11 +7999,16 @@ function LULA.CreateLib(kavName, themeInput)
                 removeFavorite(item, true)
             end))
 
-            local switch = makeToggleSwitch(row, item.Id, function(api)
-                toggleBundle(item, api)
-            end, true)
-            switch.Pill.AnchorPoint = Vector2.new(1, 0.5)
-            switch.Pill.Position = UDim2.new(1, -35, 0.5, 0)
+            if not item.DetectedAnimation then
+                local switch = makeToggleSwitch(row, item.Id, function(api)
+                    toggleBundle(item, api)
+                end, true)
+                switch.Pill.AnchorPoint = Vector2.new(1, 0.5)
+                switch.Pill.Position = UDim2.new(1, -35, 0.5, 0)
+            else
+                local source = makeText(row, "from @" .. tostring(item.SourceUsername or "player"), 8.5, Enum.Font.GothamMedium)
+                source.AnchorPoint = Vector2.new(1, 0.5); source.Position = UDim2.new(1, -35, 0.5, 0); source.Size = UDim2.fromOffset(86, 20); source.TextXAlignment = Enum.TextXAlignment.Right; source.TextTruncate = Enum.TextTruncate.AtEnd; bind(source, "TextColor3", "MutedText")
+            end
             return row
         end
 
@@ -7779,6 +8337,40 @@ function LULA.CreateLib(kavName, themeInput)
             end)
         end))
 
+        state.ResolveAnimationName = function(assetId)
+            assetId = tonumber(assetId)
+            local info = assetId and getProductInfo(assetId) or nil
+            return (info and tostring(info.Name or "") ~= "" and tostring(info.Name)) or (assetId and ("Animation " .. tostring(assetId))) or "Unknown Animation"
+        end
+        state.SaveDetectedAnimation = function(snapshot, sourcePlayer)
+            if type(snapshot) ~= "table" or not tonumber(snapshot.Id) then return false, "Invalid detected animation." end
+            local favorites = getFavorites()
+            local id = tonumber(snapshot.Id)
+            for _, favorite in ipairs(favorites) do
+                if favorite.DetectedAnimation and tonumber(favorite.AnimationId or favorite.Id) == id then
+                    return false, "That animation is already saved."
+                end
+            end
+            local resolved = snapshot.Name
+            if not resolved or resolved == "Animation " .. tostring(id) then resolved = state.ResolveAnimationName(id) end
+            table.insert(favorites, {
+                Id = id,
+                AnimationId = id,
+                Name = resolved or ("Animation " .. tostring(id)),
+                CreatorName = sourcePlayer and ("@" .. sourcePlayer.Name) or "Detected Player",
+                Description = "Detected from another player with LH Animation Detector.",
+                DetectedAnimation = true,
+                SourceUserId = sourcePlayer and sourcePlayer.UserId or nil,
+                SourceUsername = sourcePlayer and sourcePlayer.Name or nil,
+                Looped = snapshot.Looped == true,
+                Speed = tonumber(snapshot.Speed) or 1,
+            })
+            saveFavorites(favorites, true)
+            refreshStarVisuals()
+            if currentMode == "favorites" then renderFavorites(favoriteSearchBox.Text) end
+            bundleNotify("Saved " .. tostring(resolved or ("Animation " .. id)) .. " to Free Animations.", "success", 2.8)
+            return true
+        end
         state.RefreshTheme = function()
             local marketplaceActive = currentMode == "marketplace"
             marketplaceTabButton.BackgroundColor3 = marketplaceActive and animationAccent(active.Theme.SchemeColor) or active.Theme.ElementColor
@@ -7799,6 +8391,12 @@ function LULA.CreateLib(kavName, themeInput)
             setMode("marketplace")
             runCurrentSearch(false)
         end
+        state.SetMode = setMode
+        state.OpenFavorites = function(query)
+            favoriteSearchBox.Text = tostring(query or "")
+            setMode("favorites")
+            renderFavorites(favoriteSearchBox.Text)
+        end
         state.RestoreOriginal = function()
             state.ToggleSerial = (state.ToggleSerial or 0) + 1
             local restored = restoreOriginalAnimations(true)
@@ -7812,6 +8410,7 @@ function LULA.CreateLib(kavName, themeInput)
         settings.AnimationBundleFavorites = saveFavorites(getFavorites())
         setMode("marketplace")
         SearchService:BuildFuzzyIndex(false)
+        ensurePlayerFeatureService():CreatePlayerPanel(scroll, "detector", 55)
         return bundleTab
     end
 
@@ -10115,6 +10714,18 @@ function LULA.CreateLib(kavName, themeInput)
             setMode("marketplace")
             performSearch(UI.MarketSearchBox.Text, false)
         end
+        state.SetMode = setMode
+        state.OpenFavorites = function(query)
+            UI.FavoriteSearchBox.Text = tostring(query or "")
+            setMode("favorites")
+            renderFavorites(UI.FavoriteSearchBox.Text)
+        end
+        state.ResolveAnimationName = function(assetId)
+            assetId = tonumber(assetId)
+            if not assetId then return "Unknown Animation" end
+            local ok, info = pcall(MarketplaceService.GetProductInfo, MarketplaceService, assetId, Enum.InfoType.Asset)
+            return (ok and type(info)=="table" and tostring(info.Name or "")~="" and tostring(info.Name)) or ("Animation "..tostring(assetId))
+        end
         state.Stop = function() return stopActiveEmote(true) end
 
         track(LocalPlayer.CharacterAdded:Connect(function()
@@ -10124,6 +10735,7 @@ function LULA.CreateLib(kavName, themeInput)
         settings.FreeEmoteFavorites = saveFavorites(getFavorites())
         persistEmoteSettings()
         setMode("marketplace")
+        ensurePlayerFeatureService():CreatePlayerPanel(scroll, "sync", 55)
         return emoteTab
     end
 
@@ -10775,6 +11387,31 @@ function LULA.CreateLib(kavName, themeInput)
 
         state.Tab = avatarTab
         active.AvatarKreator = state
+        state.OwnershipCache = {}
+        do
+            local stored = settings.AvatarOwnedAssetIds
+            for key, value in pairs(type(stored)=="table" and stored or {}) do
+                local id = tonumber(type(key)=="number" and value or key)
+                if id and (type(key)=="number" or value==true or tonumber(value)) then state.OwnershipCache[id]=true end
+            end
+        end
+        state.PersistOwnership = function()
+            local ids = {}
+            for id, owned in pairs(state.OwnershipCache) do if owned==true then table.insert(ids, tonumber(id)) end end
+            table.sort(ids)
+            settings.AvatarOwnedAssetIds = ids
+            env.LHSettings = env.LHSettings or {}; env.LHUISettings = env.LHUISettings or settings
+            env.LHSettings.AvatarOwnedAssetIds = ids; env.LHUISettings.AvatarOwnedAssetIds = ids
+            markSettingsDirty(); saveSettingsNow()
+        end
+        state.ScheduleOwnershipPersist = function()
+            if state.OwnershipSaveQueued then return end
+            state.OwnershipSaveQueued = true
+            task.delay(0.4, function()
+                state.OwnershipSaveQueued = false
+                if not state.Destroyed then state.PersistOwnership() end
+            end)
+        end
 
         local ScreenGui = create("Frame", {
             Name = "AvatarKreatorSurface",
@@ -13503,6 +14140,12 @@ function LULA.CreateLib(kavName, themeInput)
 
         state.Purchase = {}
 
+        track(MarketplaceService.PromptPurchaseFinished:Connect(function(player, assetId, purchased)
+            if player == LocalPlayer and purchased == true and tonumber(assetId) then
+                task.defer(function() state.Purchase:MarkOwned(assetId) end)
+            end
+        end))
+
         function state.Purchase:IsSaleable(item)
             if not item or not tonumber(item.Id) then return false, "Invalid item." end
             local info = getProductInfo(item.Id)
@@ -13516,16 +14159,36 @@ function LULA.CreateLib(kavName, themeInput)
             return true
         end
 
+        function state.Purchase:MarkOwned(assetId)
+            assetId = tonumber(assetId)
+            if not assetId then return false end
+            if state.OwnershipCache[assetId] == true then return true end
+            state.OwnershipCache[assetId] = true
+            state.ScheduleOwnershipPersist()
+            for _, record in ipairs(state.CardRecords[assetId] or {}) do
+                record.Owned = true
+                if record.BuyButton then
+                    record.BuyButton.Text = "Owned"
+                    record.BuyButton.BackgroundColor3 = Color3.fromRGB(56, 92, 68)
+                end
+            end
+            return true
+        end
+
         function state.Purchase:Owns(assetId)
             assetId = tonumber(assetId)
             if not assetId then return nil, "invalid asset id" end
+            if state.OwnershipCache[assetId] == true then return true end
             local ok, result = pcall(
                 MarketplaceService.PlayerOwnsAssetAsync,
                 MarketplaceService,
                 LocalPlayer,
                 assetId
             )
-            if ok then return result == true end
+            if ok then
+                if result == true then self:MarkOwned(assetId) end
+                return result == true
+            end
             return nil, result
         end
 
@@ -13834,6 +14497,45 @@ function LULA.CreateLib(kavName, themeInput)
                 if ta == tb then return tostring(a.Name) < tostring(b.Name) end
                 return ta < tb
             end)
+            return items
+        end
+
+        state.GetPlayerWornItems = function(player)
+            if not player then return {} end
+            if player == LocalPlayer then return state.GetCurrentWornItems() end
+            local byId, order = {}, {}
+            local function add(assetId)
+                assetId = tonumber(assetId)
+                if not assetId or assetId <= 0 or byId[assetId] then return end
+                local item = itemFromProductInfo(assetId)
+                if item then byId[assetId] = item; order[#order + 1] = assetId end
+            end
+            local character = player.Character
+            if character then
+                for _, object in ipairs(character:GetDescendants()) do
+                    if object:IsA("Accessory") then
+                        local id
+                        pcall(function() id = tonumber(object.SourceAssetId) end)
+                        if not id then id = tonumber(object:GetAttribute("LHAvatarItemId")) end
+                        add(id)
+                    end
+                end
+                local humanoid = getHumanoid(character)
+                if humanoid then
+                    local ok, description = pcall(function() return humanoid:GetAppliedDescription() end)
+                    if ok and description then
+                        for _, property in ipairs({"GraphicTShirt","Shirt","Pants","Face","Head","Torso","LeftArm","RightArm","LeftLeg","RightLeg"}) do
+                            local id; pcall(function() id = tonumber(description[property]) end); add(id)
+                        end
+                        local accessoriesOk, accessories = pcall(function() return description:GetAccessories(true) end)
+                        if accessoriesOk and type(accessories)=="table" then for _, record in ipairs(accessories) do add(record.AssetId) end end
+                        pcall(function() description:Destroy() end)
+                    end
+                end
+            end
+            local items = {}
+            for _, id in ipairs(order) do if byId[id] then items[#items+1] = byId[id] end end
+            table.sort(items, function(a,b) return tostring(a.Name or "") < tostring(b.Name or "") end)
             return items
         end
 
@@ -14314,6 +15016,15 @@ function LULA.CreateLib(kavName, themeInput)
                     ZIndex = 53
                 })
                 name.Parent = card
+                task.spawn(function()
+                    local owned = 0
+                    for _, savedItem in ipairs(outfit.Items or {}) do
+                        if state.Purchase:Owns(savedItem.Id) == true then owned += 1 end
+                    end
+                    if name.Parent then
+                        name.Text = tostring(outfit.Name) .. " (" .. tostring(#outfit.Items) .. ") | Owned " .. tostring(owned) .. "/" .. tostring(#outfit.Items)
+                    end
+                end)
 
                 local wear = create("TextButton", {
                     Position = UDim2.fromOffset(6, 177),
@@ -14709,6 +15420,16 @@ function LULA.CreateLib(kavName, themeInput)
                 or "No Marketplace description was returned for this item."
             task.defer(resizeDetailsDescription)
 
+            state.DetailsBuyButton.Text = "Buy"
+            state.DetailsBuyButton.BackgroundColor3 = Color3.fromRGB(46, 156, 82)
+            task.spawn(function()
+                local detailId = tonumber(item.Id)
+                local owns = state.Purchase:Owns(detailId)
+                if state.DetailsItem and tonumber(state.DetailsItem.Id) == detailId and owns == true then
+                    state.DetailsBuyButton.Text = "Owned"
+                    state.DetailsBuyButton.BackgroundColor3 = Color3.fromRGB(56, 92, 68)
+                end
+            end)
             refreshSelectedUi()
         end
 
@@ -14845,6 +15566,13 @@ function LULA.CreateLib(kavName, themeInput)
                         Color3.fromRGB(46, 156, 82),
                         Color3.fromRGB(56, 180, 96)
                     )
+                    task.spawn(function()
+                        local owns = state.Purchase:Owns(item.Id)
+                        if buyButton.Parent and owns == true then
+                            buyButton.Text = "Owned"
+                            buyButton.BackgroundColor3 = Color3.fromRGB(56, 92, 68)
+                        end
+                    end)
 
                     local removeButton = create("TextButton", {
                         AnchorPoint = Vector2.new(1, 0.5),
@@ -15433,6 +16161,25 @@ function LULA.CreateLib(kavName, themeInput)
         end
 
         state.SetMode = setMode
+        state.Search = function(query)
+            SearchBox.Text = tostring(query or "")
+            setMode("marketplace")
+            performSearch(SearchBox.Text)
+        end
+        state.OpenFavorites = function(query)
+            SearchBox.Text = tostring(query or "")
+            setMode("favorites")
+            renderFavorites(SearchBox.Text)
+        end
+        state.InspectPlayer = function(player)
+            if not player then return false end
+            state.ViewerTargetPlayer = player
+            if active.Window then active.Window:SelectTab(avatarTab.Name) end
+            setMode("viewer")
+            if state.Viewer and state.Viewer.Refresh then task.defer(function() state.Viewer:Refresh() end) end
+            LULA:ShowIsland("Avatar Kreator", "Inspecting @" .. tostring(player.Name) .. " inside LH.", {Duration=2.3})
+            return true
+        end
 
         -- Split the remaining Avatar Kreator setup into a fresh Luau function frame.
         -- Delta/Luau caps a single function at 200 local registers; keeping this tail
@@ -15868,7 +16615,8 @@ function LULA.CreateLib(kavName, themeInput)
 
         function state.Viewer:RefreshViewport()
             self:ClearViewport()
-            local character = getCharacter()
+            local targetPlayer = state.ViewerTargetPlayer
+            local character = (targetPlayer and targetPlayer.Character) or getCharacter()
             if not character then return end
 
             local oldArchivable = character.Archivable
@@ -15914,7 +16662,9 @@ function LULA.CreateLib(kavName, themeInput)
 
             local root = model:FindFirstChild("HumanoidRootPart")
             if root then root.Anchored = true end
-            mirrorCurrentAvatarPose(model, self.Viewport)
+            if not targetPlayer or targetPlayer == LocalPlayer then
+                mirrorCurrentAvatarPose(model, self.Viewport)
+            end
         end
 
         function state.Viewer:ClearItems()
@@ -15926,7 +16676,10 @@ function LULA.CreateLib(kavName, themeInput)
         function state.Viewer:RenderItems(items, serial)
             if serial ~= state.ViewerRenderSerial or state.Destroyed then return end
             self:ClearItems()
-            self.WearingTitle.Text = "Kurrently Wearing (" .. tostring(#items) .. ")"
+            local targetPlayer = state.ViewerTargetPlayer
+            self.WearingTitle.Text = (targetPlayer and targetPlayer ~= LocalPlayer)
+                and ("@" .. targetPlayer.Name .. " Wearing (" .. tostring(#items) .. ")")
+                or ("Kurrently Wearing (" .. tostring(#items) .. ")")
 
             for index, item in ipairs(items) do
                 local card = create("Frame", {
@@ -16017,11 +16770,23 @@ function LULA.CreateLib(kavName, themeInput)
                 remove.Parent = card
                 bindButtonVisual(remove, Color3.fromRGB(78, 38, 48), Color3.fromRGB(95, 44, 56))
 
+                task.spawn(function()
+                    local owns = state.Purchase:Owns(item.Id)
+                    if buy.Parent and owns == true then buy.Text = "Owned"; buy.BackgroundColor3 = Color3.fromRGB(56,92,68) end
+                end)
+                if targetPlayer and targetPlayer ~= LocalPlayer then
+                    remove.Text = "Try On"
+                    remove.BackgroundColor3 = ACCENT
+                end
                 buy.MouseButton1Click:Connect(function() state.Purchase:Prompt(item) end)
                 info.MouseButton1Click:Connect(function()
                     openDetails(item)
                 end)
                 remove.MouseButton1Click:Connect(function()
+                    if targetPlayer and targetPlayer ~= LocalPlayer then
+                        toggleItem(item)
+                        return
+                    end
                     task.spawn(function()
                         local ok, err = Wear.RemoveCurrentAsset(item)
                         if not ok then
@@ -16042,10 +16807,13 @@ function LULA.CreateLib(kavName, themeInput)
         function state.Viewer:Refresh()
             state.ViewerRenderSerial = (state.ViewerRenderSerial or 0) + 1
             local serial = state.ViewerRenderSerial
+            local targetPlayer = state.ViewerTargetPlayer
+            self.Title.Text = (targetPlayer and targetPlayer ~= LocalPlayer) and (tostring(targetPlayer.DisplayName) .. "'s Avatar") or "Live Avatar Viewer"
+            self.Subtitle.Text = (targetPlayer and targetPlayer ~= LocalPlayer) and ("@" .. targetPlayer.Name .. " | Owned indicators use your saved ownership cache.") or "Your kurrent local look and animation move live here."
             self:RefreshViewport()
-            self.WearingTitle.Text = "Kurrently Wearing (loading...)"
+            self.WearingTitle.Text = targetPlayer and ("@"..targetPlayer.Name.." Wearing (loading...)") or "Kurrently Wearing (loading...)"
             task.spawn(function()
-                local items = state.GetCurrentWornItems()
+                local items = (targetPlayer and targetPlayer ~= LocalPlayer) and state.GetPlayerWornItems(targetPlayer) or state.GetCurrentWornItems()
                 if serial ~= state.ViewerRenderSerial or state.Destroyed then return end
                 self:RenderItems(items, serial)
             end)
@@ -16120,7 +16888,8 @@ function LULA.CreateLib(kavName, themeInput)
         task.spawn(function()
             while not state.Destroyed do
                 if avatarTab.Page.Visible and state.Viewer and state.Viewer.Visible then
-                    local character = getCharacter()
+                    local targetPlayer = state.ViewerTargetPlayer
+                    local character = (targetPlayer and targetPlayer.Character) or getCharacter()
                     if state.Viewer.LiveCharacter ~= character then
                         state.Viewer:BindLiveAppearanceWatch(character)
                         pcall(function() state.Viewer:Refresh() end)
@@ -16147,7 +16916,9 @@ function LULA.CreateLib(kavName, themeInput)
         end))
         track(state.Viewer.BuyAllButton.MouseButton1Click:Connect(function()
             task.spawn(function()
-                state.Purchase:ConfirmMany(state.GetCurrentWornItems(), "Buy All Kurrent Avatar Items?")
+                local targetPlayer = state.ViewerTargetPlayer
+                local items = (targetPlayer and targetPlayer ~= LocalPlayer) and state.GetPlayerWornItems(targetPlayer) or state.GetCurrentWornItems()
+                state.Purchase:ConfirmMany(items, targetPlayer and ("Buy All @"..targetPlayer.Name.." Avatar Items?") or "Buy All Kurrent Avatar Items?")
             end)
         end))
         track(state.Viewer.SaveAvatarButton.MouseButton1Click:Connect(function()
@@ -16192,7 +16963,9 @@ function LULA.CreateLib(kavName, themeInput)
         end))
 
         track(state.ViewerModeButton.MouseButton1Click:Connect(function()
+            state.ViewerTargetPlayer = nil
             setMode("viewer")
+            if state.Viewer and state.Viewer.Refresh then task.defer(function() state.Viewer:Refresh() end) end
         end))
 
         track(state.OutfitModeButton.MouseButton1Click:Connect(function()
@@ -16371,6 +17144,7 @@ function LULA.CreateLib(kavName, themeInput)
             if state.Destroyed then
                 return
             end
+            pcall(state.PersistOwnership)
             state.Destroyed = true
 
             safeDisconnect(characterAddedConnection)
@@ -18188,7 +18962,7 @@ function LULA.CreateLib(kavName, themeInput)
                 display.Position = UDim2.fromOffset(76, 8); display.Size = UDim2.new(1, -250, 0, 20); display.TextXAlignment = Enum.TextXAlignment.Left
                 local user = makeText(row, "@"..player.Name.."  |  ID "..tostring(player.UserId), 9, Enum.Font.GothamMedium)
                 user.Position = UDim2.fromOffset(76, 29); user.Size = UDim2.new(1, -250, 0, 18); user.TextXAlignment = Enum.TextXAlignment.Left; bind(user, "TextColor3", "MutedText")
-                local inspect = makeButton(row, "Examine")
+                local inspect = makeButton(row, "Activity")
                 inspect.Position = UDim2.new(1, -166, 0, 8); inspect.Size = UDim2.fromOffset(76, 27); inspect.BackgroundColor3 = rgb(81, 145, 255); inspect.BackgroundTransparency = 0.03
                 local friend = makeButton(row, player == LocalPlayer and "You" or "Add Friend")
                 friend.Position = UDim2.new(1, -84, 0, 8); friend.Size = UDim2.fromOffset(76, 27); friend.BackgroundColor3 = rgb(68, 198, 121); friend.BackgroundTransparency = 0.03
@@ -18202,8 +18976,7 @@ function LULA.CreateLib(kavName, themeInput)
                     tp.AutoButtonColor = false
                 end
                 trackLocal(inspect.MouseButton1Click:Connect(function()
-                    local ok = pcall(function() get.GuiService:InspectPlayerFromUserId(player.UserId) end)
-                    if not ok then LULA:ShowIsland("Examine Avatar", "Roblox's Inspect Menu is unavailable on this client.", {Duration=2.8}) end
+                    ensurePlayerFeatureService():OpenActivityCard(player)
                 end))
                 if player ~= LocalPlayer then
                     trackLocal(friend.MouseButton1Click:Connect(function()
@@ -18992,6 +19765,9 @@ function LULA:Destroy()
     end
     if active.ExperienceHub and type(active.ExperienceHub.Cleanup) == "function" then
         pcall(active.ExperienceHub.Cleanup)
+    end
+    if active.PlayerFeatures and type(active.PlayerFeatures.Cleanup) == "function" then
+        pcall(function() active.PlayerFeatures:Cleanup() end)
     end
     pcall(function() UserInputService.MouseIconEnabled = true end)
     disconnectAll()
