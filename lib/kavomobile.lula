@@ -7,7 +7,7 @@ LULA.AutoExecuteManagerVersion = 1
 LULA.UserLookupVersion = 5
 LULA.ExperienceHubVersion = 2
 LULA.UniversalSearchVersion = 1
-LULA.PlayerFeatureVersion = 1
+LULA.PlayerFeatureVersion = 2
 local env = (getgenv and getgenv()) or _G
 
 --kr
@@ -2793,25 +2793,26 @@ function LULA.CreateLib(kavName, themeInput)
         if playerGui then screenGui.Parent = playerGui else error("KAVO UI could not find a supported GUI parent") end
     end
 
-    -- Notifications and the Dynamic Island live on an independent ScreenGui.
-    -- Hiding LH must never hide user notifications/status popups.
-    pcall(function()
-        if env.LHNotificationOverlayGui then env.LHNotificationOverlayGui:Destroy() end
-    end)
-    env.LHNotificationOverlayGui = Instance.new("ScreenGui")
-    env.LHNotificationOverlayGui.Name = "LollypopHubNotificationOverlay"
-    env.LHNotificationOverlayGui.IgnoreGuiInset = true
-    env.LHNotificationOverlayGui.ResetOnSpawn = false
-    env.LHNotificationOverlayGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    env.LHNotificationOverlayGui.DisplayOrder = 1000002
-    env.LHNotificationOverlayGui.Enabled = true
-    env.LHNotificationOverlayGui.Parent = screenGui.Parent
-
-    track(env.LHNotificationOverlayGui.DescendantAdded:Connect(function(descendant)
-        if descendant:IsA("GuiButton") then task.defer(addButtonPressEffect, descendant) end
-    end))
+    -- Notifications and Dynamic Island live on a separate always-enabled overlay.
+    -- Hiding the LH window must never hide notifications.
+    local notificationGui = Instance.new("ScreenGui")
+    notificationGui.Name = "LollypopHubNotifications_" .. tostring(math.random(10000, 99999))
+    notificationGui.IgnoreGuiInset = true
+    notificationGui.ResetOnSpawn = false
+    notificationGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    notificationGui.DisplayOrder = 1000000
+    local notificationParented = pcall(function() notificationGui.Parent = parent end)
+    if not notificationParented or not notificationGui.Parent then
+        local playerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui") or LocalPlayer:WaitForChild("PlayerGui", 8)
+        if playerGui then notificationGui.Parent = playerGui else error("KAVO notification overlay could not find a supported GUI parent") end
+    end
 
     track(screenGui.DescendantAdded:Connect(function(descendant)
+        if descendant:IsA("GuiButton") then
+            task.defer(addButtonPressEffect, descendant)
+        end
+    end))
+    track(notificationGui.DescendantAdded:Connect(function(descendant)
         if descendant:IsA("GuiButton") then
             task.defer(addButtonPressEffect, descendant)
         end
@@ -2978,7 +2979,7 @@ function LULA.CreateLib(kavName, themeInput)
     islandFrame.GroupTransparency = 1
     islandFrame.Visible = false
     islandFrame.ZIndex = 240
-    islandFrame.Parent = env.LHNotificationOverlayGui
+    islandFrame.Parent = notificationGui
     bind(islandFrame, "BackgroundColor3", "NotificationColor")
     makeCorner(islandFrame, 18)
     local islandStroke = makeStroke(islandFrame, theme.SchemeColor, 0.22, 1)
@@ -3023,6 +3024,7 @@ function LULA.CreateLib(kavName, themeInput)
 
     active = {
         ScreenGui = screenGui,
+        NotificationGui = notificationGui,
         Main = main,
         Header = header,
         Sidebar = sidebar,
@@ -3033,9 +3035,8 @@ function LULA.CreateLib(kavName, themeInput)
         MainStroke = mainStroke,
         SideGradient = sideGradient,
         Tooltip = tooltip,
-        NotificationOverlayGui = env.LHNotificationOverlayGui,
-        NotificationHost = createNotificationHost(env.LHNotificationOverlayGui, false),
-        ActionNotificationHost = createNotificationHost(env.LHNotificationOverlayGui, true),
+        NotificationHost = createNotificationHost(notificationGui, false),
+        ActionNotificationHost = createNotificationHost(notificationGui, true),
         Tabs = {},
         SelectedTab = nil,
         Scale = scale,
@@ -3227,7 +3228,7 @@ function LULA.CreateLib(kavName, themeInput)
     -- V10.5.0 SHARED PLAYER + ANIMATION SERVICE
     -- One observer powers Activity, Dance Sync, Detector and player search.
     --==================================================
-    function env.LHEnsurePlayerFeatureService()
+    local function ensurePlayerFeatureService()
         if active.PlayerFeatures then return active.PlayerFeatures end
 
         local service = {
@@ -3246,8 +3247,21 @@ function LULA.CreateLib(kavName, themeInput)
             NameCache = {},
             NameLoading = {},
             PlayerListRefreshers = {},
-            PlayerObservers = {},
             RecentTracks = {},
+            PlayerWatchers = {},
+            MimicEnabled = false,
+            MimicSelecting = false,
+            MimicTarget = nil,
+            MimicTrack = nil,
+            MimicAnimation = nil,
+            MimicTrackId = nil,
+            MimicNextCorrection = 0,
+            MimicOriginal = nil,
+            MimicOriginalAnimations = {},
+            MimicGui = nil,
+            MimicMarker = nil,
+            MimicHighlight = nil,
+            MimicInputConnection = nil,
             Destroyed = false,
         }
         active.PlayerFeatures = service
@@ -3274,144 +3288,94 @@ function LULA.CreateLib(kavName, themeInput)
             return humanoid:FindFirstChildOfClass("Animator"), humanoid
         end
 
-        function service:ForgetPlayer(player)
-            local observer = self.PlayerObservers[player]
-            if observer then
-                for _, list in ipairs({observer.Connections or {}, observer.CharacterConnections or {}}) do
-                    for _, connection in ipairs(list) do
-                        pcall(function() if connection and connection.Connected then connection:Disconnect() end end)
-                    end
+        function service:ClearPlayerWatcher(player)
+            local watcher = self.PlayerWatchers[player]
+            if watcher then
+                for _, connection in ipairs(watcher.Connections or {}) do
+                    pcall(function() if connection and connection.Connected then connection:Disconnect() end end)
                 end
             end
-            self.PlayerObservers[player] = nil
+            self.PlayerWatchers[player] = nil
             self.RecentTracks[player] = nil
         end
 
-        function service:RecordTrack(player, track)
-            if not player or not track then return end
-            local animation = track.Animation
-            local animationId = animation and normalizeAnimationId(animation.AnimationId)
-            if not animationId then return end
-            local current = self.RecentTracks[player]
-            if current and current.Track == track then
-                current.Seen = os.clock()
-                return
-            end
-            self.RecentTracks[player] = {
-                Track = track,
-                Id = animationId,
-                Seen = os.clock(),
-            }
-            self:ResolveAnimationName(animationId)
-            local observer = self.PlayerObservers[player]
-            if observer and track.Stopped then
-                local connection
-                connection = track.Stopped:Connect(function()
-                    if self.RecentTracks[player] and self.RecentTracks[player].Track == track then
-                        self.RecentTracks[player] = nil
-                    end
-                    if connection then pcall(function() connection:Disconnect() end) end
-                end)
-                table.insert(observer.CharacterConnections, connection)
-            end
-        end
-
-        function service:BindPlayerCharacter(player, character)
+        function service:BindPlayer(player)
             if not player then return end
-            local observer = self.PlayerObservers[player]
-            if not observer then
-                observer = {Connections = {}, CharacterConnections = {}}
-                self.PlayerObservers[player] = observer
-            end
-            for _, connection in ipairs(observer.CharacterConnections or {}) do
-                pcall(function() if connection and connection.Connected then connection:Disconnect() end end)
-            end
-            observer.CharacterConnections = {}
-            self.RecentTracks[player] = nil
+            self:ClearPlayerWatcher(player)
+            local watcher = {Connections = {}, Character = nil, AnimationConnection = nil}
+            self.PlayerWatchers[player] = watcher
 
-            local humanoid = character and (character:FindFirstChildOfClass("Humanoid") or character:WaitForChild("Humanoid", 5))
-            if not humanoid then return end
-
-            -- Primary detector: same reliable path used by MJ's working Animation Logger.
-            local playedConnection = humanoid.AnimationPlayed:Connect(function(track)
-                if self.Destroyed then return end
-                self:RecordTrack(player, track)
-            end)
-            table.insert(observer.CharacterConnections, playedConnection)
-
-            -- Seed from anything already playing when LH starts/reattaches.
-            task.defer(function()
-                local animator = humanoid:FindFirstChildOfClass("Animator")
-                local tracks = {}
-                pcall(function()
-                    tracks = animator and animator:GetPlayingAnimationTracks() or humanoid:GetPlayingAnimationTracks()
+            local function rememberTrack(track)
+                if not track or not track.Animation or not normalizeAnimationId(track.Animation.AnimationId) then return end
+                self.RecentTracks[player] = {Track = track, Seen = os.clock()}
+                local stopped
+                stopped = track.Stopped:Connect(function()
+                    local recent = self.RecentTracks[player]
+                    if recent and recent.Track == track then
+                        recent.Stopped = os.clock()
+                    end
+                    if stopped and stopped.Connected then stopped:Disconnect() end
                 end)
-                for _, track in ipairs(tracks or {}) do self:RecordTrack(player, track) end
-            end)
-        end
+                table.insert(watcher.Connections, stopped)
+            end
 
-        function service:ObservePlayer(player)
-            if not player or self.PlayerObservers[player] then return end
-            local observer = {Connections = {}, CharacterConnections = {}}
-            self.PlayerObservers[player] = observer
-            table.insert(observer.Connections, player.CharacterAdded:Connect(function(character)
-                if self.Destroyed then return end
-                task.defer(function() self:BindPlayerCharacter(player, character) end)
+            local function bindCharacter(character)
+                if self.Destroyed or self.PlayerWatchers[player] ~= watcher then return end
+                if watcher.AnimationConnection then
+                    pcall(function() watcher.AnimationConnection:Disconnect() end)
+                    watcher.AnimationConnection = nil
+                end
+                watcher.Character = character
+                local humanoid = character and (character:FindFirstChildOfClass("Humanoid") or character:WaitForChild("Humanoid", 5))
+                if not humanoid then return end
+                watcher.AnimationConnection = humanoid.AnimationPlayed:Connect(rememberTrack)
+                table.insert(watcher.Connections, watcher.AnimationConnection)
+                pcall(function()
+                    for _, track in ipairs(humanoid:GetPlayingAnimationTracks()) do rememberTrack(track) end
+                end)
+            end
+
+            table.insert(watcher.Connections, player.CharacterAdded:Connect(function(character)
+                task.defer(function() bindCharacter(character) end)
             end))
-            if player.Character then self:BindPlayerCharacter(player, player.Character) end
+            if player.Character then task.defer(function() bindCharacter(player.Character) end) end
         end
 
         function service:GetPrimaryTrack(player)
-            if not player then return nil end
-            if not self.PlayerObservers[player] then self:ObservePlayer(player) end
+            local recent = self.RecentTracks[player]
+            if recent and recent.Track and recent.Track.Animation and normalizeAnimationId(recent.Track.Animation.AnimationId) then
+                local age = os.clock() - (tonumber(recent.Seen) or 0)
+                local stoppedAge = recent.Stopped and (os.clock() - recent.Stopped) or nil
+                if age <= 2 and (not stoppedAge or stoppedAge <= 0.18) then
+                    return recent.Track
+                end
+            end
 
             local animator, humanoid = getAnimator(player)
             if not humanoid then return nil end
             local tracks = {}
-            pcall(function()
+            local ok = pcall(function()
                 if animator and animator.GetPlayingAnimationTracks then
                     tracks = animator:GetPlayingAnimationTracks()
                 else
                     tracks = humanoid:GetPlayingAnimationTracks()
                 end
             end)
-
+            if not ok then return nil end
             local best, bestScore = nil, -math.huge
             for _, candidate in ipairs(tracks or {}) do
                 local animationId = candidate.Animation and normalizeAnimationId(candidate.Animation.AnimationId)
                 if animationId then
-                    local isPlaying, weight, priority = false, 0, 0
-                    pcall(function() isPlaying = candidate.IsPlaying == true end)
+                    local weight, priority, isPlaying = 0, 0, false
                     pcall(function() weight = tonumber(candidate.WeightCurrent) or 0 end)
-                    pcall(function()
-                        local rawPriority = candidate.Priority
-                        priority = typeof(rawPriority) == "EnumItem" and rawPriority.Value or tonumber(rawPriority) or 0
-                    end)
-                    if isPlaying or weight > 0.001 then
-                        local score = priority * 100 + weight * 10
-                        if score > bestScore then
-                            best, bestScore = candidate, score
-                        end
-                    end
+                    pcall(function() priority = tonumber(candidate.Priority.Value) or 0 end)
+                    pcall(function() isPlaying = candidate.IsPlaying == true end)
+                    local score = priority * 10 + weight + (isPlaying and 1000 or 0)
+                    if score > bestScore then best, bestScore = candidate, score end
                 end
             end
-
-            if best then
-                self:RecordTrack(player, best)
-                return best
-            end
-
-            -- AnimationPlayed can fire before GetPlayingAnimationTracks reflects the new track.
-            -- Keep a short recent-track bridge so Sync/Detector does not flash "No animation".
-            local recent = self.RecentTracks[player]
-            if recent and recent.Track and os.clock() - (recent.Seen or 0) <= 1.15 then
-                local stillValid = true
-                pcall(function()
-                    if recent.Track.IsPlaying == false and (recent.Track.WeightCurrent or 0) <= 0 then stillValid = false end
-                end)
-                if stillValid or os.clock() - (recent.Seen or 0) <= 0.35 then return recent.Track end
-            end
-            return nil
+            if best then self.RecentTracks[player] = {Track=best, Seen=os.clock()} end
+            return best
         end
 
         function service:ResolveAnimationName(animationId, callback)
@@ -3461,11 +3425,10 @@ function LULA.CreateLib(kavName, themeInput)
             if not track then return nil end
             local id = track.Animation and normalizeAnimationId(track.Animation.AnimationId)
             if not id then return nil end
-            local snapshot = {Id=id, Track=track, TimePosition=0, Speed=1, Looped=false, Priority=Enum.AnimationPriority.Action, Name=self.NameCache[id]}
+            local snapshot = {Id=id, Track=track, TimePosition=0, Speed=1, Looped=false, Name=self.NameCache[id]}
             pcall(function() snapshot.TimePosition = tonumber(track.TimePosition) or 0 end)
             pcall(function() snapshot.Speed = tonumber(track.Speed) or 1 end)
             pcall(function() snapshot.Looped = track.Looped == true end)
-            pcall(function() snapshot.Priority = track.Priority end)
             snapshot.Name = snapshot.Name or self:ResolveAnimationName(id)
             return snapshot
         end
@@ -3577,6 +3540,342 @@ function LULA.CreateLib(kavName, themeInput)
             return card
         end
 
+        function service:StopMimicTrack()
+            stopTrack(self.MimicTrack)
+            if self.MimicAnimation then pcall(function() self.MimicAnimation:Destroy() end) end
+            self.MimicTrack, self.MimicAnimation, self.MimicTrackId = nil, nil, nil
+        end
+
+        function service:ClearMimicMarker()
+            if self.MimicMarker then pcall(function() self.MimicMarker:Destroy() end); self.MimicMarker=nil end
+            if self.MimicHighlight then pcall(function() self.MimicHighlight:Destroy() end); self.MimicHighlight=nil end
+        end
+
+        function service:MakeMimicMarker(player)
+            self:ClearMimicMarker()
+            local character = player and player.Character
+            local head = character and character:FindFirstChild("Head")
+            if not character or not head then return end
+
+            local highlight = Instance.new("Highlight")
+            highlight.Name = "LHMimicTargetHighlight"
+            highlight.Adornee = character
+            highlight.FillColor = Color3.fromRGB(48, 235, 107)
+            highlight.OutlineColor = Color3.fromRGB(115, 255, 160)
+            highlight.FillTransparency = 0.28
+            highlight.OutlineTransparency = 0
+            highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+            highlight.Parent = character
+            self.MimicHighlight = highlight
+            task.delay(0.55, function()
+                if self.MimicHighlight == highlight and highlight.Parent then
+                    tween(highlight, {FillTransparency=0.88, OutlineTransparency=0.12}, 0.28)
+                end
+            end)
+
+            local billboard = Instance.new("BillboardGui")
+            billboard.Name = "LHMimicTargetMarker"
+            billboard.Adornee = head
+            billboard.AlwaysOnTop = true
+            billboard.Size = UDim2.fromOffset(120, 48)
+            billboard.StudsOffset = Vector3.new(0, 3.2, 0)
+            billboard.Parent = head
+            local label = makeText(billboard, "Target\n" .. utf8.char(0x25BC), 14, Enum.Font.GothamBold)
+            label.Size = UDim2.fromScale(1,1)
+            label.TextColor3 = Color3.fromRGB(62,255,125)
+            label.TextStrokeTransparency = 0.55
+            label.TextXAlignment = Enum.TextXAlignment.Center
+            label.TextYAlignment = Enum.TextYAlignment.Center
+            self.MimicMarker = billboard
+        end
+
+        function service:CaptureMimicOriginal(force)
+            if self.MimicOriginal and force ~= true then return end
+            local humanoid = getHumanoid(Local)
+            self.MimicOriginal = humanoid and {
+                WalkSpeed = humanoid.WalkSpeed,
+                AutoRotate = humanoid.AutoRotate,
+                JumpPower = humanoid.JumpPower,
+                JumpHeight = humanoid.JumpHeight,
+                UseJumpPower = humanoid.UseJumpPower,
+            } or nil
+            self.MimicOriginalAnimations = {}
+            local animate = Local.Character and Local.Character:FindFirstChild("Animate")
+            if animate then
+                for _, object in ipairs(animate:GetDescendants()) do
+                    if object:IsA("Animation") then self.MimicOriginalAnimations[object] = object.AnimationId end
+                end
+            end
+        end
+
+        function service:RestoreMimicOriginal()
+            local humanoid = getHumanoid(Local)
+            local original = self.MimicOriginal
+            if humanoid and original then
+                pcall(function() humanoid.WalkSpeed = original.WalkSpeed end)
+                pcall(function() humanoid.AutoRotate = original.AutoRotate end)
+                pcall(function() humanoid.UseJumpPower = original.UseJumpPower end)
+                pcall(function() humanoid.JumpPower = original.JumpPower end)
+                pcall(function() humanoid.JumpHeight = original.JumpHeight end)
+            end
+            for animation, animationId in pairs(self.MimicOriginalAnimations or {}) do
+                if animation and animation.Parent then pcall(function() animation.AnimationId = animationId end) end
+            end
+            self.MimicOriginal = nil
+            self.MimicOriginalAnimations = {}
+        end
+
+        function service:CopyAnimateTree(targetPlayer)
+            local source = targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("Animate")
+            local destination = Local.Character and Local.Character:FindFirstChild("Animate")
+            if not source or not destination then return false end
+            local destinationAnimations = {}
+            for _, object in ipairs(destination:GetDescendants()) do
+                if object:IsA("Animation") then
+                    local key = string.lower(tostring(object.Parent and object.Parent.Name or "")) .. "/" .. string.lower(object.Name)
+                    destinationAnimations[key] = destinationAnimations[key] or {}
+                    table.insert(destinationAnimations[key], object)
+                end
+            end
+            local changed = false
+            for _, object in ipairs(source:GetDescendants()) do
+                if object:IsA("Animation") and tostring(object.AnimationId or "") ~= "" then
+                    local key = string.lower(tostring(object.Parent and object.Parent.Name or "")) .. "/" .. string.lower(object.Name)
+                    for _, localAnimation in ipairs(destinationAnimations[key] or {}) do
+                        pcall(function() localAnimation.AnimationId = object.AnimationId end)
+                        changed = true
+                    end
+                end
+            end
+            return changed
+        end
+
+        function service:CopyDescriptionAnimations(targetPlayer)
+            local targetHumanoid = getHumanoid(targetPlayer)
+            local animate = Local.Character and Local.Character:FindFirstChild("Animate")
+            if not targetHumanoid or not animate then return end
+            local ok, description = pcall(function() return targetHumanoid:GetAppliedDescription() end)
+            if not ok or not description then return end
+            local mapping = {
+                IdleAnimation={"idle"}, WalkAnimation={"walk"}, RunAnimation={"run"}, JumpAnimation={"jump"},
+                FallAnimation={"fall"}, ClimbAnimation={"climb"}, SwimAnimation={"swim","swimidle"},
+            }
+            for property, parentNames in pairs(mapping) do
+                local id
+                pcall(function() id=tonumber(description[property]) end)
+                if id and id>0 then
+                    for _, object in ipairs(animate:GetDescendants()) do
+                        if object:IsA("Animation") then
+                            local parentName=string.lower(tostring(object.Parent and object.Parent.Name or ""))
+                            for _, wanted in ipairs(parentNames) do
+                                if parentName==wanted then pcall(function() object.AnimationId="rbxassetid://"..tostring(id) end) end
+                            end
+                        end
+                    end
+                end
+            end
+            pcall(function() description:Destroy() end)
+        end
+
+        function service:SetMimicTarget(player)
+            if player == nil then
+                self.MimicSelecting = false
+                if self.MimicInputConnection then
+                    pcall(function() self.MimicInputConnection:Disconnect() end)
+                    self.MimicInputConnection = nil
+                end
+                self.MimicTarget = nil
+                self.MimicTargetCharacter = nil
+                self.MimicLocalCharacter = nil
+                self:StopMimicTrack()
+                self:ClearMimicMarker()
+                self:RestoreMimicOriginal()
+                if self.MimicStatus then self.MimicStatus.Text = "Tap Mimic Player, then tap/klick a player" end
+                return true
+            end
+            if player == Local then return false, "Choose another player." end
+            self.MimicTarget = player
+            self.MimicTargetCharacter = player.Character
+            self.MimicLocalCharacter = Local.Character
+            self.MimicTrackId = nil
+            self.MimicNextCorrection = 0
+            self:CaptureMimicOriginal(false)
+            self:CopyAnimateTree(player)
+            self:CopyDescriptionAnimations(player)
+            self:MakeMimicMarker(player)
+            if self.MimicStatus then self.MimicStatus.Text = "Mimicking @"..player.Name.."\nTracking movement + animation..." end
+            return true
+        end
+
+        function service:BeginMimicSelection()
+            if not self.MimicEnabled or self.MimicSelecting then return end
+            self.MimicSelecting = true
+            if self.MimicStatus then self.MimicStatus.Text = "Tap/klick a player in the world" end
+            if self.MimicInputConnection then pcall(function() self.MimicInputConnection:Disconnect() end) end
+            self.MimicInputConnection = get.UserInputService.InputBegan:Connect(function(input, processed)
+                if not self.MimicSelecting or processed then return end
+                local inputType=input.UserInputType
+                if inputType~=Enum.UserInputType.MouseButton1 and inputType~=Enum.UserInputType.Touch then return end
+                local camera=workspace.CurrentCamera
+                if not camera then return end
+                local position=input.Position
+                local ray=camera:ViewportPointToRay(position.X,position.Y)
+                local params=RaycastParams.new()
+                params.FilterType=Enum.RaycastFilterType.Exclude
+                params.FilterDescendantsInstances={Local.Character}
+                params.IgnoreWater=true
+                local result=workspace:Raycast(ray.Origin,ray.Direction*1500,params)
+                local instance=result and result.Instance
+                local model=instance and instance:FindFirstAncestorOfClass("Model")
+                local target=model and PlayersService:GetPlayerFromCharacter(model)
+                if target and target~=Local then
+                    self.MimicSelecting=false
+                    if self.MimicInputConnection then self.MimicInputConnection:Disconnect(); self.MimicInputConnection=nil end
+                    self:SetMimicTarget(target)
+                end
+            end)
+        end
+
+        function service:EnsureMimicGui()
+            if self.MimicGui and self.MimicGui.Parent then return self.MimicGui end
+            local host = active.NotificationGui or active.ScreenGui
+            if not host then return nil end
+            local root=Instance.new("Frame")
+            root.Name="LHMimicControls"
+            root.AnchorPoint=Vector2.new(1,0.5)
+            root.Position=UDim2.new(1,-12,0.52,0)
+            root.Size=UDim2.fromOffset(235,92)
+            root.BackgroundTransparency=0.04
+            root.BorderSizePixel=0
+            root.ZIndex=1200
+            root.Parent=host
+            bind(root,"BackgroundColor3","Header"); makeCorner(root,12); makeStroke(root,Color3.fromRGB(65,235,120),0.18,1.2)
+
+            local select=makeButton(root,"Mimic Player")
+            select.Position=UDim2.fromOffset(8,8); select.Size=UDim2.new(1,-78,0,34); select.ZIndex=1201; select.TextSize=11.5
+            select.BackgroundColor3=Color3.fromRGB(42,166,88); select.TextColor3=Color3.new(1,1,1)
+            -- Custom pointer hand made from rounded Frames (not an emoji).
+            local icon=Instance.new("Frame"); icon.Name="PointerIcon"; icon.Position=UDim2.fromOffset(9,8); icon.Size=UDim2.fromOffset(24,20); icon.BackgroundTransparency=1; icon.ZIndex=1202; icon.Parent=select
+            local palm=Instance.new("Frame"); palm.Position=UDim2.fromOffset(7,8); palm.Size=UDim2.fromOffset(12,9); palm.BackgroundColor3=Color3.new(1,1,1); palm.BorderSizePixel=0; palm.ZIndex=1203; palm.Parent=icon; makeCorner(palm,4)
+            local finger=Instance.new("Frame"); finger.Position=UDim2.fromOffset(11,1); finger.Size=UDim2.fromOffset(4,12); finger.BackgroundColor3=Color3.new(1,1,1); finger.BorderSizePixel=0; finger.ZIndex=1203; finger.Parent=icon; makeCorner(finger,3)
+            local thumb=Instance.new("Frame"); thumb.Position=UDim2.fromOffset(4,10); thumb.Size=UDim2.fromOffset(7,4); thumb.Rotation=-28; thumb.BackgroundColor3=Color3.new(1,1,1); thumb.BorderSizePixel=0; thumb.ZIndex=1203; thumb.Parent=icon; makeCorner(thumb,3)
+            select.Text="       Mimic Player"
+
+            local stop=makeKolorButton(root,"Stop",rgb(205,58,72)); stop.AnchorPoint=Vector2.new(1,0); stop.Position=UDim2.new(1,-8,0,8); stop.Size=UDim2.fromOffset(56,34); stop.ZIndex=1201
+            local status=makeText(root,"Tap Mimic Player, then tap/klick a player",9.2,Enum.Font.GothamMedium)
+            status.Position=UDim2.fromOffset(9,49); status.Size=UDim2.new(1,-18,0,34); status.TextWrapped=true; status.TextXAlignment=Enum.TextXAlignment.Left; status.TextYAlignment=Enum.TextYAlignment.Top; status.ZIndex=1201; bind(status,"TextColor3","MutedText")
+            track(select.Activated:Connect(function() self:BeginMimicSelection() end))
+            track(stop.Activated:Connect(function() self:SetMimicTarget(nil) end))
+            self.MimicGui,self.MimicSelect,self.MimicStop,self.MimicStatus=root,select,stop,status
+            return root
+        end
+
+        function service:EnableMimic(enabled)
+            enabled=enabled==true
+            if enabled==self.MimicEnabled then
+                if enabled then self:EnsureMimicGui() end
+                return
+            end
+            self.MimicEnabled=enabled
+            if enabled then
+                self:EnsureMimicGui()
+                self.MimicGui.Visible=true
+                if self.MimicStatus then self.MimicStatus.Text="Tap Mimic Player, then tap/klick a player" end
+            else
+                self:SetMimicTarget(nil)
+                if self.MimicGui then self.MimicGui.Visible=false end
+            end
+        end
+
+        function service:UpdateMimic(dt, now)
+            local target=self.MimicTarget
+            if not self.MimicEnabled or not target then return end
+            if target.Parent~=PlayersService then self:EnableMimic(false); return end
+            local targetCharacter=target.Character
+            local localCharacter=Local.Character
+            local targetHumanoid=getHumanoid(target)
+            local localHumanoid=getHumanoid(Local)
+            local targetRoot=targetCharacter and targetCharacter:FindFirstChild("HumanoidRootPart")
+            local localRoot=localCharacter and localCharacter:FindFirstChild("HumanoidRootPart")
+            if not targetHumanoid or not localHumanoid or not targetRoot or not localRoot then return end
+
+            if self.MimicTargetCharacter~=targetCharacter then
+                self.MimicTargetCharacter=targetCharacter
+                self:CopyAnimateTree(target)
+                self:CopyDescriptionAnimations(target)
+                self:MakeMimicMarker(target)
+            end
+            if self.MimicLocalCharacter~=localCharacter then
+                self.MimicLocalCharacter=localCharacter
+                self:CaptureMimicOriginal(true)
+                self:CopyAnimateTree(target)
+                self:CopyDescriptionAnimations(target)
+                self:StopMimicTrack()
+            end
+
+            local distance=(targetRoot.Position-localRoot.Position).Magnitude
+            local targetSpeed=tonumber(targetHumanoid.WalkSpeed) or 16
+            local catchSpeed=targetSpeed
+            if distance>12 then catchSpeed=math.clamp(targetSpeed+(distance-12)*1.55,targetSpeed,90) end
+            pcall(function() localHumanoid.WalkSpeed=catchSpeed end)
+            pcall(function() localHumanoid.AutoRotate=false end)
+            pcall(function() localHumanoid.UseJumpPower=targetHumanoid.UseJumpPower end)
+            pcall(function() localHumanoid.JumpPower=targetHumanoid.JumpPower end)
+            pcall(function() localHumanoid.JumpHeight=targetHumanoid.JumpHeight end)
+
+            local sidePosition=targetRoot.Position + targetRoot.CFrame.RightVector*3.7
+            if distance>3.2 then pcall(function() localHumanoid:MoveTo(sidePosition) end) end
+            pcall(function()
+                local look=targetRoot.CFrame.LookVector
+                localRoot.CFrame=CFrame.lookAt(localRoot.Position,localRoot.Position+Vector3.new(look.X,0,look.Z))
+            end)
+
+            local targetState
+            pcall(function() targetState=targetHumanoid:GetState() end)
+            if targetState==Enum.HumanoidStateType.Jumping then
+                pcall(function() localHumanoid.Jump=true; localHumanoid:ChangeState(Enum.HumanoidStateType.Jumping) end)
+            elseif targetState==Enum.HumanoidStateType.Freefall or targetState==Enum.HumanoidStateType.Climbing or targetState==Enum.HumanoidStateType.Swimming then
+                pcall(function() localHumanoid:ChangeState(targetState) end)
+            end
+            pcall(function() localHumanoid.Sit=targetHumanoid.Sit end)
+
+            local targetTool=targetCharacter:FindFirstChildOfClass("Tool")
+            if targetTool then
+                local current=localCharacter:FindFirstChildOfClass("Tool")
+                if not current or current.Name~=targetTool.Name then
+                    local backpack=Local:FindFirstChildOfClass("Backpack")
+                    local match=backpack and backpack:FindFirstChild(targetTool.Name)
+                    if match and match:IsA("Tool") then pcall(function() localHumanoid:EquipTool(match) end) end
+                end
+            end
+
+            local snap=self:GetSnapshot(target)
+            if snap then
+                local playing=false
+                if self.MimicTrack then pcall(function() playing=self.MimicTrack.IsPlaying==true end) end
+                if self.MimicTrackId~=snap.Id or not self.MimicTrack or not playing then
+                    self:StopMimicTrack()
+                    self.MimicTrack,self.MimicAnimation=self:PlayAnimationId(snap.Id,snap)
+                    self.MimicTrackId=snap.Id
+                    self.MimicNextCorrection=now+0.18
+                elseif now>=self.MimicNextCorrection then
+                    self.MimicNextCorrection=now+0.28
+                    local localTime=0; pcall(function() localTime=self.MimicTrack.TimePosition end)
+                    if math.abs(localTime-snap.TimePosition)>0.16 then pcall(function() self.MimicTrack.TimePosition=snap.TimePosition end) end
+                    pcall(function() if math.abs((self.MimicTrack.Speed or 1)-snap.Speed)>0.02 then self.MimicTrack:AdjustSpeed(snap.Speed) end end)
+                    pcall(function() self.MimicTrack.Looped=snap.Looped end)
+                end
+            elseif self.MimicTrack then
+                self:StopMimicTrack()
+            end
+
+            if self.MimicStatus then
+                local stateName=targetState and targetState.Name or "Unknown"
+                local animName=snap and tostring(snap.Name or ("Animation "..snap.Id)) or "No animation"
+                self.MimicStatus.Text="@"..target.Name.." | "..tostring(math.floor(distance+0.5)).." studs | "..stateName.."\n"..animName
+            end
+        end
+
         function service:OpenActivityCard(player)
             if not player then return false end
             self.ActivityTarget = player
@@ -3679,15 +3978,12 @@ function LULA.CreateLib(kavName, themeInput)
             return section
         end
 
-        for _, observedPlayer in ipairs(PlayersService:GetPlayers()) do
-            service:ObservePlayer(observedPlayer)
-        end
-
         local heartbeatAccumulator=0
         track(Run.Heartbeat:Connect(function(dt)
             if service.Destroyed then return end
             heartbeatAccumulator += dt
             local now=os.clock()
+            if service.MimicEnabled and service.MimicTarget then service:UpdateMimic(dt, now) end
             if service.SyncTarget then
                 if service.SyncTarget.Parent~=PlayersService then service:Unsync(true) else
                     local snap=service:GetSnapshot(service.SyncTarget)
@@ -3737,30 +4033,34 @@ function LULA.CreateLib(kavName, themeInput)
         local function refreshLists()
             for _,fn in ipairs(service.PlayerListRefreshers) do pcall(fn) end
         end
+        for _, player in ipairs(PlayersService:GetPlayers()) do service:BindPlayer(player) end
         track(PlayersService.PlayerAdded:Connect(function(player)
-            service:ObservePlayer(player)
+            service:BindPlayer(player)
             refreshLists()
         end))
         track(PlayersService.PlayerRemoving:Connect(function(player)
-            service:ForgetPlayer(player)
+            service:ClearPlayerWatcher(player)
             if service.SyncTarget==player then service:Unsync(true) end
             if service.DetectorTarget==player then service:StopDetected() end
+            if service.MimicTarget==player then service:EnableMimic(false) end
             if service.ActivityTarget==player and service.ActivityCard then service.ActivityTarget=nil; service.ActivityCard.Visible=false end
             task.defer(refreshLists)
         end))
 
         function service:Cleanup()
             if self.Destroyed then return end
+            self:EnableMimic(false)
             self.Destroyed=true; self:Unsync(true); self:StopDetected(); self.LiveRows={}; self.PlayerListRefreshers={}
-            for player in pairs(self.PlayerObservers or {}) do self:ForgetPlayer(player) end
-            self.PlayerObservers = {}
-            self.RecentTracks = {}
+            for player in pairs(self.PlayerWatchers or {}) do self:ClearPlayerWatcher(player) end
             if self.ActivityCard then pcall(function() self.ActivityCard:Destroy() end) end
             if self.StatusCard then pcall(function() self.StatusCard:Destroy() end) end
+            if self.MimicGui then pcall(function() self.MimicGui:Destroy() end) end
             if env.LHPlayerFeatures==self then env.LHPlayerFeatures=nil end
+            if env.LHEnsurePlayerFeatures then env.LHEnsurePlayerFeatures=nil end
         end
         return service
     end
+    env.LHEnsurePlayerFeatures = ensurePlayerFeatureService
 
     local function selectTab(tab, mode)
         if not tab or active.SelectedTab == tab then
@@ -5118,7 +5418,7 @@ function LULA.CreateLib(kavName, themeInput)
         local tab=self:NewTab(tabName or (utf8.char(0x2605).." Universal Search")); tab:EnsureBuilt()
         local scroll=tab.Scroll; scroll.AutomaticCanvasSize=Enum.AutomaticSize.Y; scroll.CanvasSize=UDim2.new()
         local state={Tab=tab}; active.UniversalSearch=state
-        local service=env.LHEnsurePlayerFeatureService()
+        local service=ensurePlayerFeatureService()
 
         local searchRow=newRow(scroll,"UniversalSearchBoxRow",44); searchRow.LayoutOrder=-10000
         local box=Instance.new("TextBox"); box.Position=UDim2.fromOffset(8,6); box.Size=UDim2.new(1,-48,0,32); box.BackgroundTransparency=1; box.BorderSizePixel=0; box.ClearTextOnFocus=false; box.Font=resolveUIFont(Enum.Font.Gotham); box.TextSize=13; box.TextXAlignment=Enum.TextXAlignment.Left; box.PlaceholderText="Search all of Lollypop Hub..."; box.Parent=searchRow; bind(box,"TextColor3","TextColor")
@@ -8126,7 +8426,7 @@ function LULA.CreateLib(kavName, themeInput)
             infoButton.TextSize = 9.5
             track(infoButton.Activated:Connect(function()
                 if item.DetectedAnimation then
-                    local service = env.LHEnsurePlayerFeatureService()
+                    local service = ensurePlayerFeatureService()
                     service:StopDetected()
                     local trackObject, animationObject = service:PlayAnimationId(item.AnimationId or item.Id, {Looped=item.Looped == true, Speed=tonumber(item.Speed) or 1})
                     if trackObject then service.DetectorTrack, service.DetectorAnimation, service.DetectorTarget = trackObject, animationObject, nil else bundleNotify("Could not play this detected animation.", "error", 3) end
@@ -8555,7 +8855,7 @@ function LULA.CreateLib(kavName, themeInput)
         settings.AnimationBundleFavorites = saveFavorites(getFavorites())
         setMode("marketplace")
         SearchService:BuildFuzzyIndex(false)
-        env.LHEnsurePlayerFeatureService():CreatePlayerPanel(scroll, "detector", 55)
+        ensurePlayerFeatureService():CreatePlayerPanel(scroll, "detector", 55)
         return bundleTab
     end
 
@@ -10880,7 +11180,7 @@ function LULA.CreateLib(kavName, themeInput)
         settings.FreeEmoteFavorites = saveFavorites(getFavorites())
         persistEmoteSettings()
         setMode("marketplace")
-        env.LHEnsurePlayerFeatureService():CreatePlayerPanel(scroll, "sync", 55)
+        ensurePlayerFeatureService():CreatePlayerPanel(scroll, "sync", 55)
         return emoteTab
     end
 
@@ -19121,7 +19421,7 @@ function LULA.CreateLib(kavName, themeInput)
                     tp.AutoButtonColor = false
                 end
                 trackLocal(inspect.MouseButton1Click:Connect(function()
-                    env.LHEnsurePlayerFeatureService():OpenActivityCard(player)
+                    ensurePlayerFeatureService():OpenActivityCard(player)
                 end))
                 if player ~= LocalPlayer then
                     trackLocal(friend.MouseButton1Click:Connect(function()
@@ -19918,9 +20218,7 @@ function LULA:Destroy()
     disconnectAll()
     if active.Blur then pcall(function() active.Blur:Destroy() end) end
     if active.ScreenGui then pcall(function() active.ScreenGui:Destroy() end) end
-    if active.NotificationOverlayGui then pcall(function() active.NotificationOverlayGui:Destroy() end) end
-    env.LHNotificationOverlayGui = nil
-    env.LHEnsurePlayerFeatureService = nil
+    if active.NotificationGui then pcall(function() active.NotificationGui:Destroy() end) end
     active = nil
     bindings = {}
     controlIdRegistry = {}
