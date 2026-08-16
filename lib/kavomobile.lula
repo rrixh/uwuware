@@ -3814,12 +3814,6 @@ function LULA.CreateLib(kavName, themeInput)
             if not animationState or type(animationState.SaveDetectedPack)~="function" then return false,"Free Animations is not ready yet." end
             return animationState.SaveDetectedPack(profile,player)
         end
-            local animationState = active and active.AnimationBundles
-            if not animationState or type(animationState.SaveDetectedAnimation) ~= "function" then
-                return false, "Free Animations is not ready yet."
-            end
-            return animationState.SaveDetectedAnimation(snap, player)
-        end
 
         function service:AnimationProfileSignature(profile)
             if type(profile) ~= "table" or type(profile.Slots) ~= "table" then return "" end
