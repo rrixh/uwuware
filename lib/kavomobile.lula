@@ -628,10 +628,9 @@ local function safeCall(label, callback, ...)
         return debug.traceback(tostring(err), 2)
     end)
     if not ok then
+        -- Keep kode/stack errors in the executor konsole instead of exposing
+        -- implementation details in user-facing notifications.
         warn("[Lollypop UI] " .. tostring(label) .. " failed:\n" .. tostring(result))
-        if env.LHNotify then
-            pcall(env.LHNotify, "error", "Kontrol Error", tostring(result), 7)
-        end
     end
     return ok, result
 end
@@ -1467,6 +1466,10 @@ function LULA:Notify(kind, title, text, seconds, progress, force)
     kind = string.lower(tostring(kind or "info"))
     title = tostring(title or "Lollypop Hub")
     text = tostring(text or "")
+    if kind == "error" then
+        warn("[Lollypop Hub Error] " .. title .. ": " .. text)
+        return nil
+    end
     if progress ~= nil then
         seconds = math.clamp(tonumber(seconds) or 8, 2, 15)
     else
@@ -2052,6 +2055,28 @@ function LULA:ShowIsland(titleText, bodyText, options)
     function handle:SetProgress(progress, newBody)
         return self:Update(nil, newBody, progress)
     end
+
+    if options.Fetching == true then
+        local fetchingBody = tostring(bodyText or "Fetching...")
+        task.spawn(function()
+            local lollipop = utf8.char(0x1F36D)
+            local phase = 0
+            while active and token == active.IslandToken and island.Frame.Visible do
+                phase = (phase % 4) + 1
+                if phase == 1 then
+                    island.Body.Text = fetchingBody .. "   " .. lollipop
+                elseif phase == 2 then
+                    island.Body.Text = fetchingBody .. "   " .. lollipop .. "  " .. lollipop
+                elseif phase == 3 then
+                    island.Body.Text = fetchingBody .. "   " .. lollipop .. "  " .. lollipop .. "  " .. lollipop
+                else
+                    island.Body.Text = fetchingBody .. "   " .. lollipop .. "  " .. lollipop
+                end
+                task.wait(settings.LowPerformance and 0.28 or 0.16)
+            end
+        end)
+    end
+
     function handle:Close()
         if not active or token ~= active.IslandToken then return false end
         active.IslandToken = active.IslandToken + 1
@@ -3879,7 +3904,12 @@ function LULA.CreateLib(kavName, themeInput)
         function service:OpenActivityCard(player)
             if not player then return false end
             self.ActivityTarget = player
+            self.ActivityOpenedAt = os.clock()
             if not self.ActivityCard or not self.ActivityCard.Parent then
+                -- A transparent modal sink prevents the mobile touch that opened
+                -- Activity from falling through into controls underneath the new kard.
+                local blocker=Instance.new("TextButton")
+                blocker.Name="LHPlayerActivityBlocker"; blocker.Size=UDim2.fromScale(1,1); blocker.BackgroundTransparency=1; blocker.BorderSizePixel=0; blocker.Text=""; blocker.AutoButtonColor=false; blocker.Active=true; blocker.Modal=true; blocker.ZIndex=899; blocker.Parent=main
                 local card = Instance.new("Frame")
                 card.Name="LHPlayerActivityCard"; card.AnchorPoint=Vector2.new(0.5,0.5); card.Position=UDim2.fromScale(0.5,0.5); card.Size=UDim2.fromOffset(390,300); card.BorderSizePixel=0; card.ZIndex=900; card.Parent=main
                 bind(card,"BackgroundColor3","Header"); makeCorner(card,14); makeStroke(card,active.Theme.SchemeColor,0.12,1.3)
@@ -3893,7 +3923,13 @@ function LULA.CreateLib(kavName, themeInput)
                 local save=makeButton(card,"Save Anim"); save.Position=UDim2.fromOffset(190,232); save.Size=UDim2.fromOffset(82,30); save.ZIndex=902
                 local avatarBtn=makeButton(card,"Avatar"); avatarBtn.Position=UDim2.fromOffset(279,232); avatarBtn.Size=UDim2.fromOffset(82,30); avatarBtn.ZIndex=902
                 local spectate=makeButton(card,"Spectate"); spectate.Position=UDim2.fromOffset(12,268); spectate.Size=UDim2.fromOffset(82,24); spectate.TextSize=9.5; spectate.ZIndex=902
-                track(close.Activated:Connect(function() self.ActivityTarget=nil; card.Visible=false end))
+                track(close.Activated:Connect(function()
+                    -- Ignore the same touch-release that opened the kard on mobile.
+                    if os.clock() - (tonumber(self.ActivityOpenedAt) or 0) < 0.45 then return end
+                    self.ActivityTarget=nil
+                    card.Visible=false
+                    blocker.Visible=false
+                end))
                 track(sync.Activated:Connect(function()
                     local target=self.ActivityTarget; if not target then return end
                     if self.SyncTarget==target then self:Unsync(false) else local ok,why=self:SyncPlayer(target); if not ok then LULA:ShowIsland("Dance Sync",tostring(why),{Duration=3}) end end
@@ -3908,9 +3944,16 @@ function LULA.CreateLib(kavName, themeInput)
                     if active.AvatarKreator and type(active.AvatarKreator.InspectPlayer)=="function" then active.AvatarKreator.InspectPlayer(target) else pcall(function() get.GuiService:InspectPlayerFromUserId(target.UserId) end) end
                 end))
                 track(spectate.Activated:Connect(function() local target=self.ActivityTarget; if target and type(env.LHStartSpectate)=="function" then pcall(env.LHStartSpectate,target) end end))
-                self.ActivityCard=card; self.ActivityAvatar=avatar; self.ActivityName=name; self.ActivityIdentity=identity; self.ActivityInfo=info; self.ActivitySync=sync; self.ActivityDetect=detect
+                self.ActivityCard=card; self.ActivityBlocker=blocker; self.ActivityClose=close; self.ActivityAvatar=avatar; self.ActivityName=name; self.ActivityIdentity=identity; self.ActivityInfo=info; self.ActivitySync=sync; self.ActivityDetect=detect
             end
             self.ActivityCard.Visible=true
+            if self.ActivityBlocker then self.ActivityBlocker.Visible=true end
+            if self.ActivityClose then
+                self.ActivityClose.Active=false
+                task.delay(0.45,function()
+                    if self.ActivityClose and self.ActivityClose.Parent and self.ActivityTarget==player then self.ActivityClose.Active=true end
+                end)
+            end
             self.ActivityName.Text=tostring(player.DisplayName)
             self.ActivityIdentity.Text="@"..tostring(player.Name).."  |  ID "..tostring(player.UserId)
             task.spawn(function()
@@ -3964,11 +4007,25 @@ function LULA.CreateLib(kavName, themeInput)
                         local secondary=makeButton(row,mode=="sync" and "Activity" or "Save"); secondary.AnchorPoint=Vector2.new(1,0.5); secondary.Position=UDim2.new(1,-8,0.5,0); secondary.Size=UDim2.fromOffset(68,28); secondary.TextSize=9.2
                         if mode=="sync" then
                             primary.Activated:Connect(function() if self.SyncTarget==player then self:Unsync(false) else local ok,why=self:SyncPlayer(player); if not ok then LULA:ShowIsland("Dance Sync",tostring(why),{Duration=3}) end end end)
-                            secondary.Activated:Connect(function() self:OpenActivityCard(player) end)
+                            secondary.Activated:Connect(function()
+                                task.delay(0.05, function()
+                                    if player and player.Parent == PlayersService then self:OpenActivityCard(player) end
+                                end)
+                            end)
                             self.LiveRows[row]={Player=player,AnimationLabel=anim,SyncButton=primary}
                         else
+                            -- Detector rows keep Play + Save and also expose the same
+                            -- Activity kard used by Dance Sync/Experience players.
+                            primary.Position=UDim2.new(1,-151,0.5,0); primary.Size=UDim2.fromOffset(61,28)
+                            secondary.Position=UDim2.new(1,-82,0.5,0); secondary.Size=UDim2.fromOffset(61,28)
+                            local activity=makeButton(row,"Activity"); activity.AnchorPoint=Vector2.new(1,0.5); activity.Position=UDim2.new(1,-8,0.5,0); activity.Size=UDim2.fromOffset(66,28); activity.TextSize=8.8
                             primary.Activated:Connect(function() if self.DetectorTarget==player and self.DetectorTrack then self:StopDetected() else local ok,why=self:PlayDetected(player); if not ok then LULA:ShowIsland("Animation Detector",tostring(why),{Duration=3}) end end end)
                             secondary.Activated:Connect(function() local ok,why=self:SaveDetected(player); if not ok then LULA:ShowIsland("Animation Detector",tostring(why),{Duration=3}) end end)
+                            activity.Activated:Connect(function()
+                                task.delay(0.05, function()
+                                    if player and player.Parent == PlayersService then self:OpenActivityCard(player) end
+                                end)
+                            end)
                             self.LiveRows[row]={Player=player,AnimationLabel=anim,PlayButton=primary}
                         end
                     end
@@ -4014,8 +4071,13 @@ function LULA.CreateLib(kavName, themeInput)
                 heartbeatAccumulator=0
                 service:RefreshLiveRows()
                 local player=service.ActivityTarget
-                if player and service.ActivityCard and service.ActivityCard.Visible then
-                    if player.Parent~=PlayersService then service.ActivityTarget=nil; service.ActivityCard.Visible=false else
+                if player and player.Parent==PlayersService and (not service.ActivityCard or not service.ActivityCard.Parent) then
+                    service:OpenActivityCard(player)
+                end
+                if player and service.ActivityCard then
+                    service.ActivityCard.Visible = true
+                    if service.ActivityBlocker then service.ActivityBlocker.Visible=true end
+                    if player.Parent~=PlayersService then service.ActivityTarget=nil; service.ActivityCard.Visible=false; if service.ActivityBlocker then service.ActivityBlocker.Visible=false end else
                         local hum=getHumanoid(player); local root=player.Character and player.Character:FindFirstChild("HumanoidRootPart"); local localRoot=Local.Character and Local.Character:FindFirstChild("HumanoidRootPart")
                         local health=hum and math.floor(hum.Health+0.5) or 0; local maxHealth=hum and math.floor(hum.MaxHealth+0.5) or 0
                         local distance="N/A"; if root and localRoot then distance=tostring(math.floor((root.Position-localRoot.Position).Magnitude+0.5)).." studs" end
@@ -4043,7 +4105,7 @@ function LULA.CreateLib(kavName, themeInput)
             if service.SyncTarget==player then service:Unsync(true) end
             if service.DetectorTarget==player then service:StopDetected() end
             if service.MimicTarget==player then service:EnableMimic(false) end
-            if service.ActivityTarget==player and service.ActivityCard then service.ActivityTarget=nil; service.ActivityCard.Visible=false end
+            if service.ActivityTarget==player and service.ActivityCard then service.ActivityTarget=nil; service.ActivityCard.Visible=false; if service.ActivityBlocker then service.ActivityBlocker.Visible=false end end
             task.defer(refreshLists)
         end))
 
@@ -4053,6 +4115,7 @@ function LULA.CreateLib(kavName, themeInput)
             self.Destroyed=true; self:Unsync(true); self:StopDetected(); self.LiveRows={}; self.PlayerListRefreshers={}
             for player in pairs(self.PlayerWatchers or {}) do self:ClearPlayerWatcher(player) end
             if self.ActivityCard then pcall(function() self.ActivityCard:Destroy() end) end
+            if self.ActivityBlocker then pcall(function() self.ActivityBlocker:Destroy() end) end
             if self.StatusCard then pcall(function() self.StatusCard:Destroy() end) end
             if self.MimicGui then pcall(function() self.MimicGui:Destroy() end) end
             if env.LHPlayerFeatures==self then env.LHPlayerFeatures=nil end
@@ -8473,6 +8536,7 @@ function LULA.CreateLib(kavName, themeInput)
             local shown = math.min(displayCount, #currentResults)
             for index = renderedCount + 1, shown do
                 createMarketplaceCard(currentResults[index], index)
+                if index % 6 == 0 then RunService.Heartbeat:Wait() end
             end
             renderedCount = shown
 
@@ -8580,11 +8644,13 @@ function LULA.CreateLib(kavName, themeInput)
             toggleApisById = {}
             starApisById = {}
 
+            local fetchHandle = LULA:ShowIsland("Fetching", "Free Animations", {Fetching = true})
             task.spawn(function()
+                RunService.Heartbeat:Wait()
                 local ok, results, nextPage, hasMore = pcall(function()
                     return SearchService:SearchMerged(query, forceOriginal == true)
                 end)
-                if serial ~= searchSerial then return end
+                if serial ~= searchSerial then if fetchHandle then fetchHandle:Close() end; return end
                 if not ok then
                     currentResults = {}
                     currentResultIds = {}
@@ -8596,6 +8662,7 @@ function LULA.CreateLib(kavName, themeInput)
                     renderMarketplace(true)
                     emptyLabel.Visible = true
                     emptyLabel.Text = "Marketplace search failed: " .. tostring(results)
+                    if fetchHandle then fetchHandle:Close() end
                     bundleNotify("Roblox Marketplace search failed.", "error", 3.5)
                     return
                 end
@@ -8635,7 +8702,7 @@ function LULA.CreateLib(kavName, themeInput)
                     end
                 end
 
-                if serial ~= searchSerial then return end
+                if serial ~= searchSerial then if fetchHandle then fetchHandle:Close() end; return end
                 currentResults = {}
                 currentResultIds = {}
                 currentEffectiveQuery = finalQuery
@@ -8647,6 +8714,7 @@ function LULA.CreateLib(kavName, themeInput)
                 displayCount = math.min(displayStep, #currentResults)
                 setSearching(false)
                 renderMarketplace(true)
+                if fetchHandle then fetchHandle:Close() end
                 if currentOriginalQuery then setSuggestion(finalQuery, currentOriginalQuery) end
             end)
         end
@@ -8671,7 +8739,9 @@ function LULA.CreateLib(kavName, themeInput)
             loadingLabel.Text = "Loading more animation bundles..."
             loadingLabel.Visible = true
 
+            local fetchHandle = LULA:ShowIsland("Fetching", "More Free Animations", {Fetching = true})
             task.spawn(function()
+                RunService.Heartbeat:Wait()
                 local before = #currentResults
                 local ok, page, hasMore = pcall(currentNextPage)
                 if ok then
@@ -8689,6 +8759,7 @@ function LULA.CreateLib(kavName, themeInput)
                 loadingMore = false
                 loadingLabel.Visible = searching
                 renderMarketplace(true)
+                if fetchHandle then fetchHandle:Close() end
             end)
         end
 
@@ -10907,6 +10978,7 @@ function LULA.CreateLib(kavName, themeInput)
             local shown = math.min(state.DisplayCount, #state.Results)
             for index = state.RenderedCount + 1, shown do
                 makeMarketplaceCard(state.Results[index], index)
+                if index % 6 == 0 then RunService.Heartbeat:Wait() end
             end
             state.RenderedCount = shown
 
@@ -10983,7 +11055,9 @@ function LULA.CreateLib(kavName, themeInput)
             state.RenderedCount = 0
             renderMarketplace(true)
 
+            local fetchHandle = LULA:ShowIsland("Fetching", "Free Emotes", {Fetching = true})
             task.spawn(function()
+                RunService.Heartbeat:Wait()
                 local ok, results, nextPage, hasMore = pcall(startSearchBackend, query)
                 local finalQuery = query
                 if ok and #results == 0 and query ~= "" and forceOriginal ~= true then
@@ -11001,8 +11075,9 @@ function LULA.CreateLib(kavName, themeInput)
                     end
                 end
 
-                if serial ~= state.SearchSerial then return end
+                if serial ~= state.SearchSerial then if fetchHandle then fetchHandle:Close() end; return end
                 if not ok then
+                    if fetchHandle then fetchHandle:Close() end
                     setSearching(false)
                     renderMarketplace(true)
                     emoteNotify(tostring(results), "error", 4)
@@ -11020,6 +11095,7 @@ function LULA.CreateLib(kavName, themeInput)
                 end
                 setSearching(false)
                 renderMarketplace(true)
+                if fetchHandle then fetchHandle:Close() end
                 task.defer(function() scroll.CanvasPosition = Vector2.new(0, 0) end)
             end)
         end
@@ -11040,7 +11116,9 @@ function LULA.CreateLib(kavName, themeInput)
 
             state.LoadingMore = true
             UI.LoadMore.Text = "Loading..."
+            local fetchHandle = LULA:ShowIsland("Fetching", "More Free Emotes", {Fetching = true})
             task.spawn(function()
+                RunService.Heartbeat:Wait()
                 local ok, page, hasMore, nextFunction = pcall(state.NextPage)
                 if ok then
                     if type(nextFunction) == "function" then state.NextPage = nextFunction end
@@ -11054,6 +11132,7 @@ function LULA.CreateLib(kavName, themeInput)
                 end
                 state.LoadingMore = false
                 renderMarketplace(false)
+                if fetchHandle then fetchHandle:Close() end
             end)
         end
 
@@ -15085,55 +15164,39 @@ function LULA.CreateLib(kavName, themeInput)
             if type(data) ~= "table" then return nil end
             pcall(function() data.RigType = humanoid.RigType.Name end)
 
-            -- Reconcile the description snapshot with the ACTUAL local avatar.
-            -- Direct Try On can change live accessories without Roblox updating
-            -- GetAppliedDescription immediately.
+            -- Preserve every accessory Roblox reported in the applied description.
+            -- Older reconciliation filtered the whole list through live SourceAssetId
+            -- detection, which could drop hats/back accessories that had no useful
+            -- SourceAssetId on the client. Merge live LH changes instead of deleting
+            -- description accessories we cannot confidently identify.
             local liveItems = type(currentItems) == "table" and currentItems or state.GetCurrentWornItems()
-            local wantedIds = {}
-            local wantedBySlot = {}
+            local accessoryIds = {}
+            for _, record in ipairs(type(data.Accessories) == "table" and data.Accessories or {}) do
+                local id = tonumber(record.AssetId)
+                if id then accessoryIds[id] = true end
+            end
+
             for _, item in ipairs(liveItems or {}) do
                 local id = tonumber(item and item.Id)
                 local slot = item and (item.LiveSlot or ASSET_TYPE_TO_SLOT[item.AssetTypeId])
-                if id then
-                    wantedIds[id] = true
-                    if slot then
-                        wantedBySlot[slot] = wantedBySlot[slot] or {}
-                        wantedBySlot[slot][#wantedBySlot[slot] + 1] = item
-                    end
-                end
-            end
-
-            local rebuilt = {}
-            for _, record in ipairs(data.Accessories or {}) do
-                local slot = ACCESSORY_NAME_TO_SLOT[tostring(record.AccessoryType or "")]
-                if wantedIds[tonumber(record.AssetId)] and not (slot and wantedBySlot[slot]) then
-                    rebuilt[#rebuilt + 1] = record
-                elseif wantedIds[tonumber(record.AssetId)] and slot and wantedBySlot[slot] then
-                    -- Keep only records still present in the actual outfit. The
-                    -- slot is rebuilt below to include direct LH accessories too.
-                end
-            end
-
-            for slot, items in pairs(wantedBySlot) do
-                local propertyName = Wear.GetDescriptionProperty(slot)
-                if propertyName then
-                    local chosen = items[#items]
-                    if chosen and tonumber(chosen.Id) then data.Properties[propertyName] = tonumber(chosen.Id) end
-                else
-                    for order, item in ipairs(items) do
+                if id and slot then
+                    local propertyName = Wear.GetDescriptionProperty(slot)
+                    if propertyName then
+                        data.Properties[propertyName] = id
+                    else
                         local accessoryType = ASSET_TYPE_TO_ACCESSORY_TYPE[item.AssetTypeId]
-                        if accessoryType and tonumber(item.Id) then
-                            rebuilt[#rebuilt + 1] = {
-                                AssetId = tonumber(item.Id),
+                        if accessoryType and not accessoryIds[id] then
+                            data.Accessories[#data.Accessories + 1] = {
+                                AssetId = id,
                                 AccessoryType = accessoryType.Name,
                                 IsLayered = tonumber(item.AssetTypeId) and tonumber(item.AssetTypeId) >= 64 or false,
-                                Order = order
+                                Order = #data.Accessories + 1
                             }
+                            accessoryIds[id] = true
                         end
                     end
                 end
             end
-            data.Accessories = rebuilt
             return data
         end
 
@@ -15172,7 +15235,7 @@ function LULA.CreateLib(kavName, themeInput)
             return applied
         end
 
-        state.MakeSavedOutfitViewport = function(parent, descriptionData, fallbackItem)
+        state.MakeSavedOutfitViewport = function(parent, descriptionData, savedItems)
             local viewport = create("ViewportFrame", {
                 Position = UDim2.fromOffset(6, 6),
                 Size = UDim2.new(1, -12, 0, 142),
@@ -15189,8 +15252,8 @@ function LULA.CreateLib(kavName, themeInput)
             local fallback = create("ImageLabel", {
                 BackgroundTransparency = 1,
                 Size = UDim2.fromScale(1, 1),
-                Image = fallbackItem and tonumber(fallbackItem.Id) and thumbnailFor(fallbackItem.Id) or "",
-                ImageTransparency = fallbackItem and 0.12 or 1,
+                Image = savedItems and savedItems[1] and tonumber(savedItems[1].Id) and thumbnailFor(savedItems[1].Id) or "",
+                ImageTransparency = savedItems and savedItems[1] and 0.12 or 1,
                 ScaleType = Enum.ScaleType.Fit,
                 ZIndex = 53
             })
@@ -15216,6 +15279,38 @@ function LULA.CreateLib(kavName, themeInput)
 
             task.spawn(function()
                 local description = state.DeserializeDescription(descriptionData)
+                if description and type(savedItems) == "table" then
+                    -- Merge saved katalog items into the HumanoidDescription used only
+                    -- for this preview. This catches accessories that the original
+                    -- applied-description snapshot did not serialize correctly.
+                    pcall(function()
+                        local accessories = description:GetAccessories(true)
+                        local seen = {}
+                        for _, record in ipairs(accessories or {}) do
+                            if tonumber(record.AssetId) then seen[tonumber(record.AssetId)] = true end
+                        end
+                        for _, item in ipairs(savedItems) do
+                            local id = tonumber(item and item.Id)
+                            local slot = item and (item.LiveSlot or ASSET_TYPE_TO_SLOT[item.AssetTypeId])
+                            local propertyName = slot and Wear.GetDescriptionProperty(slot) or nil
+                            if id and propertyName then
+                                description[propertyName] = id
+                            elseif id and not seen[id] then
+                                local accessoryType = ASSET_TYPE_TO_ACCESSORY_TYPE[item.AssetTypeId]
+                                if accessoryType then
+                                    accessories[#accessories + 1] = {
+                                        AssetId = id,
+                                        AccessoryType = accessoryType,
+                                        IsLayered = tonumber(item.AssetTypeId) and tonumber(item.AssetTypeId) >= 64 or false,
+                                        Order = #accessories + 1
+                                    }
+                                    seen[id] = true
+                                end
+                            end
+                        end
+                        description:SetAccessories(accessories, true)
+                    end)
+                end
                 if not description or not viewport.Parent then
                     loading.Text = fallback.Image ~= "" and "" or "Preview unavailable"
                     return
@@ -15290,11 +15385,13 @@ function LULA.CreateLib(kavName, themeInput)
                 -- accessories, shoes, etc. are included instead of framing only
                 -- around HumanoidRootPart.
                 local focus = boxCFrame.Position
-                local height = math.clamp(boxSize.Y, 4.5, 12)
-                local width = math.clamp(math.max(boxSize.X, boxSize.Z), 2.5, 9)
-                local distance = math.max(7.2, height * 1.18, width * 1.62)
+                local height = math.clamp(boxSize.Y, 4.5, 14)
+                local width = math.clamp(math.max(boxSize.X, boxSize.Z), 2.5, 11)
+                -- Slightly wider framing than R3 so tall hats/back accessories
+                -- have breathing room instead of filling the thumbnail edge-to-edge.
+                local distance = math.max(8.8, height * 1.40, width * 1.90)
 
-                camera.FieldOfView = 32
+                camera.FieldOfView = 34
                 camera.CFrame = CFrame.lookAt(
                     focus + Vector3.new(0, height * 0.015, distance),
                     focus,
@@ -15434,7 +15531,7 @@ function LULA.CreateLib(kavName, themeInput)
                 card.Parent = state.SavedOutfitsScroll
 
                 if type(outfit.Description) == "table" then
-                    state.MakeSavedOutfitViewport(card, outfit.Description, outfit.Items[1])
+                    state.MakeSavedOutfitViewport(card, outfit.Description, outfit.Items)
                 else
                     local preview = create("ImageLabel", {
                         Position = UDim2.fromOffset(6, 6),
@@ -15635,6 +15732,7 @@ function LULA.CreateLib(kavName, themeInput)
                     state.PersistSavedOutfits(current)
                     state.RenderSavedOutfits()
                 end)
+                if index % 2 == 0 then RunService.Heartbeat:Wait() end
             end
             if state.ResizeSavedOutfitGrid then state.ResizeSavedOutfitGrid() end
         end
@@ -16395,12 +16493,13 @@ function LULA.CreateLib(kavName, themeInput)
         end
 
         local function appendResults(results)
-            for _, item in ipairs(results or {}) do
+            for index, item in ipairs(results or {}) do
                 if not state.CurrentResultIds[item.Id] then
                     state.CurrentResultIds[item.Id] = true
                     table.insert(state.CurrentResults, item)
                     createResultCard(item, #state.CurrentResults)
                 end
+                if index % 6 == 0 then RunService.Heartbeat:Wait() end
             end
 
             ResultsCount.Text = tostring(#state.CurrentResults) .. " found"
@@ -16444,7 +16543,9 @@ function LULA.CreateLib(kavName, themeInput)
             setLoading(true, "Searching Roblox Marketplace...")
             ResultsScroll.CanvasPosition = Vector2.zero
 
+            local fetchHandle = LULA:ShowIsland("Fetching", "Avatar Katalog", {Fetching = true})
             task.spawn(function()
+                RunService.Heartbeat:Wait()
                 local ok, results, nextPage, hasMore, backend = pcall(
                     searchMarketplace,
                     query,
@@ -16452,12 +16553,14 @@ function LULA.CreateLib(kavName, themeInput)
                 )
 
                 if state.Destroyed or serial ~= state.SearchSerial then
+                    if fetchHandle then fetchHandle:Close() end
                     return
                 end
 
                 setLoading(false)
 
                 if not ok then
+                    if fetchHandle then fetchHandle:Close() end
                     displayResults({}, query, nil, false, nil)
                     EmptyTitle.Text = "Marketplace search failed"
                     EmptyText.Text = tostring(results)
@@ -16468,6 +16571,7 @@ function LULA.CreateLib(kavName, themeInput)
                 EmptyTitle.Text = "No avatar items found"
                 EmptyText.Text = "Try another name, another kategory, or paste an asset ID."
                 displayResults(results, query, nextPage, hasMore, backend)
+                if fetchHandle then fetchHandle:Close() end
             end)
         end
 
@@ -17249,23 +17353,28 @@ function LULA.CreateLib(kavName, themeInput)
             end
         end
 
-        function state.Viewer:Refresh()
+        function state.Viewer:Refresh(showFetch)
             state.ViewerRenderSerial = (state.ViewerRenderSerial or 0) + 1
             local serial = state.ViewerRenderSerial
             local targetPlayer = state.ViewerTargetPlayer
             self.Title.Text = (targetPlayer and targetPlayer ~= LocalPlayer) and (tostring(targetPlayer.DisplayName) .. "'s Avatar") or "Live Avatar Viewer"
             self.Subtitle.Text = (targetPlayer and targetPlayer ~= LocalPlayer) and ("@" .. targetPlayer.Name .. " | Owned indicators use your saved ownership cache.") or "Your kurrent local look and animation move live here."
-            self:RefreshViewport()
             self.WearingTitle.Text = targetPlayer and ("@"..targetPlayer.Name.." Wearing (loading...)") or "Kurrently Wearing (loading...)"
+            local fetchHandle = showFetch == true and LULA:ShowIsland("Fetching", "Avatar Viewer", {Fetching = true}) or nil
             task.spawn(function()
+                RunService.Heartbeat:Wait()
+                if serial ~= state.ViewerRenderSerial or state.Destroyed then if fetchHandle then fetchHandle:Close() end; return end
+                self:RefreshViewport()
+                RunService.Heartbeat:Wait()
                 local items = (targetPlayer and targetPlayer ~= LocalPlayer) and state.GetPlayerWornItems(targetPlayer) or state.GetCurrentWornItems()
-                if serial ~= state.ViewerRenderSerial or state.Destroyed then return end
+                if serial ~= state.ViewerRenderSerial or state.Destroyed then if fetchHandle then fetchHandle:Close() end; return end
                 self:RenderItems(items, serial)
+                if fetchHandle then fetchHandle:Close() end
             end)
         end
 
         track(state.Viewer.RefreshButton.MouseButton1Click:Connect(function()
-            state.Viewer:Refresh()
+            state.Viewer:Refresh(true)
         end))
 
         -- Live movement is mirrored every rendered frame by mirrorCurrentAvatarPose.
@@ -17453,16 +17562,20 @@ function LULA.CreateLib(kavName, themeInput)
 
             setLoading(true, "Loading more Marketplace items...")
             local nextPage = state.CurrentNextPage
+            local fetchHandle = LULA:ShowIsland("Fetching", "More Avatar Katalog Items", {Fetching = true})
 
             task.spawn(function()
+                RunService.Heartbeat:Wait()
                 local ok, page, hasMore = pcall(nextPage)
                 if state.Destroyed then
+                    if fetchHandle then fetchHandle:Close() end
                     return
                 end
 
                 setLoading(false)
 
                 if not ok then
+                    if fetchHandle then fetchHandle:Close() end
                     state.CurrentHasMore = false
                     LoadMoreButton.Visible = false
                     notify("Could not load the next Marketplace page.", "error")
@@ -17472,6 +17585,7 @@ function LULA.CreateLib(kavName, themeInput)
                 state.CurrentHasMore = hasMore == true
                 sortResults(page, state.CurrentQuery)
                 appendResults(page)
+                if fetchHandle then fetchHandle:Close() end
             end)
         end))
 
@@ -18722,7 +18836,10 @@ function LULA.CreateLib(kavName, themeInput)
             status.Text = "Looking up " .. rawQuery .. "..."
             setResultsVisible(false)
 
+            local fetchHandle = LULA:ShowIsland("Fetching", "User Lookup", {Fetching = true})
             task.spawn(function()
+                RunService.Heartbeat:Wait()
+                local workerOk, workerError = xpcall(function()
                 local cleanQuery = rawQuery:gsub("^@", "")
                 local userId = tonumber(cleanQuery:match("^%d+$"))
                     or tonumber(cleanQuery:match("[Rr][Oo][Bb][Ll][Oo][Xx]%.com/users/(%d+)"))
@@ -18878,6 +18995,11 @@ function LULA.CreateLib(kavName, themeInput)
                 status.Text = "Showing public info for @" .. tostring(profile.name or cleanQuery) .. "."
                 searchButton.Text = SEARCH_ICON
                 searchButton.TextTransparency = 0
+                end, function(err)
+                    return debug.traceback(tostring(err), 2)
+                end)
+                if fetchHandle then fetchHandle:Close() end
+                if not workerOk then warn("[Lollypop Hub User Lookup] " .. tostring(workerError)) end
             end)
         end
 
@@ -19223,6 +19345,15 @@ function LULA.CreateLib(kavName, themeInput)
                 button.TextTransparency = buttonName == name and 0 or 0.18
                 button.BackgroundTransparency = buttonName == name and 0.02 or 0.22
             end
+            -- Heavy remote lists are lazy: only fetch them when the user opens
+            -- that pane, instead of hitting every endpoint while Experience builds.
+            if name == "Badges" and type(state.RenderBadges) == "function" and state.BadgesLoaded ~= true then
+                state.BadgesLoaded = true
+                state.RenderBadges(true)
+            elseif name == "Passes" and type(state.RenderPasses) == "function" and state.PassesLoaded ~= true then
+                state.PassesLoaded = true
+                state.RenderPasses(true)
+            end
         end
         for name, button in pairs(navButtons) do
             trackLocal(button.MouseButton1Click:Connect(function() showPane(name) end))
@@ -19384,70 +19515,84 @@ function LULA.CreateLib(kavName, themeInput)
             end)
         end
 
-        local function renderPlayers()
-            state.SpectateButtons = {}
-            local keep = {[playerLayout]=true}
-            clearChildren(playerList, keep)
-            local list = Players:GetPlayers()
-            table.sort(list, function(a,b) return string.lower(a.Name) < string.lower(b.Name) end)
-            playersStatus.Text = "Players in this server  |  "..tostring(#list).."/"..tostring(Players.MaxPlayers)
-            for index, player in ipairs(list) do
-                local row = makeCard(playerList, 76, index)
-                local avatar = Instance.new("ImageLabel")
-                avatar.Position = UDim2.fromOffset(7, 7); avatar.Size = UDim2.fromOffset(60, 60); avatar.BackgroundTransparency = 1; avatar.ScaleType = Enum.ScaleType.Crop; avatar.Parent = row
-                makeCorner(avatar, 10)
-                task.spawn(function()
-                    local ok, image = pcall(function()
-                        local content = Players:GetUserThumbnailAsync(player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size150x150)
-                        return content
+        local function renderPlayers(showFetch)
+            state.PlayerRenderSerial = (state.PlayerRenderSerial or 0) + 1
+            local serial = state.PlayerRenderSerial
+            local fetchHandle = showFetch == true and LULA:ShowIsland("Fetching", "Experience Players", {Fetching = true}) or nil
+            task.spawn(function()
+                RunService.Heartbeat:Wait()
+                if serial ~= state.PlayerRenderSerial or state.Destroyed then if fetchHandle then fetchHandle:Close() end; return end
+                state.SpectateButtons = {}
+                local keep = {[playerLayout]=true}
+                clearChildren(playerList, keep)
+                local list = Players:GetPlayers()
+                table.sort(list, function(a,b) return string.lower(a.Name) < string.lower(b.Name) end)
+                playersStatus.Text = "Players in this server  |  "..tostring(#list).."/"..tostring(Players.MaxPlayers)
+                for index, player in ipairs(list) do
+                    if serial ~= state.PlayerRenderSerial or state.Destroyed then if fetchHandle then fetchHandle:Close() end; return end
+                    local row = makeCard(playerList, 76, index)
+                    local avatar = Instance.new("ImageLabel")
+                    avatar.Position = UDim2.fromOffset(7, 7); avatar.Size = UDim2.fromOffset(60, 60); avatar.BackgroundTransparency = 1; avatar.ScaleType = Enum.ScaleType.Crop; avatar.Parent = row
+                    makeCorner(avatar, 10)
+                    task.spawn(function()
+                        local ok, image = pcall(function()
+                            local content = Players:GetUserThumbnailAsync(player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size150x150)
+                            return content
+                        end)
+                        if ok and avatar.Parent then avatar.Image = image end
                     end)
-                    if ok and avatar.Parent then avatar.Image = image end
-                end)
-                local display = makeText(row, tostring(player.DisplayName), 12, Enum.Font.GothamBold)
-                display.Position = UDim2.fromOffset(76, 8); display.Size = UDim2.new(1, -250, 0, 20); display.TextXAlignment = Enum.TextXAlignment.Left
-                local user = makeText(row, "@"..player.Name.."  |  ID "..tostring(player.UserId), 9, Enum.Font.GothamMedium)
-                user.Position = UDim2.fromOffset(76, 29); user.Size = UDim2.new(1, -250, 0, 18); user.TextXAlignment = Enum.TextXAlignment.Left; bind(user, "TextColor3", "MutedText")
-                local inspect = makeButton(row, "Activity")
-                inspect.Position = UDim2.new(1, -166, 0, 8); inspect.Size = UDim2.fromOffset(76, 27); inspect.BackgroundColor3 = rgb(81, 145, 255); inspect.BackgroundTransparency = 0.03
-                local friend = makeButton(row, player == LocalPlayer and "You" or "Add Friend")
-                friend.Position = UDim2.new(1, -84, 0, 8); friend.Size = UDim2.fromOffset(76, 27); friend.BackgroundColor3 = rgb(68, 198, 121); friend.BackgroundTransparency = 0.03
-                local tp = makeButton(row, player == LocalPlayer and "You" or "Spectate")
-                tp.Position = UDim2.new(1, -166, 0, 41); tp.Size = UDim2.fromOffset(158, 26); tp.BackgroundColor3 = rgb(57, 126, 255); tp.BackgroundTransparency = 0.04
-                tp.TextColor3 = rgb(255, 255, 255)
-                tp.TextTransparency = 0
-                if player ~= LocalPlayer then
-                    state.SpectateButtons[player.UserId] = tp
-                else
-                    tp.AutoButtonColor = false
-                end
-                trackLocal(inspect.MouseButton1Click:Connect(function()
-                    ensurePlayerFeatureService():OpenActivityCard(player)
-                end))
-                if player ~= LocalPlayer then
-                    trackLocal(friend.MouseButton1Click:Connect(function()
-                        local isFriend = false
-                        pcall(function() isFriend = LocalPlayer:IsFriendsWithAsync(player.UserId) == true end)
-                        if isFriend then friend.Text = "Friends"; return end
-                        local opened = pcall(function() get.StarterGui:SetCore("PromptSendFriendRequest", player) end)
-                        friend.Text = opened and "Opened" or "Unavailable"
-                        task.delay(1.2, function() if friend.Parent then friend.Text = "Add Friend" end end)
+                    local display = makeText(row, tostring(player.DisplayName), 12, Enum.Font.GothamBold)
+                    display.Position = UDim2.fromOffset(76, 8); display.Size = UDim2.new(1, -250, 0, 20); display.TextXAlignment = Enum.TextXAlignment.Left
+                    local user = makeText(row, "@"..player.Name.."  |  ID "..tostring(player.UserId), 9, Enum.Font.GothamMedium)
+                    user.Position = UDim2.fromOffset(76, 29); user.Size = UDim2.new(1, -250, 0, 18); user.TextXAlignment = Enum.TextXAlignment.Left; bind(user, "TextColor3", "MutedText")
+                    local inspect = makeButton(row, "Activity")
+                    inspect.Position = UDim2.new(1, -166, 0, 8); inspect.Size = UDim2.fromOffset(76, 27); inspect.BackgroundColor3 = rgb(81, 145, 255); inspect.BackgroundTransparency = 0.03
+                    local friend = makeButton(row, player == LocalPlayer and "You" or "Add Friend")
+                    friend.Position = UDim2.new(1, -84, 0, 8); friend.Size = UDim2.fromOffset(76, 27); friend.BackgroundColor3 = rgb(68, 198, 121); friend.BackgroundTransparency = 0.03
+                    local tp = makeButton(row, player == LocalPlayer and "You" or "Spectate")
+                    tp.Position = UDim2.new(1, -166, 0, 41); tp.Size = UDim2.fromOffset(158, 26); tp.BackgroundColor3 = rgb(57, 126, 255); tp.BackgroundTransparency = 0.04
+                    tp.TextColor3 = rgb(255, 255, 255)
+                    tp.TextTransparency = 0
+                    if player ~= LocalPlayer then
+                        state.SpectateButtons[player.UserId] = tp
+                    else
+                        tp.AutoButtonColor = false
+                    end
+                    trackLocal(inspect.MouseButton1Click:Connect(function()
+                        task.delay(0.05,function()
+                            if player and player.Parent==Players then ensurePlayerFeatureService():OpenActivityCard(player) end
+                        end)
                     end))
-                else
-                    friend.AutoButtonColor = false
+                    if player ~= LocalPlayer then
+                        trackLocal(friend.MouseButton1Click:Connect(function()
+                            local isFriend = false
+                            pcall(function() isFriend = LocalPlayer:IsFriendsWithAsync(player.UserId) == true end)
+                            if isFriend then friend.Text = "Friends"; return end
+                            local opened = pcall(function() get.StarterGui:SetCore("PromptSendFriendRequest", player) end)
+                            friend.Text = opened and "Opened" or "Unavailable"
+                            task.delay(1.2, function() if friend.Parent then friend.Text = "Add Friend" end end)
+                        end))
+                    else
+                        friend.AutoButtonColor = false
+                    end
+                    if player ~= LocalPlayer then
+                        trackLocal(tp.MouseButton1Click:Connect(function()
+                            state.SpectatePlayer(player)
+                        end))
+                    end
+                    if index % 6 == 0 then RunService.Heartbeat:Wait() end
                 end
-                if player ~= LocalPlayer then
-                    trackLocal(tp.MouseButton1Click:Connect(function()
-                        state.SpectatePlayer(player)
-                    end))
-                end
-            end
-            state.RefreshSpectateButtons()
+                state.RefreshSpectateButtons()
+                if fetchHandle then fetchHandle:Close() end
+            end)
         end
 
-        local function renderServers()
+        local function renderServers(showFetch)
             clearChildren(serverList, {[serverLayout]=true})
             serverStatus.Text = "Loading public servers..."
+            local fetchHandle = showFetch ~= false and LULA:ShowIsland("Fetching", "Experience Servers", {Fetching = true}) or nil
             task.spawn(function()
+                RunService.Heartbeat:Wait()
                 local data = httpJson("https://games.roblox.com/v1/games/"..tostring(game.PlaceId).."/servers/Public?sortOrder=Asc&excludeFullGames=false&limit=100")
                 local rows = type(data) == "table" and data.data or {}
                 if type(rows) ~= "table" then rows = {} end
@@ -19478,14 +19623,18 @@ function LULA.CreateLib(kavName, themeInput)
                             pcall(function() get.TeleportService:TeleportToPlaceInstance(game.PlaceId, tostring(server.id), LocalPlayer) end)
                         end))
                     end
+                    if index % 8 == 0 then RunService.Heartbeat:Wait() end
                 end
                 if #rows == 0 then serverStatus.Text = "No public servers returned by Roblox." end
+                if fetchHandle then fetchHandle:Close() end
             end)
         end
 
-        local function renderBadges()
+        local function renderBadges(showFetch)
             clearChildren(badgesList, {[badgesLayout]=true})
+            local fetchHandle = showFetch == true and LULA:ShowIsland("Fetching", "Experience Badges", {Fetching = true}) or nil
             task.spawn(function()
+                RunService.Heartbeat:Wait()
                 local data = httpJson("https://badges.roblox.com/v1/universes/"..tostring(game.GameId).."/badges?limit=100&sortOrder=Asc")
                 local rows = type(data) == "table" and data.data or {}
                 if type(rows) ~= "table" then rows = {} end
@@ -19499,14 +19648,18 @@ function LULA.CreateLib(kavName, themeInput)
                     title.Position = UDim2.fromOffset(68,6); title.Size = UDim2.new(1,-77,0,19); title.TextXAlignment = Enum.TextXAlignment.Left
                     local desc = makeText(row, trim(badge.description) ~= "" and trim(badge.description) or "No description.", 9, Enum.Font.GothamMedium)
                     desc.Position = UDim2.fromOffset(68,27); desc.Size = UDim2.new(1,-77,0,32); desc.TextXAlignment = Enum.TextXAlignment.Left; desc.TextYAlignment = Enum.TextYAlignment.Top; desc.TextWrapped = true; bind(desc,"TextColor3","MutedText")
+                    if index % 8 == 0 then RunService.Heartbeat:Wait() end
                 end
                 if #rows == 0 then badgesStatus.Text = "No badges found or Roblox blocked the request." end
+                if fetchHandle then fetchHandle:Close() end
             end)
         end
 
-        local function renderPasses()
+        local function renderPasses(showFetch)
             clearChildren(passesList, {[passesLayout]=true})
+            local fetchHandle = showFetch == true and LULA:ShowIsland("Fetching", "Experience Passes", {Fetching = true}) or nil
             task.spawn(function()
+                RunService.Heartbeat:Wait()
                 local url = "https://apis.roblox.com/game-passes/v1/universes/"..tostring(game.GameId).."/game-passes?passView=Full&pageSize=100"
                 local data = httpJson(url)
                 local rows = type(data) == "table" and (data.gamePasses or data.data) or {}
@@ -19526,10 +19679,15 @@ function LULA.CreateLib(kavName, themeInput)
                             pcall(function() MarketplaceService:PromptGamePassPurchase(LocalPlayer, tonumber(pass.id)) end)
                         end))
                     end
+                    if index % 8 == 0 then RunService.Heartbeat:Wait() end
                 end
                 if #rows == 0 then passesStatus.Text = "No passes found or this endpoint needs Roblox authorization." end
+                if fetchHandle then fetchHandle:Close() end
             end)
         end
+
+        state.RenderBadges = renderBadges
+        state.RenderPasses = renderPasses
 
         local function refreshGameInfo()
             task.spawn(function()
@@ -19618,23 +19776,21 @@ function LULA.CreateLib(kavName, themeInput)
             end
         end))
 
-        trackLocal(sortLow.MouseButton1Click:Connect(function() state.ServerSort="players_low"; renderServers() end))
-        trackLocal(sortHigh.MouseButton1Click:Connect(function() state.ServerSort="players_high"; renderServers() end))
+        trackLocal(sortLow.MouseButton1Click:Connect(function() state.ServerSort="players_low"; renderServers(true) end))
+        trackLocal(sortHigh.MouseButton1Click:Connect(function() state.ServerSort="players_high"; renderServers(true) end))
         trackLocal(sortPing.MouseButton1Click:Connect(function()
             LULA:ShowIsland("Ping / FPS Sort", "Roblox's public server list does not provide remote server ping or FPS before joining. LH only shows live metrics for your kurrent server.", {Duration=4})
         end))
-        trackLocal(refreshServers.MouseButton1Click:Connect(renderServers))
-        trackLocal(refreshPlayers.MouseButton1Click:Connect(renderPlayers))
-        trackLocal(Players.PlayerAdded:Connect(renderPlayers))
+        trackLocal(refreshServers.MouseButton1Click:Connect(function() renderServers(true) end))
+        trackLocal(refreshPlayers.MouseButton1Click:Connect(function() renderPlayers(true) end))
+        trackLocal(Players.PlayerAdded:Connect(function() renderPlayers(false) end))
         trackLocal(Players.PlayerRemoving:Connect(function()
-            task.defer(renderPlayers)
+            task.defer(function() renderPlayers(false) end)
         end))
 
         refreshGameInfo()
-        renderServers()
-        renderPlayers()
-        renderBadges()
-        renderPasses()
+        renderServers(false)
+        renderPlayers(false)
 
         state.Cleanup = function()
             if state.Destroyed then return end
