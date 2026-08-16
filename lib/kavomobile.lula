@@ -2161,7 +2161,7 @@ local function normalizeAnimationAssetId(value)
     return "rbxassetid://" .. digits
 end
 
-local function mirrorCurrentAvatarPose(targetModel, ownerGui)
+local function mirrorCurrentAvatarPose(targetModel, ownerGui, sourcePlayer, activePredicate)
     if not targetModel then return end
 
     local targetMotors = {}
@@ -2175,8 +2175,10 @@ local function mirrorCurrentAvatarPose(targetModel, ownerGui)
 
     task.spawn(function()
         while targetModel.Parent and (not ownerGui or ownerGui.Parent) do
-            local sourceCharacter = LocalPlayer and LocalPlayer.Character
-            if sourceCharacter then
+            local shouldUpdate = true
+            if type(activePredicate) == "function" then pcall(function() shouldUpdate = activePredicate() == true end) end
+            local sourceCharacter = (sourcePlayer or LocalPlayer) and (sourcePlayer or LocalPlayer).Character
+            if shouldUpdate and sourceCharacter then
                 for _, sourceMotor in ipairs(sourceCharacter:GetDescendants()) do
                     if sourceMotor:IsA("Motor6D") then
                         local key = sourceMotor.Name .. "|"
@@ -2195,7 +2197,7 @@ local function mirrorCurrentAvatarPose(targetModel, ownerGui)
                     end
                 end
             end
-            RunService.RenderStepped:Wait()
+            if shouldUpdate then RunService.RenderStepped:Wait() else task.wait(0.12) end
         end
     end)
 end
@@ -3187,7 +3189,7 @@ function LULA.CreateLib(kavName, themeInput)
         end
     end))
 
-    track(close.MouseButton1Click:Connect(function()
+    track(close.Activated:Connect(function()
         if type(env.LHRequestClose) == "function" then
             safeCall("Close confirmation", env.LHRequestClose)
         elseif env.LHRuntime and type(env.LHRuntime.Unload) == "function" then
@@ -3419,12 +3421,13 @@ function LULA.CreateLib(kavName, themeInput)
             local character = player and player.Character
             local animate = character and character:FindFirstChild("Animate")
             if not animate then return slots end
+
+            -- Prefer the normal R15 hierarchy, then scan every Animation descendant.
             local paths = {
                 idle1={"idle","Animation1"}, idle2={"idle","Animation2"},
                 walk={"walk","WalkAnim"}, run={"run","RunAnim"},
                 jump={"jump","JumpAnim"}, fall={"fall","FallAnim"},
-                climb={"climb","ClimbAnim"}, swim={"swim","Swim"},
-                swimidle={"swimidle","SwimIdle"},
+                climb={"climb","ClimbAnim"}, swim={"swim","Swim"}, swimidle={"swimidle","SwimIdle"},
             }
             for slot, path in pairs(paths) do
                 local object = animate
@@ -3432,6 +3435,26 @@ function LULA.CreateLib(kavName, themeInput)
                 if object and object:IsA("Animation") then
                     local id = normalizeAnimationId(object.AnimationId)
                     if id then slots[slot] = id end
+                end
+            end
+            for _, object in ipairs(animate:GetDescendants()) do
+                if object:IsA("Animation") then
+                    local id = normalizeAnimationId(object.AnimationId)
+                    if id then
+                        local parentName = string.lower(tostring(object.Parent and object.Parent.Name or ""))
+                        local objectName = string.lower(tostring(object.Name or ""))
+                        local key = parentName .. " " .. objectName
+                        local slot
+                        if string.find(key,"swimidle",1,true) or string.find(key,"swim idle",1,true) then slot="swimidle"
+                        elseif string.find(key,"swim",1,true) then slot="swim"
+                        elseif string.find(key,"walk",1,true) then slot="walk"
+                        elseif string.find(key,"run",1,true) then slot="run"
+                        elseif string.find(key,"jump",1,true) then slot="jump"
+                        elseif string.find(key,"fall",1,true) then slot="fall"
+                        elseif string.find(key,"climb",1,true) then slot="climb"
+                        elseif string.find(key,"idle",1,true) then slot = slots.idle1 and "idle2" or "idle1" end
+                        if slot and not slots[slot] then slots[slot] = id end
+                    end
                 end
             end
             return slots
@@ -3551,11 +3574,23 @@ function LULA.CreateLib(kavName, themeInput)
 
         function service:GetAnimationProfile(player)
             local cached=self.AnimationProfiles[player]
-            if cached and os.clock()-(tonumber(cached.Updated) or 0)<20 then return cached end
+            if cached and cached.Source~="Fallback" and os.clock()-(tonumber(cached.Updated) or 0)<20 then return cached end
             local ok,profile=pcall(function() return self:BuildAnimationProfile(player,false) end)
             if ok and profile then self.AnimationProfiles[player]=profile end
             self:RefreshAnimationProfile(player,true)
-            return profile or cached
+            if profile then return profile end
+            if cached then return cached end
+            -- Every normal R15 avatar still has a usable baseline locomotion set.
+            -- Show/apply Rthro immediately while the exact HumanoidDescription resolves.
+            return {
+                Name="Rthro Animation",
+                Source="Fallback",
+                Updated=os.clock(),
+                Slots={
+                    idle1=2510197257,idle2=2510196951,walk=2510202577,run=2510198475,
+                    jump=2510197830,fall=2510195892,climb=2510192778,swim=2510199791,swimidle=2510201162
+                }
+            }
         end
 
         function service:ApplyAnimationProfile(player)
@@ -3623,12 +3658,25 @@ function LULA.CreateLib(kavName, themeInput)
             if not track then return nil end
             local id = track.Animation and normalizeAnimationId(track.Animation.AnimationId)
             if not id then return nil end
-            local snapshot = {Id=id, Track=track, TimePosition=0, Speed=1, Looped=false, Name=self.NameCache[id]}
+            local snapshot = {Id=id, Track=track, TimePosition=0, Speed=1, Looped=false, Name=self.NameCache[id], Priority=Enum.AnimationPriority.Core}
+            pcall(function() snapshot.Priority = track.Priority end)
             pcall(function() snapshot.TimePosition = tonumber(track.TimePosition) or 0 end)
             pcall(function() snapshot.Speed = tonumber(track.Speed) or 1 end)
             pcall(function() snapshot.Looped = track.Looped == true end)
             snapshot.Name = snapshot.Name or self:ResolveAnimationName(id)
             return snapshot
+        end
+
+        function service:IsActionSnapshot(snapshot)
+            if type(snapshot) ~= "table" then return false end
+            local priority = snapshot.Priority
+            local priorityValue = 0
+            pcall(function() priorityValue = priority.Value end)
+            if priorityValue >= Enum.AnimationPriority.Action.Value then return true end
+            local name = string.lower(tostring(snapshot.Name or ""))
+            return string.find(name, "dance", 1, true) ~= nil
+                or string.find(name, "emote", 1, true) ~= nil
+                or string.find(name, "gesture", 1, true) ~= nil
         end
 
         local function stopTrack(track)
@@ -3703,10 +3751,34 @@ function LULA.CreateLib(kavName, themeInput)
             return animationState.SaveDetectedAnimation(snap, player)
         end
 
+        function service:AnimationProfileSignature(profile)
+            if type(profile) ~= "table" or type(profile.Slots) ~= "table" then return "" end
+            local keys = {"idle1","idle2","walk","run","jump","fall","climb","swim","swimidle"}
+            local parts = {tostring(profile.Name or "")}
+            for _, key in ipairs(keys) do parts[#parts + 1] = key .. "=" .. tostring(normalizeAnimationId(profile.Slots[key]) or "") end
+            return table.concat(parts, "|")
+        end
+
+        function service:SetMimicPlayerControls(enabled)
+            if enabled == false then
+                if not self.MimicPlayerControls then
+                    pcall(function()
+                        local playerModule = require(Local:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule"))
+                        self.MimicPlayerControls = playerModule:GetControls()
+                    end)
+                end
+                if self.MimicPlayerControls then pcall(function() self.MimicPlayerControls:Disable() end) end
+            else
+                if self.MimicPlayerControls then pcall(function() self.MimicPlayerControls:Enable() end) end
+            end
+        end
+
         function service:Unsync(silent)
             self.SyncTarget = nil
             self.SyncTrackId = nil
             self.SyncLocalCharacter = nil
+            self.SyncProfileSignature = nil
+            self.SyncNextProfileCheck = 0
             stopTrack(self.SyncTrack)
             if self.SyncAnimation then pcall(function() self.SyncAnimation:Destroy() end) end
             self.SyncTrack, self.SyncAnimation = nil, nil
@@ -3725,6 +3797,8 @@ function LULA.CreateLib(kavName, themeInput)
             self.SyncBundleApplied=applied==true
             self.SyncTarget = player
             self.SyncNextCorrection = 0
+            self.SyncNextProfileCheck = 0
+            self.SyncProfileSignature = profile and self:AnimationProfileSignature(profile) or nil
             self:EnsureStatusCard()
             self.StatusCard.Visible = true
             if self.StatusDetail then
@@ -3744,7 +3818,7 @@ function LULA.CreateLib(kavName, themeInput)
             card.BorderSizePixel = 0
             card.ZIndex = 850
             card.Visible = false
-            card.Parent = main
+            card.Parent = active.NotificationGui or screenGui
             bind(card, "BackgroundColor3", "Header")
             makeCorner(card, 11); makeStroke(card, active.Theme.SchemeColor, 0.2, 1)
             local title = makeText(card, "Dance Sync", 11.5, Enum.Font.GothamBold)
@@ -3754,7 +3828,7 @@ function LULA.CreateLib(kavName, themeInput)
             bind(detail,"TextColor3","MutedText")
             local unsync = makeButton(card,"Unsync")
             unsync.AnchorPoint=Vector2.new(1,0); unsync.Position=UDim2.new(1,-8,0,7); unsync.Size=UDim2.fromOffset(62,24); unsync.TextSize=9.5; unsync.ZIndex=852
-            track(unsync.Activated:Connect(function() self:Unsync(false) end))
+            track(unsync.Activated:Connect(function() self:Unsync(false); self:RefreshLiveRows() end))
             self.StatusCard, self.StatusTitle, self.StatusDetail = card, title, detail
             return card
         end
@@ -3788,7 +3862,7 @@ function LULA.CreateLib(kavName, themeInput)
             self.MimicHighlight = highlight
             task.delay(0.55, function()
                 if self.MimicHighlight == highlight and highlight.Parent then
-                    tween(highlight, {FillTransparency=0.88, OutlineTransparency=0.12}, 0.28)
+                    tween(highlight, {FillTransparency=0.74, OutlineTransparency=0.05}, 0.28)
                 end
             end)
 
@@ -3906,8 +3980,13 @@ function LULA.CreateLib(kavName, themeInput)
                 self.MimicTarget = nil
                 self.MimicTargetCharacter = nil
                 self.MimicLocalCharacter = nil
+                self.MimicProfileSignature = nil
+                self.MimicNextProfileCheck = 0
+                self:SetMimicPlayerControls(true)
                 self:StopMimicTrack()
                 self:ClearMimicMarker()
+                if self.MimicPreviousSlots then pcall(function() self:RestoreAnimationSlots(self.MimicPreviousSlots) end) end
+                self.MimicPreviousSlots = nil
                 self:RestoreMimicOriginal()
                 if self.MimicStatus then self.MimicStatus.Text = "Tap Mimic Player, then tap/klick a player" end
                 return true
@@ -3919,8 +3998,18 @@ function LULA.CreateLib(kavName, themeInput)
             self.MimicTrackId = nil
             self.MimicNextCorrection = 0
             self:CaptureMimicOriginal(false)
+            self.MimicPreviousSlots = self.MimicPreviousSlots or self:ReadAnimateSlots(Local)
+            self:SetMimicPlayerControls(false)
             self:CopyAnimateTree(player)
             self:CopyDescriptionAnimations(player)
+            local profile = self:GetAnimationProfile(player)
+            if profile then
+                pcall(function() self:ApplyAnimationProfile(player) end)
+                self.MimicProfileSignature = self:AnimationProfileSignature(profile)
+            else
+                self.MimicProfileSignature = nil
+            end
+            self.MimicNextProfileCheck = 0
             self:MakeMimicMarker(player)
             if self.MimicStatus then self.MimicStatus.Text = "Mimicking @"..player.Name.."\nTracking movement + animation..." end
             return true
@@ -3932,7 +4021,7 @@ function LULA.CreateLib(kavName, themeInput)
             if self.MimicStatus then self.MimicStatus.Text = "Tap/klick a player in the world" end
             if self.MimicInputConnection then pcall(function() self.MimicInputConnection:Disconnect() end) end
             self.MimicInputConnection = get.UserInputService.InputBegan:Connect(function(input, processed)
-                if not self.MimicSelecting or processed then return end
+                if not self.MimicSelecting then return end
                 local inputType=input.UserInputType
                 if inputType~=Enum.UserInputType.MouseButton1 and inputType~=Enum.UserInputType.Touch then return end
                 local camera=workspace.CurrentCamera
@@ -3983,6 +4072,27 @@ function LULA.CreateLib(kavName, themeInput)
             local stop=makeKolorButton(root,"Stop",rgb(205,58,72)); stop.AnchorPoint=Vector2.new(1,0); stop.Position=UDim2.new(1,-8,0,8); stop.Size=UDim2.fromOffset(56,34); stop.ZIndex=1201
             local status=makeText(root,"Tap Mimic Player, then tap/klick a player",9.2,Enum.Font.GothamMedium)
             status.Position=UDim2.fromOffset(9,49); status.Size=UDim2.new(1,-18,0,34); status.TextWrapped=true; status.TextXAlignment=Enum.TextXAlignment.Left; status.TextYAlignment=Enum.TextYAlignment.Top; status.ZIndex=1201; bind(status,"TextColor3","MutedText")
+            -- Drag the Mimic controller by its status area (mobile + PC).
+            status.Active = true
+            do
+                local dragging=false
+                local dragStart=nil
+                local startPosition=nil
+                track(status.InputBegan:Connect(function(input)
+                    if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
+                        dragging=true; dragStart=input.Position; startPosition=root.Position
+                    end
+                end))
+                track(get.UserInputService.InputChanged:Connect(function(input)
+                    if dragging and dragStart and startPosition and (input.UserInputType==Enum.UserInputType.MouseMovement or input.UserInputType==Enum.UserInputType.Touch) then
+                        local delta=input.Position-dragStart
+                        root.Position=UDim2.new(startPosition.X.Scale,startPosition.X.Offset+delta.X,startPosition.Y.Scale,startPosition.Y.Offset+delta.Y)
+                    end
+                end))
+                track(get.UserInputService.InputEnded:Connect(function(input)
+                    if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then dragging=false end
+                end))
+            end
             track(select.Activated:Connect(function() self:BeginMimicSelection() end))
             track(stop.Activated:Connect(function() self:SetMimicTarget(nil) end))
             self.MimicGui,self.MimicSelect,self.MimicStop,self.MimicStatus=root,select,stop,status
@@ -4022,14 +4132,34 @@ function LULA.CreateLib(kavName, themeInput)
                 self.MimicTargetCharacter=targetCharacter
                 self:CopyAnimateTree(target)
                 self:CopyDescriptionAnimations(target)
+                self.MimicProfileSignature = nil
+                self.MimicNextProfileCheck = 0
+                pcall(function() self:ApplyAnimationProfile(target) end)
                 self:MakeMimicMarker(target)
             end
             if self.MimicLocalCharacter~=localCharacter then
                 self.MimicLocalCharacter=localCharacter
                 self:CaptureMimicOriginal(true)
+                self:SetMimicPlayerControls(false)
                 self:CopyAnimateTree(target)
                 self:CopyDescriptionAnimations(target)
+                self.MimicProfileSignature = nil
+                self.MimicNextProfileCheck = 0
+                pcall(function() self:ApplyAnimationProfile(target) end)
                 self:StopMimicTrack()
+            end
+
+            if now >= (tonumber(self.MimicNextProfileCheck) or 0) then
+                self.MimicNextProfileCheck = now + 0.75
+                local profile = self:GetAnimationProfile(target)
+                local signature = self:AnimationProfileSignature(profile)
+                if signature ~= "" and signature ~= self.MimicProfileSignature then
+                    self:CopyAnimateTree(target)
+                    self:CopyDescriptionAnimations(target)
+                    local applied = false
+                    pcall(function() applied = self:ApplyAnimationProfile(target) == true end)
+                    if applied then self.MimicProfileSignature = signature end
+                end
             end
 
             local distance=(targetRoot.Position-localRoot.Position).Magnitude
@@ -4043,7 +4173,18 @@ function LULA.CreateLib(kavName, themeInput)
             pcall(function() localHumanoid.JumpHeight=targetHumanoid.JumpHeight end)
 
             local sidePosition=targetRoot.Position + targetRoot.CFrame.RightVector*3.7
-            if distance>3.2 then pcall(function() localHumanoid:MoveTo(sidePosition) end) end
+            local sideDelta=sidePosition-localRoot.Position
+            pcall(function()
+                if sideDelta.Magnitude > 1.35 then
+                    localHumanoid:Move(sideDelta.Unit, false)
+                    if now >= (tonumber(self.MimicNextMoveTo) or 0) then
+                        self.MimicNextMoveTo = now + 0.12
+                        localHumanoid:MoveTo(sidePosition)
+                    end
+                else
+                    localHumanoid:Move(Vector3.zero, false)
+                end
+            end)
             pcall(function()
                 local look=targetRoot.CFrame.LookVector
                 localRoot.CFrame=CFrame.lookAt(localRoot.Position,localRoot.Position+Vector3.new(look.X,0,look.Z))
@@ -4069,6 +4210,7 @@ function LULA.CreateLib(kavName, themeInput)
             end
 
             local snap=self:GetSnapshot(target)
+            if snap and not self:IsActionSnapshot(snap) then snap=nil end
             if snap then
                 local playing=false
                 if self.MimicTrack then pcall(function() playing=self.MimicTrack.IsPlaying==true end) end
@@ -4090,7 +4232,8 @@ function LULA.CreateLib(kavName, themeInput)
 
             if self.MimicStatus then
                 local stateName=targetState and targetState.Name or "Unknown"
-                local animName=snap and tostring(snap.Name or ("Animation "..snap.Id)) or "No animation"
+                local profile=self:GetAnimationProfile(target)
+                local animName=snap and tostring(snap.Name or ("Animation "..snap.Id)) or (profile and tostring(profile.Name) or "Animation set")
                 self.MimicStatus.Text="@"..target.Name.." | "..tostring(math.floor(distance+0.5)).." studs | "..stateName.."\n"..animName
             end
         end
@@ -4103,9 +4246,9 @@ function LULA.CreateLib(kavName, themeInput)
                 -- A transparent modal sink prevents the mobile touch that opened
                 -- Activity from falling through into controls underneath the new kard.
                 local blocker=Instance.new("TextButton")
-                blocker.Name="LHPlayerActivityBlocker"; blocker.Size=UDim2.fromScale(1,1); blocker.BackgroundTransparency=1; blocker.BorderSizePixel=0; blocker.Text=""; blocker.AutoButtonColor=false; blocker.Active=true; blocker.Modal=true; blocker.ZIndex=899; blocker.Parent=screenGui
+                blocker.Name="LHPlayerActivityBlocker"; blocker.Size=UDim2.fromScale(1,1); blocker.BackgroundTransparency=1; blocker.BorderSizePixel=0; blocker.Text=""; blocker.AutoButtonColor=false; blocker.Active=true; blocker.Modal=true; blocker.ZIndex=899; blocker.Parent=active.NotificationGui or screenGui
                 local card = Instance.new("Frame")
-                card.Name="LHPlayerActivityCard"; card.AnchorPoint=Vector2.new(0.5,0.5); card.Position=UDim2.fromScale(0.5,0.5); card.Size=UDim2.fromOffset(390,300); card.BorderSizePixel=0; card.ZIndex=900; card.Parent=screenGui
+                card.Name="LHPlayerActivityCard"; card.AnchorPoint=Vector2.new(0.5,0.5); card.Position=UDim2.fromScale(0.5,0.5); card.Size=UDim2.fromOffset(390,300); card.BorderSizePixel=0; card.ZIndex=900; card.Parent=active.NotificationGui or screenGui
                 bind(card,"BackgroundColor3","Header"); makeCorner(card,14); makeStroke(card,active.Theme.SchemeColor,0.12,1.3)
                 local avatar=Instance.new("ImageLabel"); avatar.Name="Avatar"; avatar.Position=UDim2.fromOffset(12,12); avatar.Size=UDim2.fromOffset(68,68); avatar.BackgroundTransparency=0.08; avatar.BorderSizePixel=0; avatar.ScaleType=Enum.ScaleType.Crop; avatar.ZIndex=901; avatar.Parent=card; bind(avatar,"BackgroundColor3","ElementColor"); makeCorner(avatar,12)
                 local name=makeText(card,"Player",15,Enum.Font.GothamBold); name.Position=UDim2.fromOffset(90,12); name.Size=UDim2.new(1,-132,0,24); name.TextXAlignment=Enum.TextXAlignment.Left; name.ZIndex=901
@@ -4124,20 +4267,20 @@ function LULA.CreateLib(kavName, themeInput)
                     card.Visible=false
                     blocker.Visible=false
                 end))
-                track(sync.MouseButton1Click:Connect(function()
+                track(sync.Activated:Connect(function()
                     local target=self.ActivityTarget; if not target then return end
                     if self.SyncTarget==target then self:Unsync(false) else local ok,why=self:SyncPlayer(target); if not ok then LULA:ShowIsland("Dance Sync",tostring(why),{Duration=3}) end end
                 end))
-                track(detect.MouseButton1Click:Connect(function()
+                track(detect.Activated:Connect(function()
                     local target=self.ActivityTarget; if not target then return end
                     if self.DetectorTarget==target then self:StopDetected() else local ok,why=self:PlayDetected(target); if not ok then LULA:ShowIsland("Animation Detector",tostring(why),{Duration=3}) end end
                 end))
-                track(save.MouseButton1Click:Connect(function() local ok,why=self:SaveDetected(self.ActivityTarget); if not ok then LULA:ShowIsland("Animation Detector",tostring(why),{Duration=3}) end end))
-                track(avatarBtn.MouseButton1Click:Connect(function()
+                track(save.Activated:Connect(function() local ok,why=self:SaveDetected(self.ActivityTarget); if not ok then LULA:ShowIsland("Animation Detector",tostring(why),{Duration=3}) end end))
+                track(avatarBtn.Activated:Connect(function()
                     local target=self.ActivityTarget; if not target then return end
                     if active.AvatarKreator and type(active.AvatarKreator.InspectPlayer)=="function" then active.AvatarKreator.InspectPlayer(target) else pcall(function() get.GuiService:InspectPlayerFromUserId(target.UserId) end) end
                 end))
-                track(spectate.MouseButton1Click:Connect(function() local target=self.ActivityTarget; if target and type(env.LHStartSpectate)=="function" then pcall(env.LHStartSpectate,target) end end))
+                track(spectate.Activated:Connect(function() local target=self.ActivityTarget; if target and type(env.LHStartSpectate)=="function" then pcall(env.LHStartSpectate,target) end end))
                 self.ActivityCard=card; self.ActivityBlocker=blocker; self.ActivityClose=close; self.ActivityAvatar=avatar; self.ActivityName=name; self.ActivityIdentity=identity; self.ActivityInfo=info; self.ActivitySync=sync; self.ActivityDetect=detect
             end
             self.ActivityCard.Visible=true
@@ -4203,11 +4346,18 @@ function LULA.CreateLib(kavName, themeInput)
                         local primary=makeButton(row,mode=="sync" and "Sync" or "Play"); primary.AnchorPoint=Vector2.new(1,0.5); primary.Position=UDim2.new(1,-83,0.5,0); primary.Size=UDim2.fromOffset(70,28); primary.TextSize=9.5
                         local secondary=makeButton(row,mode=="sync" and "Activity" or "Save"); secondary.AnchorPoint=Vector2.new(1,0.5); secondary.Position=UDim2.new(1,-8,0.5,0); secondary.Size=UDim2.fromOffset(68,28); secondary.TextSize=9.2
                         if mode=="sync" then
-                            primary.MouseButton1Click:Connect(function() if self.SyncTarget==player then self:Unsync(false) else local ok,why=self:SyncPlayer(player); if not ok then LULA:ShowIsland("Dance Sync",tostring(why),{Duration=3}) end end end)
-                            secondary.MouseButton1Click:Connect(function()
-                                task.delay(0.05, function()
-                                    if player and player.Parent == PlayersService then self:OpenActivityCard(player) end
-                                end)
+                            primary.Activated:Connect(function()
+                                if self.SyncTarget==player then self:Unsync(false) else
+                                    local ok,why=self:SyncPlayer(player)
+                                    if not ok then LULA:ShowIsland("Dance Sync",tostring(why),{Duration=3}) end
+                                end
+                                self:RefreshLiveRows()
+                            end)
+                            secondary.Activated:Connect(function()
+                                if player and player.Parent == PlayersService then
+                                    local ok,why=pcall(function() return self:OpenActivityCard(player) end)
+                                    if not ok then warn("[Lollypop Hub Activity] "..tostring(why)) end
+                                end
                             end)
                             self.LiveRows[row]={Player=player,AnimationLabel=anim,SyncButton=primary}
                         else
@@ -4218,10 +4368,11 @@ function LULA.CreateLib(kavName, themeInput)
                             local activity=makeButton(row,"Activity"); activity.AnchorPoint=Vector2.new(1,0.5); activity.Position=UDim2.new(1,-8,0.5,0); activity.Size=UDim2.fromOffset(66,28); activity.TextSize=8.8
                             primary.MouseButton1Click:Connect(function() if self.DetectorTarget==player then self:StopDetected() else local ok,why=self:PlayDetected(player); if not ok then LULA:ShowIsland("Animation Detector",tostring(why),{Duration=3}) end end end)
                             secondary.MouseButton1Click:Connect(function() local ok,why=self:SaveDetected(player); if not ok then LULA:ShowIsland("Animation Detector",tostring(why),{Duration=3}) end end)
-                            activity.MouseButton1Click:Connect(function()
-                                task.delay(0.05, function()
-                                    if player and player.Parent == PlayersService then self:OpenActivityCard(player) end
-                                end)
+                            activity.Activated:Connect(function()
+                                if player and player.Parent == PlayersService then
+                                    local ok,why=pcall(function() return self:OpenActivityCard(player) end)
+                                    if not ok then warn("[Lollypop Hub Activity] "..tostring(why)) end
+                                end
                             end)
                             self.LiveRows[row]={Player=player,AnimationLabel=anim,PlayButton=primary}
                         end
@@ -4240,17 +4391,31 @@ function LULA.CreateLib(kavName, themeInput)
             if service.MimicEnabled and service.MimicTarget then service:UpdateMimic(dt, now) end
             if service.SyncTarget then
                 if service.SyncTarget.Parent~=PlayersService then service:Unsync(true) else
+                    service:EnsureStatusCard()
+                    service.StatusCard.Visible = true
                     local snap=service:GetSnapshot(service.SyncTarget)
+                    if snap and not service:IsActionSnapshot(snap) then snap = nil end
                     if not snap then
                         if service.SyncTrack then stopTrack(service.SyncTrack); service.SyncTrack=nil; service.SyncTrackId=nil end
                         local profile=service:GetAnimationProfile(service.SyncTarget)
-                        if not service.SyncBundleApplied and profile then
+                        local profileSignature=service:AnimationProfileSignature(profile)
+                        local shouldRefreshProfile = (not service.SyncBundleApplied) or (profileSignature ~= "" and profileSignature ~= service.SyncProfileSignature)
+                        if shouldRefreshProfile and profile and now >= (tonumber(service.SyncNextProfileCheck) or 0) then
+                            service.SyncNextProfileCheck = now + 0.6
                             if not service.SyncPreviousSlots then service.SyncPreviousSlots=service:ReadAnimateSlots(Local) end
                             local applied=service:ApplyAnimationProfile(service.SyncTarget)
                             service.SyncBundleApplied=applied==true
+                            if applied then service.SyncProfileSignature=profileSignature end
                         end
                         service:EnsureStatusCard(); service.StatusDetail.Text="Synced with @"..service.SyncTarget.Name.."\n"..tostring(profile and profile.Name or "Detecting animation pack...")
                     else
+                        local liveProfile=service:GetAnimationProfile(service.SyncTarget)
+                        local liveSignature=service:AnimationProfileSignature(liveProfile)
+                        if liveProfile and liveSignature ~= "" and liveSignature ~= service.SyncProfileSignature and now >= (tonumber(service.SyncNextProfileCheck) or 0) then
+                            service.SyncNextProfileCheck = now + 0.6
+                            local applied=service:ApplyAnimationProfile(service.SyncTarget)
+                            if applied then service.SyncBundleApplied=true; service.SyncProfileSignature=liveSignature end
+                        end
                         local syncPlaying = false
                         if service.SyncTrack then pcall(function() syncPlaying = service.SyncTrack.IsPlaying == true end) end
                         if service.SyncTrackId~=snap.Id or not service.SyncTrack or not syncPlaying then
@@ -5810,28 +5975,44 @@ function LULA.CreateLib(kavName, themeInput)
     function window:EnableNotificationCenter(tabName)
         if active.NotificationCenter then return active.NotificationCenter.Tab end
 
-        local notificationTab = self:NewTab(tabName or "Notifications")
+        local notificationTab = self:NewTab(tabName or "Debugging")
         notificationTab:EnsureBuilt()
         local scroll = notificationTab.Scroll
         scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
         scroll.CanvasSize = UDim2.new()
 
-        local clearAll = makeKolorButton(scroll, "Klear All Notifikations", rgb(164, 42, 58))
-        clearAll.Name = "ClearAllNotifications"
+        local modeBar = Instance.new("Frame")
+        modeBar.Name = "DebuggingModeBar"
+        modeBar.LayoutOrder = -10020
+        modeBar.Size = UDim2.new(1, -4, 0, 38)
+        modeBar.BackgroundTransparency = 1
+        modeBar.Parent = scroll
+
+        local notificationsButton = makeButton(modeBar, "Notifications")
+        notificationsButton.Position = UDim2.fromOffset(0, 1)
+        notificationsButton.Size = UDim2.new(0.5, -3, 0, 36)
+        notificationsButton.TextSize = 11.5
+        local consoleButton = makeButton(modeBar, "Developer Konsole")
+        consoleButton.Position = UDim2.new(0.5, 3, 0, 1)
+        consoleButton.Size = UDim2.new(0.5, -3, 0, 36)
+        consoleButton.TextSize = 11.5
+
+        local clearAll = makeKolorButton(scroll, "Klear Notifications", rgb(164, 42, 58))
+        clearAll.Name = "ClearDebuggingItems"
         clearAll.LayoutOrder = -10000
         clearAll.Size = UDim2.new(1, -4, 0, 36)
         clearAll.TextSize = 12
         clearAll.TextColor3 = rgb(248, 248, 252)
 
         local itemCount = makeText(scroll, "0 items", 12, Enum.Font.GothamBold)
-        itemCount.Name = "NotificationItemCount"
+        itemCount.Name = "DebuggingItemCount"
         itemCount.LayoutOrder = -9990
         itemCount.Size = UDim2.new(1, -4, 0, 28)
         itemCount.TextXAlignment = Enum.TextXAlignment.Left
         bind(itemCount, "TextColor3", "MutedText")
 
         local holder = Instance.new("Frame")
-        holder.Name = "NotificationHistoryStack"
+        holder.Name = "DebuggingHistoryStack"
         holder.LayoutOrder = -9980
         holder.Size = UDim2.new(1, -4, 0, 0)
         holder.AutomaticSize = Enum.AutomaticSize.Y
@@ -5842,19 +6023,27 @@ function LULA.CreateLib(kavName, themeInput)
         holderLayout.SortOrder = Enum.SortOrder.LayoutOrder
         holderLayout.Parent = holder
 
-        local state = {Tab = notificationTab, Holder = holder, LastSignature = nil}
+        local state = {Tab = notificationTab, Holder = holder, LastSignature = nil, Mode = "notifications", Logs = {}, Connections = {}}
         active.NotificationCenter = state
 
-        local function historySignature()
-            local parts = {tostring(#notificationHistory)}
-            for index, item in ipairs(notificationHistory) do
-                parts[#parts + 1] = table.concat({
-                    tostring(index), tostring(item.Time or ""), tostring(item.Kind or ""),
-                    tostring(item.Title or ""), tostring(item.Text or ""), tostring(item.Action or "")
-                }, "|")
-            end
-            return table.concat(parts, "\n")
+        local logService = game:GetService("LogService")
+        local function pushLog(message, messageType, timestamp)
+            state.Logs[#state.Logs + 1] = {
+                Text = tostring(message or ""),
+                Type = messageType,
+                Time = tonumber(timestamp) or os.time()
+            }
+            while #state.Logs > 350 do table.remove(state.Logs, 1) end
+            state.LastSignature = nil
         end
+        pcall(function()
+            for _, record in ipairs(logService:GetLogHistory()) do
+                pushLog(record.message or record.Message, record.messageType or record.MessageType, record.timestamp or record.Time)
+            end
+        end)
+        state.Connections[#state.Connections + 1] = logService.MessageOut:Connect(function(message, messageType)
+            pushLog(message, messageType, os.time())
+        end)
 
         local function clearRows()
             for _, child in ipairs(holder:GetChildren()) do
@@ -5862,83 +6051,129 @@ function LULA.CreateLib(kavName, themeInput)
             end
         end
 
+        local function notificationSignature()
+            local parts = {"n", tostring(#notificationHistory)}
+            for index, item in ipairs(notificationHistory) do
+                parts[#parts + 1] = table.concat({tostring(index), tostring(item.Time or ""), tostring(item.Kind or ""), tostring(item.Title or ""), tostring(item.Text or "")}, "|")
+            end
+            return table.concat(parts, "\n")
+        end
+
+        local function logSignature()
+            local parts = {"l", tostring(#state.Logs)}
+            local first = math.max(1, #state.Logs - 120)
+            for index = first, #state.Logs do
+                local item = state.Logs[index]
+                parts[#parts + 1] = tostring(index) .. "|" .. tostring(item.Time or "") .. "|" .. tostring(item.Type or "") .. "|" .. tostring(item.Text or "")
+            end
+            return table.concat(parts, "\n")
+        end
+
+        local function logKind(messageType)
+            local text = tostring(messageType or "")
+            if string.find(text, "Error", 1, true) then return "error" end
+            if string.find(text, "Warning", 1, true) then return "warning" end
+            if string.find(text, "Info", 1, true) then return "info" end
+            return "success"
+        end
+
+        local function addHistoryRow(index, titleText, bodyText, kind, timestamp)
+            bodyText = tostring(bodyText or "")
+            local bodyBounds = TextService:GetTextSize(bodyText ~= "" and bodyText or " ", 11.5, resolveUIFont(Enum.Font.Gotham), Vector2.new(math.max(220, scroll.AbsoluteSize.X - 52), 1000))
+            local rowHeight = math.clamp(58 + math.ceil(bodyBounds.Y), 72, 170)
+            local row = newRow(holder, "DebuggingHistoryItem_" .. tostring(index), rowHeight)
+            row.LayoutOrder = index
+            row.BackgroundTransparency = 0.03
+            local stripe = Instance.new("Frame")
+            stripe.Position = UDim2.fromOffset(5, 7)
+            stripe.Size = UDim2.new(0, 4, 1, -14)
+            stripe.BorderSizePixel = 0
+            stripe.BackgroundColor3 = kindColors[string.lower(tostring(kind or "info"))] or kindColors.info
+            stripe.Parent = row
+            makeCorner(stripe, 2)
+            local title = makeText(row, tostring(titleText or "Lollypop Hub"), 12.5, Enum.Font.GothamBold)
+            title.Position = UDim2.fromOffset(16, 7)
+            title.Size = UDim2.new(1, -28, 0, 20)
+            title.TextXAlignment = Enum.TextXAlignment.Left
+            local body = makeText(row, bodyText, 11.5, Enum.Font.Gotham)
+            body.Position = UDim2.fromOffset(16, 29)
+            body.Size = UDim2.new(1, -28, 0, math.max(20, math.ceil(bodyBounds.Y) + 4))
+            body.TextXAlignment = Enum.TextXAlignment.Left
+            body.TextYAlignment = Enum.TextYAlignment.Top
+            body.TextWrapped = true
+            bind(body, "TextColor3", "MutedText")
+            local timeText = tonumber(timestamp) and os.date("%I:%M:%S %p", tonumber(timestamp)) or ""
+            local meta = makeText(row, string.upper(tostring(kind or "info")) .. (timeText ~= "" and ("  |  " .. timeText) or ""), 9.5, Enum.Font.GothamMedium)
+            meta.AnchorPoint = Vector2.new(0, 1)
+            meta.Position = UDim2.new(0, 16, 1, -5)
+            meta.Size = UDim2.new(1, -28, 0, 16)
+            meta.TextXAlignment = Enum.TextXAlignment.Left
+            meta.TextColor3 = stripe.BackgroundColor3
+        end
+
         local function refresh(force)
-            local signature = historySignature()
+            local signature = state.Mode == "console" and logSignature() or notificationSignature()
             if not force and signature == state.LastSignature then return end
             state.LastSignature = signature
             clearRows()
+            notificationsButton.BackgroundTransparency = state.Mode == "notifications" and 0.02 or 0.22
+            consoleButton.BackgroundTransparency = state.Mode == "console" and 0.02 or 0.22
+            clearAll.Text = state.Mode == "console" and "Klear Logs" or "Klear Notifications"
 
-            local count = #notificationHistory
-            itemCount.Text = tostring(count) .. (count == 1 and " item" or " items")
-            if count == 0 then
-                local empty = newRow(holder, "NotificationHistoryEmpty", 48)
-                empty.LayoutOrder = 1
-                local emptyText = makeText(empty, "No notifikations yet.", 12, Enum.Font.GothamMedium)
-                emptyText.Position = UDim2.fromOffset(10, 0)
-                emptyText.Size = UDim2.new(1, -20, 1, 0)
-                emptyText.TextXAlignment = Enum.TextXAlignment.Center
-                bind(emptyText, "TextColor3", "MutedText")
-                return
-            end
-
-            for index, item in ipairs(notificationHistory) do
-                local bodyText = tostring(item.Text or "")
-                local bodyBounds = TextService:GetTextSize(
-                    bodyText ~= "" and bodyText or " ",
-                    11.5,
-                    resolveUIFont(Enum.Font.Gotham),
-                    Vector2.new(math.max(220, scroll.AbsoluteSize.X - 52), 1000)
-                )
-                local rowHeight = math.clamp(58 + math.ceil(bodyBounds.Y), 72, 150)
-                local row = newRow(holder, "NotificationHistoryItem_" .. tostring(index), rowHeight)
-                row.LayoutOrder = index
-                row.BackgroundTransparency = 0.03
-
-                local stripe = Instance.new("Frame")
-                stripe.Position = UDim2.fromOffset(5, 7)
-                stripe.Size = UDim2.new(0, 4, 1, -14)
-                stripe.BorderSizePixel = 0
-                stripe.BackgroundColor3 = kindColors[string.lower(tostring(item.Kind or "info"))] or kindColors.info
-                stripe.Parent = row
-                makeCorner(stripe, 2)
-
-                local title = makeText(row, tostring(item.Title or "Lollypop Hub"), 12.5, Enum.Font.GothamBold)
-                title.Position = UDim2.fromOffset(16, 7)
-                title.Size = UDim2.new(1, -28, 0, 20)
-                title.TextXAlignment = Enum.TextXAlignment.Left
-
-                local body = makeText(row, bodyText, 11.5, Enum.Font.Gotham)
-                body.Position = UDim2.fromOffset(16, 29)
-                body.Size = UDim2.new(1, -28, 0, math.max(20, math.ceil(bodyBounds.Y) + 4))
-                body.TextXAlignment = Enum.TextXAlignment.Left
-                body.TextYAlignment = Enum.TextYAlignment.Top
-                body.TextWrapped = true
-                bind(body, "TextColor3", "MutedText")
-
-                local timeText = ""
-                if tonumber(item.Time) then
-                    timeText = os.date("%I:%M:%S %p", tonumber(item.Time))
+            if state.Mode == "console" then
+                local count = #state.Logs
+                itemCount.Text = tostring(count) .. (count == 1 and " log" or " logs")
+                if count == 0 then
+                    local empty = newRow(holder, "DeveloperConsoleEmpty", 48)
+                    empty.LayoutOrder = 1
+                    local emptyText = makeText(empty, "No Developer Konsole logs yet.", 12, Enum.Font.GothamMedium)
+                    emptyText.Position = UDim2.fromOffset(10, 0); emptyText.Size = UDim2.new(1, -20, 1, 0); emptyText.TextXAlignment = Enum.TextXAlignment.Center; bind(emptyText, "TextColor3", "MutedText")
+                    return
                 end
-                local meta = makeText(row, string.upper(tostring(item.Kind or "info")) .. (timeText ~= "" and ("  |  " .. timeText) or ""), 9.5, Enum.Font.GothamMedium)
-                meta.AnchorPoint = Vector2.new(0, 1)
-                meta.Position = UDim2.new(0, 16, 1, -5)
-                meta.Size = UDim2.new(1, -28, 0, 16)
-                meta.TextXAlignment = Enum.TextXAlignment.Left
-                meta.TextColor3 = stripe.BackgroundColor3
+                local first = math.max(1, count - 120)
+                local order = 0
+                for index = first, count do
+                    order += 1
+                    local item = state.Logs[index]
+                    local kind = logKind(item.Type)
+                    addHistoryRow(order, "Roblox Konsole", item.Text, kind, item.Time)
+                end
+            else
+                local count = #notificationHistory
+                itemCount.Text = tostring(count) .. (count == 1 and " item" or " items")
+                if count == 0 then
+                    local empty = newRow(holder, "NotificationHistoryEmpty", 48)
+                    empty.LayoutOrder = 1
+                    local emptyText = makeText(empty, "No notifikations yet.", 12, Enum.Font.GothamMedium)
+                    emptyText.Position = UDim2.fromOffset(10, 0); emptyText.Size = UDim2.new(1, -20, 1, 0); emptyText.TextXAlignment = Enum.TextXAlignment.Center; bind(emptyText, "TextColor3", "MutedText")
+                    return
+                end
+                for index, item in ipairs(notificationHistory) do
+                    addHistoryRow(index, tostring(item.Title or "Lollypop Hub"), tostring(item.Text or ""), tostring(item.Kind or "info"), item.Time)
+                end
             end
         end
 
+        track(notificationsButton.Activated:Connect(function() state.Mode = "notifications"; state.LastSignature = nil; refresh(true) end))
+        track(consoleButton.Activated:Connect(function() state.Mode = "console"; state.LastSignature = nil; refresh(true) end))
         track(clearAll.Activated:Connect(function()
-            table.clear(notificationHistory)
+            if state.Mode == "console" then table.clear(state.Logs) else table.clear(notificationHistory) end
+            state.LastSignature = nil
             refresh(true)
         end))
 
         state.Refresh = refresh
+        state.Cleanup = function()
+            for _, connection in ipairs(state.Connections) do pcall(function() if connection and connection.Connected then connection:Disconnect() end end) end
+            state.Connections = {}
+        end
         refresh(true)
         task.spawn(function()
             while active and active.NotificationCenter == state and notificationTab.Page.Parent do
-                refresh(false)
-                task.wait(0.5)
+                -- Keep collecting LogService messages, but only rebuild cards while
+                -- Debugging is actually on-screen. This avoids background UI churn.
+                if notificationTab.Page.Visible then refresh(false) end
+                task.wait(0.4)
             end
         end)
         return notificationTab
@@ -15681,9 +15916,9 @@ function LULA.CreateLib(kavName, themeInput)
                 local width = math.clamp(math.max(boxSize.X, boxSize.Z), 2.5, 11)
                 -- Slightly wider framing than R3 so tall hats/back accessories
                 -- have breathing room instead of filling the thumbnail edge-to-edge.
-                local distance = math.max(8.8, height * 1.40, width * 1.90)
+                local distance = math.max(10.2, height * 1.55, width * 2.15)
 
-                camera.FieldOfView = 34
+                camera.FieldOfView = 36
                 camera.CFrame = CFrame.lookAt(
                     focus + Vector3.new(0, height * 0.015, distance),
                     focus,
@@ -15695,7 +15930,7 @@ function LULA.CreateLib(kavName, themeInput)
                 end
 
                 if root then root.Anchored = true end
-                mirrorCurrentAvatarPose(rig, viewport)
+                -- Saved Outfit thumbnails stay lightweight/static; Avatar Viewer handles live motion.
 
                 fallback.Visible = false
                 loading.Visible = false
@@ -15772,34 +16007,84 @@ function LULA.CreateLib(kavName, themeInput)
             return true
         end
 
+        state.ClearCurrentAvatarForSavedOutfit = function()
+            local character = getCharacter()
+            local humanoid = character and getHumanoid(character)
+            if not character or not humanoid then return false end
+            pcall(function() humanoid:UnequipTools() end)
+            for _, object in ipairs(character:GetDescendants()) do
+                if object:IsA("Accessory")
+                    or object:IsA("Shirt")
+                    or object:IsA("Pants")
+                    or object:IsA("ShirtGraphic")
+                    or object:IsA("CharacterMesh") then
+                    pcall(function() object:Destroy() end)
+                elseif object:IsA("Decal") and object.Parent and object.Parent.Name == "Head" and string.lower(object.Name) == "face" then
+                    pcall(function() object:Destroy() end)
+                elseif object:IsA("Tool") and (object:GetAttribute("LHAvatarKreator") == true or object:GetAttribute("LHAvatarItemId") ~= nil) then
+                    pcall(function() object:Destroy() end)
+                end
+            end
+            local backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
+            if backpack then
+                for _, object in ipairs(backpack:GetChildren()) do
+                    if object:IsA("Tool") and (object:GetAttribute("LHAvatarKreator") == true or object:GetAttribute("LHAvatarItemId") ~= nil) then
+                        pcall(function() object:Destroy() end)
+                    end
+                end
+            end
+            state.EquippedBySlot = {}
+            state.ViewerModifiedSlots = {}
+            state.ViewerHiddenAssetIds = {}
+            return true
+        end
+
         state.WearSavedOutfit = function(outfit)
             if type(outfit) ~= "table" or type(outfit.Items) ~= "table" then return false end
 
-            -- Apply the full saved appearance first when supported, then enforce every
-            -- saved katalog item through Avatar Kreator's normal Try On path. This avoids
-            -- executors reporting a successful description apply without visually changing the avatar.
-            if type(outfit.Description) == "table" then pcall(state.ApplyDescriptionData, outfit.Description) end
-            resetAllItems(true)
-            task.wait()
+            -- A saved outfit is a REPLACEMENT, not a layer over the kurrent avatar.
+            -- Klear every wearable category first so an old helmet/klassic shirt/etc.
+            -- cannot survive the switch, then apply the saved description and only
+            -- direct-wear saved items that Roblox omitted.
+            state.ClearCurrentAvatarForSavedOutfit()
+            RunService.Heartbeat:Wait()
+            local descriptionApplied = false
+            if type(outfit.Description) == "table" then
+                local ok, result = pcall(state.ApplyDescriptionData, outfit.Description)
+                descriptionApplied = ok and result == true
+            end
+            RunService.Heartbeat:Wait()
+            RunService.Heartbeat:Wait()
+
+            local present = {}
+            for _, current in ipairs(state.GetCurrentWornItems()) do
+                local id = tonumber(current and current.Id)
+                if id then present[id] = true end
+            end
 
             local previousStacking = state.ItemStacking
             state.ItemStacking = true
             local worn = 0
             for _, item in ipairs(outfit.Items) do
                 local itemCopy = normalizeCatalogItem(item)
+                local id = itemCopy and tonumber(itemCopy.Id)
                 if itemCopy then
                     pcall(Wear.ResolveMissingAssetType, itemCopy)
-                    local ok = internalWearItem(itemCopy, true)
-                    if ok then worn = worn + 1 end
+                    if id and present[id] then
+                        worn += 1
+                    else
+                        local ok = internalWearItem(itemCopy, true)
+                        if ok then worn += 1; if id then present[id] = true end end
+                    end
                 end
-                task.wait()
+                RunService.Heartbeat:Wait()
             end
             state.ItemStacking = previousStacking
             state.ViewerHiddenAssetIds = {}
             refreshSelectedUi()
             if state.Viewer and state.Viewer.Refresh then pcall(function() state.Viewer:Refresh() end) end
-            notify("Wore " .. tostring(worn) .. "/" .. tostring(#outfit.Items) .. " saved outfit item(s).", worn > 0 and "success" or "warning", 3)
-            return worn > 0
+            notify("Wore " .. tostring(worn) .. "/" .. tostring(#outfit.Items) .. " saved outfit item(s).", (worn > 0 or descriptionApplied) and "success" or "warning", 3)
+            return worn > 0 or descriptionApplied
         end
 
         state.RenderSavedOutfits = function()
@@ -15818,9 +16103,22 @@ function LULA.CreateLib(kavName, themeInput)
                     LayoutOrder = index,
                     ZIndex = 52
                 })
-                addCorner(card, 10)
-                addStroke(card, STROKE, 1, 0.25)
+                addCorner(card, 12)
+                addStroke(card, ACCENT, 1, 0.34)
                 card.Parent = state.SavedOutfitsScroll
+                local cardGradient = create("UIGradient", {
+                    Rotation = 35,
+                    Color = ColorSequence.new({
+                        ColorSequenceKeypoint.new(0, blendColor(PANEL, ACCENT, 0.10)),
+                        ColorSequenceKeypoint.new(1, PANEL)
+                    })
+                })
+                cardGradient.Parent = card
+                local accentLine = create("Frame", {
+                    Position = UDim2.fromOffset(6, 5), Size = UDim2.new(1, -12, 0, 3),
+                    BackgroundColor3 = ACCENT, BorderSizePixel = 0, ZIndex = 54
+                })
+                addCorner(accentLine, 999); accentLine.Parent = card
 
                 if type(outfit.Description) == "table" then
                     state.MakeSavedOutfitViewport(card, outfit.Description, outfit.Items)
@@ -15862,11 +16160,11 @@ function LULA.CreateLib(kavName, themeInput)
 
                 local wear = create("TextButton", {
                     Position = UDim2.fromOffset(6, 177),
-                    Size = UDim2.new(0.44, -4, 0, 39),
+                    Size = UDim2.new(0.46, -4, 0, 39),
                     BackgroundColor3 = ACCENT,
                     AutoButtonColor = false,
                     Font = Enum.Font.GothamBold,
-                    Text = "Wear Outfit",
+                    Text = "Wear",
                     TextColor3 = Color3.new(1, 1, 1),
                     TextSize = 7.5,
                     ZIndex = 53
@@ -15876,8 +16174,8 @@ function LULA.CreateLib(kavName, themeInput)
                 bindButtonVisual(wear, ACCENT, ACCENT_HOVER)
 
                 local rename = create("TextButton", {
-                    Position = UDim2.new(0.45, 2, 0, 177),
-                    Size = UDim2.new(0.25, -4, 0, 39),
+                    Position = UDim2.new(0.47, 2, 0, 177),
+                    Size = UDim2.new(0.24, -4, 0, 39),
                     BackgroundColor3 = PANEL_2,
                     AutoButtonColor = false,
                     Font = Enum.Font.GothamBold,
@@ -15893,7 +16191,7 @@ function LULA.CreateLib(kavName, themeInput)
                 local remove = create("TextButton", {
                     AnchorPoint = Vector2.new(1, 0),
                     Position = UDim2.new(1, -6, 0, 177),
-                    Size = UDim2.new(0.29, -3, 0, 39),
+                    Size = UDim2.new(0.28, -3, 0, 39),
                     BackgroundColor3 = Color3.fromRGB(78, 38, 48),
                     AutoButtonColor = false,
                     Font = Enum.Font.GothamBold,
@@ -17503,9 +17801,63 @@ function LULA.CreateLib(kavName, themeInput)
 
             local root = model:FindFirstChild("HumanoidRootPart")
             if root then root.Anchored = true end
-            if not targetPlayer or targetPlayer == LocalPlayer then
-                mirrorCurrentAvatarPose(model, self.Viewport)
-            end
+            local sourcePlayer = targetPlayer or LocalPlayer
+            mirrorCurrentAvatarPose(model, self.Viewport, sourcePlayer, function()
+                return state.Mode == "viewer" and state.Viewer and state.Viewer.Area and state.Viewer.Area.Visible
+            end)
+
+            -- Track the source Animator too. This keeps the Viewport moving even in
+            -- experiences where Motor6D.Transform is not readable from another frame.
+            task.spawn(function()
+                local targetHumanoid = model:FindFirstChildOfClass("Humanoid")
+                local targetAnimator = targetHumanoid and targetHumanoid:FindFirstChildOfClass("Animator")
+                if targetHumanoid and not targetAnimator then targetAnimator = Instance.new("Animator"); targetAnimator.Parent = targetHumanoid end
+                local mirrored = {}
+                while model.Parent and self.Viewport.Parent do
+                    local activeNow = state.Mode == "viewer" and state.Viewer and state.Viewer.Area and state.Viewer.Area.Visible
+                    if activeNow and targetAnimator then
+                        local sourceCharacter = sourcePlayer and sourcePlayer.Character
+                        local sourceHumanoid = sourceCharacter and sourceCharacter:FindFirstChildOfClass("Humanoid")
+                        local sourceAnimator = sourceHumanoid and sourceHumanoid:FindFirstChildOfClass("Animator")
+                        local seen = {}
+                        local tracks = {}
+                        pcall(function() tracks = sourceAnimator and sourceAnimator:GetPlayingAnimationTracks() or sourceHumanoid:GetPlayingAnimationTracks() end)
+                        for _, sourceTrack in ipairs(tracks or {}) do
+                            local id = sourceTrack.Animation and tostring(sourceTrack.Animation.AnimationId or ""):match("%d+")
+                            if id then
+                                seen[id] = true
+                                local targetTrack = mirrored[id]
+                                local trackValid = targetTrack ~= nil
+                                if targetTrack then pcall(function() local _ = targetTrack.IsPlaying end) end
+                                if not trackValid then
+                                    local animation = Instance.new("Animation")
+                                    animation.AnimationId = "rbxassetid://" .. tostring(id)
+                                    local ok, loaded = pcall(targetAnimator.LoadAnimation, targetAnimator, animation)
+                                    animation:Destroy()
+                                    if ok and loaded then targetTrack = loaded; mirrored[id] = loaded end
+                                end
+                                if targetTrack then
+                                    local playing = false; pcall(function() playing = targetTrack.IsPlaying == true end)
+                                    if not playing then pcall(function() targetTrack:Play(0.03, 1, sourceTrack.Speed) end) end
+                                    pcall(function() targetTrack.Priority = sourceTrack.Priority end)
+                                    pcall(function() targetTrack.Looped = sourceTrack.Looped end)
+                                    pcall(function() targetTrack:AdjustSpeed(sourceTrack.Speed) end)
+                                    local sourceTime = 0; local targetTime = 0
+                                    pcall(function() sourceTime = sourceTrack.TimePosition; targetTime = targetTrack.TimePosition end)
+                                    if math.abs(sourceTime - targetTime) > 0.08 then pcall(function() targetTrack.TimePosition = sourceTime end) end
+                                end
+                            end
+                        end
+                        for id, targetTrack in pairs(mirrored) do
+                            if not seen[id] then pcall(function() targetTrack:Stop(0.05) end); mirrored[id] = nil end
+                        end
+                        task.wait(0.06)
+                    else
+                        task.wait(0.14)
+                    end
+                end
+                for _, targetTrack in pairs(mirrored) do pcall(function() targetTrack:Stop(0) end) end
+            end)
         end
 
         function state.Viewer:ClearItems()
