@@ -3275,6 +3275,7 @@ function LULA.CreateLib(kavName, themeInput)
             NameLoading = {},
             PlayerListRefreshers = {},
             RecentTracks = {},
+            RecentEmotes = {},
             PlayerWatchers = {},
             AnimationProfiles = {},
             AnimationProfileLoading = {},
@@ -3330,6 +3331,7 @@ function LULA.CreateLib(kavName, themeInput)
             end
             self.PlayerWatchers[player] = nil
             self.RecentTracks[player] = nil
+            self.RecentEmotes[player] = nil
             self.AnimationProfiles[player] = nil
             self.AnimationProfileLoading[player] = nil
         end
@@ -3363,10 +3365,19 @@ function LULA.CreateLib(kavName, themeInput)
                 watcher.Character = character
                 local humanoid = character and (character:FindFirstChildOfClass("Humanoid") or character:WaitForChild("Humanoid", 5))
                 if not humanoid then return end
-                watcher.AnimationConnection = humanoid.AnimationPlayed:Connect(rememberTrack)
-                table.insert(watcher.Connections, watcher.AnimationConnection)
+                local animator=humanoid:FindFirstChildOfClass("Animator")
+                if animator then
+                    local animatorConnection=animator.AnimationPlayed:Connect(rememberTrack)
+                    table.insert(watcher.Connections,animatorConnection)
+                    watcher.AnimationConnection=animatorConnection
+                end
+                -- Keep Humanoid.AnimationPlayed too because some executor/client builds
+                -- surface replicated tracks through this compatibility event first.
+                local humanoidConnection=humanoid.AnimationPlayed:Connect(rememberTrack)
+                table.insert(watcher.Connections,humanoidConnection)
                 pcall(function()
-                    for _, track in ipairs(humanoid:GetPlayingAnimationTracks()) do rememberTrack(track) end
+                    local playing=(animator and animator.GetPlayingAnimationTracks) and animator:GetPlayingAnimationTracks() or humanoid:GetPlayingAnimationTracks()
+                    for _,track in ipairs(playing or {}) do rememberTrack(track) end
                 end)
                 task.defer(function()
                     if self.PlayerWatchers[player] == watcher then self:RefreshAnimationProfile(player, true) end
@@ -3533,7 +3544,11 @@ function LULA.CreateLib(kavName, themeInput)
             if not player then return nil end
             local slots=self:ReadAnimateSlots(player)
             local humanoid=getHumanoid(player)
-            if humanoid and allowNetwork==true then
+            -- GetAppliedDescription is available from the replicated Humanoid and is
+            -- the fastest source for another player's equipped avatar animation set.
+            -- Do this even before the optional user-id request so detector rows do not
+            -- sit on "Detecting animation pack..." forever.
+            if humanoid then
                 local ok,description=pcall(function() return humanoid:GetAppliedDescription() end)
                 if ok and description then
                     self:MergeDescriptionAnimationSlots(slots,description)
@@ -3558,7 +3573,7 @@ function LULA.CreateLib(kavName, themeInput)
                 Name=knownName or (allowNetwork==true and self:InferAnimationSetName(slots) or "Avatar Animation Set"),
                 Slots=slots,
                 Updated=os.clock(),
-                Source=self:CountAnimationSlots(self:ReadAnimateSlots(player))>0 and "Character.Animate" or "HumanoidDescription",
+                Source="AvatarDescription",
             }
         end
 
@@ -3579,18 +3594,10 @@ function LULA.CreateLib(kavName, themeInput)
             if ok and profile then self.AnimationProfiles[player]=profile end
             self:RefreshAnimationProfile(player,true)
             if profile then return profile end
-            if cached then return cached end
-            -- Every normal R15 avatar still has a usable baseline locomotion set.
-            -- Show/apply Rthro immediately while the exact HumanoidDescription resolves.
-            return {
-                Name="Rthro Animation",
-                Source="Fallback",
-                Updated=os.clock(),
-                Slots={
-                    idle1=2510197257,idle2=2510196951,walk=2510202577,run=2510198475,
-                    jump=2510197830,fall=2510195892,climb=2510192778,swim=2510199791,swimidle=2510201162
-                }
-            }
+            if cached and cached.Source~="Fallback" then return cached end
+            -- Never guess a player's pack. Keep the row in a detecting state until
+            -- Character/HumanoidDescription gives us real animation IDs.
+            return nil
         end
 
         function service:ApplyAnimationProfile(player)
@@ -3667,6 +3674,80 @@ function LULA.CreateLib(kavName, themeInput)
             return snapshot
         end
 
+        function service:AnimationSlotIdSet(profile)
+            local ids = {}
+            local slots = profile and profile.Slots or nil
+            for _, id in pairs(type(slots)=="table" and slots or {}) do
+                id = normalizeAnimationId(id)
+                if id then ids[id] = true end
+            end
+            return ids
+        end
+
+        function service:SnapshotFromTrack(track)
+            if not track or not track.Animation then return nil end
+            local id = normalizeAnimationId(track.Animation.AnimationId)
+            if not id then return nil end
+            local snapshot = {Id=id, Track=track, TimePosition=0, Speed=1, Looped=false, Name=self.NameCache[id], Priority=Enum.AnimationPriority.Core}
+            pcall(function() snapshot.Priority=track.Priority end)
+            pcall(function() snapshot.TimePosition=tonumber(track.TimePosition) or 0 end)
+            pcall(function() snapshot.Speed=tonumber(track.Speed) or 1 end)
+            pcall(function() snapshot.Looped=track.Looped==true end)
+            snapshot.Name=snapshot.Name or self:ResolveAnimationName(id)
+            return snapshot
+        end
+
+        -- Free Emotes uses this path. Locomotion tracks that belong to the avatar's
+        -- idle/walk/run/jump/fall/climb/swim set are explicitly excluded, so Dance Sync
+        -- does not confuse an animation bundle with an emote.
+        function service:GetEmoteSnapshot(player)
+            if not player then return nil end
+            local profile=self:GetAnimationProfile(player)
+            local locomotion=self:AnimationSlotIdSet(profile)
+            local candidates={}
+            local recent=self.RecentTracks[player]
+            if recent and recent.Track then
+                local age=os.clock()-(tonumber(recent.Seen) or 0)
+                local stoppedAge=recent.Stopped and (os.clock()-recent.Stopped) or nil
+                if age<=5 and (not stoppedAge or stoppedAge<=0.20) then
+                    candidates[#candidates+1]={Track=recent.Track,Recent=true}
+                end
+            end
+            local animator,humanoid=getAnimator(player)
+            if humanoid then
+                local playing={}
+                pcall(function()
+                    if animator and animator.GetPlayingAnimationTracks then playing=animator:GetPlayingAnimationTracks()
+                    else playing=humanoid:GetPlayingAnimationTracks() end
+                end)
+                for _,track in ipairs(playing or {}) do candidates[#candidates+1]={Track=track,Recent=false} end
+            end
+            local best,bestScore=nil,-math.huge
+            local seen={}
+            for _,entry in ipairs(candidates) do
+                local snap=self:SnapshotFromTrack(entry.Track)
+                if snap and not seen[snap.Id] then
+                    seen[snap.Id]=true
+                    local priorityValue=0
+                    pcall(function() priorityValue=snap.Priority.Value end)
+                    local name=string.lower(tostring(snap.Name or ""))
+                    local namedEmote=string.find(name,"dance",1,true) or string.find(name,"emote",1,true) or string.find(name,"gesture",1,true)
+                    local notLocomotion=locomotion[snap.Id]~=true
+                    -- Action priority is enough even if a game's custom emote happens to
+                    -- reuse a name that does not contain the word dance/emote.
+                    if notLocomotion and (priorityValue>=Enum.AnimationPriority.Action.Value or namedEmote) then
+                        local playing=false; local weight=0
+                        pcall(function() playing=entry.Track.IsPlaying==true end)
+                        pcall(function() weight=tonumber(entry.Track.WeightCurrent) or 0 end)
+                        local score=(playing and 10000 or 0)+(priorityValue*100)+weight+(entry.Recent and 50 or 0)
+                        if score>bestScore then best,bestScore=snap,score end
+                    end
+                end
+            end
+            if best then self.RecentEmotes[player]={Snapshot=best,Seen=os.clock()} end
+            return best
+        end
+
         function service:IsActionSnapshot(snapshot)
             if type(snapshot) ~= "table" then return false end
             local priority = snapshot.Priority
@@ -3715,35 +3796,24 @@ function LULA.CreateLib(kavName, themeInput)
         end
 
         function service:PlayDetected(player)
-            local snap = self:GetSnapshot(player)
             self:StopDetected()
-            if not snap then
-                self.DetectorPreviousSlots=self:ReadAnimateSlots(Local)
-                local applied,profile=self:ApplyAnimationProfile(player)
-                if not applied then self.DetectorPreviousSlots=nil; return false,profile end
-                self.DetectorTarget=player
-                self.DetectorBundleApplied=true
-                return true,{Bundle=true,Name=profile.Name,Slots=profile.Slots}
-            end
-            local track, animation = self:PlayAnimationId(snap.Id, snap)
-            if not track then return false, animation end
-            self.DetectorTrack, self.DetectorAnimation, self.DetectorTarget = track, animation, player
-            track.Stopped:Connect(function()
-                if self.DetectorTrack == track then
-                    self.DetectorTrack = nil
-                    if self.DetectorAnimation == animation then self.DetectorAnimation = nil end
-                    pcall(function() animation:Destroy() end)
-                end
-            end)
-            return true, snap
+            if not player or player==Local then return false,"Choose another player." end
+            self.DetectorPreviousSlots=self:ReadAnimateSlots(Local)
+            local applied,profile=self:ApplyAnimationProfile(player)
+            if not applied then self.DetectorPreviousSlots=nil; return false,profile end
+            self.DetectorTarget=player
+            self.DetectorBundleApplied=true
+            return true,{Bundle=true,Name=profile.Name,Slots=profile.Slots}
         end
 
         function service:SaveDetected(player)
-            local snap = self:GetSnapshot(player)
-            if not snap then
-                local profile=self:GetAnimationProfile(player)
-                return false,profile and ("No active emote right now. Detected pack: "..tostring(profile.Name)) or "No active animation detected."
-            end
+            if not player or player==Local then return false,"Choose another player." end
+            local profile=self:GetAnimationProfile(player)
+            if not profile or self:CountAnimationSlots(profile.Slots)<=0 then return false,"No avatar animation pack detected yet." end
+            local animationState=active and active.AnimationBundles
+            if not animationState or type(animationState.SaveDetectedPack)~="function" then return false,"Free Animations is not ready yet." end
+            return animationState.SaveDetectedPack(profile,player)
+        end
             local animationState = active and active.AnimationBundles
             if not animationState or type(animationState.SaveDetectedAnimation) ~= "function" then
                 return false, "Free Animations is not ready yet."
@@ -3792,17 +3862,17 @@ function LULA.CreateLib(kavName, themeInput)
         function service:SyncPlayer(player)
             if not player or player == Local then return false, "Choose another player." end
             self:Unsync(true)
-            self.SyncPreviousSlots=self:ReadAnimateSlots(Local)
-            local applied,profile=self:ApplyAnimationProfile(player)
-            self.SyncBundleApplied=applied==true
-            self.SyncTarget = player
-            self.SyncNextCorrection = 0
-            self.SyncNextProfileCheck = 0
-            self.SyncProfileSignature = profile and self:AnimationProfileSignature(profile) or nil
+            self.SyncTarget=player
+            self.SyncPreviousSlots=nil
+            self.SyncBundleApplied=false
+            self.SyncProfileSignature=nil
+            self.SyncNextCorrection=0
+            self.SyncNextProfileCheck=0
             self:EnsureStatusCard()
-            self.StatusCard.Visible = true
+            self.StatusCard.Visible=true
+            local snap=self:GetEmoteSnapshot(player)
             if self.StatusDetail then
-                self.StatusDetail.Text="Synced with @"..player.Name.."\n"..tostring(profile and profile.Name or "Detecting animation set...")
+                self.StatusDetail.Text="Synced with @"..player.Name.."\n"..(snap and tostring(snap.Name or ("Emote "..snap.Id)) or "Waiting for emote...")
             end
             return true
         end
@@ -3828,7 +3898,7 @@ function LULA.CreateLib(kavName, themeInput)
             bind(detail,"TextColor3","MutedText")
             local unsync = makeButton(card,"Unsync")
             unsync.AnchorPoint=Vector2.new(1,0); unsync.Position=UDim2.new(1,-8,0,7); unsync.Size=UDim2.fromOffset(62,24); unsync.TextSize=9.5; unsync.ZIndex=852
-            track(unsync.Activated:Connect(function() self:Unsync(false); self:RefreshLiveRows() end))
+            track(unsync.MouseButton1Click:Connect(function() self:Unsync(false); self:RefreshLiveRows() end))
             self.StatusCard, self.StatusTitle, self.StatusDetail = card, title, detail
             return card
         end
@@ -4248,18 +4318,18 @@ function LULA.CreateLib(kavName, themeInput)
                 local blocker=Instance.new("TextButton")
                 blocker.Name="LHPlayerActivityBlocker"; blocker.Size=UDim2.fromScale(1,1); blocker.BackgroundTransparency=1; blocker.BorderSizePixel=0; blocker.Text=""; blocker.AutoButtonColor=false; blocker.Active=true; blocker.Modal=true; blocker.ZIndex=899; blocker.Parent=active.NotificationGui or screenGui
                 local card = Instance.new("Frame")
-                card.Name="LHPlayerActivityCard"; card.AnchorPoint=Vector2.new(0.5,0.5); card.Position=UDim2.fromScale(0.5,0.5); card.Size=UDim2.fromOffset(390,300); card.BorderSizePixel=0; card.ZIndex=900; card.Parent=active.NotificationGui or screenGui
+                card.Name="LHPlayerActivityCard"; card.AnchorPoint=Vector2.new(0.5,0.5); card.Position=UDim2.fromScale(0.5,0.5); card.Size=UDim2.fromOffset(390,322); card.BorderSizePixel=0; card.ZIndex=900; card.Parent=active.NotificationGui or screenGui
                 bind(card,"BackgroundColor3","Header"); makeCorner(card,14); makeStroke(card,active.Theme.SchemeColor,0.12,1.3)
                 local avatar=Instance.new("ImageLabel"); avatar.Name="Avatar"; avatar.Position=UDim2.fromOffset(12,12); avatar.Size=UDim2.fromOffset(68,68); avatar.BackgroundTransparency=0.08; avatar.BorderSizePixel=0; avatar.ScaleType=Enum.ScaleType.Crop; avatar.ZIndex=901; avatar.Parent=card; bind(avatar,"BackgroundColor3","ElementColor"); makeCorner(avatar,12)
                 local name=makeText(card,"Player",15,Enum.Font.GothamBold); name.Position=UDim2.fromOffset(90,12); name.Size=UDim2.new(1,-132,0,24); name.TextXAlignment=Enum.TextXAlignment.Left; name.ZIndex=901
                 local identity=makeText(card,"@user | ID 0",10.5,Enum.Font.GothamMedium); identity.Position=UDim2.fromOffset(90,38); identity.Size=UDim2.new(1,-132,0,20); identity.TextXAlignment=Enum.TextXAlignment.Left; identity.ZIndex=901; bind(identity,"TextColor3","MutedText")
                 local close=makeKolorButton(card,"X",rgb(190,48,65)); close.AnchorPoint=Vector2.new(1,0); close.Position=UDim2.new(1,-9,0,9); close.Size=UDim2.fromOffset(28,28); close.ZIndex=902
-                local info=makeText(card,"",10.5,Enum.Font.GothamMedium); info.Position=UDim2.fromOffset(12,90); info.Size=UDim2.new(1,-24,0,130); info.TextXAlignment=Enum.TextXAlignment.Left; info.TextYAlignment=Enum.TextYAlignment.Top; info.TextWrapped=true; info.ZIndex=901
-                local sync=makeButton(card,"Sync"); sync.Position=UDim2.fromOffset(12,232); sync.Size=UDim2.fromOffset(82,30); sync.ZIndex=902
-                local detect=makeButton(card,"Play Anim"); detect.Position=UDim2.fromOffset(101,232); detect.Size=UDim2.fromOffset(82,30); detect.ZIndex=902
-                local save=makeButton(card,"Save Anim"); save.Position=UDim2.fromOffset(190,232); save.Size=UDim2.fromOffset(82,30); save.ZIndex=902
-                local avatarBtn=makeButton(card,"Avatar"); avatarBtn.Position=UDim2.fromOffset(279,232); avatarBtn.Size=UDim2.fromOffset(82,30); avatarBtn.ZIndex=902
-                local spectate=makeButton(card,"Spectate"); spectate.Position=UDim2.fromOffset(12,268); spectate.Size=UDim2.fromOffset(82,24); spectate.TextSize=9.5; spectate.ZIndex=902
+                local info=makeText(card,"",10.5,Enum.Font.GothamMedium); info.Position=UDim2.fromOffset(12,90); info.Size=UDim2.new(1,-24,0,146); info.TextXAlignment=Enum.TextXAlignment.Left; info.TextYAlignment=Enum.TextYAlignment.Top; info.TextWrapped=true; info.ZIndex=901
+                local sync=makeButton(card,"Sync"); sync.Position=UDim2.fromOffset(12,248); sync.Size=UDim2.fromOffset(82,30); sync.ZIndex=902
+                local detect=makeButton(card,"Play Pack"); detect.Position=UDim2.fromOffset(101,248); detect.Size=UDim2.fromOffset(82,30); detect.ZIndex=902
+                local save=makeButton(card,"Save Pack"); save.Position=UDim2.fromOffset(190,248); save.Size=UDim2.fromOffset(82,30); save.ZIndex=902
+                local avatarBtn=makeButton(card,"Avatar"); avatarBtn.Position=UDim2.fromOffset(279,248); avatarBtn.Size=UDim2.fromOffset(82,30); avatarBtn.ZIndex=902
+                local spectate=makeButton(card,"Spectate"); spectate.Position=UDim2.fromOffset(12,284); spectate.Size=UDim2.fromOffset(82,24); spectate.TextSize=9.5; spectate.ZIndex=902
                 track(close.MouseButton1Click:Connect(function()
                     -- Ignore the same touch-release that opened the kard on mobile.
                     if os.clock() - (tonumber(self.ActivityOpenedAt) or 0) < 0.45 then return end
@@ -4267,20 +4337,22 @@ function LULA.CreateLib(kavName, themeInput)
                     card.Visible=false
                     blocker.Visible=false
                 end))
-                track(sync.Activated:Connect(function()
+                self:BindPlayerActionButton(sync,function()
                     local target=self.ActivityTarget; if not target then return end
                     if self.SyncTarget==target then self:Unsync(false) else local ok,why=self:SyncPlayer(target); if not ok then LULA:ShowIsland("Dance Sync",tostring(why),{Duration=3}) end end
-                end))
-                track(detect.Activated:Connect(function()
+                    self:RefreshLiveRows()
+                end)
+                self:BindPlayerActionButton(detect,function()
                     local target=self.ActivityTarget; if not target then return end
                     if self.DetectorTarget==target then self:StopDetected() else local ok,why=self:PlayDetected(target); if not ok then LULA:ShowIsland("Animation Detector",tostring(why),{Duration=3}) end end
-                end))
-                track(save.Activated:Connect(function() local ok,why=self:SaveDetected(self.ActivityTarget); if not ok then LULA:ShowIsland("Animation Detector",tostring(why),{Duration=3}) end end))
-                track(avatarBtn.Activated:Connect(function()
+                    self:RefreshLiveRows()
+                end)
+                self:BindPlayerActionButton(save,function() local ok,why=self:SaveDetected(self.ActivityTarget); if not ok then LULA:ShowIsland("Animation Detector",tostring(why),{Duration=3}) end end)
+                self:BindPlayerActionButton(avatarBtn,function()
                     local target=self.ActivityTarget; if not target then return end
                     if active.AvatarKreator and type(active.AvatarKreator.InspectPlayer)=="function" then active.AvatarKreator.InspectPlayer(target) else pcall(function() get.GuiService:InspectPlayerFromUserId(target.UserId) end) end
-                end))
-                track(spectate.Activated:Connect(function() local target=self.ActivityTarget; if target and type(env.LHStartSpectate)=="function" then pcall(env.LHStartSpectate,target) end end))
+                end)
+                self:BindPlayerActionButton(spectate,function() local target=self.ActivityTarget; if target and type(env.LHStartSpectate)=="function" then pcall(env.LHStartSpectate,target) end end)
                 self.ActivityCard=card; self.ActivityBlocker=blocker; self.ActivityClose=close; self.ActivityAvatar=avatar; self.ActivityName=name; self.ActivityIdentity=identity; self.ActivityInfo=info; self.ActivitySync=sync; self.ActivityDetect=detect
             end
             self.ActivityCard.Visible=true
@@ -4293,6 +4365,7 @@ function LULA.CreateLib(kavName, themeInput)
             end
             self.ActivityName.Text=tostring(player.DisplayName)
             self.ActivityIdentity.Text="@"..tostring(player.Name).."  |  ID "..tostring(player.UserId)
+            self.ActivityInfo.Text="Loading player activity..."
             task.spawn(function()
                 local ok,img=pcall(PlayersService.GetUserThumbnailAsync,PlayersService,player.UserId,Enum.ThumbnailType.HeadShot,Enum.ThumbnailSize.Size150x150)
                 if ok and self.ActivityTarget==player and self.ActivityAvatar then self.ActivityAvatar.Image=img end
@@ -4314,15 +4387,42 @@ function LULA.CreateLib(kavName, themeInput)
         function service:RefreshLiveRows()
             for row, meta in pairs(self.LiveRows) do
                 if not row.Parent or not meta.Player or meta.Player.Parent~=PlayersService then self.LiveRows[row]=nil else
-                    local snap=self:GetSnapshot(meta.Player)
-                    local profile=not snap and self:GetAnimationProfile(meta.Player) or nil
                     if meta.AnimationLabel then
-                        meta.AnimationLabel.Text=snap and (snap.Name or ("Animation "..snap.Id)) or (profile and ("Pack: "..tostring(profile.Name)) or "Detecting animation pack...")
+                        if meta.Mode=="sync" then
+                            local emote=self:GetEmoteSnapshot(meta.Player)
+                            meta.AnimationLabel.Text=emote and ("Emote: "..tostring(emote.Name or ("Animation "..emote.Id))) or "Detecting emote..."
+                        else
+                            local profile=self:GetAnimationProfile(meta.Player)
+                            meta.AnimationLabel.Text=profile and ("Pack: "..tostring(profile.Name)) or "Detecting animation pack..."
+                        end
                     end
                     if meta.SyncButton then meta.SyncButton.Text=self.SyncTarget==meta.Player and "Unsync" or "Sync" end
                     if meta.PlayButton then meta.PlayButton.Text=(self.DetectorTarget==meta.Player) and "Stop" or "Play" end
                 end
             end
+        end
+
+        function service:BindPlayerActionButton(button, callback)
+            if not button or type(callback)~="function" then return end
+            button.Active=true
+            button.Selectable=true
+            button.ZIndex=25
+            local lastFire=0
+            local function fire()
+                local now=os.clock()
+                if now-lastFire<0.18 then return end
+                lastFire=now
+                task.spawn(function()
+                    local ok,err=xpcall(callback,function(message) return tostring(message) end)
+                    if not ok then warn("[Lollypop Hub Player Action] "..tostring(err)) end
+                end)
+            end
+            track(button.MouseButton1Click:Connect(fire))
+            -- Some mobile executor builds occasionally drop MouseButton1Click after a
+            -- scrolling gesture. InputEnded is a touch-only fallback with debounce.
+            track(button.InputEnded:Connect(function(input)
+                if input.UserInputType==Enum.UserInputType.Touch then fire() end
+            end))
         end
 
         function service:CreatePlayerPanel(parent, mode, layoutOrder)
@@ -4337,45 +4437,54 @@ function LULA.CreateLib(kavName, themeInput)
                 for _,player in ipairs(list) do
                     if player~=Local then
                         order+=1
-                        local row=Instance.new("Frame"); row.Name="Player_"..player.Name; row.LayoutOrder=order; row.Size=UDim2.new(1,0,0,68); row.BorderSizePixel=0; row.BackgroundTransparency=0.03; row.Parent=holder; bind(row,"BackgroundColor3","ElementColor"); makeCorner(row,9)
+                        local row=Instance.new("Frame"); row.Name="Player_"..player.Name; row.LayoutOrder=order; row.Size=UDim2.new(1,0,0,68); row.BorderSizePixel=0; row.BackgroundTransparency=0.03; row.ZIndex=10; row.Active=true; row.Parent=holder; bind(row,"BackgroundColor3","ElementColor"); makeCorner(row,9)
                         local avatar=Instance.new("ImageLabel"); avatar.Position=UDim2.fromOffset(6,6); avatar.Size=UDim2.fromOffset(56,56); avatar.BackgroundTransparency=1; avatar.ScaleType=Enum.ScaleType.Crop; avatar.Parent=row; makeCorner(avatar,9)
                         task.spawn(function() local ok,img=pcall(PlayersService.GetUserThumbnailAsync,PlayersService,player.UserId,Enum.ThumbnailType.HeadShot,Enum.ThumbnailSize.Size150x150); if ok and avatar.Parent then avatar.Image=img end end)
                         local name=makeText(row,tostring(player.DisplayName),11,Enum.Font.GothamBold); name.Position=UDim2.fromOffset(69,7); name.Size=UDim2.new(1,-240,0,18); name.TextXAlignment=Enum.TextXAlignment.Left
                         local user=makeText(row,"@"..player.Name,9.5,Enum.Font.GothamMedium); user.Position=UDim2.fromOffset(69,26); user.Size=UDim2.new(1,-240,0,17); user.TextXAlignment=Enum.TextXAlignment.Left; bind(user,"TextColor3","MutedText")
-                        local anim=makeText(row,"Detecting animation pack...",9,Enum.Font.GothamMedium); anim.Position=UDim2.fromOffset(69,44); anim.Size=UDim2.new(1,-240,0,17); anim.TextXAlignment=Enum.TextXAlignment.Left; anim.TextTruncate=Enum.TextTruncate.AtEnd; bind(anim,"TextColor3","MutedText")
+                        local anim=makeText(row,mode=="sync" and "Detecting emote..." or "Detecting animation pack...",9,Enum.Font.GothamMedium); anim.Position=UDim2.fromOffset(69,44); anim.Size=UDim2.new(1,-240,0,17); anim.TextXAlignment=Enum.TextXAlignment.Left; anim.TextTruncate=Enum.TextTruncate.AtEnd; anim.ZIndex=12; bind(anim,"TextColor3","MutedText")
                         local primary=makeButton(row,mode=="sync" and "Sync" or "Play"); primary.AnchorPoint=Vector2.new(1,0.5); primary.Position=UDim2.new(1,-83,0.5,0); primary.Size=UDim2.fromOffset(70,28); primary.TextSize=9.5
                         local secondary=makeButton(row,mode=="sync" and "Activity" or "Save"); secondary.AnchorPoint=Vector2.new(1,0.5); secondary.Position=UDim2.new(1,-8,0.5,0); secondary.Size=UDim2.fromOffset(68,28); secondary.TextSize=9.2
                         if mode=="sync" then
-                            primary.Activated:Connect(function()
+                            self:BindPlayerActionButton(primary,function()
                                 if self.SyncTarget==player then self:Unsync(false) else
                                     local ok,why=self:SyncPlayer(player)
                                     if not ok then LULA:ShowIsland("Dance Sync",tostring(why),{Duration=3}) end
                                 end
                                 self:RefreshLiveRows()
                             end)
-                            secondary.Activated:Connect(function()
-                                if player and player.Parent == PlayersService then
-                                    local ok,why=pcall(function() return self:OpenActivityCard(player) end)
-                                    if not ok then warn("[Lollypop Hub Activity] "..tostring(why)) end
-                                end
+                            self:BindPlayerActionButton(secondary,function()
+                                if player and player.Parent==PlayersService then self:OpenActivityCard(player) end
                             end)
-                            self.LiveRows[row]={Player=player,AnimationLabel=anim,SyncButton=primary}
+                            self.LiveRows[row]={Player=player,Mode="sync",AnimationLabel=anim,SyncButton=primary}
                         else
-                            -- Detector rows keep Play + Save and also expose the same
-                            -- Activity kard used by Dance Sync/Experience players.
+                            -- Free Animations detects the player's equipped avatar animation
+                            -- set. Play applies the whole set; Save stores the whole set.
                             primary.Position=UDim2.new(1,-151,0.5,0); primary.Size=UDim2.fromOffset(61,28)
                             secondary.Position=UDim2.new(1,-82,0.5,0); secondary.Size=UDim2.fromOffset(61,28)
                             local activity=makeButton(row,"Activity"); activity.AnchorPoint=Vector2.new(1,0.5); activity.Position=UDim2.new(1,-8,0.5,0); activity.Size=UDim2.fromOffset(66,28); activity.TextSize=8.8
-                            primary.MouseButton1Click:Connect(function() if self.DetectorTarget==player then self:StopDetected() else local ok,why=self:PlayDetected(player); if not ok then LULA:ShowIsland("Animation Detector",tostring(why),{Duration=3}) end end end)
-                            secondary.MouseButton1Click:Connect(function() local ok,why=self:SaveDetected(player); if not ok then LULA:ShowIsland("Animation Detector",tostring(why),{Duration=3}) end end)
-                            activity.Activated:Connect(function()
-                                if player and player.Parent == PlayersService then
-                                    local ok,why=pcall(function() return self:OpenActivityCard(player) end)
-                                    if not ok then warn("[Lollypop Hub Activity] "..tostring(why)) end
+                            self:BindPlayerActionButton(primary,function()
+                                if self.DetectorTarget==player then self:StopDetected() else
+                                    local ok,why=self:PlayDetected(player)
+                                    if not ok then LULA:ShowIsland("Animation Detector",tostring(why),{Duration=3})
+                                    else LULA:ShowIsland("Animation Detector","Applied @"..player.Name.."'s animation pack.",{Duration=2.2}) end
                                 end
+                                self:RefreshLiveRows()
                             end)
-                            self.LiveRows[row]={Player=player,AnimationLabel=anim,PlayButton=primary}
+                            self:BindPlayerActionButton(secondary,function()
+                                local ok,why=self:SaveDetected(player)
+                                if not ok then LULA:ShowIsland("Animation Detector",tostring(why),{Duration=3}) end
+                            end)
+                            self:BindPlayerActionButton(activity,function()
+                                if player and player.Parent==PlayersService then self:OpenActivityCard(player) end
+                            end)
+                            self.LiveRows[row]={Player=player,Mode="detector",AnimationLabel=anim,PlayButton=primary}
                         end
+                        task.defer(function()
+                            self:RefreshAnimationProfile(player,true)
+                            task.wait(0.05)
+                            if row.Parent then self:RefreshLiveRows() end
+                        end)
                     end
                 end
             end
@@ -4390,48 +4499,37 @@ function LULA.CreateLib(kavName, themeInput)
             local now=os.clock()
             if service.MimicEnabled and service.MimicTarget then service:UpdateMimic(dt, now) end
             if service.SyncTarget then
-                if service.SyncTarget.Parent~=PlayersService then service:Unsync(true) else
+                if service.SyncTarget.Parent~=PlayersService then
+                    service:Unsync(true)
+                else
                     service:EnsureStatusCard()
-                    service.StatusCard.Visible = true
-                    local snap=service:GetSnapshot(service.SyncTarget)
-                    if snap and not service:IsActionSnapshot(snap) then snap = nil end
+                    service.StatusCard.Visible=true
+                    local snap=service:GetEmoteSnapshot(service.SyncTarget)
                     if not snap then
-                        if service.SyncTrack then stopTrack(service.SyncTrack); service.SyncTrack=nil; service.SyncTrackId=nil end
-                        local profile=service:GetAnimationProfile(service.SyncTarget)
-                        local profileSignature=service:AnimationProfileSignature(profile)
-                        local shouldRefreshProfile = (not service.SyncBundleApplied) or (profileSignature ~= "" and profileSignature ~= service.SyncProfileSignature)
-                        if shouldRefreshProfile and profile and now >= (tonumber(service.SyncNextProfileCheck) or 0) then
-                            service.SyncNextProfileCheck = now + 0.6
-                            if not service.SyncPreviousSlots then service.SyncPreviousSlots=service:ReadAnimateSlots(Local) end
-                            local applied=service:ApplyAnimationProfile(service.SyncTarget)
-                            service.SyncBundleApplied=applied==true
-                            if applied then service.SyncProfileSignature=profileSignature end
+                        if service.SyncTrack then
+                            stopTrack(service.SyncTrack)
+                            if service.SyncAnimation then pcall(function() service.SyncAnimation:Destroy() end) end
+                            service.SyncTrack,service.SyncAnimation,service.SyncTrackId=nil,nil,nil
                         end
-                        service:EnsureStatusCard(); service.StatusDetail.Text="Synced with @"..service.SyncTarget.Name.."\n"..tostring(profile and profile.Name or "Detecting animation pack...")
+                        service.StatusDetail.Text="Synced with @"..service.SyncTarget.Name.."\nWaiting for emote..."
                     else
-                        local liveProfile=service:GetAnimationProfile(service.SyncTarget)
-                        local liveSignature=service:AnimationProfileSignature(liveProfile)
-                        if liveProfile and liveSignature ~= "" and liveSignature ~= service.SyncProfileSignature and now >= (tonumber(service.SyncNextProfileCheck) or 0) then
-                            service.SyncNextProfileCheck = now + 0.6
-                            local applied=service:ApplyAnimationProfile(service.SyncTarget)
-                            if applied then service.SyncBundleApplied=true; service.SyncProfileSignature=liveSignature end
-                        end
-                        local syncPlaying = false
-                        if service.SyncTrack then pcall(function() syncPlaying = service.SyncTrack.IsPlaying == true end) end
-                        if service.SyncTrackId~=snap.Id or not service.SyncTrack or not syncPlaying then
-                            stopTrack(service.SyncTrack); if service.SyncAnimation then pcall(function() service.SyncAnimation:Destroy() end) end
-                            service.SyncTrack,service.SyncAnimation=service:PlayAnimationId(snap.Id,snap); service.SyncTrackId=snap.Id; service.SyncLocalCharacter=Local.Character; service.SyncNextCorrection=now+0.2
-                        elseif service.SyncLocalCharacter ~= Local.Character then
-                            stopTrack(service.SyncTrack); if service.SyncAnimation then pcall(function() service.SyncAnimation:Destroy() end) end
-                            service.SyncTrack,service.SyncAnimation=service:PlayAnimationId(snap.Id,snap); service.SyncTrackId=snap.Id; service.SyncLocalCharacter=Local.Character; service.SyncNextCorrection=now+0.2
+                        local syncPlaying=false
+                        if service.SyncTrack then pcall(function() syncPlaying=service.SyncTrack.IsPlaying==true end) end
+                        if service.SyncTrackId~=snap.Id or not service.SyncTrack or not syncPlaying or service.SyncLocalCharacter~=Local.Character then
+                            stopTrack(service.SyncTrack)
+                            if service.SyncAnimation then pcall(function() service.SyncAnimation:Destroy() end) end
+                            service.SyncTrack,service.SyncAnimation=service:PlayAnimationId(snap.Id,snap)
+                            service.SyncTrackId=snap.Id
+                            service.SyncLocalCharacter=Local.Character
+                            service.SyncNextCorrection=now+0.18
                         elseif now>=service.SyncNextCorrection then
-                            service.SyncNextCorrection=now+0.32
+                            service.SyncNextCorrection=now+0.28
                             local localTime=0; pcall(function() localTime=service.SyncTrack.TimePosition end)
-                            if math.abs(localTime-snap.TimePosition)>0.18 then pcall(function() service.SyncTrack.TimePosition=snap.TimePosition end) end
-                            pcall(function() if math.abs((service.SyncTrack.Speed or 1)-snap.Speed)>0.02 then service.SyncTrack:AdjustSpeed(snap.Speed) end end)
+                            if math.abs(localTime-snap.TimePosition)>0.16 then pcall(function() service.SyncTrack.TimePosition=snap.TimePosition end) end
+                            pcall(function() service.SyncTrack:AdjustSpeed(snap.Speed) end)
                             pcall(function() service.SyncTrack.Looped=snap.Looped end)
                         end
-                        service:EnsureStatusCard(); service.StatusDetail.Text="Synced with @"..service.SyncTarget.Name.."\n"..tostring(snap.Name or ("Animation "..snap.Id)).."  |  Synced"
+                        service.StatusDetail.Text="Synced with @"..service.SyncTarget.Name.."\n"..tostring(snap.Name or ("Emote "..snap.Id)).."  |  Synced"
                     end
                 end
             end
@@ -4450,13 +4548,14 @@ function LULA.CreateLib(kavName, themeInput)
                         local health=hum and math.floor(hum.Health+0.5) or 0; local maxHealth=hum and math.floor(hum.MaxHealth+0.5) or 0
                         local distance="N/A"; if root and localRoot then distance=tostring(math.floor((root.Position-localRoot.Position).Magnitude+0.5)).." studs" end
                         local stateName="Unknown"; if hum then pcall(function() stateName=hum:GetState().Name end) end
-                        local snap=service:GetSnapshot(player)
-                        local profile=not snap and service:GetAnimationProfile(player) or nil
-                        local animation=snap and (snap.Name or ("Animation "..snap.Id)) or (profile and ("Pack: "..tostring(profile.Name)) or "Detecting...")
+                        local emote=service:GetEmoteSnapshot(player)
+                        local profile=service:GetAnimationProfile(player)
+                        local emoteText=emote and tostring(emote.Name or ("Animation "..emote.Id)) or "None"
+                        local packText=profile and tostring(profile.Name) or "Detecting..."
                         local team=player.Team and player.Team.Name or "None"
-                        service.ActivityInfo.Text="Health: "..health.." / "..maxHealth.."    Distance: "..distance.."\nState: "..stateName.."    Team: "..team.."\nTool: "..toolName(player.Character).."    Seat: "..seatName(hum).."\nAnimation: "..animation
+                        service.ActivityInfo.Text="Health: "..health.." / "..maxHealth.."    Distance: "..distance.."\nState: "..stateName.."    Team: "..team.."\nTool: "..toolName(player.Character).."    Seat: "..seatName(hum).."\nAnimation Pack: "..packText.."\nEmote: "..emoteText
                         service.ActivitySync.Text=service.SyncTarget==player and "Unsync" or "Sync"
-                        service.ActivityDetect.Text=(service.DetectorTarget==player) and "Stop Anim" or "Play Anim"
+                        service.ActivityDetect.Text=(service.DetectorTarget==player) and "Stop Pack" or "Play Pack"
                     end
                 end
             end
@@ -5944,7 +6043,7 @@ function LULA.CreateLib(kavName, themeInput)
             if runtime and type(runtime.CommandOrder)=="table" then for _,command in ipairs(runtime.CommandOrder) do local aliases=table.concat(command.Aliases or {}," "); if matches(command.Name.." "..aliases.." "..tostring(command.Description),query) then local name=command.Name; push("Kommands",(runtime.Prefix or "!")..name,tostring(command.Description),function() self:SelectTab("Admin"); if type(env.LHSetPaletteText)=="function" then env.LHSetPaletteText((runtime.Prefix or "!")..name.." ",true) end end) end end end
             if runtime and type(runtime.CustomAliases)=="table" then for alias,target in pairs(runtime.CustomAliases) do if matches(alias.." "..target,query) then push("Kommand Aliases","!"..alias,"Alias for !"..target,function() self:SelectTab("Admin"); if type(env.LHSetPaletteText)=="function" then env.LHSetPaletteText("!"..alias.." ",true) end end) end end end
             local players={}; for _,player in ipairs(get.Players:GetPlayers()) do if matches(player.Name,query) or matches(player.DisplayName,query) or matches("@"..player.Name,query) or tostring(player.UserId)==query then table.insert(players,player) end end
-            for _,fav in ipairs(settings.AnimationBundleFavorites or {}) do if matches(fav.Name,query) then local item=fav; push("Saved Animations",item.Name,item.DetectedAnimation and "Detected from @"..tostring(item.SourceUsername or "player") or "Free Animations favorite",function() self:SelectTab("Free Animations"); local st=active.AnimationBundles; if st and st.OpenFavorites then st.OpenFavorites(item.Name) end end) end end
+            for _,fav in ipairs(settings.AnimationBundleFavorites or {}) do if matches(fav.Name,query) then local item=fav; push("Saved Animations",item.Name,(item.DetectedAnimation or item.DetectedPack) and "Detected from @"..tostring(item.SourceUsername or "player") or "Free Animations favorite",function() self:SelectTab("Free Animations"); local st=active.AnimationBundles; if st and st.OpenFavorites then st.OpenFavorites(item.Name) end end) end end
             for _,fav in ipairs(settings.FreeEmoteFavorites or {}) do if matches(fav.Name,query) then local item=fav; push("Saved Emotes",item.Name,"Free Emotes favorite",function() self:SelectTab("Free Emotes"); local st=active.FreeEmotes; if st and st.OpenFavorites then st.OpenFavorites(item.Name) end end) end end
             for _,fav in ipairs(settings.AvatarKreatorFavorites or {}) do if matches(fav.Name,query) then local item=fav; push("Avatar Favorites",item.Name,"Avatar Kreator favorite",function() self:SelectTab("Avatar Kreator"); local st=active.AvatarKreator; if st and st.OpenFavorites then st.OpenFavorites(item.Name) end end) end end
             for _,outfit in ipairs(settings.AvatarKreatorSavedOutfits or {}) do if matches(outfit.Name,query) then local item=outfit; push("Saved Outfits",tostring(item.Name),"Avatar Kreator saved outfit",function() self:SelectTab("Avatar Kreator"); local st=active.AvatarKreator; if st and st.SetMode then st.SetMode("savedoutfits") end end) end end
@@ -7869,6 +7968,8 @@ function LULA.CreateLib(kavName, themeInput)
                 CreatorName = raw.CreatorName or raw.creatorName or "Unknown creator",
                 Description = raw.Description or raw.description or "",
                 DetectedAnimation = raw.DetectedAnimation == true,
+                DetectedPack = raw.DetectedPack == true,
+                Slots = type(raw.Slots)=="table" and raw.Slots or nil,
                 AnimationId = tonumber(raw.AnimationId or raw.animationId),
                 SourceUserId = tonumber(raw.SourceUserId or raw.sourceUserId),
                 SourceUsername = raw.SourceUsername or raw.sourceUsername,
@@ -8912,8 +9013,8 @@ function LULA.CreateLib(kavName, themeInput)
             thumbnail.BackgroundTransparency = 0.08
             thumbnail.BorderSizePixel = 0
             thumbnail.ScaleType = Enum.ScaleType.Fit
-            thumbnail.Image = item.DetectedAnimation
-                and ("rbxthumb://type=Asset&id=" .. tostring(item.AnimationId or item.Id) .. "&w=150&h=150")
+            thumbnail.Image = (item.DetectedAnimation or item.DetectedPack)
+                and ("rbxthumb://type=Asset&id=" .. tostring(item.AnimationId or (item.Slots and (item.Slots.walk or item.Slots.run or item.Slots.idle1)) or item.Id) .. "&w=150&h=150")
                 or ("rbxthumb://type=BundleThumbnail&id=" .. tostring(item.Id) .. "&w=150&h=150")
             thumbnail.Parent = row
             bind(thumbnail, "BackgroundColor3", "Header")
@@ -8926,13 +9027,16 @@ function LULA.CreateLib(kavName, themeInput)
             nameLabel.TextYAlignment = Enum.TextYAlignment.Center
             nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
 
-            local infoButton = makeButton(row, item.DetectedAnimation and "Play" or "Info")
+            local infoButton = makeButton(row, (item.DetectedAnimation or item.DetectedPack) and "Play" or "Info")
             infoButton.AnchorPoint = Vector2.new(1, 0.5)
             infoButton.Position = UDim2.new(1, -84, 0.5, 0)
             infoButton.Size = UDim2.fromOffset(42, 25)
             infoButton.TextSize = 9.5
             track(infoButton.Activated:Connect(function()
-                if item.DetectedAnimation then
+                if item.DetectedPack and type(item.Slots)=="table" then
+                    local ok,result=pcall(state.ApplySlots,item.Slots)
+                    if not ok or result==false then bundleNotify("Could not apply this detected animation pack.","error",3) end
+                elseif item.DetectedAnimation then
                     local service = ensurePlayerFeatureService()
                     service:StopDetected()
                     local trackObject, animationObject = service:PlayAnimationId(item.AnimationId or item.Id, {Looped=item.Looped == true, Speed=tonumber(item.Speed) or 1})
@@ -8951,7 +9055,7 @@ function LULA.CreateLib(kavName, themeInput)
                 removeFavorite(item, true)
             end))
 
-            if not item.DetectedAnimation then
+            if not item.DetectedAnimation and not item.DetectedPack then
                 local switch = makeToggleSwitch(row, item.Id, function(api)
                     toggleBundle(item, api)
                 end, true)
@@ -9331,6 +9435,47 @@ function LULA.CreateLib(kavName, themeInput)
             bundleNotify("Saved " .. tostring(resolved or ("Animation " .. id)) .. " to Free Animations.", "success", 2.8)
             return true
         end
+        state.SaveDetectedPack = function(profile, sourcePlayer)
+            if type(profile)~="table" or type(profile.Slots)~="table" then return false,"Invalid detected animation pack." end
+            local copySlots={}
+            local representative=nil
+            for _,key in ipairs({"idle1","idle2","walk","run","jump","fall","climb","swim","swimidle"}) do
+                local id=tonumber(profile.Slots[key])
+                if id then copySlots[key]=id; representative=representative or id end
+            end
+            if not representative then return false,"No avatar animation pack detected yet." end
+            local signature={}
+            for _,key in ipairs({"idle1","idle2","walk","run","jump","fall","climb","swim","swimidle"}) do signature[#signature+1]=key.."="..tostring(copySlots[key] or "") end
+            signature=table.concat(signature,"|")
+            local favorites=getFavorites()
+            for _,favorite in ipairs(favorites) do
+                if favorite.DetectedPack and type(favorite.Slots)=="table" then
+                    local check={}
+                    for _,key in ipairs({"idle1","idle2","walk","run","jump","fall","climb","swim","swimidle"}) do check[#check+1]=key.."="..tostring(tonumber(favorite.Slots[key]) or "") end
+                    if table.concat(check,"|")==signature then return false,"That animation pack is already saved." end
+                end
+            end
+            local synthetic=0
+            for _,key in ipairs({"idle1","idle2","walk","run","jump","fall","climb","swim","swimidle"}) do
+                synthetic=(synthetic*131+(tonumber(copySlots[key]) or 0))%2147483000
+            end
+            favorites[#favorites+1]={
+                Id=-(synthetic+1),
+                Name=tostring(profile.Name or "Detected Animation Pack"),
+                CreatorName=sourcePlayer and ("@"..sourcePlayer.Name) or "Detected Player",
+                Description="Detected avatar animation pack from another player.",
+                DetectedPack=true,
+                Slots=copySlots,
+                SourceUserId=sourcePlayer and sourcePlayer.UserId or nil,
+                SourceUsername=sourcePlayer and sourcePlayer.Name or nil,
+            }
+            saveFavorites(favorites,true)
+            refreshStarVisuals()
+            if currentMode=="favorites" then renderFavorites(favoriteSearchBox.Text) end
+            bundleNotify("Saved "..tostring(profile.Name or "animation pack").." to Free Animations.","success",2.8)
+            return true
+        end
+
         state.RefreshTheme = function()
             local marketplaceActive = currentMode == "marketplace"
             marketplaceTabButton.BackgroundColor3 = marketplaceActive and animationAccent(active.Theme.SchemeColor) or active.Theme.ElementColor
@@ -10885,7 +11030,7 @@ function LULA.CreateLib(kavName, themeInput)
                     2.8
                 )
             end))
-            track(save.Activated:Connect(function()
+            track(save.MouseButton1Click:Connect(function()
                 saveFavorites(getFavorites(), true)
                 emoteNotify("Emote favorites saved.", "success", 2.4)
             end))
