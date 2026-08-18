@@ -3298,6 +3298,8 @@ function LULA.CreateLib(kavName, themeInput)
             MimicMarker = nil,
             MimicHighlight = nil,
             MimicInputConnection = nil,
+            ActionButtons = setmetatable({}, {__mode = "k"}),
+            ActionRouterReady = false,
             Destroyed = false,
         }
         active.PlayerFeatures = service
@@ -3581,6 +3583,47 @@ function LULA.CreateLib(kavName, themeInput)
             return pretty.." Animation", merged
         end
 
+        function service:IdentifyKnownPackFromPlayerTracks(player)
+            local animationState = active and active.AnimationBundles
+            local references = animationState and animationState.KnownReferencePacks
+            if type(references) ~= "table" or not player then return nil, nil end
+
+            local ids = {}
+            local animator, humanoid = getAnimator(player)
+            if animator or humanoid then
+                local source = animator or humanoid
+                local ok, tracks = pcall(function() return source:GetPlayingAnimationTracks() end)
+                if ok then
+                    for _, track in ipairs(tracks or {}) do
+                        local id = track.Animation and normalizeAnimationId(track.Animation.AnimationId)
+                        if id then ids[id] = true end
+                    end
+                end
+            end
+            for _, entry in ipairs(self.RecentTrackHistory[player] or {}) do
+                local track = entry and entry.Track
+                local id = track and track.Animation and normalizeAnimationId(track.Animation.AnimationId)
+                if id then ids[id] = true end
+            end
+
+            for packName, reference in pairs(references) do
+                for _, expected in pairs(reference or {}) do
+                    local id = normalizeAnimationId(expected)
+                    if id and ids[id] then
+                        local merged = {}
+                        for slot, value in pairs(reference) do
+                            local normalized = normalizeAnimationId(value)
+                            if normalized then merged[slot] = normalized end
+                        end
+                        if merged.idle1 and not merged.idle2 then merged.idle2 = merged.idle1 end
+                        local pretty = tostring(packName):gsub("^%l", string.upper)
+                        return pretty .. " Animation", merged
+                    end
+                end
+            end
+            return nil, nil
+        end
+
         function service:InferAnimationSetName(slots)
             local id=normalizeAnimationId(slots and (slots.walk or slots.run or slots.idle1 or slots.jump))
             if not id then return "Avatar Animation Set" end
@@ -3677,9 +3720,11 @@ function LULA.CreateLib(kavName, themeInput)
             if not player then return nil end
             local slots = self:ReadAnimateSlots(player)
             local profileName
+            local profileSource = "Replicated"
             local humanoid = getHumanoid(player)
 
-            -- Fast replicated sources first.
+            -- Replicated HumanoidDescription is cheap and sometimes already contains
+            -- the target's equipped avatar animation assets.
             if humanoid then
                 local ok, description = pcall(function() return humanoid:GetAppliedDescription() end)
                 if ok and description then
@@ -3688,30 +3733,64 @@ function LULA.CreateLib(kavName, themeInput)
                 end
             end
 
-            -- The public Roblox avatar endpoint exposes the exact equipped
-            -- Idle/Walk/Run/Jump/Fall/Climb/Swim animation assets. This is the
-            -- strongest fallback for remote players when Character.Animate is not
-            -- replicated to this client.
-            if allowNetwork == true and self:CountAnimationSlots(slots) < 5 then
-                local apiProfile = self:FetchAvatarAnimationProfile(player)
-                if apiProfile and type(apiProfile.Slots) == "table" then
-                    for slot, id in pairs(apiProfile.Slots) do
-                        if normalizeAnimationId(id) then slots[slot] = normalizeAnimationId(id) end
-                    end
-                    profileName = apiProfile.Name
+            -- Even one live idle/walk/run track is enough to identify Roblox's known
+            -- default/bundle set. This matters in games that do not replicate Animate.
+            if self:CountAnimationSlots(slots) < 4 then
+                local trackName, trackSlots = self:IdentifyKnownPackFromPlayerTracks(player)
+                if trackName and trackSlots then
+                    for slot, id in pairs(trackSlots) do slots[slot] = id end
+                    profileName = trackName
+                    profileSource = "PlayingTrack"
                 end
             end
 
-            -- Keep HumanoidDescription as a second network fallback.
             if allowNetwork == true and self:CountAnimationSlots(slots) < 5 then
+                -- Prefer Roblox's HumanoidDescription API. It directly exposes the
+                -- equipped Idle/Walk/Run/Jump/Fall/Climb/Swim animation properties.
                 local ok, description = pcall(function()
                     local async = PlayersService.GetHumanoidDescriptionFromUserIdAsync
-                    if typeof(async) == "function" then return async(PlayersService, player.UserId) end
+                    if typeof(async) == "function" then
+                        return async(PlayersService, player.UserId)
+                    end
                     return PlayersService:GetHumanoidDescriptionFromUserId(player.UserId)
                 end)
                 if ok and description then
                     self:MergeDescriptionAnimationSlots(slots, description)
+                    profileSource = "HumanoidDescription"
                     pcall(function() description:Destroy() end)
+                end
+            end
+
+            if allowNetwork == true and self:CountAnimationSlots(slots) < 5 then
+                -- HTTP avatar data remains a fallback for executors where the normal
+                -- Players description call is unavailable or returns incomplete data.
+                local apiProfile = self:FetchAvatarAnimationProfile(player)
+                if apiProfile and type(apiProfile.Slots) == "table" then
+                    for slot, id in pairs(apiProfile.Slots) do
+                        local normalized = normalizeAnimationId(id)
+                        if normalized then slots[slot] = normalized end
+                    end
+                    profileName = profileName or apiProfile.Name
+                    profileSource = "AvatarAPI"
+                end
+            end
+
+            if self:CountAnimationSlots(slots) <= 0 then
+                -- Last locally observable fallback: expose the playing locomotion track
+                -- instead of incorrectly showing "No animation" for a moving player.
+                local track = self:GetPrimaryTrack(player)
+                local trackId = track and track.Animation and normalizeAnimationId(track.Animation.AnimationId)
+                if trackId and humanoid then
+                    local stateName = humanoid:GetState()
+                    local slot = "idle1"
+                    if stateName == Enum.HumanoidStateType.Running or stateName == Enum.HumanoidStateType.RunningNoPhysics then slot = "walk"
+                    elseif stateName == Enum.HumanoidStateType.Jumping then slot = "jump"
+                    elseif stateName == Enum.HumanoidStateType.Freefall then slot = "fall"
+                    elseif stateName == Enum.HumanoidStateType.Climbing then slot = "climb"
+                    elseif stateName == Enum.HumanoidStateType.Swimming then slot = "swim" end
+                    slots[slot] = trackId
+                    profileName = "Detected Animation"
+                    profileSource = "PlayingTrack"
                 end
             end
 
@@ -3722,13 +3801,21 @@ function LULA.CreateLib(kavName, themeInput)
             if knownName then
                 slots = knownSlots
                 profileName = knownName
+                profileSource = "KnownPack"
+            elseif self:CountAnimationSlots(slots) < 4 then
+                local trackName, trackSlots = self:IdentifyKnownPackFromPlayerTracks(player)
+                if trackName and trackSlots then
+                    slots = trackSlots
+                    profileName = trackName
+                    profileSource = "PlayingTrack"
+                end
             end
 
             return {
                 Name = profileName or (allowNetwork == true and self:InferAnimationSetName(slots) or "Avatar Animation Set"),
                 Slots = slots,
                 Updated = os.clock(),
-                Source = profileName and "AvatarAPI" or "AvatarDescription",
+                Source = profileSource,
             }
         end
 
@@ -4042,38 +4129,155 @@ function LULA.CreateLib(kavName, themeInput)
             end
         end
 
+        function service:CaptureSyncOriginal()
+            local humanoid = getHumanoid(Local)
+            if not humanoid then return end
+            if not self.SyncOriginalMovement then
+                self.SyncOriginalMovement = {
+                    WalkSpeed = humanoid.WalkSpeed,
+                    JumpPower = humanoid.JumpPower,
+                    JumpHeight = humanoid.JumpHeight,
+                    AutoRotate = humanoid.AutoRotate,
+                }
+            end
+            if not self.SyncPreviousSlots or self:CountAnimationSlots(self.SyncPreviousSlots) <= 0 then
+                self.SyncPreviousSlots = self:ReadAnimateSlots(Local)
+            end
+        end
+
+        function service:RestoreSyncMovement()
+            local humanoid = getHumanoid(Local)
+            local original = self.SyncOriginalMovement
+            if humanoid and original then
+                pcall(function() humanoid.WalkSpeed = original.WalkSpeed end)
+                pcall(function() humanoid.JumpPower = original.JumpPower end)
+                pcall(function() humanoid.JumpHeight = original.JumpHeight end)
+                pcall(function() humanoid.AutoRotate = original.AutoRotate end)
+                pcall(function() humanoid:Move(Vector3.zero, false) end)
+            end
+            self.SyncOriginalMovement = nil
+            self.SyncMoveNext = 0
+        end
+
+        function service:UpdateSyncMovement(dt, now)
+            local target = self.SyncTarget
+            if not target or target.Parent ~= PlayersService then return end
+            local localCharacter = Local.Character
+            local targetCharacter = target.Character
+            local localHumanoid = getHumanoid(Local)
+            local targetHumanoid = getHumanoid(target)
+            local localRoot = localCharacter and (localCharacter:FindFirstChild("HumanoidRootPart") or localCharacter:FindFirstChild("Torso") or localCharacter:FindFirstChild("UpperTorso"))
+            local targetRoot = targetCharacter and (targetCharacter:FindFirstChild("HumanoidRootPart") or targetCharacter:FindFirstChild("Torso") or targetCharacter:FindFirstChild("UpperTorso"))
+            if not localHumanoid or not targetHumanoid or not localRoot or not targetRoot then return end
+
+            if self.SyncMovementCharacter ~= localCharacter then
+                self.SyncMovementCharacter = localCharacter
+                self.SyncOriginalMovement = nil
+                self.SyncPreviousSlots = nil
+                self:CaptureSyncOriginal()
+                self.SyncProfileSignature = nil
+                self.SyncNextProfileCheck = 0
+            end
+
+            local targetSpeed = tonumber(targetHumanoid.WalkSpeed) or 16
+            local desired = targetRoot.Position + (targetRoot.CFrame.RightVector * 2.8)
+            local distance = (localRoot.Position - desired).Magnitude
+            local catchup = targetSpeed
+            if distance > 12 then
+                catchup = math.clamp(math.max(targetSpeed * 1.8, 22 + ((distance - 12) * 0.32)), targetSpeed, 60)
+            end
+            pcall(function() localHumanoid.WalkSpeed = catchup end)
+            pcall(function() localHumanoid.AutoRotate = false end)
+
+            if now >= (tonumber(self.SyncMoveNext) or 0) then
+                self.SyncMoveNext = now + 0.08
+                if distance > 1.8 then
+                    pcall(function() localHumanoid:MoveTo(desired) end)
+                else
+                    pcall(function() localHumanoid:Move(targetHumanoid.MoveDirection, false) end)
+                end
+                pcall(function()
+                    local look = targetRoot.CFrame.LookVector
+                    localRoot.CFrame = CFrame.lookAt(localRoot.Position, localRoot.Position + Vector3.new(look.X, 0, look.Z))
+                end)
+            end
+
+            pcall(function() localHumanoid.JumpPower = targetHumanoid.JumpPower end)
+            pcall(function() localHumanoid.JumpHeight = targetHumanoid.JumpHeight end)
+            if targetHumanoid.Sit then pcall(function() localHumanoid.Sit = true end) end
+
+            local targetState = Enum.HumanoidStateType.Running
+            pcall(function() targetState = targetHumanoid:GetState() end)
+            if targetHumanoid.Jump or targetState == Enum.HumanoidStateType.Jumping then
+                pcall(function() localHumanoid.Jump = true end)
+                pcall(function() localHumanoid:ChangeState(Enum.HumanoidStateType.Jumping) end)
+            elseif targetState == Enum.HumanoidStateType.Freefall
+                or targetState == Enum.HumanoidStateType.Climbing
+                or targetState == Enum.HumanoidStateType.Swimming
+                or targetState == Enum.HumanoidStateType.Seated then
+                pcall(function() localHumanoid:ChangeState(targetState) end)
+            elseif localHumanoid.Sit and not targetHumanoid.Sit then
+                pcall(function() localHumanoid.Sit = false end)
+            end
+
+            if now >= (tonumber(self.SyncNextProfileCheck) or 0) then
+                self.SyncNextProfileCheck = now + 0.85
+                local profile = self:GetAnimationProfile(target)
+                if profile then
+                    local signature = self:AnimationProfileSignature(profile)
+                    if signature ~= "" and signature ~= self.SyncProfileSignature then
+                        if not self.SyncPreviousSlots or self:CountAnimationSlots(self.SyncPreviousSlots) <= 0 then
+                            self.SyncPreviousSlots = self:ReadAnimateSlots(Local)
+                        end
+                        if self:RestoreAnimationSlots(profile.Slots) then
+                            self.SyncBundleApplied = true
+                            self.SyncProfileSignature = signature
+                        end
+                    end
+                else
+                    self:RefreshAnimationProfile(target, true, true)
+                end
+            end
+        end
+
         function service:Unsync(silent)
             self.SyncTarget = nil
             self.SyncTrackId = nil
             self.SyncLocalCharacter = nil
+            self.SyncMovementCharacter = nil
             self.SyncProfileSignature = nil
             self.SyncNextProfileCheck = 0
             stopTrack(self.SyncTrack)
             if self.SyncAnimation then pcall(function() self.SyncAnimation:Destroy() end) end
             self.SyncTrack, self.SyncAnimation = nil, nil
             if self.SyncBundleApplied and self.SyncPreviousSlots then self:RestoreAnimationSlots(self.SyncPreviousSlots) end
-            self.SyncBundleApplied=false
-            self.SyncPreviousSlots=nil
+            self.SyncBundleApplied = false
+            self.SyncPreviousSlots = nil
+            self:RestoreSyncMovement()
             if self.StatusCard then self.StatusCard.Visible = false end
-            if not silent then LULA:ShowIsland("Dance Sync", "Unsynced.", {Duration=2}) end
+            if not silent then LULA:ShowIsland("Dance Sync", "Unsynced.", {Duration=2.6}) end
         end
 
         function service:SyncPlayer(player)
             if not player or player == Local then return false, "Choose another player." end
             self:Unsync(true)
-            self.SyncTarget=player
-            self.SyncPreviousSlots=nil
-            self.SyncBundleApplied=false
-            self.SyncProfileSignature=nil
-            self.SyncNextCorrection=0
-            self.SyncNextProfileCheck=0
+            self.SyncTarget = player
+            self.SyncPreviousSlots = nil
+            self.SyncBundleApplied = false
+            self.SyncProfileSignature = nil
+            self.SyncNextCorrection = 0
+            self.SyncNextProfileCheck = 0
+            self.SyncMoveNext = 0
+            self.SyncMovementCharacter = Local.Character
+            self:CaptureSyncOriginal()
+            self:RefreshAnimationProfile(player, true, true)
             self:EnsureStatusCard()
-            self.StatusCard.Visible=true
-            local snap=self:GetEmoteSnapshot(player)
+            self.StatusCard.Visible = true
+            local snap = self:GetEmoteSnapshot(player)
             if self.StatusDetail then
-                self.StatusDetail.Text="Synced with @"..player.Name.."\n"..(snap and tostring(snap.Name or ("Emote "..snap.Id)) or "Waiting for emote...")
+                self.StatusDetail.Text = "Synced with @" .. player.Name .. "\n" .. (snap and tostring(snap.Name or ("Emote " .. snap.Id)) or "Mirroring movement | waiting for emote...")
             end
-            LULA:ShowIsland("Dance Sync", "Synced with @"..player.Name..". Waiting for their emote.", {Duration=4.5})
+            LULA:ShowIsland("Dance Sync", "Synced with @" .. player.Name .. ". Movement + animations are now following them.", {Duration=5})
             return true
         end
 
@@ -4604,18 +4808,77 @@ function LULA.CreateLib(kavName, themeInput)
             end
         end
 
+        function service:EnsureActionRouter()
+            if self.ActionRouterReady then return end
+            self.ActionRouterReady = true
+            self.ActionPresses = {}
+
+            local function actuallyVisible(button)
+                if not button or not button.Parent or button.Visible == false then return false end
+                local current = button.Parent
+                while current do
+                    if current:IsA("GuiObject") and current.Visible == false then return false end
+                    if current:IsA("ScreenGui") and current.Enabled == false then return false end
+                    current = current.Parent
+                end
+                return true
+            end
+
+            local function pointInside(button, position)
+                if not actuallyVisible(button) then return false end
+                local p = button.AbsolutePosition
+                local size = button.AbsoluteSize
+                return position.X >= p.X - 8
+                    and position.X <= p.X + size.X + 8
+                    and position.Y >= p.Y - 8
+                    and position.Y <= p.Y + size.Y + 8
+            end
+
+            track(UserInputService.InputBegan:Connect(function(input)
+                if input.UserInputType ~= Enum.UserInputType.Touch and input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
+                local position = Vector2.new(input.Position.X, input.Position.Y)
+                local bestMeta
+                local bestZ = -math.huge
+                for button, meta in pairs(self.ActionButtons) do
+                    if pointInside(button, position) then
+                        local z = tonumber(button.ZIndex) or 1
+                        if z >= bestZ then
+                            bestZ = z
+                            bestMeta = meta
+                        end
+                    end
+                end
+                if bestMeta then
+                    self.ActionPresses[input] = {
+                        Meta = bestMeta,
+                        Start = position,
+                    }
+                end
+            end))
+
+            track(UserInputService.InputEnded:Connect(function(input)
+                if input.UserInputType ~= Enum.UserInputType.Touch and input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
+                local press = self.ActionPresses[input]
+                self.ActionPresses[input] = nil
+                if not press or not press.Meta then return end
+                local finish = Vector2.new(input.Position.X, input.Position.Y)
+                if (finish - press.Start).Magnitude <= 34 and pointInside(press.Meta.Button, finish) then
+                    press.Meta.Fire()
+                end
+            end))
+        end
+
         function service:BindPlayerActionButton(button, callback)
             if not button or type(callback) ~= "function" then return end
             button.Active = true
             button.Selectable = true
-            button.ZIndex = math.max(button.ZIndex, 40)
+            button.ZIndex = math.max(button.ZIndex, 60)
             pcall(function() button.Interactable = true end)
 
             local lastFire = 0
-            local pressed = {}
             local function fire()
                 local now = os.clock()
-                if now - lastFire < 0.18 then return end
+                if now - lastFire < 0.16 then return end
                 lastFire = now
                 task.spawn(function()
                     local ok, err = xpcall(callback, function(message)
@@ -4624,32 +4887,19 @@ function LULA.CreateLib(kavName, themeInput)
                     if not ok then warn("[Lollypop Hub Player Action] " .. tostring(err)) end
                 end)
             end
-            local function pointInside(position)
-                if not button.Parent then return false end
-                local p = button.AbsolutePosition
-                local s = button.AbsoluteSize
-                local x, y = position.X, position.Y
-                return x >= p.X - 10 and x <= p.X + s.X + 10 and y >= p.Y - 10 and y <= p.Y + s.Y + 10
-            end
 
-            -- Activated remains the primary cross-device path. The explicit input-state
-            -- fallback below catches Delta/mobile taps that ScrollingFrame sometimes drops.
+            self.ActionButtons[button] = {
+                Button = button,
+                Fire = fire,
+            }
+            self:EnsureActionRouter()
+
+            -- Native paths are still kept for mouse/keyboard/gamepad. The shared
+            -- UserInputService router above is the mobile fallback that works even
+            -- when a ScrollingFrame consumes the tap before GuiButton.Activated fires.
             track(button.Activated:Connect(fire))
-            track(button.InputBegan:Connect(function(input)
-                if input.UserInputType ~= Enum.UserInputType.Touch and input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
-                local start = Vector2.new(input.Position.X, input.Position.Y)
-                pressed[input] = start
-                local stateConnection
-                stateConnection = input:GetPropertyChangedSignal("UserInputState"):Connect(function()
-                    if input.UserInputState ~= Enum.UserInputState.End and input.UserInputState ~= Enum.UserInputState.Cancel then return end
-                    local original = pressed[input]
-                    pressed[input] = nil
-                    if stateConnection then stateConnection:Disconnect(); stateConnection = nil end
-                    if input.UserInputState ~= Enum.UserInputState.End or not original then return end
-                    local finish = Vector2.new(input.Position.X, input.Position.Y)
-                    if (finish - original).Magnitude <= 22 and pointInside(finish) then fire() end
-                end)
-            end))
+            track(button.MouseButton1Click:Connect(fire))
+            return fire
         end
 
         function service:CreatePlayerPanel(parent, mode, layoutOrder)
@@ -4708,7 +4958,7 @@ function LULA.CreateLib(kavName, themeInput)
                             self.LiveRows[row]={Player=player,Mode="detector",AnimationLabel=anim,PlayButton=primary}
                         end
                         task.defer(function()
-                            self:RefreshAnimationProfile(player,true)
+                            self:RefreshAnimationProfile(player,true,true)
                             task.wait(0.05)
                             if row.Parent then self:RefreshLiveRows() end
                         end)
@@ -4729,6 +4979,7 @@ function LULA.CreateLib(kavName, themeInput)
                 if service.SyncTarget.Parent~=PlayersService then
                     service:Unsync(true)
                 else
+                    service:UpdateSyncMovement(dt, now)
                     service:EnsureStatusCard()
                     service.StatusCard.Visible=true
                     local snap=service:GetEmoteSnapshot(service.SyncTarget)
@@ -4738,7 +4989,7 @@ function LULA.CreateLib(kavName, themeInput)
                             if service.SyncAnimation then pcall(function() service.SyncAnimation:Destroy() end) end
                             service.SyncTrack,service.SyncAnimation,service.SyncTrackId=nil,nil,nil
                         end
-                        service.StatusDetail.Text="Synced with @"..service.SyncTarget.Name.."\nWaiting for emote..."
+                        service.StatusDetail.Text="Synced with @"..service.SyncTarget.Name.."\nMirroring movement | waiting for emote..."
                     else
                         local syncPlaying=false
                         if service.SyncTrack then pcall(function() syncPlaying=service.SyncTrack.IsPlaying==true end) end
@@ -14413,6 +14664,11 @@ function LULA.CreateLib(kavName, themeInput)
         state.RestoreVisualSnapshot = function(character, humanoid, snapshot)
             snapshot = snapshot or state.OriginalVisualSnapshot
             if not character or not humanoid or type(snapshot) ~= "table" then return false end
+            -- Never destructively clear the avatar for an empty/early snapshot.
+            -- R13 could capture before Roblox finished loading appearance, then Reset
+            -- used that empty snapshot and left the player naked.
+            local snapshotCount = tonumber(snapshot.Count) or (#(snapshot.Children or {}) + (snapshot.Face and 1 or 0))
+            if snapshotCount <= 0 then return false end
 
             for _, child in ipairs(character:GetChildren()) do
                 if child:IsA("Accessory")
@@ -14483,26 +14739,60 @@ function LULA.CreateLib(kavName, themeInput)
             return count
         end
 
-        -- Capture the avatar exactly as it looks when Avatar Kreator first opens.
-        -- This local visual snapshot is the safest reset source because account-description
-        -- APIs can occasionally return incomplete data in executor/client contexts.
-        do
-            local initialCharacter = getCharacter()
-            local initialHumanoid = initialCharacter and getHumanoid(initialCharacter)
-            if initialCharacter and initialHumanoid then
-                state.OriginalVisualSnapshot = state.CaptureVisualSnapshot(initialCharacter)
-                local okDescription, description = pcall(function()
-                    return initialHumanoid:GetAppliedDescription()
+        -- Capture the real original avatar only after Roblox says appearance loaded.
+        -- Account HumanoidDescription is the authoritative reset source; the visual
+        -- snapshot is only a safety fallback and is never allowed to overwrite it.
+        state.CaptureOriginalAvatar = function()
+            if state.OriginalCaptureLoading then return false end
+            state.OriginalCaptureLoading = true
+
+            if not state.OriginalAccountDescription then
+                local okAccount, accountDescription = pcall(function()
+                    if typeof(Players.GetHumanoidDescriptionFromUserIdAsync) == "function" then
+                        return Players:GetHumanoidDescriptionFromUserIdAsync(LocalPlayer.UserId)
+                    end
+                    return Players:GetHumanoidDescriptionFromUserId(LocalPlayer.UserId)
                 end)
-                if okDescription and description then
-                    local cloneOk, clone = pcall(function() return description:Clone() end)
-                    state.InitialOriginalDescription = (cloneOk and clone) or description
-                    if cloneOk and clone and description ~= clone then
-                        pcall(function() description:Destroy() end)
+                if okAccount and accountDescription then
+                    local cloneOk, clone = pcall(function() return accountDescription:Clone() end)
+                    state.OriginalAccountDescription = (cloneOk and clone) or accountDescription
+                    if cloneOk and clone and accountDescription ~= clone then
+                        pcall(function() accountDescription:Destroy() end)
                     end
                 end
             end
+
+            for _ = 1, 90 do
+                local character = getCharacter()
+                local humanoid = character and getHumanoid(character)
+                local loaded = false
+                pcall(function() loaded = LocalPlayer:HasAppearanceLoaded() == true end)
+                if character and humanoid and loaded then
+                    local snapshot = state.CaptureVisualSnapshot(character)
+                    if snapshot and (tonumber(snapshot.Count) or 0) > 0 then
+                        state.OriginalVisualSnapshot = snapshot
+                    end
+                    if not state.InitialOriginalDescription then
+                        local okDescription, description = pcall(function()
+                            return humanoid:GetAppliedDescription()
+                        end)
+                        if okDescription and description then
+                            local cloneOk, clone = pcall(function() return description:Clone() end)
+                            state.InitialOriginalDescription = (cloneOk and clone) or description
+                            if cloneOk and clone and description ~= clone then
+                                pcall(function() description:Destroy() end)
+                            end
+                        end
+                    end
+                    break
+                end
+                RunService.Heartbeat:Wait()
+            end
+
+            state.OriginalCaptureLoading = false
+            return state.OriginalAccountDescription ~= nil or state.OriginalVisualSnapshot ~= nil
         end
+        task.spawn(state.CaptureOriginalAvatar)
 
         local function getSnapshot(character)
             local snapshot = state.SnapshotByCharacter[character]
@@ -15043,11 +15333,10 @@ function LULA.CreateLib(kavName, themeInput)
             local cached = state.OriginalDescriptionByCharacter[character]
             if cached then return cached end
 
-            -- Prefer the exact live avatar captured when Avatar Kreator first opened.
-            -- This avoids incomplete account-description responses leaving Reset All naked.
-            local source = state.InitialOriginalDescription
-
-            if not source and not state.OriginalAccountDescription then
+            -- Account avatar first. The previous order preferred an early live
+            -- snapshot, which could be captured before klothing/accessories finished
+            -- loading and later made Reset All restore a naked description.
+            if not state.OriginalAccountDescription then
                 local okAccount, accountDescription = pcall(function()
                     if typeof(Players.GetHumanoidDescriptionFromUserIdAsync) == "function" then
                         return Players:GetHumanoidDescriptionFromUserIdAsync(LocalPlayer.UserId)
@@ -15064,7 +15353,7 @@ function LULA.CreateLib(kavName, themeInput)
                 end
             end
 
-            source = source or state.OriginalAccountDescription
+            local source = state.OriginalAccountDescription or state.InitialOriginalDescription
             if not source then
                 local okLive, liveDescription = pcall(function() return humanoid:GetAppliedDescription() end)
                 if okLive and liveDescription then
@@ -15639,81 +15928,110 @@ function LULA.CreateLib(kavName, themeInput)
                 return false
             end
 
-            local original = Wear.GetOriginalDescription(character, humanoid)
-            local descriptionRestored = false
+            -- Keep a rollback copy of wat is on-screen right now. Reset is never
+            -- allowed to leave the character with less appearance than before.
+            local beforeVisual = state.CaptureVisualSnapshot(character)
 
+            if not state.OriginalAccountDescription and type(state.CaptureOriginalAvatar) == "function" then
+                pcall(state.CaptureOriginalAvatar)
+            end
+
+            local original = state.OriginalAccountDescription
+                or state.OriginalDescriptionByCharacter[character]
+                or state.InitialOriginalDescription
+                or Wear.GetOriginalDescription(character, humanoid)
+
+            local restored = false
             if original then
-                local cloneOk, clone = pcall(function() return original:Clone() end)
-                local description = cloneOk and clone or original
+                local cloneOk, description = pcall(function() return original:Clone() end)
+                if not cloneOk then description = original end
 
-                -- Try the normal ApplyDescription path first. Some executor/client
-                -- combinations accept Reset variants but temporarily strip appearance.
+                local expectedData
+                pcall(function() expectedData = state.SerializeDescription(description) end)
+                local expectedVisual = state.DescriptionVisualCount(expectedData)
+                local minimumVisual = expectedVisual > 0 and math.max(1, math.floor(expectedVisual * 0.78)) or 1
+
+                local function avatarLooksRestored()
+                    if state.VisualAppearanceCount(character) < minimumVisual then return false end
+                    if type(expectedData) == "table" and type(state.DescriptionMatchesHumanoid) == "function" then
+                        return state.DescriptionMatchesHumanoid(expectedData, humanoid) == true
+                    end
+                    return true
+                end
+
                 local methods = {
-                    humanoid.ApplyDescriptionAsync,
-                    humanoid.ApplyDescription,
                     humanoid.ApplyDescriptionResetAsync,
+                    humanoid.ApplyDescriptionAsync,
                     humanoid.ApplyDescriptionReset,
+                    humanoid.ApplyDescription,
                 }
 
                 for _, method in ipairs(methods) do
-                    if typeof(method) == "function" and not descriptionRestored then
-                        local ok = Wear.WithRobloxIdentity(function()
-                            method(humanoid, description)
-                        end)
-                        if ok == true then
-                            for _ = 1, 2 do RunService.Heartbeat:Wait() end
-                            descriptionRestored = true
-                        end
-                    end
-                end
-
-                -- Verification-argument fallbacks for executors that require it.
-                if not descriptionRestored then
-                    for _, method in ipairs(methods) do
-                        if typeof(method) == "function" and not descriptionRestored then
-                            for _, verification in ipairs({Enum.AssetTypeVerification.ClientOnly, Enum.AssetTypeVerification.Default}) do
-                                local ok = Wear.WithRobloxIdentity(function()
+                    if restored then break end
+                    if typeof(method) == "function" then
+                        for _, verification in ipairs({Enum.AssetTypeVerification.ClientOnly, Enum.AssetTypeVerification.Default, false}) do
+                            local ok = Wear.WithRobloxIdentity(function()
+                                if verification == false then
+                                    method(humanoid, description)
+                                else
                                     method(humanoid, description, verification)
-                                end)
-                                if ok == true then
-                                    for _ = 1, 2 do RunService.Heartbeat:Wait() end
-                                    descriptionRestored = true
-                                    break
                                 end
+                            end)
+                            if ok == true then
+                                pcall(function() humanoid:BuildRigFromAttachments() end)
+                                for _ = 1, 18 do
+                                    RunService.Heartbeat:Wait()
+                                    if avatarLooksRestored() then
+                                        restored = true
+                                        break
+                                    end
+                                end
+                            end
+                            if restored then break end
+
+                            -- A reset attempt that stripped the avatar gets rolled
+                            -- baxk before another method is attempted.
+                            if beforeVisual and (tonumber(beforeVisual.Count) or 0) > 0 then
+                                state.RestoreVisualSnapshot(character, humanoid, beforeVisual)
+                                for _ = 1, 2 do RunService.Heartbeat:Wait() end
                             end
                         end
                     end
                 end
 
-                if cloneOk and clone then pcall(function() clone:Destroy() end) end
+                if cloneOk and description and description ~= original then
+                    pcall(function() description:Destroy() end)
+                end
             end
 
-            -- Always restore the exact visual snapshot captured before Avatar Kreator
-            -- changed anything. This guarantees klassic klothing/accessories don't vanish
-            -- even when a client-side HumanoidDescription call returns incomplete data.
-            local visualRestored = state.RestoreVisualSnapshot(
-                character,
-                humanoid,
-                state.OriginalVisualSnapshot
-            )
-
-            state.EquippedBySlot = {}
-            state.ViewerModifiedSlots = {}
-            state.ViewerHiddenAssetIds = {}
-            state.SnapshotByCharacter[character] = nil
-            pcall(function() humanoid:BuildRigFromAttachments() end)
-            for _ = 1, 2 do RunService.Heartbeat:Wait() end
-            refreshSelectedUi()
-            if state.Viewer and state.Viewer.Refresh then
-                pcall(function() state.Viewer:Refresh() end)
+            -- Visual snapshot is fallback only. It no longer overwrites a successful
+            -- HumanoidDescription restore, which was the source of the naked reset.
+            if not restored and state.OriginalVisualSnapshot and (tonumber(state.OriginalVisualSnapshot.Count) or 0) > 0 then
+                restored = state.RestoreVisualSnapshot(character, humanoid, state.OriginalVisualSnapshot) == true
             end
 
-            local restored = descriptionRestored or visualRestored
+            if not restored and beforeVisual and (tonumber(beforeVisual.Count) or 0) > 0 then
+                state.RestoreVisualSnapshot(character, humanoid, beforeVisual)
+            end
+
+            if restored then
+                state.EquippedBySlot = {}
+                state.ViewerModifiedSlots = {}
+                state.ViewerHiddenAssetIds = {}
+                state.SnapshotByCharacter[character] = nil
+                pcall(function() humanoid:BuildRigFromAttachments() end)
+                for _ = 1, 2 do RunService.Heartbeat:Wait() end
+                refreshSelectedUi()
+                if state.Viewer and state.Viewer.Refresh then
+                    pcall(function() state.Viewer:Refresh() end)
+                end
+            end
+
             if not silent then
                 if restored then
                     notify("Original avatar restored.", "success", 3)
                 else
-                    notify("Original avatar is not available yet. Nothing was removed.", "warning", 4)
+                    notify("Reset was blocked because LH could not safely restore the full original avatar.", "warning", 4)
                 end
             end
             return restored
@@ -16249,6 +16567,47 @@ function LULA.CreateLib(kavName, themeInput)
             return description
         end
 
+        state.DescriptionMatchesHumanoid = function(data, humanoid)
+            if type(data) ~= "table" or not humanoid then return false end
+            local ok, applied = pcall(function() return humanoid:GetAppliedDescription() end)
+            if not ok or not applied then return false end
+            local current = state.SerializeDescription(applied)
+            pcall(function() applied:Destroy() end)
+            if type(current) ~= "table" then return false end
+
+            local wantedProperties = type(data.Properties) == "table" and data.Properties or {}
+            local currentProperties = type(current.Properties) == "table" and current.Properties or {}
+            for _, key in ipairs({"GraphicTShirt", "Shirt", "Pants", "Face"}) do
+                local wanted = tonumber(wantedProperties[key]) or 0
+                local has = tonumber(currentProperties[key]) or 0
+                if wanted ~= has then return false end
+            end
+
+            local wantedCounts = {}
+            local currentCounts = {}
+            local wantedTotal = 0
+            local currentTotal = 0
+            for _, record in ipairs(type(data.Accessories) == "table" and data.Accessories or {}) do
+                local id = tonumber(record.AssetId)
+                if id then
+                    wantedCounts[id] = (wantedCounts[id] or 0) + 1
+                    wantedTotal += 1
+                end
+            end
+            for _, record in ipairs(type(current.Accessories) == "table" and current.Accessories or {}) do
+                local id = tonumber(record.AssetId)
+                if id then
+                    currentCounts[id] = (currentCounts[id] or 0) + 1
+                    currentTotal += 1
+                end
+            end
+            if wantedTotal ~= currentTotal then return false end
+            for id, count in pairs(wantedCounts) do
+                if (currentCounts[id] or 0) ~= count then return false end
+            end
+            return true
+        end
+
         state.CaptureCurrentDescriptionData = function(currentItems)
             local character = getCharacter()
             local humanoid = character and getHumanoid(character)
@@ -16305,12 +16664,14 @@ function LULA.CreateLib(kavName, themeInput)
             Wear.GetOriginalDescription(character, humanoid)
             local beforeVisual = state.CaptureVisualSnapshot(character)
             local expectedVisual = state.DescriptionVisualCount(data)
-            local minimumVisual = expectedVisual >= 3 and math.max(2, math.floor(expectedVisual * 0.35)) or 0
+            -- Saved outfits must come baxk nearly complete. The old 35% threshold
+            -- could accept a mostly stripped/naked avatar as a successful apply.
+            local minimumVisual = expectedVisual > 0 and math.max(1, math.floor(expectedVisual * 0.80)) or 0
             local applied = false
 
             local function visuallyValid()
-                if minimumVisual <= 0 then return true end
-                return state.VisualAppearanceCount(character) >= minimumVisual
+                if minimumVisual > 0 and state.VisualAppearanceCount(character) < minimumVisual then return false end
+                return state.DescriptionMatchesHumanoid(data, humanoid) == true
             end
 
             local function attempt(method, verification)
@@ -16676,6 +17037,10 @@ function LULA.CreateLib(kavName, themeInput)
                 return false
             end
             local descriptionData = state.CaptureCurrentDescriptionData(items)
+            if type(descriptionData) ~= "table" then
+                notify("LH could not safely capture the full kurrent outfit, so nothing was saved.", "warning", 4)
+                return false
+            end
             local outfits = state.GetSavedOutfits()
             outfits[#outfits + 1] = {
                 Name = "Outfit " .. tostring(#outfits + 1),
@@ -16723,21 +17088,31 @@ function LULA.CreateLib(kavName, themeInput)
 
         state.WearSavedOutfit = function(outfit)
             if type(outfit) ~= "table" or type(outfit.Items) ~= "table" then return false end
+            local character = getCharacter()
+            local humanoid = character and getHumanoid(character)
+            if not character or not humanoid then return false end
 
-            -- Apply the complete saved HumanoidDescription FIRST. Never strip the live
-            -- avatar before we know Roblox accepted the saved description; a failed
-            -- apply must leave the player's kurrent outfit intact instead of naked.
+            local beforeVisual = state.CaptureVisualSnapshot(character)
+            local hasDescription = type(outfit.Description) == "table"
             local descriptionApplied = false
-            if type(outfit.Description) == "table" then
+
+            -- Complete HumanoidDescription is the primary saved-outfit path.
+            -- Never continue into dozens of item replacements after a full-description
+            -- apply failed, because that was the path that could leave all klothing gone.
+            if hasDescription then
                 local ok, result = pcall(state.ApplyDescriptionData, outfit.Description)
                 descriptionApplied = ok and result == true
-            end
-            if descriptionApplied then
+                if not descriptionApplied then
+                    if beforeVisual and (tonumber(beforeVisual.Count) or 0) > 0 then
+                        state.RestoreVisualSnapshot(character, humanoid, beforeVisual)
+                    end
+                    notify("Saved outfit was not applied because Roblox did not restore it safely. Your kurrent avatar was kept.", "warning", 4.5)
+                    return false
+                end
                 state.EquippedBySlot = {}
                 state.ViewerModifiedSlots = {}
                 state.ViewerHiddenAssetIds = {}
-                RunService.Heartbeat:Wait()
-                RunService.Heartbeat:Wait()
+                for _ = 1, 4 do RunService.Heartbeat:Wait() end
             end
 
             local present = {}
@@ -16756,15 +17131,33 @@ function LULA.CreateLib(kavName, themeInput)
                     pcall(Wear.ResolveMissingAssetType, itemCopy)
                     if id and present[id] then
                         worn += 1
-                    else
+                    elseif not hasDescription then
                         local ok = internalWearItem(itemCopy, true)
                         if ok then worn += 1; if id then present[id] = true end end
+                    else
+                        -- Description already applied the complete outfit. Missing live
+                        -- SourceAssetId metadata is not proof that the visible item failed.
+                        worn += 1
                     end
                 end
                 RunService.Heartbeat:Wait()
             end
             state.ItemStacking = previousStacking
             state.ViewerHiddenAssetIds = {}
+
+            if hasDescription then
+                local expected = state.DescriptionVisualCount(outfit.Description)
+                local kurrent = state.VisualAppearanceCount(character)
+                local minimum = expected > 0 and math.max(1, math.floor(expected * 0.80)) or 0
+                if minimum > 0 and kurrent < minimum then
+                    if beforeVisual and (tonumber(beforeVisual.Count) or 0) > 0 then
+                        state.RestoreVisualSnapshot(character, humanoid, beforeVisual)
+                    end
+                    notify("Saved outfit looked incomplete after applying, so LH restored your previous avatar.", "warning", 4.5)
+                    return false
+                end
+            end
+
             refreshSelectedUi()
             if state.Viewer and state.Viewer.Refresh then pcall(function() state.Viewer:Refresh() end) end
             notify("Wore " .. tostring(worn) .. "/" .. tostring(#outfit.Items) .. " saved outfit item(s).", (worn > 0 or descriptionApplied) and "success" or "warning", 3.5)
@@ -20923,10 +21316,14 @@ function LULA.CreateLib(kavName, themeInput)
             for userId,button in pairs(state.SpectateButtons) do
                 if button and button.Parent then
                     if userId==activeUserId then
-                        button.Text="Stop Spectating"
+                        button.Text="Stop\nSpectating"
+                        button.TextWrapped=true
+                        button.TextSize=8.2
                         button.BackgroundColor3=rgb(235,83,96)
                     else
                         button.Text="Spectate"
+                        button.TextWrapped=false
+                        button.TextSize=9.5
                         button.BackgroundColor3=rgb(57,126,255)
                     end
                     button.TextColor3=rgb(255,255,255)
@@ -21044,10 +21441,15 @@ function LULA.CreateLib(kavName, themeInput)
                     end)
                     playerFeatures:BindPlayerActionButton(examine, function()
                         if not player or player.Parent ~= Players then return end
-                        if active.AvatarKreator and type(active.AvatarKreator.InspectPlayer) == "function" then
+                        -- "Examine" means the Roblox-style avatar inspection first.
+                        -- If the experience/client blocks it, fall baxk to LH Avatar Kreator.
+                        local opened = pcall(function()
+                            get.GuiService:InspectPlayerFromUserId(player.UserId)
+                        end)
+                        if not opened and active.AvatarKreator and type(active.AvatarKreator.InspectPlayer) == "function" then
                             active.AvatarKreator.InspectPlayer(player)
-                        else
-                            pcall(function() get.GuiService:InspectPlayerFromUserId(player.UserId) end)
+                        elseif not opened then
+                            LULA:ShowIsland("Examine", "Player inspection is unavailable in this experience.", {Duration=3})
                         end
                     end)
                     if player ~= LocalPlayer then
