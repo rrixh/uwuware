@@ -4762,7 +4762,13 @@ function LULA.CreateLib(kavName, themeInput)
                 self.ActivityCard=card; self.ActivityBlocker=blocker; self.ActivityClose=close; self.ActivityAvatar=avatar; self.ActivityName=name; self.ActivityIdentity=identity; self.ActivityInfo=info; self.ActivitySync=sync; self.ActivityDetect=detect
             end
             self.ActivityCard.Visible=true
-            if self.ActivityBlocker then self.ActivityBlocker.Visible=true end
+            self.ActivityCard.ZIndex=1400
+            if self.ActivityBlocker then self.ActivityBlocker.Visible=true; self.ActivityBlocker.ZIndex=1399 end
+            task.defer(function()
+                if self.ActivityCard and self.ActivityCard.Parent and self.ActivityTarget==player then
+                    self.ActivityCard.Visible=true
+                end
+            end)
             if self.ActivityClose then
                 self.ActivityClose.Active=false
                 task.delay(0.45,function()
@@ -4872,15 +4878,16 @@ function LULA.CreateLib(kavName, themeInput)
             if not button or type(callback) ~= "function" then return end
             button.Active = true
             button.Selectable = true
-            button.ZIndex = math.max(button.ZIndex, 60)
+            button.ZIndex = math.max(button.ZIndex, 80)
             pcall(function() button.Interactable = true end)
 
             local lastFire = 0
+            local pressStart = {}
             local function fire()
                 local now = os.clock()
-                if now - lastFire < 0.16 then return end
+                if now - lastFire < 0.14 then return end
                 lastFire = now
-                task.spawn(function()
+                task.defer(function()
                     local ok, err = xpcall(callback, function(message)
                         return debug and debug.traceback and debug.traceback(tostring(message), 2) or tostring(message)
                     end)
@@ -4888,17 +4895,20 @@ function LULA.CreateLib(kavName, themeInput)
                 end)
             end
 
-            self.ActionButtons[button] = {
-                Button = button,
-                Fire = fire,
-            }
-            self:EnsureActionRouter()
-
-            -- Native paths are still kept for mouse/keyboard/gamepad. The shared
-            -- UserInputService router above is the mobile fallback that works even
-            -- when a ScrollingFrame consumes the tap before GuiButton.Activated fires.
             track(button.Activated:Connect(fire))
             track(button.MouseButton1Click:Connect(fire))
+            track(button.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    pressStart[input] = Vector2.new(input.Position.X, input.Position.Y)
+                end
+            end))
+            track(button.InputEnded:Connect(function(input)
+                local start = pressStart[input]
+                pressStart[input] = nil
+                if not start then return end
+                local finish = Vector2.new(input.Position.X, input.Position.Y)
+                if (finish - start).Magnitude <= 28 then fire() end
+            end))
             return fire
         end
 
@@ -15943,6 +15953,25 @@ function LULA.CreateLib(kavName, themeInput)
 
             local restored = false
             if original then
+                local fastCloneOk, fastDescription = pcall(function() return original:Clone() end)
+                if not fastCloneOk then fastDescription = original end
+                local fastOk = Wear.WithRobloxIdentity(function()
+                    if typeof(humanoid.ApplyDescriptionResetAsync) == "function" then
+                        humanoid:ApplyDescriptionResetAsync(fastDescription, Enum.AssetTypeVerification.ClientOnly)
+                    elseif typeof(humanoid.ApplyDescriptionAsync) == "function" then
+                        humanoid:ApplyDescriptionAsync(fastDescription, Enum.AssetTypeVerification.ClientOnly)
+                    elseif typeof(humanoid.ApplyDescription) == "function" then
+                        humanoid:ApplyDescription(fastDescription)
+                    end
+                end)
+                if fastOk == true then
+                    pcall(function() humanoid:BuildRigFromAttachments() end)
+                    for _ = 1, 8 do RunService.Heartbeat:Wait() end
+                    restored = state.VisualAppearanceCount(character) > 0
+                end
+                if fastCloneOk and fastDescription and fastDescription ~= original then pcall(function() fastDescription:Destroy() end) end
+            end
+            if original and not restored then
                 local cloneOk, description = pcall(function() return original:Clone() end)
                 if not cloneOk then description = original end
 
@@ -17106,8 +17135,10 @@ function LULA.CreateLib(kavName, themeInput)
                     if beforeVisual and (tonumber(beforeVisual.Count) or 0) > 0 then
                         state.RestoreVisualSnapshot(character, humanoid, beforeVisual)
                     end
-                    notify("Saved outfit was not applied because Roblox did not restore it safely. Your kurrent avatar was kept.", "warning", 4.5)
-                    return false
+                    -- HumanoidDescription can be rejected by an experience even though the
+                    -- individual katalog assets are client-loadable. Fall baxk to the proven
+                    -- Try On path instead of blocking Wear completely.
+                    hasDescription = false
                 end
                 state.EquippedBySlot = {}
                 state.ViewerModifiedSlots = {}
@@ -17122,7 +17153,7 @@ function LULA.CreateLib(kavName, themeInput)
             end
 
             local previousStacking = state.ItemStacking
-            state.ItemStacking = true
+            state.ItemStacking = hasDescription == true
             local worn = 0
             for _, item in ipairs(outfit.Items) do
                 local itemCopy = normalizeCatalogItem(item)
@@ -21441,15 +21472,25 @@ function LULA.CreateLib(kavName, themeInput)
                     end)
                     playerFeatures:BindPlayerActionButton(examine, function()
                         if not player or player.Parent ~= Players then return end
-                        -- "Examine" means the Roblox-style avatar inspection first.
-                        -- If the experience/client blocks it, fall baxk to LH Avatar Kreator.
-                        local opened = pcall(function()
-                            get.GuiService:InspectPlayerFromUserId(player.UserId)
-                        end)
-                        if not opened and active.AvatarKreator and type(active.AvatarKreator.InspectPlayer) == "function" then
-                            active.AvatarKreator.InspectPlayer(player)
-                        elseif not opened then
-                            LULA:ShowIsland("Examine", "Player inspection is unavailable in this experience.", {Duration=3})
+                        local guiService = get.GuiService
+                        pcall(function() guiService:SetInspectMenuEnabled(true) end)
+                        local opened = false
+                        local character = player.Character
+                        local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+                        if humanoid then
+                            local okDesc, description = pcall(function() return humanoid:GetAppliedDescription() end)
+                            if okDesc and description then
+                                opened = pcall(function()
+                                    guiService:InspectPlayerFromHumanoidDescription(description, player.Name)
+                                end)
+                                pcall(function() description:Destroy() end)
+                            end
+                        end
+                        if not opened then
+                            opened = pcall(function() guiService:InspectPlayerFromUserId(player.UserId) end)
+                        end
+                        if not opened then
+                            LULA:ShowIsland("Examine", "Roblox Avatar Inspect Menu is unavailable in this experience.", {Duration=3.5})
                         end
                     end)
                     if player ~= LocalPlayer then
