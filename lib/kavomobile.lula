@@ -1,4 +1,4 @@
---kavo ui 4.7.6 - LH v10.5.0
+--kavo ui 4.7.6 - LH v10.5.1
 local LULA = {}
 LULA.AnimationMarketplaceVersion = 5
 LULA.EmoteMarketplaceVersion = 2
@@ -2975,7 +2975,7 @@ function LULA.CreateLib(kavName, themeInput)
     pages.ClipsDescendants = true
     pages.Parent = main
 
-    local footer = makeText(main, "Lollypop Hub v10.5.0", 11, Enum.Font.GothamMedium)
+    local footer = makeText(main, "Lollypop Hub v10.5.1", 11, Enum.Font.GothamMedium)
     footer.Name = "Footer"
     footer.Position = UDim2.new(0, 158, 1, -20)
     footer.Size = UDim2.new(1, -165, 0, 18)
@@ -3302,6 +3302,29 @@ function LULA.CreateLib(kavName, themeInput)
         }
         active.PlayerFeatures = service
         env.LHPlayerFeatures = service
+
+        local featureGui = Instance.new("ScreenGui")
+        featureGui.Name = "LollypopHubPlayerFeatures_" .. tostring(math.random(10000, 99999))
+        featureGui.IgnoreGuiInset = true
+        featureGui.ResetOnSpawn = false
+        featureGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+        featureGui.DisplayOrder = 1000010
+        local featureParent = (active.NotificationGui and active.NotificationGui.Parent) or (active.ScreenGui and active.ScreenGui.Parent)
+        if featureParent then
+            featureGui.Parent = featureParent
+            service.OverlayGui = featureGui
+        else
+            featureGui:Destroy()
+        end
+
+        function service:GetOverlayHost()
+            if self.OverlayGui and self.OverlayGui.Parent then
+                self.OverlayGui.Enabled = true
+                return self.OverlayGui
+            end
+            if active.NotificationGui then active.NotificationGui.Enabled = true end
+            return active.NotificationGui or screenGui
+        end
 
         local PlayersService = get.Players
         local Marketplace = get.MarketplaceService
@@ -4050,6 +4073,7 @@ function LULA.CreateLib(kavName, themeInput)
             if self.StatusDetail then
                 self.StatusDetail.Text="Synced with @"..player.Name.."\n"..(snap and tostring(snap.Name or ("Emote "..snap.Id)) or "Waiting for emote...")
             end
+            LULA:ShowIsland("Dance Sync", "Synced with @"..player.Name..". Waiting for their emote.", {Duration=4.5})
             return true
         end
 
@@ -4064,7 +4088,7 @@ function LULA.CreateLib(kavName, themeInput)
             card.BorderSizePixel = 0
             card.ZIndex = 850
             card.Visible = false
-            card.Parent = active.NotificationGui or screenGui
+            card.Parent = self:GetOverlayHost()
             bind(card, "BackgroundColor3", "Header")
             makeCorner(card, 11); makeStroke(card, active.Theme.SchemeColor, 0.2, 1)
             local title = makeText(card, "Dance Sync", 11.5, Enum.Font.GothamBold)
@@ -4074,7 +4098,7 @@ function LULA.CreateLib(kavName, themeInput)
             bind(detail,"TextColor3","MutedText")
             local unsync = makeButton(card,"Unsync")
             unsync.AnchorPoint=Vector2.new(1,0); unsync.Position=UDim2.new(1,-8,0,7); unsync.Size=UDim2.fromOffset(62,24); unsync.TextSize=9.5; unsync.ZIndex=852
-            track(unsync.MouseButton1Click:Connect(function() self:Unsync(false); self:RefreshLiveRows() end))
+            self:BindPlayerActionButton(unsync, function() self:Unsync(false); self:RefreshLiveRows() end)
             self.StatusCard, self.StatusTitle, self.StatusDetail = card, title, detail
             return card
         end
@@ -4292,7 +4316,7 @@ function LULA.CreateLib(kavName, themeInput)
 
         function service:EnsureMimicGui()
             if self.MimicGui and self.MimicGui.Parent then return self.MimicGui end
-            local host = active.NotificationGui or active.ScreenGui
+            local host = self:GetOverlayHost()
             if not host then return nil end
             local root=Instance.new("Frame")
             root.Name="LHMimicControls"
@@ -4488,14 +4512,15 @@ function LULA.CreateLib(kavName, themeInput)
             if not player then return false end
             self.ActivityTarget = player
             self.ActivityOpenedAt = os.clock()
+            self:GetOverlayHost()
             if not self.ActivityCard or not self.ActivityCard.Parent then
                 -- A transparent modal sink prevents the mobile touch that opened
                 -- Activity from falling through into controls underneath the new kard.
                 local blocker=Instance.new("TextButton")
-                blocker.Name="LHPlayerActivityBlocker"; blocker.Size=UDim2.fromScale(1,1); blocker.BackgroundTransparency=1; blocker.BorderSizePixel=0; blocker.Text=""; blocker.AutoButtonColor=false; blocker.Active=true; blocker.ZIndex=1399; blocker.Parent=active.NotificationGui or screenGui
+                blocker.Name="LHPlayerActivityBlocker"; blocker.Size=UDim2.fromScale(1,1); blocker.BackgroundTransparency=1; blocker.BorderSizePixel=0; blocker.Text=""; blocker.AutoButtonColor=false; blocker.Active=true; blocker.ZIndex=1399; blocker.Parent=self:GetOverlayHost()
                 pcall(function() blocker.Modal=true end)
                 local card = Instance.new("Frame")
-                card.Name="LHPlayerActivityCard"; card.AnchorPoint=Vector2.new(0.5,0.5); card.Position=UDim2.fromScale(0.5,0.5); card.Size=UDim2.fromOffset(390,322); card.BorderSizePixel=0; card.ZIndex=1400; card.Parent=active.NotificationGui or screenGui
+                card.Name="LHPlayerActivityCard"; card.AnchorPoint=Vector2.new(0.5,0.5); card.Position=UDim2.fromScale(0.5,0.5); card.Size=UDim2.fromOffset(390,322); card.BorderSizePixel=0; card.ZIndex=1400; card.Parent=self:GetOverlayHost()
                 bind(card,"BackgroundColor3","Header"); makeCorner(card,14); makeStroke(card,active.Theme.SchemeColor,0.12,1.3)
                 local avatar=Instance.new("ImageLabel"); avatar.Name="Avatar"; avatar.Position=UDim2.fromOffset(12,12); avatar.Size=UDim2.fromOffset(68,68); avatar.BackgroundTransparency=0.08; avatar.BorderSizePixel=0; avatar.ScaleType=Enum.ScaleType.Crop; avatar.ZIndex=1401; avatar.Parent=card; bind(avatar,"BackgroundColor3","ElementColor"); makeCorner(avatar,12)
                 local name=makeText(card,"Player",15,Enum.Font.GothamBold); name.Position=UDim2.fromOffset(90,12); name.Size=UDim2.new(1,-132,0,24); name.TextXAlignment=Enum.TextXAlignment.Left; name.ZIndex=1401
@@ -4507,13 +4532,13 @@ function LULA.CreateLib(kavName, themeInput)
                 local save=makeButton(card,"Save Pack"); save.Position=UDim2.fromOffset(190,248); save.Size=UDim2.fromOffset(82,30); save.ZIndex=1402
                 local avatarBtn=makeButton(card,"Avatar"); avatarBtn.Position=UDim2.fromOffset(279,248); avatarBtn.Size=UDim2.fromOffset(82,30); avatarBtn.ZIndex=1402
                 local spectate=makeButton(card,"Spectate"); spectate.Position=UDim2.fromOffset(12,284); spectate.Size=UDim2.fromOffset(82,24); spectate.TextSize=9.5; spectate.ZIndex=1402
-                track(close.MouseButton1Click:Connect(function()
+                self:BindPlayerActionButton(close, function()
                     -- Ignore the same touch-release that opened the kard on mobile.
-                    if os.clock() - (tonumber(self.ActivityOpenedAt) or 0) < 0.45 then return end
+                    if os.clock() - (tonumber(self.ActivityOpenedAt) or 0) < 0.30 then return end
                     self.ActivityTarget=nil
                     card.Visible=false
                     blocker.Visible=false
-                end))
+                end)
                 self:BindPlayerActionButton(sync,function()
                     local target=self.ActivityTarget; if not target then return end
                     if self.SyncTarget==target then self:Unsync(false) else local ok,why=self:SyncPlayer(target); if not ok then LULA:ShowIsland("Dance Sync",tostring(why),{Duration=3}) end end
@@ -4587,29 +4612,43 @@ function LULA.CreateLib(kavName, themeInput)
             pcall(function() button.Interactable = true end)
 
             local lastFire = 0
+            local pressed = {}
             local function fire()
                 local now = os.clock()
-                if now - lastFire < 0.16 then return end
+                if now - lastFire < 0.18 then return end
                 lastFire = now
                 task.spawn(function()
                     local ok, err = xpcall(callback, function(message)
-                        return tostring(message)
+                        return debug and debug.traceback and debug.traceback(tostring(message), 2) or tostring(message)
                     end)
                     if not ok then warn("[Lollypop Hub Player Action] " .. tostring(err)) end
                 end)
             end
+            local function pointInside(position)
+                if not button.Parent then return false end
+                local p = button.AbsolutePosition
+                local s = button.AbsoluteSize
+                local x, y = position.X, position.Y
+                return x >= p.X - 10 and x <= p.X + s.X + 10 and y >= p.Y - 10 and y <= p.Y + s.Y + 10
+            end
 
-            -- Activated is the same cross-device event used by the rest of Kavo and
-            -- is the primary path for touch, mouse, and gamepad.
+            -- Activated remains the primary cross-device path. The explicit input-state
+            -- fallback below catches Delta/mobile taps that ScrollingFrame sometimes drops.
             track(button.Activated:Connect(fire))
-            track(button.MouseButton1Click:Connect(fire))
-
-            -- Delta/mobile fallback for the occasional dropped click after a scroll.
-            track(button.InputEnded:Connect(function(input)
-                if input.UserInputType == Enum.UserInputType.Touch
-                    or input.UserInputType == Enum.UserInputType.MouseButton1 then
-                    fire()
-                end
+            track(button.InputBegan:Connect(function(input)
+                if input.UserInputType ~= Enum.UserInputType.Touch and input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
+                local start = Vector2.new(input.Position.X, input.Position.Y)
+                pressed[input] = start
+                local stateConnection
+                stateConnection = input:GetPropertyChangedSignal("UserInputState"):Connect(function()
+                    if input.UserInputState ~= Enum.UserInputState.End and input.UserInputState ~= Enum.UserInputState.Cancel then return end
+                    local original = pressed[input]
+                    pressed[input] = nil
+                    if stateConnection then stateConnection:Disconnect(); stateConnection = nil end
+                    if input.UserInputState ~= Enum.UserInputState.End or not original then return end
+                    local finish = Vector2.new(input.Position.X, input.Position.Y)
+                    if (finish - original).Magnitude <= 22 and pointInside(finish) then fire() end
+                end)
             end))
         end
 
@@ -4655,7 +4694,7 @@ function LULA.CreateLib(kavName, themeInput)
                                 if self.DetectorTarget==player then self:StopDetected() else
                                     local ok,why=self:PlayDetected(player)
                                     if not ok then LULA:ShowIsland("Animation Detector",tostring(why),{Duration=3})
-                                    else LULA:ShowIsland("Animation Detector","Applied @"..player.Name.."'s animation pack.",{Duration=2.2}) end
+                                    else LULA:ShowIsland("Animation Detector","Applied @"..player.Name.."'s animation pack.",{Duration=4.5}) end
                                 end
                                 self:RefreshLiveRows()
                             end)
@@ -4775,6 +4814,7 @@ function LULA.CreateLib(kavName, themeInput)
             if self.ActivityBlocker then pcall(function() self.ActivityBlocker:Destroy() end) end
             if self.StatusCard then pcall(function() self.StatusCard:Destroy() end) end
             if self.MimicGui then pcall(function() self.MimicGui:Destroy() end) end
+            if self.OverlayGui then pcall(function() self.OverlayGui:Destroy() end); self.OverlayGui=nil end
             if env.LHPlayerFeatures==self then env.LHPlayerFeatures=nil end
             if env.LHEnsurePlayerFeatures then env.LHEnsurePlayerFeatures=nil end
         end
@@ -4804,6 +4844,7 @@ function LULA.CreateLib(kavName, themeInput)
                 if old.Page and active and active.SelectedTab ~= old then old.Page.Visible = false end
             end)
             tween(old.Button, {BackgroundTransparency = 1}, 0.1)
+            if old.Indicator then old.Indicator.Visible = false end
         end
         tab:EnsureBuilt()
         tab.Page.Position = UDim2.new(0.04, 0, 0, 0)
@@ -4811,6 +4852,7 @@ function LULA.CreateLib(kavName, themeInput)
         tab.Page.Visible = true
         tween(tab.Page, {Position = UDim2.new(0, 0, 0, 0), GroupTransparency = 0}, 0.15)
         tween(tab.Button, {BackgroundTransparency = 0.04}, 0.1)
+        if tab.Indicator then tab.Indicator.Visible = true end
         task.defer(function()
             if active and active.SelectedTab == tab and tab.Scroll then
                 local saved = tab.LastCanvasPosition or Vector2.new()
@@ -4883,6 +4925,18 @@ function LULA.CreateLib(kavName, themeInput)
         tabButton.TextSize = tonumber(env.tabtextsize) or 16
         tabButton.Font = resolveUIFont(Enum.Font.DenkOne)
 
+        local tabIndicator = Instance.new("Frame")
+        tabIndicator.Name = "SelectedIndicator"
+        tabIndicator.AnchorPoint = Vector2.new(0, 0.5)
+        tabIndicator.Position = UDim2.new(0, 0, 0.5, 0)
+        tabIndicator.Size = UDim2.fromOffset(3, 18)
+        tabIndicator.BackgroundColor3 = rgb(228, 55, 68)
+        tabIndicator.BorderSizePixel = 0
+        tabIndicator.Visible = false
+        tabIndicator.ZIndex = math.max(2, tabButton.ZIndex + 1)
+        tabIndicator.Parent = tabButton
+        makeCorner(tabIndicator, 999)
+
         local page = Instance.new("CanvasGroup")
         page.Name = tabName .. "Page"
         page:SetAttribute("LHTabName", tabName)
@@ -4909,6 +4963,7 @@ function LULA.CreateLib(kavName, themeInput)
         local tab = {
             Name = tabName,
             Button = tabButton,
+            Indicator = tabIndicator,
             Page = page,
             Scroll = scroll,
             Built = false,
@@ -6115,6 +6170,7 @@ function LULA.CreateLib(kavName, themeInput)
             active.SelectedTab = tab
             tab.Page.Visible = true
             tab.Button.BackgroundTransparency = 0.04
+            if tab.Indicator then tab.Indicator.Visible = true end
         end
         return tab
     end
@@ -6284,6 +6340,19 @@ function LULA.CreateLib(kavName, themeInput)
         consoleButton.Size = UDim2.new(0.5, -3, 0, 36)
         consoleButton.TextSize = 11.5
 
+        local notificationsIndicator = Instance.new("Frame")
+        notificationsIndicator.Name = "SelectedIndicator"
+        notificationsIndicator.AnchorPoint = Vector2.new(0, 1)
+        notificationsIndicator.Position = UDim2.new(0, 7, 1, -3)
+        notificationsIndicator.Size = UDim2.new(1, -14, 0, 3)
+        notificationsIndicator.BackgroundColor3 = rgb(228, 55, 68)
+        notificationsIndicator.BorderSizePixel = 0
+        notificationsIndicator.Parent = notificationsButton
+        makeCorner(notificationsIndicator, 999)
+
+        local consoleIndicator = notificationsIndicator:Clone()
+        consoleIndicator.Parent = consoleButton
+
         local clearAll = makeKolorButton(scroll, "Klear Notifications", rgb(164, 42, 58))
         clearAll.Name = "ClearDebuggingItems"
         clearAll.LayoutOrder = -10000
@@ -6403,9 +6472,15 @@ function LULA.CreateLib(kavName, themeInput)
             if not force and signature == state.LastSignature then return end
             state.LastSignature = signature
             clearRows()
-            notificationsButton.BackgroundTransparency = state.Mode == "notifications" and 0.02 or 0.22
-            consoleButton.BackgroundTransparency = state.Mode == "console" and 0.02 or 0.22
-            clearAll.Text = state.Mode == "console" and "Klear Logs" or "Klear Notifications"
+            local notificationsSelected = state.Mode == "notifications"
+            local consoleSelected = state.Mode == "console"
+            notificationsButton.BackgroundTransparency = notificationsSelected and 0.02 or 0.26
+            consoleButton.BackgroundTransparency = consoleSelected and 0.02 or 0.26
+            notificationsButton.TextColor3 = notificationsSelected and rgb(255,255,255) or active.Theme.MutedText
+            consoleButton.TextColor3 = consoleSelected and rgb(255,255,255) or active.Theme.MutedText
+            notificationsIndicator.Visible = notificationsSelected
+            consoleIndicator.Visible = consoleSelected
+            clearAll.Text = consoleSelected and "Klear Logs" or "Klear Notifications"
 
             if state.Mode == "console" then
                 local count = #state.Logs
@@ -12667,6 +12742,9 @@ function LULA.CreateLib(kavName, themeInput)
             ItemStacking = false,
             SnapshotByCharacter = setmetatable({}, {__mode = "k"}),
             OriginalDescriptionByCharacter = setmetatable({}, {__mode = "k"}),
+            OriginalAccountDescription = nil,
+            InitialOriginalDescription = nil,
+            OriginalVisualSnapshot = nil,
             CurrentCharacter = LocalPlayer.Character,
             Reapplying = false,
             Connections = {},
@@ -14280,6 +14358,152 @@ function LULA.CreateLib(kavName, themeInput)
                 or character:WaitForChild("Humanoid", 5)
         end
 
+        state.CaptureVisualSnapshot = function(character)
+            if not character or not character.Parent then return nil end
+            local snapshot = {Children = {}, Face = nil, Count = 0}
+            for _, child in ipairs(character:GetChildren()) do
+                if child:IsA("Accessory")
+                    or child:IsA("Shirt")
+                    or child:IsA("Pants")
+                    or child:IsA("ShirtGraphic")
+                    or child:IsA("CharacterMesh")
+                    or child:IsA("BodyColors") then
+                    local ok, clone = pcall(function() return child:Clone() end)
+                    if ok and clone then
+                        snapshot.Children[#snapshot.Children + 1] = clone
+                        snapshot.Count = snapshot.Count + 1
+                    end
+                end
+            end
+            local head = character:FindFirstChild("Head")
+            if head then
+                local face = head:FindFirstChild("face") or head:FindFirstChildWhichIsA("Decal")
+                if face and face:IsA("Decal") then
+                    local ok, clone = pcall(function() return face:Clone() end)
+                    if ok and clone then
+                        snapshot.Face = clone
+                        snapshot.Count = snapshot.Count + 1
+                    end
+                end
+            end
+            return snapshot
+        end
+
+        state.VisualAppearanceCount = function(character)
+            if not character then return 0 end
+            local count = 0
+            for _, child in ipairs(character:GetChildren()) do
+                if child:IsA("Accessory")
+                    or child:IsA("Shirt")
+                    or child:IsA("Pants")
+                    or child:IsA("ShirtGraphic")
+                    or child:IsA("CharacterMesh")
+                    or child:IsA("BodyColors") then
+                    count = count + 1
+                end
+            end
+            local head = character:FindFirstChild("Head")
+            if head then
+                local face = head:FindFirstChild("face") or head:FindFirstChildWhichIsA("Decal")
+                if face and face:IsA("Decal") then count = count + 1 end
+            end
+            return count
+        end
+
+        state.RestoreVisualSnapshot = function(character, humanoid, snapshot)
+            snapshot = snapshot or state.OriginalVisualSnapshot
+            if not character or not humanoid or type(snapshot) ~= "table" then return false end
+
+            for _, child in ipairs(character:GetChildren()) do
+                if child:IsA("Accessory")
+                    or child:IsA("Shirt")
+                    or child:IsA("Pants")
+                    or child:IsA("ShirtGraphic")
+                    or child:IsA("CharacterMesh")
+                    or child:IsA("BodyColors") then
+                    pcall(function() child:Destroy() end)
+                end
+            end
+
+            local head = character:FindFirstChild("Head")
+            if head then
+                for _, child in ipairs(head:GetChildren()) do
+                    if child:IsA("Decal") and string.lower(child.Name) == "face" then
+                        pcall(function() child:Destroy() end)
+                    end
+                end
+            end
+
+            local restoredAny = false
+            for _, template in ipairs(snapshot.Children or {}) do
+                if typeof(template) == "Instance" then
+                    local ok, clone = pcall(function() return template:Clone() end)
+                    if ok and clone then
+                        if clone:IsA("Accessory") then
+                            local handle = clone:FindFirstChild("Handle")
+                            if handle then
+                                local weld = handle:FindFirstChild("AccessoryWeld")
+                                if weld then pcall(function() weld:Destroy() end) end
+                            end
+                            local added = pcall(function() humanoid:AddAccessory(clone) end)
+                            if not added then clone.Parent = character end
+                        else
+                            clone.Parent = character
+                        end
+                        restoredAny = true
+                    end
+                end
+            end
+
+            if head and typeof(snapshot.Face) == "Instance" then
+                local ok, faceClone = pcall(function() return snapshot.Face:Clone() end)
+                if ok and faceClone then
+                    faceClone.Parent = head
+                    restoredAny = true
+                end
+            end
+
+            pcall(function() humanoid:BuildRigFromAttachments() end)
+            return restoredAny
+        end
+
+        state.DescriptionVisualCount = function(data)
+            if type(data) ~= "table" then return 0 end
+            local count = 0
+            local properties = type(data.Properties) == "table" and data.Properties or {}
+            for _, key in ipairs({"GraphicTShirt", "Shirt", "Pants", "Face"}) do
+                if tonumber(properties[key]) and tonumber(properties[key]) > 0 then count = count + 1 end
+            end
+            local accessoryCount = #(type(data.Accessories) == "table" and data.Accessories or {})
+            local stringCount = 0
+            for _, value in pairs(type(data.Strings) == "table" and data.Strings or {}) do
+                if type(value) == "string" and value ~= "" then stringCount = stringCount + 1 end
+            end
+            count = count + math.max(accessoryCount, stringCount)
+            return count
+        end
+
+        -- Capture the avatar exactly as it looks when Avatar Kreator first opens.
+        -- This local visual snapshot is the safest reset source because account-description
+        -- APIs can occasionally return incomplete data in executor/client contexts.
+        do
+            local initialCharacter = getCharacter()
+            local initialHumanoid = initialCharacter and getHumanoid(initialCharacter)
+            if initialCharacter and initialHumanoid then
+                state.OriginalVisualSnapshot = state.CaptureVisualSnapshot(initialCharacter)
+                local okDescription, description = pcall(function()
+                    return initialHumanoid:GetAppliedDescription()
+                end)
+                if okDescription and description then
+                    local cloneOk, clone = pcall(function() return description:Clone() end)
+                    state.InitialOriginalDescription = (cloneOk and clone) or description
+                    if cloneOk and clone and description ~= clone then
+                        pcall(function() description:Destroy() end)
+                    end
+                end
+            end
+        end
+
         local function getSnapshot(character)
             local snapshot = state.SnapshotByCharacter[character]
             if not snapshot then
@@ -14819,19 +15043,44 @@ function LULA.CreateLib(kavName, themeInput)
             local cached = state.OriginalDescriptionByCharacter[character]
             if cached then return cached end
 
-            local ok, description = pcall(function()
-                return humanoid:GetAppliedDescription()
-            end)
-            if not ok or not description then
-                Wear.Debug("Humanoid.GetAppliedDescription", false, description)
-                return nil
+            -- Prefer the exact live avatar captured when Avatar Kreator first opened.
+            -- This avoids incomplete account-description responses leaving Reset All naked.
+            local source = state.InitialOriginalDescription
+
+            if not source and not state.OriginalAccountDescription then
+                local okAccount, accountDescription = pcall(function()
+                    if typeof(Players.GetHumanoidDescriptionFromUserIdAsync) == "function" then
+                        return Players:GetHumanoidDescriptionFromUserIdAsync(LocalPlayer.UserId)
+                    end
+                    return Players:GetHumanoidDescriptionFromUserId(LocalPlayer.UserId)
+                end)
+                if okAccount and accountDescription then
+                    local cloneOk, clone = pcall(function() return accountDescription:Clone() end)
+                    state.OriginalAccountDescription = (cloneOk and clone) or accountDescription
+                    if cloneOk and clone and accountDescription ~= clone then
+                        pcall(function() accountDescription:Destroy() end)
+                    end
+                    Wear.Debug("Players.GetHumanoidDescriptionFromUserId", true, "original account avatar captured")
+                end
             end
 
-            local cloneOk, clone = pcall(function() return description:Clone() end)
-            state.OriginalDescriptionByCharacter[character] = (cloneOk and clone) or description
-            Wear.Debug("Humanoid.GetAppliedDescription", true, "original avatar captured")
+            source = source or state.OriginalAccountDescription
+            if not source then
+                local okLive, liveDescription = pcall(function() return humanoid:GetAppliedDescription() end)
+                if okLive and liveDescription then
+                    source = liveDescription
+                    Wear.Debug("Humanoid.GetAppliedDescription", true, "fallback original avatar captured")
+                else
+                    Wear.Debug("Humanoid.GetAppliedDescription", false, liveDescription)
+                    return nil
+                end
+            end
+
+            local cloneOk, clone = pcall(function() return source:Clone() end)
+            state.OriginalDescriptionByCharacter[character] = (cloneOk and clone) or source
             return state.OriginalDescriptionByCharacter[character]
         end
+
 
         function Wear.GetDescriptionProperty(slot)
             if slot == "ClassicTShirt" then return "GraphicTShirt" end
@@ -14914,6 +15163,13 @@ function LULA.CreateLib(kavName, themeInput)
                 order = order + 1
             end
 
+            for _, record in ipairs(rebuilt) do
+                if record.IsLayered ~= true then
+                    record.IsLayered = false
+                    record.Order = nil
+                    record.Puffiness = nil
+                end
+            end
             local setOk, setError = pcall(function() description:SetAccessories(rebuilt, true) end)
             if not setOk then return nil, setError end
             return description
@@ -15378,51 +15634,91 @@ function LULA.CreateLib(kavName, themeInput)
         local function resetAllItems(silent)
             local character = getCharacter()
             local humanoid = character and getHumanoid(character)
-            local restored = false
-            if character and humanoid then
-                local original = state.OriginalDescriptionByCharacter[character]
-                if original then
-                    local cloneOk, clone = pcall(function() return original:Clone() end)
-                    local description = cloneOk and clone or original
-                    local asyncMethod = humanoid.ApplyDescriptionResetAsync or humanoid.ApplyDescriptionAsync
-                    if typeof(asyncMethod) == "function" then
-                        for _, verification in ipairs({Enum.AssetTypeVerification.ClientOnly, Enum.AssetTypeVerification.Default}) do
-                            local ok = Wear.WithRobloxIdentity(function()
-                                asyncMethod(humanoid, description, verification)
-                            end)
-                            if ok == true then restored = true; break end
+            if not character or not humanoid then
+                if not silent then notify("Your avatar is not ready yet.", "warning", 3) end
+                return false
+            end
+
+            local original = Wear.GetOriginalDescription(character, humanoid)
+            local descriptionRestored = false
+
+            if original then
+                local cloneOk, clone = pcall(function() return original:Clone() end)
+                local description = cloneOk and clone or original
+
+                -- Try the normal ApplyDescription path first. Some executor/client
+                -- combinations accept Reset variants but temporarily strip appearance.
+                local methods = {
+                    humanoid.ApplyDescriptionAsync,
+                    humanoid.ApplyDescription,
+                    humanoid.ApplyDescriptionResetAsync,
+                    humanoid.ApplyDescriptionReset,
+                }
+
+                for _, method in ipairs(methods) do
+                    if typeof(method) == "function" and not descriptionRestored then
+                        local ok = Wear.WithRobloxIdentity(function()
+                            method(humanoid, description)
+                        end)
+                        if ok == true then
+                            for _ = 1, 2 do RunService.Heartbeat:Wait() end
+                            descriptionRestored = true
                         end
                     end
-                    if not restored then
-                        local syncMethod = humanoid.ApplyDescriptionReset or humanoid.ApplyDescription
-                        if typeof(syncMethod) == "function" then
+                end
+
+                -- Verification-argument fallbacks for executors that require it.
+                if not descriptionRestored then
+                    for _, method in ipairs(methods) do
+                        if typeof(method) == "function" and not descriptionRestored then
                             for _, verification in ipairs({Enum.AssetTypeVerification.ClientOnly, Enum.AssetTypeVerification.Default}) do
                                 local ok = Wear.WithRobloxIdentity(function()
-                                    syncMethod(humanoid, description, verification)
+                                    method(humanoid, description, verification)
                                 end)
-                                if ok == true then restored = true; break end
+                                if ok == true then
+                                    for _ = 1, 2 do RunService.Heartbeat:Wait() end
+                                    descriptionRestored = true
+                                    break
+                                end
                             end
                         end
                     end
-                    if cloneOk and clone then pcall(function() clone:Destroy() end) end
                 end
+
+                if cloneOk and clone then pcall(function() clone:Destroy() end) end
             end
-            if not restored then
-                local slots, seen = {}, {}
-                for slot in pairs(state.EquippedBySlot) do seen[slot] = true; slots[#slots + 1] = slot end
-                for slot in pairs(state.ViewerModifiedSlots or {}) do
-                    if not seen[slot] then seen[slot] = true; slots[#slots + 1] = slot end
-                end
-                for _, slot in ipairs(slots) do
-                    if state.EquippedBySlot[slot] then removeSlot(slot, true) else Wear.ApplySlotSelection(slot, {}) end
-                end
-            end
+
+            -- Always restore the exact visual snapshot captured before Avatar Kreator
+            -- changed anything. This guarantees klassic klothing/accessories don't vanish
+            -- even when a client-side HumanoidDescription call returns incomplete data.
+            local visualRestored = state.RestoreVisualSnapshot(
+                character,
+                humanoid,
+                state.OriginalVisualSnapshot
+            )
+
             state.EquippedBySlot = {}
             state.ViewerModifiedSlots = {}
             state.ViewerHiddenAssetIds = {}
-            if humanoid then pcall(function() humanoid:BuildRigFromAttachments() end) end
+            state.SnapshotByCharacter[character] = nil
+            pcall(function() humanoid:BuildRigFromAttachments() end)
+            for _ = 1, 2 do RunService.Heartbeat:Wait() end
             refreshSelectedUi()
+            if state.Viewer and state.Viewer.Refresh then
+                pcall(function() state.Viewer:Refresh() end)
+            end
+
+            local restored = descriptionRestored or visualRestored
+            if not silent then
+                if restored then
+                    notify("Original avatar restored.", "success", 3)
+                else
+                    notify("Original avatar is not available yet. Nothing was removed.", "warning", 4)
+                end
+            end
+            return restored
         end
+
 
         local function formatPrice(item)
             if item.Price ~= nil then
@@ -15933,12 +16229,13 @@ function LULA.CreateLib(kavName, themeInput)
                 local accessoryType = Enum.AccessoryType[tostring(record.AccessoryType or "")]
                 local assetId = tonumber(record.AssetId)
                 if accessoryType and assetId then
+                    local layered = record.IsLayered == true
                     accessories[#accessories + 1] = {
                         AssetId = assetId,
                         AccessoryType = accessoryType,
-                        IsLayered = record.IsLayered == true,
-                        Order = tonumber(record.Order) or (#accessories + 1),
-                        Puffiness = tonumber(record.Puffiness)
+                        IsLayered = layered,
+                        Order = layered and (tonumber(record.Order) or (#accessories + 1)) or nil,
+                        Puffiness = layered and tonumber(record.Puffiness) or nil
                     }
                 end
             end
@@ -16004,35 +16301,75 @@ function LULA.CreateLib(kavName, themeInput)
             local humanoid = character and getHumanoid(character)
             local description = state.DeserializeDescription(data)
             if not character or not humanoid or not description then return false end
+
             Wear.GetOriginalDescription(character, humanoid)
+            local beforeVisual = state.CaptureVisualSnapshot(character)
+            local expectedVisual = state.DescriptionVisualCount(data)
+            local minimumVisual = expectedVisual >= 3 and math.max(2, math.floor(expectedVisual * 0.35)) or 0
             local applied = false
-            local asyncMethod = humanoid.ApplyDescriptionResetAsync or humanoid.ApplyDescriptionAsync
-            if typeof(asyncMethod) == "function" then
-                for _, verification in ipairs({Enum.AssetTypeVerification.ClientOnly, Enum.AssetTypeVerification.Default}) do
-                    local ok = Wear.WithRobloxIdentity(function()
-                        asyncMethod(humanoid, description, verification)
-                    end)
-                    if ok == true then applied = true; break end
-                end
+
+            local function visuallyValid()
+                if minimumVisual <= 0 then return true end
+                return state.VisualAppearanceCount(character) >= minimumVisual
             end
+
+            local function attempt(method, verification)
+                if typeof(method) ~= "function" then return false end
+                local ok = Wear.WithRobloxIdentity(function()
+                    if verification == nil then
+                        method(humanoid, description)
+                    else
+                        method(humanoid, description, verification)
+                    end
+                end)
+                if ok ~= true then return false end
+                pcall(function() humanoid:BuildRigFromAttachments() end)
+                for _ = 1, 15 do
+                    RunService.Heartbeat:Wait()
+                    if visuallyValid() then return true end
+                end
+
+                -- A method that returned successfully but stripped the avatar is not
+                -- considered a success. Restore the previous appearance before trying
+                -- the next method so saved outfits never leave the user naked.
+                if beforeVisual then
+                    state.RestoreVisualSnapshot(character, humanoid, beforeVisual)
+                    for _ = 1, 2 do RunService.Heartbeat:Wait() end
+                end
+                return false
+            end
+
+            local methods = {
+                humanoid.ApplyDescriptionAsync,
+                humanoid.ApplyDescription,
+                humanoid.ApplyDescriptionResetAsync,
+                humanoid.ApplyDescriptionReset,
+            }
+
+            for _, method in ipairs(methods) do
+                if attempt(method, nil) then applied = true; break end
+            end
+
             if not applied then
-                local syncMethod = humanoid.ApplyDescriptionReset or humanoid.ApplyDescription
-                if typeof(syncMethod) == "function" then
+                for _, method in ipairs(methods) do
+                    if applied then break end
                     for _, verification in ipairs({Enum.AssetTypeVerification.ClientOnly, Enum.AssetTypeVerification.Default}) do
-                        local ok = Wear.WithRobloxIdentity(function()
-                            syncMethod(humanoid, description, verification)
-                        end)
-                        if ok == true then applied = true; break end
+                        if attempt(method, verification) then
+                            applied = true
+                            break
+                        end
                     end
                 end
             end
-            if applied then
-                pcall(function() humanoid:BuildRigFromAttachments() end)
-                for _ = 1, 2 do RunService.Heartbeat:Wait() end
+
+            if not applied and beforeVisual then
+                state.RestoreVisualSnapshot(character, humanoid, beforeVisual)
             end
+
             pcall(function() description:Destroy() end)
             return applied
         end
+
 
         state.MakeSavedOutfitViewport = function(parent, descriptionData, savedItems)
             local viewport = create("ViewportFrame", {
@@ -16097,14 +16434,22 @@ function LULA.CreateLib(kavName, themeInput)
                             elseif id and not seen[id] then
                                 local accessoryType = ASSET_TYPE_TO_ACCESSORY_TYPE[item.AssetTypeId]
                                 if accessoryType then
+                                    local layered = tonumber(item.AssetTypeId) and tonumber(item.AssetTypeId) >= 64 or false
                                     accessories[#accessories + 1] = {
                                         AssetId = id,
                                         AccessoryType = accessoryType,
-                                        IsLayered = tonumber(item.AssetTypeId) and tonumber(item.AssetTypeId) >= 64 or false,
-                                        Order = #accessories + 1
+                                        IsLayered = layered,
+                                        Order = layered and (#accessories + 1) or nil
                                     }
                                     seen[id] = true
                                 end
+                            end
+                        end
+                        for _, record in ipairs(accessories) do
+                            if record.IsLayered ~= true then
+                                record.IsLayered = false
+                                record.Order = nil
+                                record.Puffiness = nil
                             end
                         end
                         description:SetAccessories(accessories, true)
@@ -16379,19 +16724,21 @@ function LULA.CreateLib(kavName, themeInput)
         state.WearSavedOutfit = function(outfit)
             if type(outfit) ~= "table" or type(outfit.Items) ~= "table" then return false end
 
-            -- A saved outfit is a REPLACEMENT, not a layer over the kurrent avatar.
-            -- Klear every wearable category first so an old helmet/klassic shirt/etc.
-            -- cannot survive the switch, then apply the saved description and only
-            -- direct-wear saved items that Roblox omitted.
-            state.ClearCurrentAvatarForSavedOutfit()
-            RunService.Heartbeat:Wait()
+            -- Apply the complete saved HumanoidDescription FIRST. Never strip the live
+            -- avatar before we know Roblox accepted the saved description; a failed
+            -- apply must leave the player's kurrent outfit intact instead of naked.
             local descriptionApplied = false
             if type(outfit.Description) == "table" then
                 local ok, result = pcall(state.ApplyDescriptionData, outfit.Description)
                 descriptionApplied = ok and result == true
             end
-            RunService.Heartbeat:Wait()
-            RunService.Heartbeat:Wait()
+            if descriptionApplied then
+                state.EquippedBySlot = {}
+                state.ViewerModifiedSlots = {}
+                state.ViewerHiddenAssetIds = {}
+                RunService.Heartbeat:Wait()
+                RunService.Heartbeat:Wait()
+            end
 
             local present = {}
             for _, current in ipairs(state.GetCurrentWornItems()) do
@@ -16420,7 +16767,7 @@ function LULA.CreateLib(kavName, themeInput)
             state.ViewerHiddenAssetIds = {}
             refreshSelectedUi()
             if state.Viewer and state.Viewer.Refresh then pcall(function() state.Viewer:Refresh() end) end
-            notify("Wore " .. tostring(worn) .. "/" .. tostring(#outfit.Items) .. " saved outfit item(s).", (worn > 0 or descriptionApplied) and "success" or "warning", 3)
+            notify("Wore " .. tostring(worn) .. "/" .. tostring(#outfit.Items) .. " saved outfit item(s).", (worn > 0 or descriptionApplied) and "success" or "warning", 3.5)
             return worn > 0 or descriptionApplied
         end
 
@@ -16787,6 +17134,13 @@ function LULA.CreateLib(kavName, themeInput)
                             end
                         end
                         if changed then
+                            for _, record in ipairs(rebuilt) do
+                                if record.IsLayered ~= true then
+                                    record.IsLayered = false
+                                    record.Order = nil
+                                    record.Puffiness = nil
+                                end
+                            end
                             changed = pcall(function()
                                 description:SetAccessories(rebuilt, true)
                             end)
@@ -17104,13 +17458,15 @@ function LULA.CreateLib(kavName, themeInput)
             end)
         end))
 
-        track(ResetAllButton.MouseButton1Click:Connect(function()
-            if countEquipped() <= 0 and next(state.ViewerModifiedSlots or {}) == nil then return end
+        track(ResetAllButton.Activated:Connect(function()
+            -- Always allow a real account-avatar restore. Saved HumanoidDescriptions can
+            -- change the live avatar without populating EquippedBySlot, so tracker counts
+            -- are not a reliable reason to disable Reset All.
             LULA:Confirm(
-                "Remove all klothing?",
-                "Are you sure you want to remove all klothing?",
+                "Restore original avatar?",
+                "Are you sure you want to restore your original Roblox avatar?",
                 function()
-                    resetAllItems(true)
+                    resetAllItems(false)
                     rebuildOutfitList()
                 end
             )
@@ -18478,12 +18834,12 @@ function LULA.CreateLib(kavName, themeInput)
                 end
             end)
         end))
-        track(state.Viewer.ResetButton.MouseButton1Click:Connect(function()
+        track(state.Viewer.ResetButton.Activated:Connect(function()
             LULA:Confirm(
                 "Reset Avatar Kreator changes?",
                 "Restore every avatar item changed or removed by Avatar Kreator?",
                 function()
-                    resetAllItems(true)
+                    resetAllItems(false)
                     state.Viewer:Refresh()
                 end
             )
@@ -19149,6 +19505,12 @@ function LULA.CreateLib(kavName, themeInput)
             LastQuery = "",
             UserId = nil,
             Profile = nil,
+            UserSearchEntries = {},
+            UserSearchSeen = {},
+            UserSearchNextCursor = nil,
+            UserSearchQuery = "",
+            UserSearchLoading = false,
+            UserSearchLoadingLabel = nil,
         }
         active.UserLookup = state
 
@@ -19425,7 +19787,7 @@ function LULA.CreateLib(kavName, themeInput)
             state.LastQuery = ""
             state.UserId = nil
             state.Profile = nil
-            status.Text = "Enter part of a Roblox username, @username, User ID, or profile link."
+            status.Text = "Enter a Roblox username, @username, id:UserId, or profile link."
             if state.ClearSearchMatches then state.ClearSearchMatches() end
         end)
 
@@ -19459,7 +19821,7 @@ function LULA.CreateLib(kavName, themeInput)
         statusRow.LayoutOrder = -980
         statusRow.BackgroundTransparency = 0.035
         makeStroke(statusRow, active.Theme.Accent2, 0.76, 1)
-        status = makeText(statusRow, "Enter part of a Roblox username, @username, User ID, or profile link.", 10.5, Enum.Font.GothamMedium)
+        status = makeText(statusRow, "Enter a Roblox username, @username, id:UserId, or profile link.", 10.5, Enum.Font.GothamMedium)
         status.Position = UDim2.fromOffset(9, 0)
         status.Size = UDim2.new(1, -18, 1, 0)
         status.TextXAlignment = Enum.TextXAlignment.Left
@@ -19706,21 +20068,30 @@ function LULA.CreateLib(kavName, themeInput)
             end
         end
 
-        local function clearSearchMatches()
+        local function clearSearchMatches(resetPaging)
             for _, child in ipairs(searchResultsRow:GetChildren()) do
-                if child:IsA("Frame") and child.Name == "UserMatch" then child:Destroy() end
+                if child ~= searchResultsLayout and child:IsA("GuiObject") then child:Destroy() end
             end
+            state.UserSearchLoadingLabel = nil
             searchResultsRow.Visible = false
+            if resetPaging ~= false then
+                state.UserSearchEntries = {}
+                state.UserSearchSeen = {}
+                state.UserSearchNextCursor = nil
+                state.UserSearchQuery = ""
+                state.UserSearchLoading = false
+            end
         end
         state.ClearSearchMatches = clearSearchMatches
 
         local lookup
-        local function renderSearchMatches(entries, queryText)
-            clearSearchMatches()
+        local renderSearchMatches
+        local loadMoreSearchMatches
+
+        renderSearchMatches = function(entries, queryText)
+            clearSearchMatches(false)
             if type(entries) ~= "table" or #entries == 0 then return false end
 
-            -- Keep username matches first so short searches feel like Roblox's
-            -- player finder instead of burying the closest username under display names.
             local queryLower = string.lower(trim(queryText))
             table.sort(entries, function(a, b)
                 local aName = string.lower(tostring(type(a) == "table" and a.name or ""))
@@ -19742,8 +20113,14 @@ function LULA.CreateLib(kavName, themeInput)
             end)
 
             searchResultsRow.Visible = true
+            local countLabel = makeText(searchResultsRow, tostring(#entries) .. (#entries == 1 and " player found" or " players found"), 11.5, Enum.Font.GothamBold)
+            countLabel.Name = "UserMatchCount"
+            countLabel.LayoutOrder = -10
+            countLabel.Size = UDim2.new(1, -4, 0, 28)
+            countLabel.TextXAlignment = Enum.TextXAlignment.Left
+            bind(countLabel, "TextColor3", "SchemeColor")
+
             for index, entry in ipairs(entries) do
-                if index > 10 then break end
                 local userId = tonumber(entry.id or entry.userId)
                 if userId then
                     local row = newRow(searchResultsRow, "UserMatch", 54)
@@ -19783,8 +20160,8 @@ function LULA.CreateLib(kavName, themeInput)
                     open.Position = UDim2.new(1, -7, 0.5, 0)
                     open.Size = UDim2.fromOffset(78, 32)
                     open.TextSize = 10.5
-                    trackLocal(open.MouseButton1Click:Connect(function()
-                        if lookup then lookup(tostring(userId)) end
+                    trackLocal(open.Activated:Connect(function()
+                        if lookup then lookup("id:" .. tostring(userId)) end
                     end))
 
                     task.spawn(function()
@@ -19796,10 +20173,78 @@ function LULA.CreateLib(kavName, themeInput)
                         if icon and icon.Parent then icon.Image = image end
                     end)
                 end
+                if index % 8 == 0 then RunService.Heartbeat:Wait() end
             end
-            status.Text = "Found Roblox users matching " .. tostring(queryText) .. ". Tap View for full info."
+
+            local loader = newRow(searchResultsRow, "UserMatchLoader", 38)
+            loader.LayoutOrder = #entries + 20
+            loader.BackgroundTransparency = 1
+            local loaderText = makeText(loader, "", 10.5, Enum.Font.GothamBold)
+            loaderText.Size = UDim2.new(1, -8, 1, 0)
+            loaderText.Position = UDim2.fromOffset(4, 0)
+            loaderText.TextXAlignment = Enum.TextXAlignment.Center
+            bind(loaderText, "TextColor3", "MutedText")
+            state.UserSearchLoadingLabel = loaderText
+            if state.UserSearchLoading then
+                loaderText.Text = "Fetching more  " .. utf8.char(0x1F36D)
+            elseif state.UserSearchNextCursor then
+                loaderText.Text = "Keep skrolling to load more  " .. utf8.char(0x1F36D)
+            else
+                loaderText.Text = "All loaded  " .. utf8.char(0x1F36D)
+            end
+
+            status.Text = tostring(#entries) .. (#entries == 1 and " player found" or " players found") .. " for " .. tostring(queryText) .. "."
             return true
         end
+
+        loadMoreSearchMatches = function()
+            if state.Destroyed or state.UserSearchLoading or not state.UserSearchNextCursor or state.UserSearchQuery == "" then return end
+            state.UserSearchLoading = true
+            local serial = state.Serial
+            local queryText = state.UserSearchQuery
+            renderSearchMatches(state.UserSearchEntries, queryText)
+            local fetchHandle = LULA:ShowIsland("Fetching", "More User Lookup results", {Fetching = true})
+            local animationToken = os.clock()
+            state.UserSearchAnimationToken = animationToken
+            task.spawn(function()
+                local phase = 0
+                while state.UserSearchLoading and state.UserSearchAnimationToken == animationToken and not state.Destroyed do
+                    phase = (phase % 3) + 1
+                    if state.UserSearchLoadingLabel and state.UserSearchLoadingLabel.Parent then
+                        state.UserSearchLoadingLabel.Text = "Fetching more  " .. string.rep(utf8.char(0x1F36D) .. " ", phase)
+                    end
+                    task.wait(0.22)
+                end
+            end)
+            task.spawn(function()
+                RunService.Heartbeat:Wait()
+                local encoded = HttpService:UrlEncode(queryText)
+                local cursor = HttpService:UrlEncode(tostring(state.UserSearchNextCursor))
+                local data = httpJson("https://users.roblox.com/v1/users/search?keyword=" .. encoded .. "&limit=10&cursor=" .. cursor, 8)
+                if serial == state.Serial and not state.Destroyed and type(data) == "table" then
+                    for _, entry in ipairs(type(data.data) == "table" and data.data or {}) do
+                        local id = tonumber(entry.id or entry.userId)
+                        if id and not state.UserSearchSeen[id] then
+                            state.UserSearchSeen[id] = true
+                            state.UserSearchEntries[#state.UserSearchEntries + 1] = entry
+                        end
+                    end
+                    state.UserSearchNextCursor = data.nextPageCursor
+                end
+                state.UserSearchLoading = false
+                state.UserSearchAnimationToken = nil
+                if fetchHandle then fetchHandle:Close() end
+                if serial == state.Serial and not state.Destroyed then renderSearchMatches(state.UserSearchEntries, queryText) end
+            end)
+        end
+
+        trackLocal(scroll:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
+            if not searchResultsRow.Visible or state.UserSearchLoading or not state.UserSearchNextCursor then return end
+            local maxY = math.max(0, scroll.AbsoluteCanvasSize.Y - scroll.AbsoluteWindowSize.Y)
+            if maxY > 0 and scroll.CanvasPosition.Y >= maxY - 110 then
+                loadMoreSearchMatches()
+            end
+        end))
 
         lookup = function(rawQuery)
             rawQuery = trim(rawQuery)
@@ -19816,15 +20261,22 @@ function LULA.CreateLib(kavName, themeInput)
             searchButton.TextTransparency = 0.38
             status.Text = "Looking up " .. rawQuery .. "..."
             setResultsVisible(false)
+            clearSearchMatches()
 
             local fetchHandle = LULA:ShowIsland("Fetching", "User Lookup", {Fetching = true})
             task.spawn(function()
                 RunService.Heartbeat:Wait()
                 local workerOk, workerError = xpcall(function()
                 local cleanQuery = rawQuery:gsub("^@", "")
-                local userId = tonumber(cleanQuery:match("^%d+$"))
-                    or tonumber(cleanQuery:match("[Rr][Oo][Bb][Ll][Oo][Xx]%.com/users/(%d+)"))
-                    or tonumber(cleanQuery:match("/users/(%d+)"))
+                local explicitId = cleanQuery:match("^[Ii][Dd]:(%d+)$")
+                    or cleanQuery:match("[Rr][Oo][Bb][Ll][Oo][Xx]%.com/users/(%d+)")
+                    or cleanQuery:match("/users/(%d+)")
+                local digitsOnly = cleanQuery:match("^%d+$")
+                -- Short numeric searches such as 100 are valid username-search terms.
+                -- Use id:<number> for an explicit short UserId. Longer numeric IDs keep
+                -- the convenient direct-profile behavior without freezing short searches.
+                local userId = tonumber(explicitId)
+                if not userId and digitsOnly and #digitsOnly >= 6 then userId = tonumber(digitsOnly) end
 
                 if not userId then
                     local encoded = HttpService:UrlEncode(cleanQuery)
@@ -19845,7 +20297,19 @@ function LULA.CreateLib(kavName, themeInput)
                     searchButton.TextTransparency = 0
                     setResultsVisible(false)
                     if type(matches) == "table" and #matches > 0 then
-                        local renderedOk = pcall(renderSearchMatches, matches, cleanQuery)
+                        state.UserSearchEntries = {}
+                        state.UserSearchSeen = {}
+                        for _, entry in ipairs(matches) do
+                            local id = tonumber(entry.id or entry.userId)
+                            if id and not state.UserSearchSeen[id] then
+                                state.UserSearchSeen[id] = true
+                                state.UserSearchEntries[#state.UserSearchEntries + 1] = entry
+                            end
+                        end
+                        state.UserSearchQuery = cleanQuery
+                        state.UserSearchNextCursor = searchData.nextPageCursor
+                        state.UserSearchLoading = false
+                        local renderedOk = pcall(renderSearchMatches, state.UserSearchEntries, cleanQuery)
                         if not renderedOk then
                             clearSearchMatches()
                             status.Text = "Could not show those results. Press Lookup to retry."
@@ -19862,7 +20326,7 @@ function LULA.CreateLib(kavName, themeInput)
                     if exactOk then exactId = tonumber(exactResult) end
                     if serial ~= state.Serial or state.Destroyed then return end
                     if exactId then
-                        lookup(tostring(exactId))
+                        lookup("id:" .. tostring(exactId))
                         return
                     end
 
@@ -20496,6 +20960,39 @@ function LULA.CreateLib(kavName, themeInput)
             end)
         end
 
+        state.GotoPlayer = function(player)
+            if not player or player == LocalPlayer or not player.Parent then return false end
+            local character = LocalPlayer.Character
+            local targetCharacter = player.Character
+            local root = character and (character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("Torso") or character:FindFirstChild("UpperTorso"))
+            local targetRoot = targetCharacter and (targetCharacter:FindFirstChild("HumanoidRootPart") or targetCharacter:FindFirstChild("Torso") or targetCharacter:FindFirstChild("UpperTorso"))
+            if not root or not targetRoot then
+                LULA:ShowIsland("Goto", "That player's character is not ready yet.", {Duration=3.5})
+                return false
+            end
+            local destination = targetRoot.CFrame * CFrame.new(0, 0.15, 3)
+            pcall(function() root.AssemblyLinearVelocity = Vector3.zero; root.AssemblyAngularVelocity = Vector3.zero end)
+
+            -- Most experiences allow direct client CFrame movement, so try it first.
+            local moved = pcall(function() root.CFrame = destination end)
+            if not moved or (root.Position - targetRoot.Position).Magnitude > 16 then
+                moved = pcall(function() character:PivotTo(destination) end)
+            end
+            if (not moved or (root.Position - targetRoot.Position).Magnitude > 16) and character.PrimaryPart then
+                moved = pcall(function() character:SetPrimaryPartCFrame(destination) end)
+            end
+            if not moved or (root.Position - targetRoot.Position).Magnitude > 24 then
+                local humanoid = character:FindFirstChildOfClass("Humanoid")
+                moved = humanoid and pcall(function() humanoid:MoveTo(targetRoot.Position) end) or false
+            end
+            if moved then
+                LULA:ShowIsland("Goto", "Teleported to @"..player.Name..".", {Duration=3})
+                return true
+            end
+            LULA:ShowIsland("Goto", "This experience blocked the available movement methods.", {Duration=3.5})
+            return false
+        end
+
         local function renderPlayers(showFetch)
             state.PlayerRenderSerial = (state.PlayerRenderSerial or 0) + 1
             local serial = state.PlayerRenderSerial
@@ -20511,9 +21008,9 @@ function LULA.CreateLib(kavName, themeInput)
                 playersStatus.Text = "Players in this server  |  "..tostring(#list).."/"..tostring(Players.MaxPlayers)
                 for index, player in ipairs(list) do
                     if serial ~= state.PlayerRenderSerial or state.Destroyed then if fetchHandle then fetchHandle:Close() end; return end
-                    local row = makeCard(playerList, 76, index)
+                    local row = makeCard(playerList, 96, index)
                     local avatar = Instance.new("ImageLabel")
-                    avatar.Position = UDim2.fromOffset(7, 7); avatar.Size = UDim2.fromOffset(60, 60); avatar.BackgroundTransparency = 1; avatar.ScaleType = Enum.ScaleType.Crop; avatar.Parent = row
+                    avatar.Position = UDim2.fromOffset(7, 18); avatar.Size = UDim2.fromOffset(60, 60); avatar.BackgroundTransparency = 1; avatar.ScaleType = Enum.ScaleType.Crop; avatar.Parent = row
                     makeCorner(avatar, 10)
                     task.spawn(function()
                         local ok, image = pcall(function()
@@ -20523,43 +21020,51 @@ function LULA.CreateLib(kavName, themeInput)
                         if ok and avatar.Parent then avatar.Image = image end
                     end)
                     local display = makeText(row, tostring(player.DisplayName), 12, Enum.Font.GothamBold)
-                    display.Position = UDim2.fromOffset(76, 8); display.Size = UDim2.new(1, -250, 0, 20); display.TextXAlignment = Enum.TextXAlignment.Left
+                    display.Position = UDim2.fromOffset(76, 9); display.Size = UDim2.new(1, -170, 0, 20); display.TextXAlignment = Enum.TextXAlignment.Left
                     local user = makeText(row, "@"..player.Name.."  |  ID "..tostring(player.UserId), 9, Enum.Font.GothamMedium)
-                    user.Position = UDim2.fromOffset(76, 29); user.Size = UDim2.new(1, -250, 0, 18); user.TextXAlignment = Enum.TextXAlignment.Left; bind(user, "TextColor3", "MutedText")
-                    local inspect = makeButton(row, "Activity")
-                    inspect.Position = UDim2.new(1, -166, 0, 8); inspect.Size = UDim2.fromOffset(76, 27); inspect.BackgroundColor3 = rgb(81, 145, 255); inspect.BackgroundTransparency = 0.03
+                    user.Position = UDim2.fromOffset(76, 30); user.Size = UDim2.new(1, -170, 0, 18); user.TextXAlignment = Enum.TextXAlignment.Left; bind(user, "TextColor3", "MutedText")
+
                     local friend = makeButton(row, player == LocalPlayer and "You" or "Add Friend")
-                    friend.Position = UDim2.new(1, -84, 0, 8); friend.Size = UDim2.fromOffset(76, 27); friend.BackgroundColor3 = rgb(68, 198, 121); friend.BackgroundTransparency = 0.03
-                    local tp = makeButton(row, player == LocalPlayer and "You" or "Spectate")
-                    tp.Position = UDim2.new(1, -166, 0, 41); tp.Size = UDim2.fromOffset(158, 26); tp.BackgroundColor3 = rgb(57, 126, 255); tp.BackgroundTransparency = 0.04
-                    tp.TextColor3 = rgb(255, 255, 255)
-                    tp.TextTransparency = 0
+                    friend.AnchorPoint = Vector2.new(1, 0)
+                    friend.Position = UDim2.new(1, -8, 0, 8); friend.Size = UDim2.fromOffset(82, 27); friend.BackgroundColor3 = rgb(68, 198, 121); friend.BackgroundTransparency = 0.03
+
+                    local actions = Instance.new("Frame")
+                    actions.Position = UDim2.fromOffset(76, 56); actions.Size = UDim2.new(1, -84, 0, 31); actions.BackgroundTransparency = 1; actions.Parent = row
+                    local actionLayout = Instance.new("UIListLayout")
+                    actionLayout.FillDirection = Enum.FillDirection.Horizontal; actionLayout.Padding = UDim.new(0, 5); actionLayout.SortOrder = Enum.SortOrder.LayoutOrder; actionLayout.Parent = actions
+                    local inspect = makeButton(actions, "Activity"); inspect.LayoutOrder = 1; inspect.Size = UDim2.new(0.25, -4, 0, 29); inspect.BackgroundColor3 = rgb(81, 145, 255); inspect.BackgroundTransparency = 0.03
+                    local goto = makeButton(actions, player == LocalPlayer and "You" or "Goto"); goto.LayoutOrder = 2; goto.Size = UDim2.new(0.25, -4, 0, 29); goto.BackgroundColor3 = rgb(52, 180, 126); goto.BackgroundTransparency = 0.03
+                    local spectate = makeButton(actions, player == LocalPlayer and "You" or "Spectate"); spectate.LayoutOrder = 3; spectate.Size = UDim2.new(0.25, -4, 0, 29); spectate.BackgroundColor3 = rgb(57, 126, 255); spectate.BackgroundTransparency = 0.04
+                    local examine = makeButton(actions, "Examine"); examine.LayoutOrder = 4; examine.Size = UDim2.new(0.25, -4, 0, 29); examine.BackgroundColor3 = rgb(145, 92, 220); examine.BackgroundTransparency = 0.04
+                    local playerFeatures = ensurePlayerFeatureService()
+
+                    if player ~= LocalPlayer then state.SpectateButtons[player.UserId] = spectate end
+                    playerFeatures:BindPlayerActionButton(inspect, function()
+                        if player and player.Parent == Players then playerFeatures:OpenActivityCard(player) end
+                    end)
+                    playerFeatures:BindPlayerActionButton(examine, function()
+                        if not player or player.Parent ~= Players then return end
+                        if active.AvatarKreator and type(active.AvatarKreator.InspectPlayer) == "function" then
+                            active.AvatarKreator.InspectPlayer(player)
+                        else
+                            pcall(function() get.GuiService:InspectPlayerFromUserId(player.UserId) end)
+                        end
+                    end)
                     if player ~= LocalPlayer then
-                        state.SpectateButtons[player.UserId] = tp
-                    else
-                        tp.AutoButtonColor = false
-                    end
-                    trackLocal(inspect.MouseButton1Click:Connect(function()
-                        task.delay(0.05,function()
-                            if player and player.Parent==Players then ensurePlayerFeatureService():OpenActivityCard(player) end
-                        end)
-                    end))
-                    if player ~= LocalPlayer then
-                        trackLocal(friend.MouseButton1Click:Connect(function()
+                        playerFeatures:BindPlayerActionButton(goto, function() state.GotoPlayer(player) end)
+                        playerFeatures:BindPlayerActionButton(spectate, function() state.SpectatePlayer(player) end)
+                        playerFeatures:BindPlayerActionButton(friend, function()
                             local isFriend = false
                             pcall(function() isFriend = LocalPlayer:IsFriendsWithAsync(player.UserId) == true end)
                             if isFriend then friend.Text = "Friends"; return end
                             local opened = pcall(function() get.StarterGui:SetCore("PromptSendFriendRequest", player) end)
                             friend.Text = opened and "Opened" or "Unavailable"
                             task.delay(1.2, function() if friend.Parent then friend.Text = "Add Friend" end end)
-                        end))
+                        end)
                     else
+                        goto.AutoButtonColor = false
+                        spectate.AutoButtonColor = false
                         friend.AutoButtonColor = false
-                    end
-                    if player ~= LocalPlayer then
-                        trackLocal(tp.MouseButton1Click:Connect(function()
-                            state.SpectatePlayer(player)
-                        end))
                     end
                     if index % 6 == 0 then RunService.Heartbeat:Wait() end
                 end
