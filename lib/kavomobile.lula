@@ -4927,8 +4927,8 @@ function LULA.CreateLib(kavName, themeInput)
 
         local tabIndicator = Instance.new("Frame")
         tabIndicator.Name = "SelectedIndicator"
-        tabIndicator.AnchorPoint = Vector2.new(0, 0.5)
-        tabIndicator.Position = UDim2.new(0, 0, 0.5, 0)
+        tabIndicator.AnchorPoint = Vector2.new(1, 0.5)
+        tabIndicator.Position = UDim2.new(1, -2, 0.5, 0)
         tabIndicator.Size = UDim2.fromOffset(3, 18)
         tabIndicator.BackgroundColor3 = rgb(228, 55, 68)
         tabIndicator.BorderSizePixel = 0
