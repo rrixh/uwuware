@@ -21536,6 +21536,7 @@ function LULA.CreateLib(kavName, themeInput)
         end
 
         local function renderPlayers(showFetch)
+            local preservedCanvasPosition = scroll.CanvasPosition
             state.PlayerRenderSerial = (state.PlayerRenderSerial or 0) + 1
             local serial = state.PlayerRenderSerial
             local fetchHandle = showFetch == true and LULA:ShowIsland("Fetching", "Experience Players", {Fetching = true}) or nil
@@ -21626,11 +21627,15 @@ function LULA.CreateLib(kavName, themeInput)
                     if index % 6 == 0 then RunService.Heartbeat:Wait() end
                 end
                 state.RefreshSpectateButtons()
+                RunService.Heartbeat:Wait()
+                local maxY = math.max(0, scroll.AbsoluteCanvasSize.Y - scroll.AbsoluteWindowSize.Y)
+                scroll.CanvasPosition = Vector2.new(preservedCanvasPosition.X, math.clamp(preservedCanvasPosition.Y, 0, maxY))
                 if fetchHandle then fetchHandle:Close() end
             end)
         end
 
         local function renderServers(showFetch)
+            local preservedCanvasPosition = scroll.CanvasPosition
             clearChildren(serverList, {[serverLayout]=true})
             serverStatus.Text = "Loading public servers..."
             local fetchHandle = showFetch ~= false and LULA:ShowIsland("Fetching", "Experience Servers", {Fetching = true}) or nil
@@ -21669,6 +21674,9 @@ function LULA.CreateLib(kavName, themeInput)
                     if index % 8 == 0 then RunService.Heartbeat:Wait() end
                 end
                 if #rows == 0 then serverStatus.Text = "No public servers returned by Roblox." end
+                RunService.Heartbeat:Wait()
+                local maxY = math.max(0, scroll.AbsoluteCanvasSize.Y - scroll.AbsoluteWindowSize.Y)
+                scroll.CanvasPosition = Vector2.new(preservedCanvasPosition.X, math.clamp(preservedCanvasPosition.Y, 0, maxY))
                 if fetchHandle then fetchHandle:Close() end
             end)
         end
