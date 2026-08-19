@@ -5647,6 +5647,8 @@ function LULA.CreateLib(kavName, themeInput)
                 list = type(list) == "table" and list or {}
                 local default = defaultValue ~= nil and defaultValue or list[1]
                 local value = default
+                local selectionResolver = nil
+                local keepOpenResolver = nil
                 local row = newRow(section, name, 70)
                 local textLabel = makeText(row, name, 13, Enum.Font.GothamMedium)
                 textLabel.Position = UDim2.fromOffset(12, 2)
@@ -5664,6 +5666,7 @@ function LULA.CreateLib(kavName, themeInput)
                 arrow.Size = UDim2.fromOffset(18, 20)
                 arrow.TextXAlignment = Enum.TextXAlignment.Center
                 bind(arrow, "TextColor3", "SchemeColor")
+
                 local popup = Instance.new("ScrollingFrame")
                 popup.Name = "DropdownPopup"
                 popup.Position = UDim2.fromOffset(10, 62)
@@ -5682,13 +5685,89 @@ function LULA.CreateLib(kavName, themeInput)
                 local popupLayout = Instance.new("UIListLayout")
                 popupLayout.Padding = UDim.new(0, 2)
                 popupLayout.Parent = popup
+
                 local open = false
                 local api
+                local lastPressAt = setmetatable({}, {__mode = "k"})
+
+                local function isSelected(option)
+                    if type(selectionResolver) == "function" then
+                        local ok, result = pcall(selectionResolver, option)
+                        if ok then return result == true end
+                    end
+                    return option == value
+                end
+
+                local function makeKustomCheck(parent)
+                    local holder = Instance.new("Frame")
+                    holder.Name = "SelectedCheck"
+                    holder.AnchorPoint = Vector2.new(1, 0.5)
+                    holder.Position = UDim2.new(1, -12, 0.5, 0)
+                    holder.Size = UDim2.fromOffset(18, 18)
+                    holder.BackgroundTransparency = 1
+                    holder.ZIndex = 24
+                    holder.Parent = parent
+
+                    local short = Instance.new("Frame")
+                    short.AnchorPoint = Vector2.new(0.5, 0.5)
+                    short.Position = UDim2.fromOffset(5.4, 10.4)
+                    short.Size = UDim2.fromOffset(3, 8)
+                    short.Rotation = -42
+                    short.BorderSizePixel = 0
+                    short.ZIndex = 25
+                    short.Parent = holder
+                    bind(short, "BackgroundColor3", "SchemeColor")
+                    makeCorner(short, 2)
+
+                    local long = Instance.new("Frame")
+                    long.AnchorPoint = Vector2.new(0.5, 0.5)
+                    long.Position = UDim2.fromOffset(11.2, 8.4)
+                    long.Size = UDim2.fromOffset(3, 13)
+                    long.Rotation = 43
+                    long.BorderSizePixel = 0
+                    long.ZIndex = 25
+                    long.Parent = holder
+                    bind(long, "BackgroundColor3", "SchemeColor")
+                    makeCorner(long, 2)
+
+                    return holder
+                end
+
+                local function connectUniversalPress(button, fn)
+                    local armedTouch = false
+                    local armedMouse = false
+                    local function fire()
+                        local now = os.clock()
+                        local previous = tonumber(lastPressAt[button]) or 0
+                        if now - previous < 0.12 then return end
+                        lastPressAt[button] = now
+                        fn()
+                    end
+                    track(button.Activated:Connect(fire))
+                    track(button.InputBegan:Connect(function(inputObject)
+                        if inputObject.UserInputType == Enum.UserInputType.Touch then
+                            armedTouch = true
+                        elseif inputObject.UserInputType == Enum.UserInputType.MouseButton1 then
+                            armedMouse = true
+                        end
+                    end))
+                    track(button.InputEnded:Connect(function(inputObject)
+                        if inputObject.UserInputType == Enum.UserInputType.Touch and armedTouch then
+                            armedTouch = false
+                            fire()
+                        elseif inputObject.UserInputType == Enum.UserInputType.MouseButton1 and armedMouse then
+                            armedMouse = false
+                            fire()
+                        end
+                    end))
+                end
+
                 local function set(newValue, fire)
                     value = newValue
                     selectButton.Text = "  " .. tostring(value or "Select...")
                     if fire ~= false then safeCall("Dropdown " .. tostring(name), callback, value) end
                 end
+
                 local function closePopup()
                     open = false
                     arrow.Rotation = 0
@@ -5696,50 +5775,75 @@ function LULA.CreateLib(kavName, themeInput)
                     row.Size = UDim2.new(1, 0, 0, 70)
                     popup.Size = UDim2.new(1, -46, 0, 0)
                 end
-                local function rebuild(newList)
+
+                local rebuild
+                rebuild = function(newList)
                     list = type(newList) == "table" and newList or {}
                     for _, child in ipairs(popup:GetChildren()) do
                         if child:IsA("TextButton") then child:Destroy() end
                     end
                     for _, option in ipairs(list) do
                         local optionButton = makeButton(popup, tostring(option))
-                        optionButton.Size = UDim2.new(1, -4, 0, 28)
+                        optionButton.Size = UDim2.new(1, -4, 0, 30)
                         optionButton.TextXAlignment = Enum.TextXAlignment.Left
-                        optionButton.Text = (option == value and ("  " .. utf8.char(0x2713) .. "  ") or "     ") .. tostring(option)
+                        optionButton.Text = "   " .. tostring(option)
                         optionButton.ZIndex = 21
-                        if option == value then
-                            optionButton.BackgroundTransparency = 0.02
+                        optionButton.BackgroundTransparency = isSelected(option) and 0.02 or 0.16
+
+                        local check = makeKustomCheck(optionButton)
+                        check.Visible = isSelected(option)
+
+                        if isSelected(option) then
                             bind(optionButton, "TextColor3", "SchemeColor")
-                        else
-                            optionButton.BackgroundTransparency = 0.16
                         end
-                        track(optionButton.MouseButton1Click:Connect(function()
+
+                        connectUniversalPress(optionButton, function()
                             set(option)
-                            closePopup()
-                        end))
+                            -- Rebuild immediately so multi-select dropdowns update every
+                            -- check mark without needing to close/reopen the list.
+                            local stayOpen = false
+                            if type(keepOpenResolver) == "function" then
+                                local ok, result = pcall(keepOpenResolver)
+                                stayOpen = ok and result == true
+                            end
+                            if stayOpen then
+                                rebuild(list)
+                            else
+                                closePopup()
+                            end
+                        end)
                     end
                 end
+
                 rebuild(list)
-                track(selectButton.MouseButton1Click:Connect(function()
+
+                connectUniversalPress(selectButton, function()
                     open = not open
                     if open then
                         arrow.Rotation = 180
-                        local height = math.min(150, math.max(32, #list * 30))
+                        rebuild(list)
+                        local height = math.min(170, math.max(34, #list * 32))
                         popup.Visible = true
                         popup.Size = UDim2.new(1, -46, 0, height)
                         row.Size = UDim2.new(1, 0, 0, 70 + height)
                     else
-                        arrow.Rotation = 0
                         closePopup()
                     end
-                end))
-                local dropdownReset = createReset(row, function() set(default) end)
+                end)
+
+                local dropdownReset = createReset(row, function()
+                    set(default)
+                    rebuild(list)
+                end)
                 dropdownReset.Position = UDim2.new(1, -7, 0, 54)
                 createInfoButton(row, name, tip, -5, 4)
                 attachTip(row, tip)
                 api = register({}, row, tostring(name) .. " " .. tostring(tip) .. " " .. table.concat(list, " "))
                 api.Kind = "dropdown"
-                function api:SetValue(newValue, fire) set(newValue, fire) end
+                function api:SetValue(newValue, fire)
+                    set(newValue, fire)
+                    rebuild(list)
+                end
                 function api:GetValue() return value end
                 function api:Refresh(newList)
                     rebuild(newList)
@@ -5748,8 +5852,18 @@ function LULA.CreateLib(kavName, themeInput)
                 function api:ContainsValue(candidate)
                     return table.find(list, candidate) ~= nil
                 end
+                function api:SetSelectionResolver(resolver)
+                    selectionResolver = type(resolver) == "function" and resolver or nil
+                    rebuild(list)
+                end
+                function api:SetKeepOpenResolver(resolver)
+                    keepOpenResolver = type(resolver) == "function" and resolver or nil
+                end
                 function api:SetResetDefault(newDefault) default = newDefault end
-                function api:Reset() set(default) end
+                function api:Reset()
+                    set(default)
+                    rebuild(list)
+                end
                 return api
             end
 
