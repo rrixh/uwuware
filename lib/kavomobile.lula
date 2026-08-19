@@ -976,23 +976,63 @@ local function addButtonPressEffect(button)
     scaleObject.Name = "LHPressScale"
     scaleObject.Scale = 1
     scaleObject.Parent = button
+
     local pressing = false
+    local pressInput = nil
+    local pressStart = nil
+    local moved = false
+    local activeBeforePress = true
+
     track(button.InputBegan:Connect(function(inputObject)
         if inputObject.UserInputType == Enum.UserInputType.MouseButton1 or inputObject.UserInputType == Enum.UserInputType.Touch then
             pressing = true
+            pressInput = inputObject
+            pressStart = Vector2.new(inputObject.Position.X, inputObject.Position.Y)
+            moved = false
+            activeBeforePress = button.Active
             createButtonRipple(button, inputObject)
             tween(scaleObject, {Scale = 0.955}, 0.06, Enum.EasingStyle.Quad)
         end
     end))
+
+    track(UserInputService.InputChanged:Connect(function(inputObject)
+        if not pressing or not pressStart then return end
+        if inputObject ~= pressInput
+            and inputObject.UserInputType ~= Enum.UserInputType.MouseMovement
+            and inputObject.UserInputType ~= Enum.UserInputType.Touch then
+            return
+        end
+        local current = Vector2.new(inputObject.Position.X, inputObject.Position.Y)
+        if (current - pressStart).Magnitude > 9 then
+            moved = true
+            -- Cancels GuiButton Activated/MouseButton click when this gesture became a skroll.
+            button.Active = false
+            tween(scaleObject, {Scale = 1}, 0.08, Enum.EasingStyle.Quad)
+        end
+    end))
+
     track(button.InputEnded:Connect(function(inputObject)
         if inputObject.UserInputType == Enum.UserInputType.MouseButton1 or inputObject.UserInputType == Enum.UserInputType.Touch then
             pressing = false
+            pressInput = nil
+            pressStart = nil
             tween(scaleObject, {Scale = 1}, 0.09, Enum.EasingStyle.Back)
+            if moved then
+                task.defer(function()
+                    if button and button.Parent then button.Active = activeBeforePress end
+                end)
+            end
+            moved = false
         end
     end))
+
     track(button.MouseLeave:Connect(function()
-        if pressing then
+        if pressing and UserInputService.MouseEnabled then
             pressing = false
+            pressInput = nil
+            pressStart = nil
+            moved = false
+            button.Active = activeBeforePress
             tween(scaleObject, {Scale = 1}, 0.09, Enum.EasingStyle.Back)
         end
     end))
