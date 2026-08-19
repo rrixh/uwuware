@@ -5734,32 +5734,32 @@ function LULA.CreateLib(kavName, themeInput)
                 end
 
                 local function connectUniversalPress(button, fn)
-                    local armedTouch = false
-                    local armedMouse = false
-                    local function fire()
-                        local now = os.clock()
-                        local previous = tonumber(lastPressAt[button]) or 0
-                        if now - previous < 0.12 then return end
-                        lastPressAt[button] = now
-                        fn()
-                    end
-                    track(button.Activated:Connect(fire))
+                    local pressInput, pressStart, moved = nil, nil, false
+                    local function clear() pressInput, pressStart, moved = nil, nil, false end
                     track(button.InputBegan:Connect(function(inputObject)
-                        if inputObject.UserInputType == Enum.UserInputType.Touch then
-                            armedTouch = true
-                        elseif inputObject.UserInputType == Enum.UserInputType.MouseButton1 then
-                            armedMouse = true
-                        end
+                        if inputObject.UserInputType ~= Enum.UserInputType.Touch and inputObject.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
+                        pressInput = inputObject
+                        pressStart = Vector2.new(inputObject.Position.X, inputObject.Position.Y)
+                        moved = false
+                    end))
+                    track(UserInputService.InputChanged:Connect(function(inputObject)
+                        if not pressInput or not pressStart then return end
+                        if inputObject ~= pressInput and inputObject.UserInputType ~= Enum.UserInputType.MouseMovement and inputObject.UserInputType ~= Enum.UserInputType.Touch then return end
+                        local pos = Vector2.new(inputObject.Position.X, inputObject.Position.Y)
+                        if (pos - pressStart).Magnitude > 9 then moved = true end
                     end))
                     track(button.InputEnded:Connect(function(inputObject)
-                        if inputObject.UserInputType == Enum.UserInputType.Touch and armedTouch then
-                            armedTouch = false
-                            fire()
-                        elseif inputObject.UserInputType == Enum.UserInputType.MouseButton1 and armedMouse then
-                            armedMouse = false
-                            fire()
-                        end
+                        if inputObject ~= pressInput then return end
+                        local shouldFire = pressStart ~= nil and not moved
+                        clear()
+                        if not shouldFire then return end
+                        local now = os.clock()
+                        local previous = tonumber(lastPressAt[button]) or 0
+                        if now - previous < 0.14 then return end
+                        lastPressAt[button] = now
+                        fn()
                     end))
+                    track(button.AncestryChanged:Connect(function(_, parent) if not parent then clear() end end))
                 end
 
                 local function set(newValue, fire)
