@@ -6,6 +6,7 @@ LULA.AvatarMarketplaceVersion = 6
 LULA.AutoExecuteManagerVersion = 1
 LULA.UserLookupVersion = 5
 LULA.ExperienceHubVersion = 2
+LULA.FreeItemsVersion = 1
 LULA.UniversalSearchVersion = 1
 LULA.PlayerFeatureVersion = 2
 local env = (getgenv and getgenv()) or _G
@@ -474,7 +475,9 @@ env.LHUISettings = settings
 if settings.ReducedMotion == nil then settings.ReducedMotion = false end
 if settings.LowPerformance == nil then settings.LowPerformance = false end
 if settings.DragLocked == nil then settings.DragLocked = false end
-if settings.ScrollArrowsEnabled == nil then settings.ScrollArrowsEnabled = true end
+if settings.PageScroll == nil then settings.PageScroll = false end
+-- Legacy mirror kept so older LH builds that still read ScrollArrowsEnabled do not break.
+settings.ScrollArrowsEnabled = settings.PageScroll == true
 if settings.EdgeSnap == nil then settings.EdgeSnap = true end
 if settings.ScaleMode == nil then settings.ScaleMode = "Auto" end
 if settings.GlassBlur == nil then settings.GlassBlur = false end
@@ -2995,7 +2998,7 @@ function LULA.CreateLib(kavName, themeInput)
     local tabList = Instance.new("ScrollingFrame")
     tabList.Name = "TabList"
     tabList.Position = UDim2.fromOffset(7, 0)
-    tabList.Size = UDim2.new(0, 135, 1, -39)
+    tabList.Size = settings.PageScroll == true and UDim2.new(0, 135, 1, -39) or UDim2.new(0, 135, 1, 0)
     tabList.BackgroundTransparency = 1
     tabList.BorderSizePixel = 0
     tabList.ScrollBarThickness = 2
@@ -3175,8 +3178,10 @@ function LULA.CreateLib(kavName, themeInput)
     active.QuickScrollDown.BackgroundTransparency = 0.04
     bind(active.QuickScrollDown, "BackgroundColor3", "SchemeColor")
 
-    active.QuickScrollUp.Visible = settings.ScrollArrowsEnabled ~= false
-    active.QuickScrollDown.Visible = settings.ScrollArrowsEnabled ~= false
+    active.QuickNav.Visible = settings.PageScroll == true
+    active.QuickScrollUp.Visible = true
+    active.QuickBackToTop.Visible = true
+    active.QuickScrollDown.Visible = true
 
     track(active.QuickBackToTop.MouseButton1Click:Connect(function()
         local selected = active and active.SelectedTab
@@ -6729,6 +6734,421 @@ function LULA.CreateLib(kavName, themeInput)
     function window:OpenUndoHistory() return LULA:OpenUndoHistory() end
 
 
+
+
+    -- Dedicated Roblox-styled Free Items page. This intentionally does not reuse the
+    -- normal section/button skin so the page keeps its own product-like identity.
+    function window:EnableFreeItems(tabName, config)
+        if active.FreeItems then return active.FreeItems.Tab end
+        config = type(config) == "table" and config or {}
+        local comingSoon = config.KomingSoon ~= false
+        local items = type(config.Items) == "table" and config.Items or {}
+        local tab = self:NewTab(tabName or "Free Items")
+        tab:EnsureBuilt()
+
+        local function makeRobloxMark(parent, size, tint, holeTint)
+            size = tonumber(size) or 22
+            local holder = Instance.new("Frame")
+            holder.Name = "RobloxInspiredMark"
+            holder.Size = UDim2.fromOffset(size, size)
+            holder.BackgroundTransparency = 1
+            holder.BorderSizePixel = 0
+            holder.Parent = parent
+
+            local outer = Instance.new("Frame")
+            outer.AnchorPoint = Vector2.new(0.5, 0.5)
+            outer.Position = UDim2.fromScale(0.5, 0.5)
+            outer.Size = UDim2.fromScale(0.76, 0.76)
+            outer.Rotation = 14
+            outer.BackgroundColor3 = tint or rgb(156, 160, 170)
+            outer.BorderSizePixel = 0
+            outer.Parent = holder
+            makeCorner(outer, math.max(2, math.floor(size * 0.08)))
+
+            local hole = Instance.new("Frame")
+            hole.AnchorPoint = Vector2.new(0.5, 0.5)
+            hole.Position = UDim2.fromScale(0.5, 0.5)
+            hole.Size = UDim2.fromScale(0.34, 0.34)
+            hole.BackgroundColor3 = holeTint or rgb(26, 28, 34)
+            hole.BorderSizePixel = 0
+            hole.Parent = outer
+            makeCorner(hole, math.max(1, math.floor(size * 0.04)))
+            return holder, outer, hole
+        end
+
+        -- Sidebar mark: geometric instead of a star, with the label kept readable.
+        if tab.Button then
+            tab.Button.Text = "       " .. tostring(tabName or "Free Items")
+            local markHolder, markOuter, markHole = makeRobloxMark(tab.Button, 19, rgb(166, 169, 178), active.Theme.Background)
+            markHolder.AnchorPoint = Vector2.new(0, 0.5)
+            markHolder.Position = UDim2.new(0, 7, 0.5, 0)
+            markHolder.ZIndex = tab.Button.ZIndex + 2
+            markOuter.ZIndex = markHolder.ZIndex
+            markHole.ZIndex = markHolder.ZIndex + 1
+            bind(markHole, "BackgroundColor3", "Background")
+        end
+
+        local scroll = tab.Scroll
+        scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+        scroll.CanvasSize = UDim2.new()
+        scroll.ScrollBarThickness = 3
+
+        local surface = Instance.new("Frame")
+        surface.Name = "FreeItemsSurface"
+        surface.LayoutOrder = -12000
+        surface.Size = UDim2.new(1, -4, 0, 0)
+        surface.AutomaticSize = Enum.AutomaticSize.Y
+        surface.BackgroundTransparency = 1
+        surface.BorderSizePixel = 0
+        surface.Parent = scroll
+
+        local surfaceLayout = Instance.new("UIListLayout")
+        surfaceLayout.Padding = UDim.new(0, 10)
+        surfaceLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        surfaceLayout.Parent = surface
+
+        local header = Instance.new("Frame")
+        header.Name = "FreeItemsHeader"
+        header.LayoutOrder = 1
+        header.Size = UDim2.new(1, 0, 0, 86)
+        header.BorderSizePixel = 0
+        header.Parent = surface
+        bind(header, "BackgroundColor3", "ElementColor")
+        makeCorner(header, 14)
+        local headerStroke = makeStroke(header, active.Theme.SchemeColor, 0.56, 1)
+        bind(headerStroke, "Color", "SchemeColor")
+
+        local headerMarkHolder, headerMarkOuter, headerMarkHole = makeRobloxMark(header, 54, rgb(157, 161, 171), active.Theme.ElementColor)
+        headerMarkHolder.Position = UDim2.fromOffset(12, 16)
+        headerMarkOuter.ZIndex = 2
+        headerMarkHole.ZIndex = 3
+        bind(headerMarkHole, "BackgroundColor3", "ElementColor")
+
+        local headerTitle = makeText(header, "Free Items", 20, Enum.Font.GothamBold)
+        headerTitle.Position = UDim2.fromOffset(76, 15)
+        headerTitle.Size = UDim2.new(1, -170, 0, 28)
+        headerTitle.TextXAlignment = Enum.TextXAlignment.Left
+        headerTitle.TextWrapped = false
+
+        local headerSub = makeText(header, "Roblox rewards, event items & item helper skripts", 11, Enum.Font.GothamMedium)
+        headerSub.Position = UDim2.fromOffset(76, 43)
+        headerSub.Size = UDim2.new(1, -90, 0, 26)
+        headerSub.TextXAlignment = Enum.TextXAlignment.Left
+        headerSub.TextYAlignment = Enum.TextYAlignment.Top
+        bind(headerSub, "TextColor3", "MutedText")
+
+        local badge = Instance.new("TextLabel")
+        badge.AnchorPoint = Vector2.new(1, 0)
+        badge.Position = UDim2.new(1, -12, 0, 13)
+        badge.Size = UDim2.fromOffset(74, 24)
+        badge.BackgroundTransparency = 0.08
+        badge.BorderSizePixel = 0
+        badge.Font = resolveUIFont(Enum.Font.GothamBold)
+        badge.Text = comingSoon and "PREVIEW" or "LIVE"
+        badge.TextSize = 10
+        badge.TextColor3 = rgb(255, 255, 255)
+        badge.Parent = header
+        bind(badge, "BackgroundColor3", "SchemeColor")
+        makeCorner(badge, 999)
+
+        local state = {
+            Tab = tab,
+            Surface = surface,
+            KomingSoon = comingSoon,
+            Items = items,
+            ControlRows = {},
+        }
+        active.FreeItems = state
+
+        local function runCallback(callback, ...)
+            if type(callback) ~= "function" then return end
+            local args = table.pack(...)
+            local ok, err = pcall(function()
+                callback(table.unpack(args, 1, args.n))
+            end)
+            if not ok then
+                LULA:ShowIsland("Free Items", tostring(err), {Duration = 5})
+            end
+        end
+
+        local function makeSectionHeader(name, tip, order)
+            local sectionCard = Instance.new("Frame")
+            sectionCard.Name = "FreeItemsSection"
+            sectionCard.LayoutOrder = order
+            sectionCard.Size = UDim2.new(1, 0, 0, tip and tostring(tip) ~= "" and 54 or 42)
+            sectionCard.BorderSizePixel = 0
+            sectionCard.Parent = surface
+            bind(sectionCard, "BackgroundColor3", "Header")
+            makeCorner(sectionCard, 11)
+
+            local rail = Instance.new("Frame")
+            rail.Position = UDim2.fromOffset(0, 8)
+            rail.Size = UDim2.new(0, 3, 1, -16)
+            rail.BorderSizePixel = 0
+            rail.Parent = sectionCard
+            bind(rail, "BackgroundColor3", "SchemeColor")
+            makeCorner(rail, 999)
+
+            local titleText = makeText(sectionCard, tostring(name or "Items"), 13, Enum.Font.GothamBold)
+            titleText.Position = UDim2.fromOffset(13, 7)
+            titleText.Size = UDim2.new(1, -24, 0, 21)
+            titleText.TextXAlignment = Enum.TextXAlignment.Left
+            titleText.TextWrapped = false
+
+            if tip and tostring(tip) ~= "" then
+                local tipText = makeText(sectionCard, tostring(tip), 10, Enum.Font.GothamMedium)
+                tipText.Position = UDim2.fromOffset(13, 27)
+                tipText.Size = UDim2.new(1, -24, 0, 18)
+                tipText.TextXAlignment = Enum.TextXAlignment.Left
+                tipText.TextWrapped = false
+                bind(tipText, "TextColor3", "MutedText")
+            end
+            return sectionCard
+        end
+
+        local function makeControlCard(item, order)
+            local row = Instance.new("Frame")
+            row.Name = "FreeItem_" .. tostring(item.kind or "kontrol")
+            row.LayoutOrder = order
+            row.Size = UDim2.new(1, 0, 0, 62)
+            row.BorderSizePixel = 0
+            row.Parent = surface
+            bind(row, "BackgroundColor3", "ElementColor")
+            makeCorner(row, 12)
+            local rowStroke = makeStroke(row, active.Theme.SchemeColor, 0.82, 1)
+            bind(rowStroke, "Color", "SchemeColor")
+
+            local icon = Instance.new("Frame")
+            icon.Position = UDim2.fromOffset(9, 9)
+            icon.Size = UDim2.fromOffset(44, 44)
+            icon.BorderSizePixel = 0
+            icon.Parent = row
+            bind(icon, "BackgroundColor3", "Header")
+            makeCorner(icon, 10)
+
+            local miniHolder, miniOuter, miniHole = makeRobloxMark(icon, 26, rgb(153, 157, 167), active.Theme.Header)
+            miniHolder.AnchorPoint = Vector2.new(0.5, 0.5)
+            miniHolder.Position = UDim2.fromScale(0.5, 0.5)
+            miniOuter.ZIndex = 2
+            miniHole.ZIndex = 3
+            bind(miniHole, "BackgroundColor3", "Header")
+
+            local displayName = tostring(item.name or item.title or item.text or "Free Item")
+            local titleText = makeText(row, displayName, 12, Enum.Font.GothamBold)
+            titleText.Position = UDim2.fromOffset(63, 9)
+            titleText.Size = UDim2.new(1, -130, 0, 21)
+            titleText.TextXAlignment = Enum.TextXAlignment.Left
+            titleText.TextWrapped = false
+
+            local infoText = makeText(row, tostring(item.tip or item.text or ""), 9.5, Enum.Font.GothamMedium)
+            infoText.Position = UDim2.fromOffset(63, 31)
+            infoText.Size = UDim2.new(1, -132, 0, 20)
+            infoText.TextXAlignment = Enum.TextXAlignment.Left
+            infoText.TextYAlignment = Enum.TextYAlignment.Top
+            infoText.TextWrapped = true
+            bind(infoText, "TextColor3", "MutedText")
+
+            local ui = {}
+            function ui:SetVisible(value) row.Visible = value ~= false end
+            function ui:Fire()
+                if item.kind == "button" then runCallback(item.callback) end
+            end
+
+            if item.kind == "button" then
+                local open = makeButton(row, "OPEN")
+                open.AnchorPoint = Vector2.new(1, 0.5)
+                open.Position = UDim2.new(1, -9, 0.5, 0)
+                open.Size = UDim2.fromOffset(57, 30)
+                open.TextSize = 9
+                open.Font = resolveUIFont(Enum.Font.GothamBold)
+                open.TextColor3 = rgb(255, 255, 255)
+                bind(open, "BackgroundColor3", "SchemeColor")
+                track(open.Activated:Connect(function() runCallback(item.callback) end))
+            elseif item.kind == "toggle" then
+                local current = item.default == true
+                local toggleButton = makeButton(row, "")
+                toggleButton.AnchorPoint = Vector2.new(1, 0.5)
+                toggleButton.Position = UDim2.new(1, -9, 0.5, 0)
+                toggleButton.Size = UDim2.fromOffset(52, 28)
+                toggleButton.Text = ""
+                toggleButton.BackgroundTransparency = 0
+                makeCorner(toggleButton, 999)
+
+                local knob = Instance.new("Frame")
+                knob.AnchorPoint = Vector2.new(0.5, 0.5)
+                knob.Size = UDim2.fromOffset(20, 20)
+                knob.BorderSizePixel = 0
+                knob.BackgroundColor3 = rgb(255, 255, 255)
+                knob.Parent = toggleButton
+                makeCorner(knob, 999)
+
+                local function paint(fire)
+                    toggleButton.BackgroundColor3 = current and TOGGLE_ON_COLOR or TOGGLE_OFF_COLOR
+                    knob.Position = current and UDim2.new(1, -14, 0.5, 0) or UDim2.new(0, 14, 0.5, 0)
+                    item._currentValue = current
+                    if fire then runCallback(item.callback, current) end
+                end
+                function ui:SetValue(value, fire)
+                    current = value == true
+                    paint(fire == true)
+                    return current
+                end
+                function ui:GetValue() return current end
+                function ui:Reset() return ui:SetValue(item.default == true, true) end
+                track(toggleButton.Activated:Connect(function()
+                    current = not current
+                    paint(true)
+                end))
+                paint(false)
+            elseif item.kind == "label" or item.kind == "banner" or item.kind == "paragraph" then
+                icon.Visible = false
+                titleText.Position = UDim2.fromOffset(14, 9)
+                titleText.Size = UDim2.new(1, -28, 0, 21)
+                infoText.Position = UDim2.fromOffset(14, 31)
+                infoText.Size = UDim2.new(1, -28, 0, 20)
+                if item.kind == "paragraph" then
+                    titleText.Text = tostring(item.title or "Info")
+                    infoText.Text = tostring(item.text or "")
+                elseif item.kind == "banner" then
+                    titleText.Text = tostring(item.text or "")
+                    infoText.Text = ""
+                end
+            else
+                local typePill = Instance.new("TextLabel")
+                typePill.AnchorPoint = Vector2.new(1, 0.5)
+                typePill.Position = UDim2.new(1, -9, 0.5, 0)
+                typePill.Size = UDim2.fromOffset(60, 26)
+                typePill.BorderSizePixel = 0
+                typePill.BackgroundTransparency = 0.3
+                typePill.Font = resolveUIFont(Enum.Font.GothamBold)
+                typePill.Text = string.upper(tostring(item.kind or "ITEM"))
+                typePill.TextSize = 8
+                typePill.Parent = row
+                bind(typePill, "BackgroundColor3", "Header")
+                bind(typePill, "TextColor3", "MutedText")
+                makeCorner(typePill, 999)
+            end
+
+            item._ui = ui
+            if item.visible == false then row.Visible = false end
+            table.insert(state.ControlRows, row)
+            return row
+        end
+
+        if comingSoon then
+            local hero = Instance.new("Frame")
+            hero.Name = "FreeItemsKomingSoon"
+            hero.LayoutOrder = 2
+            hero.Size = UDim2.new(1, 0, 0, 250)
+            hero.BorderSizePixel = 0
+            hero.ClipsDescendants = true
+            hero.Parent = surface
+            bind(hero, "BackgroundColor3", "Header")
+            makeCorner(hero, 16)
+            local heroStroke = makeStroke(hero, active.Theme.SchemeColor, 0.52, 1.2)
+            bind(heroStroke, "Color", "SchemeColor")
+
+            local giantMarkHolder, giantMarkOuter, giantMarkHole = makeRobloxMark(hero, 108, rgb(128, 132, 143), active.Theme.Header)
+            giantMarkHolder.AnchorPoint = Vector2.new(0.5, 0)
+            giantMarkHolder.Position = UDim2.new(0.5, 0, 0, 23)
+            giantMarkOuter.ZIndex = 2
+            giantMarkHole.ZIndex = 3
+            bind(giantMarkHole, "BackgroundColor3", "Header")
+
+            local soonText = makeText(hero, "Koming Soon...", 24, Enum.Font.GothamBold)
+            soonText.AnchorPoint = Vector2.new(0.5, 0)
+            soonText.Position = UDim2.new(0.5, 0, 0, 132)
+            soonText.Size = UDim2.new(1, -40, 0, 36)
+            soonText.TextXAlignment = Enum.TextXAlignment.Center
+
+            local sub = makeText(hero, "A dedicated Roblox free-item library is being built here.", 10.5, Enum.Font.GothamMedium)
+            sub.AnchorPoint = Vector2.new(0.5, 0)
+            sub.Position = UDim2.new(0.5, 0, 0, 171)
+            sub.Size = UDim2.new(1, -50, 0, 24)
+            sub.TextXAlignment = Enum.TextXAlignment.Center
+            bind(sub, "TextColor3", "MutedText")
+
+            local chips = Instance.new("Frame")
+            chips.AnchorPoint = Vector2.new(0.5, 0)
+            chips.Position = UDim2.new(0.5, 0, 0, 207)
+            chips.Size = UDim2.fromOffset(224, 27)
+            chips.BackgroundTransparency = 1
+            chips.Parent = hero
+            local chipLayout = Instance.new("UIListLayout")
+            chipLayout.FillDirection = Enum.FillDirection.Horizontal
+            chipLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+            chipLayout.Padding = UDim.new(0, 5)
+            chipLayout.Parent = chips
+            for _, word in ipairs({"REWARDS", "EVENTS", "UGC"}) do
+                local chip = Instance.new("TextLabel")
+                chip.Size = UDim2.fromOffset(70, 24)
+                chip.BorderSizePixel = 0
+                chip.BackgroundTransparency = 0.2
+                chip.Font = resolveUIFont(Enum.Font.GothamBold)
+                chip.Text = word
+                chip.TextSize = 8
+                chip.Parent = chips
+                bind(chip, "BackgroundColor3", "ElementColor")
+                bind(chip, "TextColor3", "MutedText")
+                makeCorner(chip, 999)
+            end
+
+            local scanner = Instance.new("Frame")
+            scanner.Name = "Scanner"
+            scanner.AnchorPoint = Vector2.new(0.5, 0.5)
+            scanner.Position = UDim2.new(0, -45, 0.5, 0)
+            scanner.Size = UDim2.fromOffset(70, 330)
+            scanner.Rotation = 18
+            scanner.BackgroundColor3 = rgb(255, 255, 255)
+            scanner.BackgroundTransparency = 0.93
+            scanner.BorderSizePixel = 0
+            scanner.Parent = hero
+
+            local animationClock = 0
+            track(RunService.RenderStepped:Connect(function(delta)
+                if not hero.Parent or not hero.Visible then return end
+                animationClock = animationClock + delta
+                local dots = math.floor(animationClock / 0.48) % 4
+                soonText.Text = "Koming Soon" .. string.rep(".", dots)
+                if settings.ReducedMotion or settings.LowPerformance then
+                    soonText.Position = UDim2.new(0.5, 0, 0, 132)
+                    giantMarkHolder.Rotation = 0
+                    scanner.Visible = false
+                    return
+                end
+                scanner.Visible = true
+                soonText.Position = UDim2.new(0.5, math.sin(animationClock * 1.75) * 6, 0, 132 + math.sin(animationClock * 2.2) * 2)
+                giantMarkHolder.Rotation = math.sin(animationClock * 1.25) * 3
+                local sweep = (animationClock * 0.16) % 1.25
+                scanner.Position = UDim2.new(sweep, -55, 0.5, 0)
+            end))
+        else
+            local order = 10
+            local hasSection = false
+            for _, item in ipairs(items) do
+                if type(item) == "table" then
+                    order = order + 1
+                    if item.kind == "free_section" then
+                        hasSection = true
+                        makeSectionHeader(item.name or item.title, item.tip or item.text, order)
+                    else
+                        if not hasSection then
+                            hasSection = true
+                            order = order + 1
+                            makeSectionHeader("Available Items", "Choose an item helper below.", order)
+                        end
+                        makeControlCard(item, order + 1)
+                        order = order + 1
+                    end
+                end
+            end
+            if #items == 0 then
+                makeSectionHeader("No Items Added", "Set komingsoon = true while this page is empty.", 10)
+            end
+        end
+
+        return tab
+    end
 
     function window:EnableNotificationCenter(tabName)
         if active.NotificationCenter then return active.NotificationCenter.Tab end
@@ -22261,7 +22681,8 @@ function LULA.CreateLib(kavName, themeInput)
     function window:GetRoot() return main end
     function window:SetFooter(text) footer.Text = tostring(text or "") end
     function window:SetFont(fontName) return LULA:SetFont(fontName) end
-    function window:SetScrollArrowsEnabled(value) return LULA:SetScrollArrowsEnabled(value) end
+    function window:SetPageScrollEnabled(value) return LULA:SetPageScrollEnabled(value) end
+    function window:SetScrollArrowsEnabled(value) return LULA:SetPageScrollEnabled(value) end
     function window:Notify(...) return LULA:Notify(...) end
     function window:ShowIsland(...) return LULA:ShowIsland(...) end
     function window:SetVisible(value) return LULA:SetUIVisible(value) end
@@ -22377,14 +22798,27 @@ function LULA:SetDragLocked(value)
     settings.DragLocked = value and true or false
 end
 
-function LULA:SetScrollArrowsEnabled(value)
-    settings.ScrollArrowsEnabled = value ~= false
+function LULA:SetPageScrollEnabled(value)
+    local enabled = value == true
+    settings.PageScroll = enabled
+    settings.ScrollArrowsEnabled = enabled
     if active then
-        if active.QuickScrollUp then active.QuickScrollUp.Visible = settings.ScrollArrowsEnabled end
-        if active.QuickScrollDown then active.QuickScrollDown.Visible = settings.ScrollArrowsEnabled end
+        if active.QuickNav then active.QuickNav.Visible = enabled end
+        if active.TabList then
+            active.TabList.Size = enabled
+                and UDim2.new(0, 135, 1, -39)
+                or UDim2.new(0, 135, 1, 0)
+        end
+        if active.QuickScrollUp then active.QuickScrollUp.Visible = true end
         if active.QuickBackToTop then active.QuickBackToTop.Visible = true end
+        if active.QuickScrollDown then active.QuickScrollDown.Visible = true end
     end
-    return settings.ScrollArrowsEnabled
+    return enabled
+end
+
+-- Backward-compatible alias. It now controls the complete Page Scroll helper rail.
+function LULA:SetScrollArrowsEnabled(value)
+    return self:SetPageScrollEnabled(value)
 end
 
 
